@@ -369,9 +369,9 @@ function HomeScreen({ onStart }) {
         <DecorativeShapes />
         <div className="home-eyebrow">London · {new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}</div>
         <h1 className="home-title">London,<br /><em>Your Way</em></h1>
-        <p className="home-sub">60+ hand-picked venues. Zero filler. One perfect plan.</p>
+        <p className="home-sub">60+ hand-picked experiences. One perfect plan. Matched to you. </p>
         <div className="home-cta">
-          <button className="btn btn-teal" style={{ maxWidth: 200 }} onClick={onStart}>Plan my day ✦</button>
+          <button className="btn btn-teal" style={{ maxWidth: 200 }} onClick={onStart}>Plan my day or night ✦</button>
         </div>
       </div>
       <div className="divider" />
@@ -379,7 +379,7 @@ function HomeScreen({ onStart }) {
         <div className="section-title">How it works</div>
         <p className="section-sub">Answer 7 quick questions. Get one perfectly sequenced London plan.</p>
         {[["✦", "7 quick questions", "Tell us your vibe, budget, area, and energy level."],
-          ["◎", "We match the venues", "Our curated database of 60+ hand-picked spots filters to your exact vibe."],
+          ["◎", "We match the experience", "Our curated database of 60+ hand-picked spots filters to your exact vibe."],
           ["→", "One perfect plan", "Claude sequences them geographically and temporally. Just follow it."]
         ].map(([icon, title, desc], i) => (
           <div key={i} style={{ display: "flex", gap: "1rem", marginBottom: "1.1rem", alignItems: "flex-start" }}>
