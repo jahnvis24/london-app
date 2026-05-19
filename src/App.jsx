@@ -861,13 +861,10 @@ export default function App() {
       '{"title":"punchy name","tagline":"witty sentence","vibe_scores":{"fun":7,"romantic":3,"cultural":6,"chaotic":2},"total_cost_estimate":"35-55pp","stops":[{"time":"18:30","name":"venue name","type":"bar","area":"Shoreditch","emoji":"🍸","hook":"best thing about this place","why_it_fits":"vibe match","booking":"Walk-in fine","cost_estimate":"12pp","travel_to_next":"7 min walk"}],"extend_the_night":"late suggestion","local_tip":"insider tip"}';
 
     try {
-      const resp = await fetch("https://api.anthropic.com/v1/messages", {
+      const resp = await fetch("/api/claude", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-api-key": import.meta.env.VITE_ANTHROPIC_API_KEY,
-          "anthropic-version": "2023-06-01",
-          "anthropic-dangerous-direct-browser-access": "true"
         },
         body: JSON.stringify({
           model: "claude-sonnet-4-5",
