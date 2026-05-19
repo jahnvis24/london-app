@@ -767,29 +767,33 @@ function TikTokParserScreen({ onSuccess }) {
       const caption = tikData.description || tikData.title || "";
       if (!caption) throw new Error("No caption found in this video. Try a different one.");
 
-      const prompt = `You are parsing a TikTok video caption about a London experience or venue.
-Extract structured data from this caption and return ONLY valid JSON with no markdown:
+      const prompt = `You are parsing a TikTok video caption about London experiences or venues.
+The caption may mention ONE venue or MULTIPLE venues.
+Extract structured data and return ONLY valid JSON with no markdown.
 Caption: "${caption}"
-TikTok URL: "${url}"
 
-Return this exact JSON structure:
+If ONE venue: return a JSON object.
+If MULTIPLE venues: return a JSON array of objects.
+
+Each object must have this exact structure:
 {
-  "name": "venue or experience name",
+  "name": "venue name",
   "address": "full address if mentioned, or null",
-  "area": "neighbourhood name e.g. Shoreditch, Chelsea, Peckham",
+  "area": "neighbourhood e.g. Shoreditch, Chelsea, Clapham",
   "zone": "one of: North, Northwest, Northeast, South, Southwest, Southeast, East, West, Central — infer from area",
   "category": "one of: restaurant, bar, cafe, market, experience, outdoor, museum, gallery, event, nightlife",
   "price": "e.g. Free, £10, £20-30, or null if unknown",
-  "is_event": true or false,
-  "event_start": "YYYY-MM-DD if mentioned, or null",
-  "event_end": "YYYY-MM-DD if mentioned, or null",
-  "comment": "any interesting descriptors or adjectives from the caption",
-  "vibe_tags": ["array", "of", "tags", "from: chill, romantic, chaotic, cultural, fancy, hidden_gems, social, foodie, outdoor, aesthetic, iconic"]
+  "is_event": false,
+  "event_start": null,
+  "event_end": null,
+  "comment": "interesting descriptors about this specific venue only",
+  "vibe_tags": ["tags from: chill, romantic, chaotic, cultural, fancy, hidden_gems, social, foodie, outdoor, aesthetic, iconic"]
 }`;
 
-      const txt = await callClaude(prompt, 600);
-      const parsed = JSON.parse(txt);
-      setPreview({ ...parsed, _caption: caption });
+      const txt = await callClaude(prompt, 1500);
+      const parsedRaw = JSON.parse(txt);
+      const venues = Array.isArray(parsedRaw) ? parsedRaw : [parsedRaw];
+      setPreview({ venues, _caption: caption });
     } catch (e) {
       setError(e.message || "Couldn't fetch this TikTok. Make sure the video is public.");
     }
@@ -797,40 +801,40 @@ Return this exact JSON structure:
   }
 
   async function save() {
-    if (!preview) return;
+    if (!preview?.venues?.length) return;
     setSaving(true); setError(null);
 
     try {
-      const { data: existingMapping } = await supabase
-        .from("area_zone_mapping")
-        .select("zone")
-        .eq("area", preview.area)
-        .single();
+      for (const venue of preview.venues) {
+        const { data: existingMapping } = await supabase
+          .from("area_zone_mapping")
+          .select("zone")
+          .eq("area", venue.area)
+          .single();
 
-      if (!existingMapping && preview.area) {
-        await supabase.from("area_zone_mapping").insert({
-          area: preview.area,
-          zone: preview.zone || "Central"
+        if (!existingMapping && venue.area) {
+          await supabase.from("area_zone_mapping").insert({
+            area: venue.area,
+            zone: venue.zone || "Central"
+          });
+        }
+
+        await supabase.from("experiences").insert({
+          name: venue.name,
+          address: venue.address,
+          area: venue.area,
+          zone: venue.zone || existingMapping?.zone || "Central",
+          category: venue.category,
+          price: venue.price,
+          is_event: venue.is_event || false,
+          event_start: venue.event_start || null,
+          event_end: venue.event_end || null,
+          comment: venue.comment,
+          vibe_tags: venue.vibe_tags || [],
+          tiktok_url: url || null,
+          status: "pending"
         });
       }
-
-      const { error: insertError } = await supabase.from("experiences").insert({
-        name: preview.name,
-        address: preview.address,
-        area: preview.area,
-        zone: preview.zone || existingMapping?.zone || "Central",
-        category: preview.category,
-        price: preview.price,
-        is_event: preview.is_event || false,
-        event_start: preview.event_start || null,
-        event_end: preview.event_end || null,
-        comment: preview.comment,
-        vibe_tags: preview.vibe_tags || [],
-        tiktok_url: url || null,
-        status: "pending"
-      });
-
-      if (insertError) throw insertError;
 
       setSuccess(true);
       setPreview(null);
@@ -867,32 +871,41 @@ Return this exact JSON structure:
 
       {preview && (
         <div style={{ marginTop: "1.25rem" }}>
-          <div style={{ fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#9b8f7a", marginBottom: "0.75rem", fontWeight: 500 }}>Preview — check before saving</div>
+          <div style={{ fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#9b8f7a", marginBottom: "0.5rem", fontWeight: 500 }}>
+            {preview.venues.length > 1 ? `${preview.venues.length} venues found` : "Preview"} — check before saving
+          </div>
           {preview._caption && (
-            <div style={{ fontSize: "0.75rem", color: "#9b8f7a", background: "#f5f0e8", borderRadius: 10, padding: "0.75rem", marginBottom: "0.75rem", lineHeight: 1.5 }}>
-              <strong>Caption found:</strong> {preview._caption}
+            <div style={{ fontSize: "0.72rem", color: "#9b8f7a", background: "#f5f0e8", borderRadius: 10, padding: "0.75rem", marginBottom: "1rem", lineHeight: 1.5 }}>
+              <strong>Caption:</strong> {preview._caption}
             </div>
           )}
-          <div className="preview-card">
-            <div className="preview-title">{preview.name || "Unknown venue"}</div>
-            {[
-              ["Area", preview.area],
-              ["Zone", preview.zone ? <span className="zone-badge">{preview.zone}</span> : null],
-              ["Category", preview.category],
-              ["Price", preview.price],
-              ["Address", preview.address],
-              ["Event", preview.is_event ? `Yes — ${preview.event_start || "date TBC"}${preview.event_end ? ` to ${preview.event_end}` : ""}` : "No (permanent venue)"],
-              ["Vibe tags", preview.vibe_tags?.join(", ")],
-              ["Notes", preview.comment],
-            ].filter(([, v]) => v).map(([k, v], i) => (
-              <div key={i} className="preview-field">
-                <span className="preview-key">{k}</span>
-                <span className="preview-val">{v}</span>
-              </div>
-            ))}
-          </div>
+          {preview.venues.map((venue, i) => (
+            <div key={i} className="preview-card" style={{ marginBottom: "0.75rem" }}>
+              {preview.venues.length > 1 && (
+                <div style={{ fontSize: "0.6rem", color: "#1B998B", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "0.4rem", fontWeight: 600 }}>
+                  {i + 1} of {preview.venues.length}
+                </div>
+              )}
+              <div className="preview-title">{venue.name || "Unknown venue"}</div>
+              {[
+                ["Area", venue.area],
+                ["Zone", venue.zone ? <span className="zone-badge">{venue.zone}</span> : null],
+                ["Category", venue.category],
+                ["Price", venue.price],
+                ["Address", venue.address],
+                ["Is event", venue.is_event ? `Yes — ${venue.event_start || "date TBC"}` : null],
+                ["Vibe tags", venue.vibe_tags?.join(", ")],
+                ["Notes", venue.comment],
+              ].filter(([, v]) => v).map(([k, v], j) => (
+                <div key={j} className="preview-field">
+                  <span className="preview-key">{k}</span>
+                  <span className="preview-val">{v}</span>
+                </div>
+              ))}
+            </div>
+          ))}
           <button className="btn btn-teal" onClick={save} disabled={saving}>
-            {saving ? "Saving..." : "Submit for review ✦"}
+            {saving ? "Saving..." : `Submit ${preview.venues.length > 1 ? `all ${preview.venues.length} venues` : "venue"} for review ✦`}
           </button>
           <button className="btn-outline" onClick={() => setPreview(null)}>Try different URL</button>
         </div>
