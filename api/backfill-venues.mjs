@@ -13,6 +13,14 @@ const PRICE_MAP = {
   'PRICE_LEVEL_VERY_EXPENSIVE': '£70pp+'
 };
 
+const PRICE_LEVEL_INT = {
+  'PRICE_LEVEL_FREE': 0,
+  'PRICE_LEVEL_INEXPENSIVE': 1,
+  'PRICE_LEVEL_MODERATE': 2,
+  'PRICE_LEVEL_EXPENSIVE': 3,
+  'PRICE_LEVEL_VERY_EXPENSIVE': 4
+};
+
 async function enrichVenue(name, area) {
   const apiKey = process.env.GOOGLE_PLACES_KEY;
   const searchQuery = `${name} ${area || ''} London`;
@@ -52,6 +60,7 @@ async function enrichVenue(name, area) {
     google_rating: place.rating || null,
     google_review_count: place.userRatingCount || null,
     google_price_level: place.priceLevel || null,
+    price_level: PRICE_LEVEL_INT[place.priceLevel] ?? null,
     price: PRICE_MAP[place.priceLevel] || null,
     website: place.websiteUri || null,
     phone: place.nationalPhoneNumber || null,
@@ -71,7 +80,7 @@ export default async function handler(req, res) {
   try {
     const { data: venues, error } = await supabase
       .from('experiences')
-      .select('id, name, area, zone')
+      .select('id, name, area, zone, price')
       .eq('status', 'approved')
       .is('google_place_id', null);
 
@@ -80,7 +89,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ message: 'All venues already enriched', count: 0 });
     }
 
-    const results = { success: [], failed: [], skipped: [] };
+    const results = { success: [], failed: [] };
 
     for (const venue of venues) {
       try {
@@ -102,7 +111,8 @@ export default async function handler(req, res) {
         if (enriched.google_rating) update.google_rating = enriched.google_rating;
         if (enriched.google_review_count) update.google_review_count = enriched.google_review_count;
         if (enriched.google_price_level) update.google_price_level = enriched.google_price_level;
-        if (enriched.price) update.price = enriched.price;
+        if (enriched.price_level !== null && enriched.price_level !== undefined) update.price_level = enriched.price_level;
+        if (enriched.price && (!venue.price || ['low','mid','high'].includes(venue.price))) update.price = enriched.price;
         if (enriched.website) update.website = enriched.website;
         if (enriched.phone) update.phone = enriched.phone;
         if (enriched.opening_hours) update.opening_hours = enriched.opening_hours;
