@@ -44,10 +44,10 @@ export default async function handler(req, res) {
 
     const priceLevelMap = {
       'PRICE_LEVEL_FREE': 'Free',
-      'PRICE_LEVEL_INEXPENSIVE': 'low',
-      'PRICE_LEVEL_MODERATE': 'mid',
-      'PRICE_LEVEL_EXPENSIVE': 'high',
-      'PRICE_LEVEL_VERY_EXPENSIVE': 'high'
+      'PRICE_LEVEL_INEXPENSIVE': 'Under £15pp',
+      'PRICE_LEVEL_MODERATE': '£15-35pp',
+      'PRICE_LEVEL_EXPENSIVE': '£35-70pp',
+      'PRICE_LEVEL_VERY_EXPENSIVE': '£70pp+'
     };
 
     const result = {
