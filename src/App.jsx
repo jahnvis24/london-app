@@ -135,13 +135,32 @@ function buildShortlist(answers, dbVenues = []) {
 const QUESTIONS = [
   { id: "timeOfDay", label: "1 of 8", title: "Day out or night in London?", multi: false, options: [{ value: "day", label: "Day plan", emoji: "☀️" }, { value: "night", label: "Night plan", emoji: "🌙" }, { value: "full", label: "Full day + night", emoji: "🌅" }] },
   { id: "vibes", label: "2 of 8", title: "Pick your vibe", multi: true, options: [{ value: "chill", label: "Chill", emoji: "😌" }, { value: "romantic", label: "Romantic", emoji: "🌹" }, { value: "chaotic", label: "Chaotic fun", emoji: "🌀" }, { value: "cultural", label: "Cultural", emoji: "🏛️" }, { value: "fancy", label: "Fancy", emoji: "🥂" }, { value: "hidden_gems", label: "Hidden gems", emoji: "💎" }, { value: "social", label: "Social", emoji: "🎉" }, { value: "solo", label: "Solo reset", emoji: "🧘" }, { value: "creative", label: "Creative", emoji: "🎨" }, { value: "activity", label: "Activity-based", emoji: "🎯" }, { value: "active", label: "Active", emoji: "🏃" }] },
-  { id: "area", label: "3 of 8", title: "Any area preference?", multi: false, options: [{ value: "central", label: "Central", emoji: "🎭" }, { value: "east", label: "East", emoji: "🧱" }, { value: "south", label: "South", emoji: "🌉" }, { value: "west", label: "West", emoji: "🌳" }, { value: "north", label: "North", emoji: "🌲" }, { value: "southwest", label: "Southwest", emoji: "🏡" }, { value: "northwest", label: "Northwest", emoji: "🌿" }, { value: "outskirts", label: "Outskirts", emoji: "🚂" }, { value: "anywhere", label: "Anywhere", emoji: "🗺️" }] },
+  { id: "area", label: "3 of 8", title: "Any area preference?", multi: false, options: [{ value: "central", label: "Central", emoji: "🎭" }, { value: "east", label: "East", emoji: "🧱" }, { value: "south", label: "South", emoji: "🌉" }, { value: "west", label: "West", emoji: "🌳" }, { value: "north", label: "North", emoji: "🌲" }, { value: "southwest", label: "Southwest", emoji: "🏡" }, { value: "northwest", label: "Northwest", emoji: "🌿" }, { value: "outskirts", label: "Outskirts", emoji: "🚂" }, { value: "surprise_me", label: "Surprise me!", emoji: "🎲" }] },
   { id: "travel", label: "4 of 8", title: "How do you want to get around?", multi: false, options: [{ value: "walking", label: "Walking only", emoji: "🚶" }, { value: "walk_tube", label: "Walk + tube", emoji: "🚇" }, { value: "max10", label: "Max 10 min each stop", emoji: "⚡" }] },
   { id: "budget", label: "5 of 8", title: "Budget vibe?", multi: false, options: [{ value: "low", label: "Broke but fun", emoji: "💸" }, { value: "mid", label: "Mid range", emoji: "💳" }, { value: "high", label: "Treat yourself", emoji: "✨" }, { value: "unlimited", label: "No limit", emoji: "🚀" }] },
   { id: "groupSize", label: "6 of 8", title: "Who's coming?", multi: false, options: [{ value: "solo", label: "Just me", emoji: "🙋" }, { value: "duo", label: "Two of us", emoji: "👫" }, { value: "small", label: "3–5 people", emoji: "👯" }, { value: "large", label: "5+ crew", emoji: "🎊" }] },
   { id: "energy", label: "7 of 8", title: "Energy level today?", multi: false, options: [{ value: "low", label: "Low & breezy", emoji: "🌿" }, { value: "medium", label: "Up for it", emoji: "⚡" }, { value: "high", label: "Max chaos", emoji: "🔥" }] },
   { id: "extras", label: "8 of 8", title: "Must-haves?", multi: true, options: [{ value: "food", label: "Food included", emoji: "🍜" }, { value: "drinks", label: "Drinks/bars", emoji: "🍸" }, { value: "outdoor", label: "Outdoor spaces", emoji: "🌳" }, { value: "social", label: "Meet people", emoji: "🤝" }] },
 ];
+
+const ALL_AREAS = Object.keys({
+  "Mayfair": 1, "Chelsea": 1, "Kensington": 1, "Notting Hill": 1, "Hammersmith": 1, "Fulham": 1,
+  "Knightsbridge": 1, "Shepherd's Bush": 1, "Chiswick": 1, "Holland Park": 1, "Hampstead": 1,
+  "Kilburn": 1, "Queen's Park": 1, "Maida Vale": 1, "St John's Wood": 1, "Swiss Cottage": 1,
+  "Wembley": 1, "Islington": 1, "Camden": 1, "Highgate": 1, "Finsbury Park": 1, "Archway": 1,
+  "Kentish Town": 1, "Crouch End": 1, "Muswell Hill": 1, "Holloway": 1, "Dalston": 1,
+  "Hackney": 1, "Clapton": 1, "Walthamstow": 1, "Leyton": 1, "Tottenham": 1, "Wood Green": 1,
+  "Stoke Newington": 1, "Shoreditch": 1, "Bethnal Green": 1, "Bow": 1, "Stratford": 1,
+  "Canary Wharf": 1, "Whitechapel": 1, "Mile End": 1, "Poplar": 1, "Limehouse": 1,
+  "Soho": 1, "Covent Garden": 1, "Fitzrovia": 1, "Bloomsbury": 1, "Clerkenwell": 1,
+  "The City": 1, "Holborn": 1, "Marylebone": 1, "Westminster": 1, "Piccadilly": 1,
+  "Elephant and Castle": 1, "Kennington": 1, "Stockwell": 1, "Vauxhall": 1, "Putney": 1,
+  "Battersea": 1, "Clapham": 1, "Brixton": 1, "Balham": 1, "Tooting": 1, "Wandsworth": 1,
+  "Richmond": 1, "Wimbledon": 1, "Kingston": 1, "Peckham": 1, "Bermondsey": 1,
+  "London Bridge": 1, "Borough": 1, "Camberwell": 1, "Dulwich": 1, "Greenwich": 1,
+  "Deptford": 1, "New Cross": 1, "Lewisham": 1, "Crystal Palace": 1, "Herne Hill": 1,
+  "Nunhead": 1, "Brockley": 1, "Forest Hill": 1, "Sydenham": 1,
+});
 
 const LOADS = ["Raiding our London database...", "Matching your vibe to venues...", "Checking geographic flow...", "Building your perfect sequence...", "Final polish..."];
 
@@ -444,6 +463,22 @@ function QuizScreen({ step, ans, times, setTimes, onToggle, onNext, onBack, onGe
   const q = QUESTIONS[step];
   const totalSteps = QUESTIONS.length + 1;
   const progressPct = Math.round(((step + 1) / totalSteps) * 100);
+  const [areaSearch, setAreaSearch] = useState("");
+  const [areaMatches, setAreaMatches] = useState([]);
+
+  function handleAreaSearch(val) {
+    setAreaSearch(val);
+    if (val.length < 2) { setAreaMatches([]); return; }
+    const matches = ALL_AREAS.filter(a => a.toLowerCase().includes(val.toLowerCase())).slice(0, 6);
+    setAreaMatches(matches);
+  }
+
+  function selectNeighbourhood(neighbourhood) {
+    onToggle("area", neighbourhood, false);
+    setAreaSearch(neighbourhood);
+    setAreaMatches([]);
+    setTimeout(onNext, 200);
+  }
 
   function canNext() {
     if (step >= QUESTIONS.length) return true;
@@ -458,6 +493,8 @@ function QuizScreen({ step, ans, times, setTimes, onToggle, onNext, onBack, onGe
       <div className="loading-sub">{LOADS[loadIdx]}</div>
     </div>
   );
+
+  const isAreaStep = q?.id === "area";
 
   return (
     <div>
@@ -476,12 +513,40 @@ function QuizScreen({ step, ans, times, setTimes, onToggle, onNext, onBack, onGe
               const sel = q.multi ? (ans[q.id] || []).includes(opt.value) : ans[q.id] === opt.value;
               return (
                 <div key={opt.value} className={`chip ${sel ? "sel" : ""}`}
-                  onClick={() => { onToggle(q.id, opt.value, q.multi); if (!q.multi) setTimeout(onNext, 200); }}>
+                  onClick={() => { onToggle(q.id, opt.value, q.multi); if (!q.multi) { setAreaSearch(""); setAreaMatches([]); setTimeout(onNext, 200); } }}>
                   <span>{opt.emoji}</span>{opt.label}
                 </div>
               );
             })}
           </div>
+          {isAreaStep && (
+            <div style={{ marginTop: "1rem", position: "relative" }}>
+              <div style={{ fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "#9b8f7a", marginBottom: "6px", fontWeight: 500 }}>Or search a specific neighbourhood</div>
+              <input
+                className="input-field"
+                type="text"
+                placeholder="e.g. Shoreditch, Peckham, Maida Vale..."
+                value={areaSearch}
+                onChange={e => handleAreaSearch(e.target.value)}
+                style={{ marginBottom: 0 }}
+              />
+              {areaMatches.length > 0 && (
+                <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "#fff", border: "1.5px solid #ddd8ce", borderRadius: 12, zIndex: 10, overflow: "hidden", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", marginTop: 4 }}>
+                  {areaMatches.map(area => (
+                    <div key={area} onClick={() => selectNeighbourhood(area)}
+                      style={{ padding: "10px 14px", fontSize: "0.85rem", color: "#1c1c1a", cursor: "pointer", borderBottom: "1px solid #f0ebe2" }}
+                      onMouseEnter={e => e.target.style.background = "#f5f0e8"}
+                      onMouseLeave={e => e.target.style.background = "#fff"}>
+                      📍 {area}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {ans.area && !q.options.find(o => o.value === ans.area) && (
+                <div style={{ marginTop: "0.5rem", fontSize: "0.75rem", color: "#1B998B" }}>✦ Selected: {ans.area}</div>
+              )}
+            </div>
+          )}
           {q.multi && <button className="btn" style={{ marginTop: "1.25rem" }} disabled={!canNext()} onClick={onNext}>Continue →</button>}
         </div>
       ) : (
@@ -642,20 +707,9 @@ function MyPlansScreen({ plans, onViewPlan, onNewPlan }) {
 }
 
 function DiscoverScreen({ preferences }) {
-  const [events, setEvents] = useState(MOCK_EVENTS);
-  const [dbVenues, setDbVenues] = useState([]);
+  const [events] = useState(MOCK_EVENTS);
   const [areaFilter, setAreaFilter] = useState("All");
   const [catFilter, setCatFilter] = useState("All");
-  const [loadingEvents, setLoadingEvents] = useState(false);
-  const [usingMock, setUsingMock] = useState(true);
-
-  useEffect(() => {
-    async function loadDbVenues() {
-      const { data } = await supabase.from("experiences").select("*").eq("status", "approved");
-      if (data && data.length > 0) setDbVenues(data);
-    }
-    loadDbVenues();
-  }, []);
 
   const filtered = events.filter(e => {
     const areaOk = areaFilter === "All" || e.area === areaFilter.toLowerCase();
@@ -675,35 +729,9 @@ function DiscoverScreen({ preferences }) {
         )}
       </div>
 
-      {dbVenues.length > 0 && (
-        <div style={{ padding: "0 1.5rem 1rem" }}>
-          <div style={{ fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#9b8f7a", marginBottom: "0.75rem", fontWeight: 500 }}>From the community</div>
-          {dbVenues
-            .filter(v => preferences.length === 0 || preferences.some(p => v.vibe_tags?.includes(p.toLowerCase()) || v.category?.toLowerCase().includes(p.toLowerCase())))
-            .map((v, i) => (
-              <div key={v.id} className="event-card">
-                <div className="event-card-img" style={{ background: "#1B998B" }}>
-                  <span className="event-card-emoji">✨</span>
-                </div>
-                <div className="event-card-body">
-                  <div className="event-card-cat" style={{ color: "#1B998B" }}>{v.category || "Experience"}</div>
-                  <div className="event-card-name">{v.name}</div>
-                  <div className="event-card-venue">📍 {v.area || v.zone}</div>
-                  <div className="event-card-row">
-                    <div className="event-card-date">{v.is_event && v.event_start ? `📅 ${new Date(v.event_start).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}` : "Permanent"}</div>
-                    <div className="event-card-price">{v.price || "See venue"}</div>
-                  </div>
-                </div>
-              </div>
-            ))}
-        </div>
-      )}
-
-      {usingMock && (
-        <div className="api-note">
-          <strong>Live events coming soon.</strong> Showing curated picks for now.
-        </div>
-      )}
+      <div className="api-note">
+        <strong>Live events coming soon.</strong> Showing curated picks for now.
+      </div>
 
       <div className="filter-row">
         {AREA_FILTERS.map(f => (
@@ -1108,11 +1136,12 @@ export default function App() {
       booking: v.bookingRequired ? "Book ahead" : "Walk-in fine"
     })));
 
+    const areaNote = ans.area === "surprise_me" ? "anywhere in London — surprise them" : ans.area;
     const travelNote = ans.travel === "walking" ? "walking only between stops" : ans.travel === "max10" ? "max 10 min travel between each stop" : "walking and tube ok";
 
     const prompt = "You are London's sharpest local guide. Build a perfect itinerary from these curated venues. User: " +
       ans.timeOfDay + " plan, vibes: " + (ans.vibes || []).join(", ") +
-      ", area: " + ans.area + ", budget: " + ans.budget +
+      ", area: " + areaNote + ", budget: " + ans.budget +
       ", group: " + ans.groupSize + ", energy: " + ans.energy +
       ", travel: " + travelNote +
       ", " + times.start + " to " + times.end +
