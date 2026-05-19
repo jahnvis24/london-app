@@ -5,14 +5,25 @@ export default async function handler(req, res) {
   if (!url) return res.status(400).json({ error: 'No URL provided' });
 
   try {
-    const response = await fetch(`https://tikwm.com/api/?url=${encodeURIComponent(url)}&hd=1`, {
-      method: 'GET',
+    const response = await fetch('https://tikwm.com/api/', {
+      method: 'POST',
       headers: {
-        'x-rapidapi-key': process.env.RAPIDAPI_KEY,
-        'x-rapidapi-host': 'tikwm.com',
-      }
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        url: url,
+        hd: '1'
+      }).toString()
     });
-    const data = await response.json();
+
+    const text = await response.text();
+
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      throw new Error('TIKWM returned invalid response: ' + text.slice(0, 100));
+    }
 
     if (data.code !== 0) throw new Error(data.msg || 'Failed to fetch TikTok data');
 
