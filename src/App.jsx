@@ -1,6 +1,13 @@
 import { useState, useEffect, useRef } from "react";
+import { createClient } from "@supabase/supabase-js";
 
-// ── VENUE DATABASE ──────────────────────────────────────────
+// ── SUPABASE ─────────────────────────────────────────────────
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY
+);
+
+// ── STATIC VENUE DATABASE (fallback) ─────────────────────────
 const VENUES = [
   { id: "v1", name: "Dishoom Shoreditch", type: "restaurant", area: "east", tags: ["romantic", "chill", "aesthetic", "iconic"], price: "mid", bestTime: "day,night", bookingRequired: true, desc: "Bombay café vibes with legendary black dhal. The Bacon Naan Roll at brunch is London law.", emoji: "🍛", travelZone: "east" },
   { id: "v2", name: "St. John Bar & Restaurant", type: "restaurant", area: "central", tags: ["fancy", "cultural", "iconic", "foodie"], price: "high", bestTime: "night", bookingRequired: true, desc: "Nose-to-tail institution. Bone marrow on toast. Order the Eccles cake.", emoji: "🦴", travelZone: "central" },
@@ -49,10 +56,36 @@ const VENUES = [
   { id: "v45", name: "Fold", type: "event", area: "east", tags: ["chaotic", "social", "underground", "night"], price: "mid", bestTime: "night", bookingRequired: true, desc: "Canning Town warehouse club with the best sound system east of Berlin.", emoji: "🔊", travelZone: "east" },
 ];
 
+const ZONE_MAP = {
+  "Mayfair": "West", "Chelsea": "West", "Kensington": "West", "Notting Hill": "West",
+  "Hammersmith": "West", "Fulham": "West", "Knightsbridge": "West", "Shepherd's Bush": "West",
+  "Chiswick": "West", "Holland Park": "West", "Hampstead": "Northwest", "Kilburn": "Northwest",
+  "Queen's Park": "Northwest", "Maida Vale": "Northwest", "St John's Wood": "Northwest",
+  "Swiss Cottage": "Northwest", "Wembley": "Northwest", "Islington": "North", "Camden": "North",
+  "Highgate": "North", "Finsbury Park": "North", "Archway": "North", "Kentish Town": "North",
+  "Crouch End": "North", "Muswell Hill": "North", "Holloway": "North", "Dalston": "Northeast",
+  "Hackney": "Northeast", "Clapton": "Northeast", "Walthamstow": "Northeast", "Leyton": "Northeast",
+  "Tottenham": "Northeast", "Wood Green": "Northeast", "Stoke Newington": "Northeast",
+  "Shoreditch": "East", "Bethnal Green": "East", "Bow": "East", "Stratford": "East",
+  "Canary Wharf": "East", "Whitechapel": "East", "Mile End": "East", "Poplar": "East",
+  "Limehouse": "East", "Soho": "Central", "Covent Garden": "Central", "Fitzrovia": "Central",
+  "Bloomsbury": "Central", "Clerkenwell": "Central", "The City": "Central", "Holborn": "Central",
+  "Marylebone": "Central", "Westminster": "Central", "Piccadilly": "Central",
+  "Elephant and Castle": "South", "Kennington": "South", "Stockwell": "South", "Vauxhall": "South",
+  "Putney": "Southwest", "Battersea": "Southwest", "Clapham": "Southwest", "Brixton": "Southwest",
+  "Balham": "Southwest", "Tooting": "Southwest", "Wandsworth": "Southwest", "Richmond": "Southwest",
+  "Wimbledon": "Southwest", "Kingston": "Southwest", "Peckham": "Southeast", "Bermondsey": "Southeast",
+  "London Bridge": "Southeast", "Borough": "Southeast", "Camberwell": "Southeast",
+  "Dulwich": "Southeast", "Greenwich": "Southeast", "Deptford": "Southeast", "New Cross": "Southeast",
+  "Lewisham": "Southeast",
+};
+
 const AREA_ZONES = { central: ["central"], east: ["east"], south: ["south"], west: ["west"], anywhere: ["central", "east", "south", "west"] };
 const VIBE_TAG_MAP = { chill: ["chill", "outdoor", "solo"], romantic: ["romantic", "aesthetic", "luxury"], chaotic: ["chaotic", "social", "underground", "night"], cultural: ["cultural", "iconic"], fancy: ["fancy", "luxury", "iconic"], hidden_gems: ["hidden_gems", "underground"], social: ["social", "chaotic"], solo: ["solo", "chill", "cultural"] };
 const BUDGET_MAP = { low: ["low"], mid: ["low", "mid"], high: ["low", "mid", "high"], unlimited: ["low", "mid", "high"] };
 const STOP_ORDER = { day: ["cafe", "outdoor", "museum", "gallery", "market", "experience", "restaurant"], night: ["restaurant", "bar", "event"], full: ["cafe", "outdoor", "museum", "restaurant", "bar", "event"] };
+
+const ZONES = ["North", "Northwest", "Northeast", "South", "Southwest", "Southeast", "East", "West", "Central"];
 
 function scoreVenue(v, vibes, budget, area, timeOfDay, extras) {
   let score = 0;
@@ -71,9 +104,19 @@ function scoreVenue(v, vibes, budget, area, timeOfDay, extras) {
   return score;
 }
 
-function buildShortlist(answers) {
+function buildShortlist(answers, dbVenues = []) {
   const { vibes, area, budget, timeOfDay, extras } = answers;
-  const scored = VENUES.map((v) => ({ ...v, score: scoreVenue(v, vibes || [], budget || "mid", area || "anywhere", timeOfDay || "night", extras || []) }))
+  const allVenues = [
+    ...VENUES,
+    ...dbVenues.map(v => ({
+      id: v.id, name: v.name, type: v.category || "experience",
+      area: (v.zone || "Central").toLowerCase(), tags: v.vibe_tags || [],
+      price: v.price === "Free" ? "low" : v.price?.includes("£") ? "mid" : "mid",
+      bestTime: "day,night", bookingRequired: false, desc: v.comment || "",
+      emoji: "✨", travelZone: (v.zone || "Central").toLowerCase()
+    }))
+  ];
+  const scored = allVenues.map((v) => ({ ...v, score: scoreVenue(v, vibes || [], budget || "mid", area || "anywhere", timeOfDay || "night", extras || []) }))
     .filter((v) => v.score >= 0).sort((a, b) => b.score - a.score);
   const types = STOP_ORDER[timeOfDay] || STOP_ORDER.night;
   const used = new Set(), usedTypes = {}, shortlist = [];
@@ -101,32 +144,42 @@ const QUESTIONS = [
 
 const LOADS = ["Raiding our London database...", "Matching your vibe to venues...", "Checking geographic flow...", "Building your perfect sequence...", "Final polish..."];
 
-// Event category colours from Figma palette
 const EVENT_COLOURS = {
-  Music: { bg: "#1B998B", text: "#fff" },
-  Nightlife: { bg: "#2D1B69", text: "#fff" },
-  Arts: { bg: "#F7B731", text: "#1a1a1a" },
-  Food: { bg: "#E84855", text: "#fff" },
-  Comedy: { bg: "#F7B731", text: "#1a1a1a" },
-  Theatre: { bg: "#6B4226", text: "#fff" },
+  Music: { bg: "#1B998B", text: "#fff" }, Nightlife: { bg: "#2D1B69", text: "#fff" },
+  Arts: { bg: "#F7B731", text: "#1a1a1a" }, Food: { bg: "#E84855", text: "#fff" },
+  Comedy: { bg: "#F7B731", text: "#1a1a1a" }, Theatre: { bg: "#6B4226", text: "#fff" },
   default: { bg: "#3D5A80", text: "#fff" },
 };
 
 const AREA_FILTERS = ["All", "Central", "East", "South", "West"];
 const EVENT_FILTERS = ["All", "Music", "Nightlife", "Arts", "Food", "Comedy", "Theatre"];
+const PREF_OPTIONS = ["Restaurants", "Bars", "Hidden gems", "Outdoor", "Culture", "Markets", "Events", "Late night", "Brunch", "Fine dining"];
 
 function generateId() { return Math.random().toString(36).slice(2, 8).toUpperCase(); }
 
-// ── STYLES ──────────────────────────────────────────────────
+async function callClaude(prompt, maxTokens = 1000) {
+  const resp = await fetch("/api/claude", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-5",
+      max_tokens: maxTokens,
+      messages: [{ role: "user", content: prompt }]
+    }),
+  });
+  const data = await resp.json();
+  const txt = data.content?.find(b => b.type === "text")?.text || "";
+  return txt.replace(/```json|```/g, "").trim();
+}
+
+// ── STYLES ───────────────────────────────────────────────────
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,700&display=swap');
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'DM Sans', -apple-system, sans-serif; background: #ffffff; color: #1c1c1a; min-height: 100vh; overflow-x: hidden; }
-
   .app { max-width: 420px; margin: 0 auto; min-height: 100vh; background: #ffffff; padding-bottom: 80px; position: relative; }
 
-  /* ── DECORATIVE SHAPES ── */
   .shapes-wrap { position: absolute; top: 0; right: -20px; width: 220px; height: 260px; pointer-events: none; z-index: 0; }
   .shape-circle { position: absolute; border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden; animation: spin-cw 14s linear infinite; }
   .shape-teal { width: 130px; height: 130px; background: #1B998B; top: 0; right: 40px; animation-duration: 16s; }
@@ -138,9 +191,7 @@ const styles = `
   @keyframes spin-cw { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
   @keyframes spin { to{transform:rotate(360deg)} }
   @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
-  @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.05)} }
 
-  /* ── HOME HERO ── */
   .home-hero { padding: 3.5rem 1.5rem 2rem; position: relative; overflow: hidden; min-height: 300px; background: #ffffff; }
   .home-eyebrow { font-size: 0.68rem; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: #9b8f7a; margin-bottom: 0.6rem; position: relative; z-index: 1; }
   .home-title { font-family: 'DM Serif Display', Georgia, serif; font-size: 3rem; font-weight: 400; line-height: 1.0; letter-spacing: -0.03em; color: #1c1c1a; margin-bottom: 0.75rem; position: relative; z-index: 1; }
@@ -148,7 +199,6 @@ const styles = `
   .home-sub { font-size: 0.85rem; color: #6b5e4e; line-height: 1.5; position: relative; z-index: 1; max-width: 200px; }
   .home-cta { margin-top: 1.5rem; position: relative; z-index: 1; }
 
-  /* ── BOTTOM NAV ── */
   .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 420px; background: #fff; border-top: 1px solid #e8e2d8; display: flex; z-index: 100; padding-bottom: env(safe-area-inset-bottom); }
   .nav-tab { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px 4px 8px; border: none; background: none; cursor: pointer; gap: 3px; transition: all 0.15s; }
   .nav-tab-icon { font-size: 1.3rem; line-height: 1; transition: transform 0.2s; }
@@ -158,7 +208,6 @@ const styles = `
   .nav-tab-dot { width: 4px; height: 4px; border-radius: 50%; background: #1B998B; opacity: 0; transition: opacity 0.15s; }
   .nav-tab.active .nav-tab-dot { opacity: 1; }
 
-  /* ── SHARED COMPONENTS ── */
   .section-pad { padding: 1.5rem; }
   .section-title { font-family: 'DM Serif Display', Georgia, serif; font-size: 1.4rem; font-weight: 400; color: #1c1c1a; margin-bottom: 0.25rem; }
   .section-sub { font-size: 0.8rem; color: #9b8f7a; margin-bottom: 1.25rem; line-height: 1.4; }
@@ -181,7 +230,6 @@ const styles = `
 
   .card { background: #fff; border: 1px solid #e8e2d8; border-radius: 16px; padding: 1.4rem; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
 
-  /* ── QUIZ ── */
   .q-label { font-size: 0.68rem; font-weight: 500; color: #b8ac9a; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.6rem; }
   .q-title { font-family: 'DM Serif Display', Georgia, serif; font-size: 1.6rem; line-height: 1.2; color: #1c1c1a; margin-bottom: 1.5rem; }
   .progress-label { font-size: 0.68rem; color: #b8ac9a; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 0.5rem; }
@@ -193,13 +241,11 @@ const styles = `
   .time-wrap input { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1.5px solid #ddd8ce; background: #fff; color: #1c1c1a; font-family: 'DM Sans', sans-serif; font-size: 0.9rem; }
   .time-wrap input:focus { outline: none; border-color: #1B998B; }
 
-  /* ── LOADING ── */
   .loading { display: flex; flex-direction: column; align-items: center; padding: 5rem 2rem; text-align: center; }
   .loading-ring { width: 44px; height: 44px; border: 2.5px solid #e8e2d8; border-top-color: #1B998B; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 1.5rem; }
   .loading-title { font-family: 'DM Serif Display', Georgia, serif; font-size: 1.3rem; color: #1c1c1a; margin-bottom: 0.4rem; }
   .loading-sub { font-size: 0.82rem; color: #9b8f7a; }
 
-  /* ── RESULT ── */
   .result-hero { padding: 2rem 1.5rem 1.5rem; border-bottom: 1px solid #e8e2d8; animation: fadeUp 0.4s ease; }
   .result-eyebrow { font-size: 0.68rem; font-weight: 500; color: #1B998B; text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 0.5rem; }
   .result-title { font-family: 'DM Serif Display', Georgia, serif; font-size: 1.8rem; line-height: 1.15; color: #1c1c1a; margin-bottom: 0.3rem; }
@@ -243,7 +289,6 @@ const styles = `
   .tip-label { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.1em; color: #9b8f7a; margin-bottom: 0.4rem; }
   .tip-text { font-size: 0.82rem; line-height: 1.5; color: #4a4438; }
 
-  /* ── MY PLANS ── */
   .plan-card { background: #fff; border: 1px solid #e8e2d8; border-radius: 16px; padding: 1.1rem; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); cursor: pointer; transition: all 0.15s; animation: fadeUp 0.3s ease; }
   .plan-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); transform: translateY(-1px); }
   .plan-card-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 0.5rem; }
@@ -257,7 +302,6 @@ const styles = `
   .empty-title { font-family: 'DM Serif Display', Georgia, serif; font-size: 1.2rem; color: #1c1c1a; margin-bottom: 0.5rem; }
   .empty-sub { font-size: 0.82rem; color: #9b8f7a; line-height: 1.5; margin-bottom: 1.5rem; }
 
-  /* ── DISCOVER ── */
   .filter-row { display: flex; gap: 8px; overflow-x: auto; padding: 0 1.5rem 1rem; scrollbar-width: none; }
   .filter-row::-webkit-scrollbar { display: none; }
   .filter-chip { padding: 6px 14px; border-radius: 100px; border: 1.5px solid #ddd8ce; font-size: 0.78rem; cursor: pointer; background: #fff; color: #4a4438; white-space: nowrap; transition: all 0.15s; flex-shrink: 0; font-family: 'DM Sans', sans-serif; }
@@ -274,24 +318,15 @@ const styles = `
   .event-card-row { display: flex; align-items: center; justify-content: space-between; }
   .event-card-date { font-size: 0.72rem; color: #6b5e4e; }
   .event-card-price { font-size: 0.72rem; font-weight: 500; color: #1B998B; }
-
   .events-loading { text-align: center; padding: 3rem 1.5rem; color: #9b8f7a; font-size: 0.85rem; }
-  .events-error { text-align: center; padding: 2rem 1.5rem; }
   .api-note { background: #f5f0e8; border-radius: 12px; padding: 1rem; margin: 0 1.5rem 1rem; font-size: 0.75rem; color: #6b5e4e; line-height: 1.5; border-left: 3px solid #1B998B; }
 
-  /* ── SOCIAL ── */
   .social-wrap { padding: 1.5rem; }
   .social-section-title { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.1em; color: #9b8f7a; margin-bottom: 0.75rem; font-weight: 500; }
   .social-card { border: 1px solid #e8e2d8; border-radius: 14px; background: #fff; overflow: hidden; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
   .social-card-top { padding: 1rem; border-bottom: 1px solid #f0ebe2; }
   .social-card-title { font-size: 0.9rem; font-weight: 500; color: #1c1c1a; margin-bottom: 3px; }
   .social-card-sub { font-size: 0.75rem; color: #9b8f7a; line-height: 1.4; }
-  .share-actions { display: grid; grid-template-columns: 1fr 1fr; }
-  .share-btn { padding: 0.85rem; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 0.8rem; cursor: pointer; background: none; border: none; color: #4a4438; border-right: 1px solid #f0ebe2; font-family: 'DM Sans', sans-serif; transition: background 0.12s; }
-  .share-btn:last-child { border-right: none; }
-  .share-btn:hover { background: #ffffff; }
-  .link-box { display: flex; align-items: center; gap: 8px; background: #ffffff; border-radius: 9px; padding: 0.6rem 0.9rem; margin: 0 1rem 1rem; }
-  .link-url { font-size: 0.72rem; color: #9b8f7a; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: monospace; }
   .feat-row { display: flex; align-items: flex-start; gap: 10px; padding: 0.85rem 1rem; border-bottom: 1px solid #f0ebe2; }
   .feat-row:last-child { border-bottom: none; }
   .feat-icon { width: 34px; height: 34px; border-radius: 10px; background: #f5f0e8; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
@@ -300,28 +335,44 @@ const styles = `
   .feat-sub { font-size: 0.73rem; color: #9b8f7a; line-height: 1.35; }
   .feat-badge { display: inline-block; font-size: 0.6rem; padding: 2px 7px; border-radius: 100px; margin-top: 4px; background: #f5f0e8; color: #8b7355; }
   .feat-badge.live { background: #e0f5f3; color: #1B998B; }
-  .profile-row { display: flex; align-items: center; gap: 10px; padding: 0.75rem; border: 1px solid #e8e2d8; border-radius: 10px; margin-bottom: 8px; }
-  .avatar { width: 38px; height: 38px; border-radius: 50%; background: #1c1c1a; color: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 0.78rem; font-weight: 500; flex-shrink: 0; }
-  .ptag { font-size: 0.62rem; padding: 2px 7px; border-radius: 100px; background: #f5f0e8; color: #6b5e4e; }
-  .vote-row { display: flex; align-items: center; gap: 10px; padding: 0.75rem 1rem; border-bottom: 1px solid #f0ebe2; cursor: pointer; transition: background 0.12s; }
-  .vote-row:last-child { border-bottom: none; }
-  .vote-row:hover { background: #ffffff; }
-  .vote-bar-bg { flex: 1; height: 5px; background: #f0ebe2; border-radius: 3px; overflow: hidden; }
-  .vote-bar-fill { height: 100%; background: #1B998B; border-radius: 3px; transition: width 0.4s ease; }
 
-  /* ── TOAST ── */
   .toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); background: #1c1c1a; color: #ffffff; padding: 10px 20px; border-radius: 100px; font-size: 0.82rem; white-space: nowrap; z-index: 999; pointer-events: none; opacity: 0; transition: opacity 0.2s; font-family: 'DM Sans', sans-serif; }
   .toast.show { opacity: 1; }
   .err { margin: 1rem 1.5rem; padding: 0.9rem 1rem; border-radius: 10px; background: #fdf0ef; border: 1px solid #f5d0cc; color: #c0392b; font-size: 0.82rem; line-height: 1.4; }
+  .success { margin: 1rem 1.5rem; padding: 0.9rem 1rem; border-radius: 10px; background: #e0f5f3; border: 1px solid #1B998B; color: #1B998B; font-size: 0.82rem; line-height: 1.4; }
 
-  /* ── COLOUR ACCENTS ── */
-  .accent-teal { color: #1B998B; }
-  .bg-teal { background: #1B998B; }
-  .bg-yellow { background: #F7B731; }
-  .bg-pink { background: #FFB3C6; }
+  /* ── TIKTOK PARSER ── */
+  .parser-wrap { padding: 1.5rem; }
+  .input-group { margin-bottom: 1rem; }
+  .input-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; color: #9b8f7a; display: block; margin-bottom: 6px; font-weight: 500; }
+  .input-field { width: 100%; padding: 12px 14px; border-radius: 12px; border: 1.5px solid #ddd8ce; background: #fff; color: #1c1c1a; font-family: 'DM Sans', sans-serif; font-size: 0.9rem; transition: border-color 0.15s; }
+  .input-field:focus { outline: none; border-color: #1B998B; }
+  .input-field::placeholder { color: #c0b8ad; }
+  textarea.input-field { min-height: 100px; resize: vertical; }
+  .preview-card { border: 1px solid #e8e2d8; border-radius: 16px; padding: 1.25rem; margin-bottom: 1rem; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.04); animation: fadeUp 0.3s ease; }
+  .preview-title { font-family: 'DM Serif Display', Georgia, serif; font-size: 1.1rem; color: #1c1c1a; margin-bottom: 0.75rem; }
+  .preview-field { display: flex; gap: 8px; margin-bottom: 6px; align-items: flex-start; }
+  .preview-key { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; color: #9b8f7a; min-width: 80px; padding-top: 2px; font-weight: 500; }
+  .preview-val { font-size: 0.82rem; color: #1c1c1a; line-height: 1.4; flex: 1; }
+  .zone-badge { display: inline-block; padding: 2px 10px; border-radius: 100px; font-size: 0.7rem; font-weight: 500; background: #e0f5f3; color: #1B998B; }
+
+  /* ── ADMIN ── */
+  .admin-card { border: 1px solid #e8e2d8; border-radius: 14px; padding: 1rem; margin-bottom: 10px; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.04); animation: fadeUp 0.3s ease; }
+  .admin-card-name { font-family: 'DM Serif Display', Georgia, serif; font-size: 1rem; color: #1c1c1a; margin-bottom: 4px; }
+  .admin-card-meta { font-size: 0.75rem; color: #9b8f7a; margin-bottom: 8px; }
+  .admin-actions { display: flex; gap: 8px; }
+  .btn-approve { flex: 1; padding: 8px; border-radius: 8px; border: none; background: #1B998B; color: #fff; font-family: 'DM Sans', sans-serif; font-size: 0.8rem; cursor: pointer; font-weight: 500; }
+  .btn-reject { flex: 1; padding: 8px; border-radius: 8px; border: 1.5px solid #ddd8ce; background: transparent; color: #9b8f7a; font-family: 'DM Sans', sans-serif; font-size: 0.8rem; cursor: pointer; }
+  .zone-select { width: 100%; padding: 8px 10px; border-radius: 8px; border: 1.5px solid #ddd8ce; background: #fff; color: #1c1c1a; font-family: 'DM Sans', sans-serif; font-size: 0.82rem; margin-bottom: 8px; }
+
+  /* ── PREFERENCES ── */
+  .pref-wrap { padding: 1.5rem; }
+  .pref-chip { padding: 8px 14px; border-radius: 100px; border: 1.5px solid #ddd8ce; font-size: 0.82rem; cursor: pointer; background: #fff; color: #4a4438; transition: all 0.15s; display: inline-flex; align-items: center; gap: 5px; font-family: 'DM Sans', sans-serif; }
+  .pref-chip.sel { background: #1B998B; color: #fff; border-color: #1B998B; }
+  .pref-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 1.25rem; }
 `;
 
-// ── MOCK EVENT DATA (shown when no API key) ──────────────────
+// ── MOCK EVENTS ───────────────────────────────────────────────
 const MOCK_EVENTS = [
   { id: "e1", name: "Floating Points at Fabric", venue: "Fabric, Farringdon", date: "Fri 16 May", category: "Nightlife", area: "central", price: "£15", emoji: "💿", colour: EVENT_COLOURS.Nightlife },
   { id: "e2", name: "Summer Exhibition Preview", venue: "Royal Academy of Arts", date: "Sat 17 May", category: "Arts", area: "central", price: "£22", emoji: "🖼️", colour: EVENT_COLOURS.Arts },
@@ -335,24 +386,17 @@ const MOCK_EVENTS = [
   { id: "e10", name: "Kew After Hours", venue: "Kew Gardens", date: "Fri 23 May", category: "Arts", area: "west", price: "£30", emoji: "🌺", colour: EVENT_COLOURS.Arts },
 ];
 
-// ── COMPONENTS ───────────────────────────────────────────────
+// ── COMPONENTS ────────────────────────────────────────────────
 
 function DecorativeShapes() {
   return (
     <div className="shapes-wrap">
-      {/* Teal circle with spinning purple oval inside */}
-      <div className="shape-circle shape-teal">
-        <div className="inner-oval" />
-      </div>
-
-      {/* Yellow circle with spinning pink starburst inside */}
+      <div className="shape-circle shape-teal"><div className="inner-oval" /></div>
       <div className="shape-circle shape-yellow">
         <svg className="inner-starburst" width="120" height="120" viewBox="0 0 120 120">
           <polygon fill="#F4A7C0" points="60,4 63,40 80,8 70,42 95,20 72,48 108,38 76,56 112,60 76,64 108,82 72,72 95,100 70,78 80,112 63,80 60,116 57,80 40,112 50,78 25,100 48,72 12,82 44,64 8,60 44,56 12,38 48,48 25,20 50,42 40,8 57,40" />
         </svg>
       </div>
-
-      {/* Cream circle with spinning orange 4-point star inside */}
       <div className="shape-circle shape-cream">
         <svg className="inner-star4" width="40" height="40" viewBox="0 0 40 40">
           <path fill="#F0A500" d="M20 2 C20 2 22 14 28 20 C22 26 20 38 20 38 C20 38 18 26 12 20 C18 14 20 2 20 2Z M2 20 C2 20 14 22 20 28 C26 22 38 20 38 20 C38 20 26 18 20 12 C14 18 2 20 2 20Z" />
@@ -369,7 +413,7 @@ function HomeScreen({ onStart }) {
         <DecorativeShapes />
         <div className="home-eyebrow">London · {new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}</div>
         <h1 className="home-title">London,<br /><em>Your Way</em></h1>
-        <p className="home-sub">60+ hand-picked experiences. One perfect plan. Matched to you. </p>
+        <p className="home-sub">60+ hand-picked experiences. One perfect plan. Matched to you.</p>
         <div className="home-cta">
           <button className="btn btn-teal" style={{ maxWidth: 200 }} onClick={onStart}>Plan my day or night ✦</button>
         </div>
@@ -420,11 +464,8 @@ function QuizScreen({ step, ans, times, setTimes, onToggle, onNext, onBack, onGe
         <div className="progress-label">{step + 1} of {totalSteps}</div>
         <div className="progress-bg"><div className="progress-fill" style={{ width: `${progressPct}%` }} /></div>
       </div>
-
       {error && <div className="err">⚠️ {error}</div>}
-
       {step > 0 && <button className="btn-ghost" onClick={onBack}>← Back</button>}
-
       {step < QUESTIONS.length ? (
         <div style={{ padding: step > 0 ? "1rem 1.5rem 1.5rem" : "2rem 1.5rem 1.5rem" }}>
           <div className="q-label">{q.label}</div>
@@ -461,21 +502,6 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan }) {
   const [view, setView] = useState("plan");
   const [shareId] = useState(generateId);
   const [copied, setCopied] = useState(false);
-  const [voted, setVoted] = useState(null);
-  const showToastRef = useRef(null);
-
-  const MOCK_VOTES = [
-    { emoji: "🎷", label: "Underground jazz, Nightjar", votes: 3 },
-    { emoji: "🌀", label: "Warehouse rave, Fold", votes: 1 },
-    { emoji: "🕯️", label: "Sessions Arts Club dinner", votes: 2 },
-  ];
-  const MOCK_PROFILES = [
-    { initials: "SK", name: "Sophia K.", meta: "East London · free tonight", tags: ["hidden_gems", "cultural"], match: 94 },
-    { initials: "MR", name: "Marcus R.", meta: "Hackney · up for anything", tags: ["chaotic", "social"], match: 87 },
-  ];
-
-  const voteData = MOCK_VOTES.map((o, i) => ({ ...o, votes: o.votes + (voted === i ? 1 : 0) }));
-  const totalVotes = voteData.reduce((s, o) => s + o.votes, 0);
 
   return (
     <div>
@@ -492,7 +518,6 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan }) {
           {Object.entries(result.vibe_scores || {}).map(([k, v]) => <div key={k} className="vibe-pill">{k} {v}/10</div>)}
         </div>
       </div>
-
       <div className="tab-bar">
         {["plan", "social"].map((v) => (
           <button key={v} className={`tab ${view === v ? "active" : ""}`} onClick={() => setView(v)}>
@@ -500,7 +525,6 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan }) {
           </button>
         ))}
       </div>
-
       {view === "plan" && (
         <div>
           <div className="stat-row">
@@ -549,81 +573,22 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan }) {
           </div>
         </div>
       )}
-
       {view === "social" && (
         <div className="social-wrap">
           <div className="social-section-title">Share your plan</div>
           <div className="social-card">
             <div className="social-card-top">
               <div className="social-card-title">Send this to your crew</div>
-              <div className="social-card-sub">Anyone with the link sees your full plan and can clone it.</div>
+              <div className="social-card-sub">Anyone with the link sees your full plan.</div>
             </div>
-            <div className="link-box">
-              <span className="link-url">londonyourway.app/plan/{shareId}</span>
-              <button style={{ background: "none", border: "none", cursor: "pointer" }} onClick={() => { navigator.clipboard?.writeText(`https://londonyourway.app/plan/${shareId}`); setCopied(true); setTimeout(() => setCopied(false), 2000); }}>{copied ? "✓" : "📋"}</button>
+            <div style={{ padding: "0.75rem 1rem 1rem", display: "flex", gap: 8 }}>
+              <button className="btn-outline" style={{ marginTop: 0 }} onClick={() => { navigator.clipboard?.writeText(`https://london-app.vercel.app/plan/${shareId}`); setCopied(true); setTimeout(() => setCopied(false), 2000); }}>
+                {copied ? "✓ Copied" : "🔗 Copy link"}
+              </button>
+              <button className="btn-outline" style={{ marginTop: 0 }} onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(`Check out this London plan: https://london-app.vercel.app/plan/${shareId}`)}`)}>
+                💬 WhatsApp
+              </button>
             </div>
-            <div className="share-actions">
-              <button className="share-btn" onClick={() => navigator.clipboard?.writeText(`https://londonyourway.app/plan/${shareId}`)}>🔗 Copy link</button>
-              <button className="share-btn" onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(`Check out this London plan: https://londonyourway.app/plan/${shareId}`)}`)}>💬 WhatsApp</button>
-            </div>
-          </div>
-
-          <div className="social-section-title" style={{ marginTop: "1.25rem" }}>Group planning</div>
-          <div className="social-card">
-            {[{ icon: "👥", title: "Shared vibe quiz", sub: "Everyone's answers merged into one group plan.", badge: "live" },
-              { icon: "👍", title: "Vote on options", sub: "Generate 2–3 plans, group votes. Majority wins.", badge: "soon" },
-              { icon: "🗓️", title: "Availability matching", sub: "Connect calendars to find when everyone's free.", badge: "soon" }
-            ].map((f, i) => (
-              <div key={i} className="feat-row">
-                <div className="feat-icon">{f.icon}</div>
-                <div className="feat-body">
-                  <div className="feat-title">{f.title}</div>
-                  <div className="feat-sub">{f.sub}</div>
-                  <span className={`feat-badge ${f.badge === "live" ? "live" : ""}`}>{f.badge === "live" ? "Live" : "Coming soon"}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="social-section-title" style={{ marginTop: "1.25rem" }}>Vote on the night</div>
-          <div className="social-card">
-            <div className="social-card-top">
-              <div className="social-card-title">Can't decide?</div>
-              <div className="social-card-sub">{voted === null ? "Tap to cast your vote." : "Results live."}</div>
-            </div>
-            {voteData.map((o, i) => {
-              const pct = totalVotes > 0 ? Math.round((o.votes / totalVotes) * 100) : 0;
-              return (
-                <div key={i} className="vote-row" onClick={() => { if (voted === null) setVoted(i); }}>
-                  <span style={{ fontSize: "1rem", minWidth: "20px" }}>{o.emoji}</span>
-                  <span style={{ fontSize: "0.8rem", flex: 1, color: "#4a4438" }}>{o.label}</span>
-                  <div className="vote-bar-bg"><div className="vote-bar-fill" style={{ width: voted !== null ? `${pct}%` : "0%" }} /></div>
-                  <span style={{ fontSize: "0.72rem", fontWeight: 500, minWidth: "28px", textAlign: "right", color: "#9b8f7a" }}>{voted !== null ? `${pct}%` : ""}</span>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="social-section-title" style={{ marginTop: "1.25rem" }}>Find people to go with</div>
-          <div className="social-card">
-            <div className="social-card-top">
-              <div className="social-card-title">Going solo? You don't have to.</div>
-              <div className="social-card-sub">Matched by vibe, area, and availability. No swiping.</div>
-            </div>
-            <div style={{ padding: "1rem" }}>
-              {MOCK_PROFILES.map((p, i) => (
-                <div key={i} className="profile-row">
-                  <div className="avatar">{p.initials}</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: "0.84rem", fontWeight: 500, color: "#1c1c1a" }}>{p.name}</div>
-                    <div style={{ fontSize: "0.72rem", color: "#9b8f7a", marginTop: 1 }}>{p.meta}</div>
-                    <div style={{ display: "flex", gap: "4px", marginTop: "4px" }}>{p.tags.map((t, j) => <span key={j} className="ptag">{t}</span>)}</div>
-                  </div>
-                  <div style={{ fontSize: "0.72rem", fontWeight: 500, color: "#1B998B" }}>{p.match}%</div>
-                </div>
-              ))}
-            </div>
-            <div style={{ padding: "0 1rem 1rem", fontSize: "0.72rem", color: "#9b8f7a" }}>Opt-in only. Profiles anonymous until both people connect.</div>
           </div>
           <button className="btn-outline" onClick={() => setView("plan")}>← Back to the plan</button>
         </div>
@@ -642,12 +607,11 @@ function MyPlansScreen({ plans, onViewPlan, onNewPlan }) {
       <div className="empty-state">
         <div className="empty-emoji">🗺️</div>
         <div className="empty-title">No plans yet</div>
-        <div className="empty-sub">Generate your first London plan and it'll appear here. Then share it, revisit it, or use it as a starting point.</div>
+        <div className="empty-sub">Generate your first London plan and it'll appear here.</div>
         <button className="btn btn-teal" style={{ maxWidth: 200, margin: "0 auto" }} onClick={onNewPlan}>Make a plan ✦</button>
       </div>
     </div>
   );
-
   return (
     <div>
       <div className="section-pad" style={{ paddingBottom: "0.5rem" }}>
@@ -676,90 +640,67 @@ function MyPlansScreen({ plans, onViewPlan, onNewPlan }) {
   );
 }
 
-function DiscoverScreen() {
+function DiscoverScreen({ preferences }) {
   const [events, setEvents] = useState(MOCK_EVENTS);
+  const [dbVenues, setDbVenues] = useState([]);
   const [areaFilter, setAreaFilter] = useState("All");
   const [catFilter, setCatFilter] = useState("All");
   const [loadingEvents, setLoadingEvents] = useState(false);
   const [usingMock, setUsingMock] = useState(true);
 
-  // Filter events
+  useEffect(() => {
+    async function loadDbVenues() {
+      const { data } = await supabase.from("experiences").select("*").eq("status", "approved");
+      if (data && data.length > 0) setDbVenues(data);
+    }
+    loadDbVenues();
+  }, []);
+
   const filtered = events.filter(e => {
     const areaOk = areaFilter === "All" || e.area === areaFilter.toLowerCase();
     const catOk = catFilter === "All" || e.category === catFilter;
     return areaOk && catOk;
   });
 
-  async function fetchFromEventbrite() {
-    // Eventbrite API — needs VITE_EVENTBRITE_API_KEY in .env
-    const key = import.meta.env.VITE_EVENTBRITE_API_KEY;
-    if (!key) return null;
-    try {
-      const resp = await fetch(`https://www.eventbriteapi.com/v3/events/search/?location.address=London&location.within=10km&expand=venue,category&token=${key}`);
-      const data = await resp.json();
-      return data.events?.map(ev => ({
-        id: ev.id,
-        name: ev.name.text,
-        venue: ev.venue?.name || "London",
-        date: new Date(ev.start.local).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }),
-        category: ev.category?.name || "Arts",
-        area: "central",
-        price: ev.is_free ? "Free" : "See site",
-        emoji: "🎟️",
-        colour: EVENT_COLOURS[ev.category?.name] || EVENT_COLOURS.default,
-        url: ev.url,
-      })) || null;
-    } catch { return null; }
-  }
-
-  async function fetchFromTicketmaster() {
-    // Ticketmaster API — needs VITE_TICKETMASTER_API_KEY in .env
-    const key = import.meta.env.VITE_TICKETMASTER_API_KEY;
-    if (!key) return null;
-    try {
-      const resp = await fetch(`https://app.ticketmaster.com/discovery/v2/events.json?city=London&countryCode=GB&size=20&apikey=${key}`);
-      const data = await resp.json();
-      const evs = data._embedded?.events;
-      if (!evs) return null;
-      return evs.map(ev => ({
-        id: ev.id,
-        name: ev.name,
-        venue: ev._embedded?.venues?.[0]?.name || "London",
-        date: new Date(ev.dates.start.dateTime || ev.dates.start.localDate).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }),
-        category: ev.classifications?.[0]?.segment?.name || "Music",
-        area: "central",
-        price: ev.priceRanges ? `£${Math.round(ev.priceRanges[0].min)}` : "See site",
-        emoji: ev.classifications?.[0]?.segment?.name === "Music" ? "🎵" : "🎟️",
-        colour: EVENT_COLOURS[ev.classifications?.[0]?.segment?.name] || EVENT_COLOURS.default,
-        url: ev.url,
-      }));
-    } catch { return null; }
-  }
-
-  useEffect(() => {
-    async function load() {
-      setLoadingEvents(true);
-      const eb = await fetchFromEventbrite();
-      if (eb) { setEvents(eb); setUsingMock(false); setLoadingEvents(false); return; }
-      const tm = await fetchFromTicketmaster();
-      if (tm) { setEvents(tm); setUsingMock(false); setLoadingEvents(false); return; }
-      setEvents(MOCK_EVENTS);
-      setUsingMock(true);
-      setLoadingEvents(false);
-    }
-    load();
-  }, []);
-
   return (
     <div>
       <div className="section-pad" style={{ paddingBottom: "0.75rem" }}>
         <div className="section-title">Discover</div>
         <p className="section-sub">What's on in London this week</p>
+        {preferences.length > 0 && (
+          <div style={{ fontSize: "0.75rem", color: "#1B998B", marginTop: "-0.5rem" }}>
+            ✦ Filtered for your preferences
+          </div>
+        )}
       </div>
+
+      {dbVenues.length > 0 && (
+        <div style={{ padding: "0 1.5rem 1rem" }}>
+          <div style={{ fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#9b8f7a", marginBottom: "0.75rem", fontWeight: 500 }}>From the community</div>
+          {dbVenues
+            .filter(v => preferences.length === 0 || preferences.some(p => v.vibe_tags?.includes(p.toLowerCase()) || v.category?.toLowerCase().includes(p.toLowerCase())))
+            .map((v, i) => (
+              <div key={v.id} className="event-card">
+                <div className="event-card-img" style={{ background: "#1B998B" }}>
+                  <span className="event-card-emoji">✨</span>
+                </div>
+                <div className="event-card-body">
+                  <div className="event-card-cat" style={{ color: "#1B998B" }}>{v.category || "Experience"}</div>
+                  <div className="event-card-name">{v.name}</div>
+                  <div className="event-card-venue">📍 {v.area || v.zone}</div>
+                  <div className="event-card-row">
+                    <div className="event-card-date">{v.is_event && v.event_start ? `📅 ${new Date(v.event_start).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}` : "Permanent"}</div>
+                    <div className="event-card-price">{v.price || "See venue"}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+        </div>
+      )}
 
       {usingMock && (
         <div className="api-note">
-          <strong>Live events coming soon.</strong> Add <code>VITE_TICKETMASTER_API_KEY</code> or <code>VITE_EVENTBRITE_API_KEY</code> to your .env to pull real London events. Showing curated picks for now.
+          <strong>Live events coming soon.</strong> Showing curated picks for now.
         </div>
       )}
 
@@ -774,29 +715,261 @@ function DiscoverScreen() {
         ))}
       </div>
 
-      {loadingEvents ? (
-        <div className="events-loading">Loading events...</div>
+      <div style={{ padding: "0 1.5rem 1rem" }}>
+        {filtered.length === 0 ? (
+          <div className="empty-state">
+            <div className="empty-emoji">🔍</div>
+            <div className="empty-title">Nothing matching</div>
+            <div className="empty-sub">Try a different filter.</div>
+          </div>
+        ) : filtered.map((ev) => (
+          <div key={ev.id} className="event-card" onClick={() => ev.url && window.open(ev.url, "_blank")}>
+            <div className="event-card-img" style={{ background: ev.colour.bg }}>
+              <span className="event-card-emoji">{ev.emoji}</span>
+            </div>
+            <div className="event-card-body">
+              <div className="event-card-cat" style={{ color: ev.colour.bg }}>{ev.category}</div>
+              <div className="event-card-name">{ev.name}</div>
+              <div className="event-card-venue">📍 {ev.venue}</div>
+              <div className="event-card-row">
+                <div className="event-card-date">📅 {ev.date}</div>
+                <div className="event-card-price">{ev.price}</div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TikTokParserScreen({ onSuccess }) {
+  const [url, setUrl] = useState("");
+  const [caption, setCaption] = useState("");
+  const [parsing, setParsing] = useState(false);
+  const [preview, setPreview] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(false);
+
+  async function parse() {
+    if (!caption.trim()) { setError("Paste the caption or description from the TikTok video."); return; }
+    setParsing(true); setError(null); setPreview(null);
+
+    const prompt = `You are parsing a TikTok video caption about a London experience or venue.
+Extract structured data from this caption and return ONLY valid JSON with no markdown:
+Caption: "${caption}"
+TikTok URL: "${url}"
+
+Return this exact JSON structure:
+{
+  "name": "venue or experience name",
+  "address": "full address if mentioned, or null",
+  "area": "neighbourhood name e.g. Shoreditch, Chelsea, Peckham",
+  "zone": "one of: North, Northwest, Northeast, South, Southwest, Southeast, East, West, Central — infer from area",
+  "category": "one of: restaurant, bar, cafe, market, experience, outdoor, museum, gallery, event, nightlife",
+  "price": "e.g. Free, £10, £20-30, or null if unknown",
+  "is_event": true or false,
+  "event_start": "YYYY-MM-DD if mentioned, or null",
+  "event_end": "YYYY-MM-DD if mentioned, or null",
+  "comment": "any interesting descriptors or adjectives from the caption",
+  "vibe_tags": ["array", "of", "tags", "from: chill, romantic, chaotic, cultural, fancy, hidden_gems, social, foodie, outdoor, aesthetic, iconic"]
+}`;
+
+    try {
+      const txt = await callClaude(prompt, 600);
+      const parsed = JSON.parse(txt);
+      setPreview(parsed);
+    } catch (e) {
+      setError("Couldn't parse the caption. Try copying more of the caption text.");
+    }
+    setParsing(false);
+  }
+
+  async function save() {
+    if (!preview) return;
+    setSaving(true); setError(null);
+
+    try {
+      // Check if area is in mapping table, if not add it
+      const { data: existingMapping } = await supabase
+        .from("area_zone_mapping")
+        .select("zone")
+        .eq("area", preview.area)
+        .single();
+
+      if (!existingMapping && preview.area) {
+        await supabase.from("area_zone_mapping").insert({
+          area: preview.area,
+          zone: preview.zone || "Central"
+        });
+      }
+
+      // Save experience
+      const { error: insertError } = await supabase.from("experiences").insert({
+        name: preview.name,
+        address: preview.address,
+        area: preview.area,
+        zone: preview.zone || existingMapping?.zone || "Central",
+        category: preview.category,
+        price: preview.price,
+        is_event: preview.is_event || false,
+        event_start: preview.event_start || null,
+        event_end: preview.event_end || null,
+        comment: preview.comment,
+        vibe_tags: preview.vibe_tags || [],
+        tiktok_url: url || null,
+        status: "pending"
+      });
+
+      if (insertError) throw insertError;
+
+      setSuccess(true);
+      setPreview(null);
+      setUrl("");
+      setCaption("");
+      if (onSuccess) onSuccess();
+    } catch (e) {
+      setError("Couldn't save. Try again. Error: " + e.message);
+    }
+    setSaving(false);
+  }
+
+  return (
+    <div className="parser-wrap">
+      <div className="section-title" style={{ marginBottom: "0.25rem" }}>Add a spot</div>
+      <p className="section-sub">Paste a TikTok caption to add it to the database.</p>
+
+      {error && <div className="err">⚠️ {error}</div>}
+      {success && <div className="success">✓ Saved! It'll appear after review.</div>}
+
+      <div className="input-group">
+        <label className="input-label">TikTok URL (optional)</label>
+        <input className="input-field" type="url" placeholder="https://www.tiktok.com/..." value={url} onChange={e => { setUrl(e.target.value); setSuccess(false); }} />
+      </div>
+
+      <div className="input-group">
+        <label className="input-label">Caption / Description *</label>
+        <textarea className="input-field" placeholder="Paste the TikTok caption or description here. Include any text about the venue name, location, price, dates..." value={caption} onChange={e => { setCaption(e.target.value); setSuccess(false); setPreview(null); }} />
+      </div>
+
+      <button className="btn btn-teal" onClick={parse} disabled={parsing || !caption.trim()}>
+        {parsing ? "Parsing..." : "Parse caption ✦"}
+      </button>
+
+      {preview && (
+        <div style={{ marginTop: "1.25rem" }}>
+          <div style={{ fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#9b8f7a", marginBottom: "0.75rem", fontWeight: 500 }}>Preview — check before saving</div>
+          <div className="preview-card">
+            <div className="preview-title">{preview.name || "Unknown venue"}</div>
+            {[
+              ["Area", preview.area],
+              ["Zone", preview.zone ? <span className="zone-badge">{preview.zone}</span> : null],
+              ["Category", preview.category],
+              ["Price", preview.price],
+              ["Address", preview.address],
+              ["Event", preview.is_event ? `Yes — ${preview.event_start || "date TBC"}${preview.event_end ? ` to ${preview.event_end}` : ""}` : "No (permanent venue)"],
+              ["Vibe tags", preview.vibe_tags?.join(", ")],
+              ["Notes", preview.comment],
+            ].filter(([, v]) => v).map(([k, v], i) => (
+              <div key={i} className="preview-field">
+                <span className="preview-key">{k}</span>
+                <span className="preview-val">{v}</span>
+              </div>
+            ))}
+          </div>
+
+          <button className="btn btn-teal" onClick={save} disabled={saving}>
+            {saving ? "Saving..." : "Submit for review ✦"}
+          </button>
+          <button className="btn-outline" onClick={() => setPreview(null)}>Edit caption</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AdminScreen({ onBadgeUpdate }) {
+  const [pending, setPending] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [zoneEdits, setZoneEdits] = useState({});
+
+  async function load() {
+    setLoading(true);
+    const { data } = await supabase.from("experiences").select("*").eq("status", "pending").order("created_at", { ascending: false });
+    setPending(data || []);
+    if (onBadgeUpdate) onBadgeUpdate(data?.length || 0);
+    setLoading(false);
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function approve(id) {
+    const zone = zoneEdits[id];
+    const update = { status: "approved" };
+    if (zone) update.zone = zone;
+    await supabase.from("experiences").update(update).eq("id", id);
+
+    // If zone was edited, update the mapping table too
+    if (zone) {
+      const item = pending.find(p => p.id === id);
+      if (item?.area) {
+        await supabase.from("area_zone_mapping").upsert({ area: item.area, zone }, { onConflict: "area" });
+      }
+    }
+    await load();
+  }
+
+  async function reject(id) {
+    await supabase.from("experiences").delete().eq("id", id);
+    await load();
+  }
+
+  if (loading) return <div className="loading"><div className="loading-ring" /><div className="loading-sub">Loading pending items...</div></div>;
+
+  return (
+    <div>
+      <div className="section-pad" style={{ paddingBottom: "0.5rem" }}>
+        <div className="section-title">Admin</div>
+        <p className="section-sub">{pending.length} item{pending.length !== 1 ? "s" : ""} pending review</p>
+      </div>
+
+      {pending.length === 0 ? (
+        <div className="empty-state">
+          <div className="empty-emoji">✅</div>
+          <div className="empty-title">All clear</div>
+          <div className="empty-sub">No pending submissions.</div>
+        </div>
       ) : (
         <div style={{ padding: "0 1.5rem 1rem" }}>
-          {filtered.length === 0 ? (
-            <div className="empty-state">
-              <div className="empty-emoji">🔍</div>
-              <div className="empty-title">Nothing matching</div>
-              <div className="empty-sub">Try a different area or category filter.</div>
-            </div>
-          ) : filtered.map((ev, i) => (
-            <div key={ev.id} className="event-card" onClick={() => ev.url && window.open(ev.url, "_blank")}>
-              <div className="event-card-img" style={{ background: ev.colour.bg }}>
-                <span className="event-card-emoji">{ev.emoji}</span>
+          {pending.map((item) => (
+            <div key={item.id} className="admin-card">
+              <div className="admin-card-name">{item.name}</div>
+              <div className="admin-card-meta">
+                {item.category} · {item.area} · {item.price || "price unknown"}
+                {item.is_event && item.event_start && ` · 📅 ${new Date(item.event_start).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`}
               </div>
-              <div className="event-card-body">
-                <div className="event-card-cat" style={{ color: ev.colour.bg }}>{ev.category}</div>
-                <div className="event-card-name">{ev.name}</div>
-                <div className="event-card-venue">📍 {ev.venue}</div>
-                <div className="event-card-row">
-                  <div className="event-card-date">📅 {ev.date}</div>
-                  <div className="event-card-price">{ev.price}</div>
+              {item.comment && <div style={{ fontSize: "0.78rem", color: "#6b5e4e", marginBottom: "8px", lineHeight: 1.4 }}>{item.comment}</div>}
+              {item.vibe_tags?.length > 0 && (
+                <div style={{ display: "flex", gap: "4px", flexWrap: "wrap", marginBottom: "8px" }}>
+                  {item.vibe_tags.map(t => <span key={t} className="stop-pill">{t}</span>)}
                 </div>
+              )}
+              {item.tiktok_url && (
+                <div style={{ fontSize: "0.72rem", color: "#9b8f7a", marginBottom: "8px" }}>
+                  <a href={item.tiktok_url} target="_blank" rel="noreferrer" style={{ color: "#1B998B" }}>View TikTok ↗</a>
+                </div>
+              )}
+              <div style={{ marginBottom: "8px" }}>
+                <label className="input-label">Zone (current: {item.zone || "unset"})</label>
+                <select className="zone-select" value={zoneEdits[item.id] || item.zone || ""} onChange={e => setZoneEdits(prev => ({ ...prev, [item.id]: e.target.value }))}>
+                  <option value="">Keep as is</option>
+                  {ZONES.map(z => <option key={z} value={z}>{z}</option>)}
+                </select>
+              </div>
+              <div className="admin-actions">
+                <button className="btn-approve" onClick={() => approve(item.id)}>✓ Approve</button>
+                <button className="btn-reject" onClick={() => reject(item.id)}>✕ Remove</button>
               </div>
             </div>
           ))}
@@ -806,20 +979,73 @@ function DiscoverScreen() {
   );
 }
 
+function PreferencesScreen({ preferences, setPreferences }) {
+  function toggle(pref) {
+    setPreferences(prev => prev.includes(pref) ? prev.filter(p => p !== pref) : [...prev, pref]);
+  }
+
+  return (
+    <div className="pref-wrap">
+      <div className="section-title" style={{ marginBottom: "0.25rem" }}>Preferences</div>
+      <p className="section-sub">Tell us what you like and we'll filter your Discover feed accordingly. Saved to this device.</p>
+
+      <div style={{ fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#9b8f7a", marginBottom: "0.75rem", fontWeight: 500 }}>I'm into...</div>
+      <div className="pref-chips">
+        {PREF_OPTIONS.map(p => (
+          <div key={p} className={`pref-chip ${preferences.includes(p) ? "sel" : ""}`} onClick={() => toggle(p)}>{p}</div>
+        ))}
+      </div>
+
+      {preferences.length > 0 && (
+        <div style={{ marginTop: "1rem", padding: "1rem", background: "#f5f0e8", borderRadius: 12 }}>
+          <div style={{ fontSize: "0.75rem", color: "#6b5e4e", lineHeight: 1.5 }}>
+            ✦ Your Discover tab will prioritise: <strong>{preferences.join(", ")}</strong>
+          </div>
+        </div>
+      )}
+
+      {preferences.length > 0 && (
+        <button className="btn-outline" style={{ marginTop: "1rem" }} onClick={() => setPreferences([])}>
+          Clear preferences
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ── MAIN APP ─────────────────────────────────────────────────
 export default function App() {
   const [activeTab, setActiveTab] = useState("home");
-  const [quizStep, setQuizStep] = useState(-1); // -1 = not started
+  const [quizStep, setQuizStep] = useState(-1);
   const [ans, setAns] = useState({});
   const [times, setTimes] = useState({ start: "18:00", end: "23:00" });
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [loadIdx, setLoadIdx] = useState(0);
   const [error, setError] = useState(null);
-  const [plans, setPlans] = useState([]); // saved plans
+  const [plans, setPlans] = useState([]);
   const [viewingPlan, setViewingPlan] = useState(null);
   const [toast, setToast] = useState({ msg: "", show: false });
+  const [dbVenues, setDbVenues] = useState([]);
+  const [adminBadge, setAdminBadge] = useState(0);
+  const [preferences, setPreferences] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("cl_prefs") || "[]"); } catch { return []; }
+  });
   const timerRef = useRef(null);
+
+  // Persist preferences
+  useEffect(() => {
+    localStorage.setItem("cl_prefs", JSON.stringify(preferences));
+  }, [preferences]);
+
+  // Load approved venues from Supabase
+  useEffect(() => {
+    async function loadVenues() {
+      const { data } = await supabase.from("experiences").select("*").eq("status", "approved");
+      if (data) setDbVenues(data);
+    }
+    loadVenues();
+  }, []);
 
   useEffect(() => {
     if (loading) { timerRef.current = setInterval(() => setLoadIdx(i => (i + 1) % LOADS.length), 1600); }
@@ -840,10 +1066,9 @@ export default function App() {
   function nextStep() { setQuizStep(s => s + 1); }
   function prevStep() { setQuizStep(s => Math.max(0, s - 1)); }
 
-
   async function generate() {
     setLoading(true); setError(null);
-    const shortlist = buildShortlist(ans);
+    const shortlist = buildShortlist(ans, dbVenues);
     const venueData = JSON.stringify(shortlist.map(v => ({
       name: v.name, type: v.type, area: v.travelZone + " London",
       price: v.price, tags: v.tags, desc: v.desc, emoji: v.emoji,
@@ -861,42 +1086,23 @@ export default function App() {
       '{"title":"punchy name","tagline":"witty sentence","vibe_scores":{"fun":7,"romantic":3,"cultural":6,"chaotic":2},"total_cost_estimate":"35-55pp","stops":[{"time":"18:30","name":"venue name","type":"bar","area":"Shoreditch","emoji":"🍸","hook":"best thing about this place","why_it_fits":"vibe match","booking":"Walk-in fine","cost_estimate":"12pp","travel_to_next":"7 min walk"}],"extend_the_night":"late suggestion","local_tip":"insider tip"}';
 
     try {
-      const resp = await fetch("/api/claude", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-5",
-          max_tokens: 1000,
-          messages: [{ role: "user", content: prompt }]
-        }),
-      });
-      const data = await resp.json();
-      console.log("API response:", data);
-      const txt = data.content?.find(b => b.type === "text")?.text || "";
-      const parsed = JSON.parse(txt.replace(/```json|```/g, "").trim());
+      const txt = await callClaude(prompt, 1000);
+      const parsed = JSON.parse(txt);
       setResult(parsed);
       setQuizStep(QUESTIONS.length + 1);
-      const savedPlan = {
-        result: parsed,
-        ans: { ...ans },
-        times: { ...times },
+      setPlans(prev => [{
+        result: parsed, ans: { ...ans }, times: { ...times },
         savedAt: new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }),
         id: generateId()
-      };
-      setPlans(prev => [savedPlan, ...prev]);
+      }, ...prev]);
       showToast("Plan saved to My Plans");
     } catch (e) {
-      console.log("Error:", e);
-      setError("Couldn't generate your plan. Check your API key in .env and try again.");
+      setError("Couldn't generate your plan. Check your API key and try again.");
     }
     setLoading(false);
   }
 
-  function resetToHome() {
-    setQuizStep(-1); setAns({}); setResult(null); setError(null); setViewingPlan(null);
-  }
+  function resetToHome() { setQuizStep(-1); setAns({}); setResult(null); setError(null); setViewingPlan(null); }
 
   const showQuiz = activeTab === "home" && quizStep >= 0 && quizStep <= QUESTIONS.length;
   const showResult = activeTab === "home" && quizStep === QUESTIONS.length + 1 && result;
@@ -907,7 +1113,9 @@ export default function App() {
     { id: "home", label: "Plan", icon: "✦" },
     { id: "plans", label: "My Plans", icon: "📋" },
     { id: "discover", label: "Discover", icon: "🔍" },
-    { id: "social", label: "Social", icon: "👥" },
+    { id: "add", label: "Add", icon: "➕" },
+    { id: "prefs", label: "For me", icon: "🎯" },
+    { id: "admin", label: "Admin", icon: "⚙️", badge: adminBadge },
   ];
 
   return (
@@ -917,87 +1125,32 @@ export default function App() {
         <div className={"toast" + (toast.show ? " show" : "")}>{toast.msg}</div>
 
         {showHome && <HomeScreen onStart={startQuiz} />}
+        {showQuiz && <QuizScreen step={quizStep} ans={ans} times={times} setTimes={setTimes} onToggle={toggle} onNext={nextStep} onBack={prevStep} onGenerate={generate} loading={loading} loadIdx={loadIdx} error={error} />}
+        {showResult && <ResultScreen result={result} times={times} ans={ans} onRestart={resetToHome} onNewPlan={startQuiz} />}
 
-        {showQuiz && (
-          <QuizScreen
-            step={quizStep} ans={ans} times={times} setTimes={setTimes}
-            onToggle={toggle} onNext={nextStep} onBack={prevStep}
-            onGenerate={generate} loading={loading} loadIdx={loadIdx} error={error}
-          />
-        )}
-
-        {showResult && (
-          <ResultScreen
-            result={result} times={times} ans={ans}
-            onRestart={resetToHome}
-            onNewPlan={startQuiz}
-          />
-        )}
-
-        {activeTab === "plans" && !showViewingPlan && (
-          <MyPlansScreen
-            plans={plans}
-            onViewPlan={(plan) => setViewingPlan(plan)}
-            onNewPlan={() => { setActiveTab("home"); startQuiz(); }}
-          />
-        )}
-
+        {activeTab === "plans" && !showViewingPlan && <MyPlansScreen plans={plans} onViewPlan={(plan) => setViewingPlan(plan)} onNewPlan={() => { setActiveTab("home"); startQuiz(); }} />}
         {showViewingPlan && (
           <div>
-            <button className="btn-ghost" onClick={() => setViewingPlan(null)} style={{ paddingTop: "1.5rem" }}>
-              ← My Plans
-            </button>
-            <ResultScreen
-              result={viewingPlan.result} times={viewingPlan.times} ans={viewingPlan.ans}
-              onRestart={() => setViewingPlan(null)}
-              onNewPlan={() => { setViewingPlan(null); setActiveTab("home"); startQuiz(); }}
-            />
+            <button className="btn-ghost" onClick={() => setViewingPlan(null)} style={{ paddingTop: "1.5rem" }}>← My Plans</button>
+            <ResultScreen result={viewingPlan.result} times={viewingPlan.times} ans={viewingPlan.ans} onRestart={() => setViewingPlan(null)} onNewPlan={() => { setViewingPlan(null); setActiveTab("home"); startQuiz(); }} />
           </div>
         )}
 
-        {activeTab === "discover" && <DiscoverScreen />}
-
-        {activeTab === "social" && (
-          <div>
-            <div className="section-pad">
-              <div className="section-title">Social</div>
-              <p className="section-sub">Plan together, vote on nights, find people who are up for it.</p>
-            </div>
-            <div className="social-wrap" style={{ paddingTop: 0 }}>
-              {[
-                { icon: "👥", title: "Group planning", sub: "Everyone answers the quiz. One merged plan for the whole group.", badge: "live" },
-                { icon: "👍", title: "Vote on the night", sub: "Can't agree? Generate 2-3 options and let the group vote.", badge: "soon" },
-                { icon: "🗓️", title: "Availability matching", sub: "Connect calendars to find when everyone's actually free.", badge: "soon" },
-                { icon: "🤝", title: "Find people to go with", sub: "Matched by vibe, area, and availability. No swiping, no small talk.", badge: "soon" }
-              ].map((f, i) => (
-                <div key={i} className="social-card" style={{ marginBottom: 10 }}>
-                  <div className="feat-row" style={{ borderBottom: "none" }}>
-                    <div className="feat-icon">{f.icon}</div>
-                    <div className="feat-body">
-                      <div className="feat-title">{f.title}</div>
-                      <div className="feat-sub">{f.sub}</div>
-                      <span className={"feat-badge" + (f.badge === "live" ? " live" : "")}>
-                        {f.badge === "live" ? "Live" : "Coming soon"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        {activeTab === "discover" && <DiscoverScreen preferences={preferences} />}
+        {activeTab === "add" && <TikTokParserScreen onSuccess={() => showToast("Added! Check Admin to approve.")} />}
+        {activeTab === "prefs" && <PreferencesScreen preferences={preferences} setPreferences={setPreferences} />}
+        {activeTab === "admin" && <AdminScreen onBadgeUpdate={setAdminBadge} />}
 
         <nav className="bottom-nav">
           {TABS.map(tab => (
-            <button
-              key={tab.id}
-              className={"nav-tab" + (activeTab === tab.id ? " active" : "")}
-              onClick={() => {
-                setActiveTab(tab.id);
-                if (tab.id !== "home") { setQuizStep(-1); setViewingPlan(null); }
-              }}
-            >
-              <span className="nav-tab-icon">{tab.icon}</span>
+            <button key={tab.id} className={"nav-tab" + (activeTab === tab.id ? " active" : "")}
+              onClick={() => { setActiveTab(tab.id); if (tab.id !== "home") { setQuizStep(-1); setViewingPlan(null); } }}>
+              <span className="nav-tab-icon" style={{ position: "relative" }}>
+                {tab.icon}
+                {tab.badge > 0 && (
+                  <span style={{ position: "absolute", top: -4, right: -6, background: "#E84855", color: "#fff", borderRadius: "50%", fontSize: "0.5rem", width: 14, height: 14, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>{tab.badge}</span>
+                )}
+              </span>
               <span className="nav-tab-label">{tab.label}</span>
               <span className="nav-tab-dot" />
             </button>

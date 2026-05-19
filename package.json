@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.96.0",
+    "@supabase/supabase-js": "^2.106.0",
     "@vercel/node": "^5.8.2",
     "cors": "^2.8.6",
     "express": "^5.2.1",
