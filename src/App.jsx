@@ -782,13 +782,19 @@ function TikTokParserScreen({ onSuccess }) {
 
   async function parse() {
     if (!url.trim()) { setError("Paste a TikTok URL to get started."); return; }
+
+    // Extract TikTok URL from whatever was pasted (handles mixed text + URL)
+    const urlMatch = url.match(/https?:\/\/[^\s]*(tiktok\.com|vm\.tiktok\.com)[^\s]*/i);
+    if (!urlMatch) { setError("Couldn't find a TikTok URL in what you pasted. Make sure it includes tiktok.com"); return; }
+    const cleanUrl = urlMatch[0];
+
     setParsing(true); setError(null); setPreview(null);
 
     try {
       const tikResp = await fetch("/api/tiktok", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url })
+        body: JSON.stringify({ url: cleanUrl })
       });
       const tikData = await tikResp.json();
       if (tikData.error) throw new Error(tikData.error);
