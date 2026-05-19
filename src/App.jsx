@@ -793,13 +793,14 @@ function TikTokParserScreen({ onSuccess }) {
       const tikData = await tikResp.json();
       if (tikData.error) throw new Error(tikData.error);
 
-      const caption = tikData.description || tikData.title || "";
-      if (!caption) throw new Error("No caption found in this video. Try a different one.");
+      const rawCaption = tikData.description || tikData.title || "";
+      if (!rawCaption) throw new Error("No caption found in this video. Try a different one.");
+      const caption = rawCaption.slice(0, 800).replace(/[\u0000-\u001F\u007F]/g, " ");
 
       const prompt = `You are parsing a TikTok video caption about London experiences or venues.
 The caption may mention ONE venue or MULTIPLE venues.
 Extract structured data and return ONLY valid JSON with no markdown.
-Caption: "${caption}"
+Caption: ${JSON.stringify(caption)}
 
 If ONE venue: return a JSON object.
 If MULTIPLE venues: return a JSON array of objects.
@@ -887,7 +888,7 @@ Each object must have this exact structure:
         <label className="input-label">TikTok URL *</label>
         <input
           className="input-field"
-          type="url"
+          type="text"
           placeholder="https://www.tiktok.com/..."
           value={url}
           onChange={e => { setUrl(e.target.value); setSuccess(false); setPreview(null); setError(null); }}
