@@ -106,17 +106,18 @@ function scoreVenue(v, vibes, budget, area, timeOfDay, extras) {
 
 function buildShortlist(answers, dbVenues = []) {
   const { vibes, area, budget, timeOfDay, extras } = answers;
-  const allVenues = [
-    ...VENUES,
-    ...dbVenues.map(v => ({
-      id: v.id, name: v.name, type: v.category || "experience",
-      area: (v.zone || "Central").toLowerCase(), tags: v.vibe_tags || [],
-      price: v.price === "Free" ? "low" : v.price?.includes("£") ? "mid" : "mid",
-      bestTime: "day,night", bookingRequired: false, desc: v.comment || "",
-      emoji: "✨", travelZone: (v.zone || "Central").toLowerCase()
-    }))
-  ];
-  const scored = allVenues.map((v) => ({ ...v, score: scoreVenue(v, vibes || [], budget || "mid", area || "anywhere", timeOfDay || "night", extras || []) }))
+  const allVenues = dbVenues.map(v => ({
+    id: v.id, name: v.name, type: v.category || "experience",
+    area: (v.zone || "Central").toLowerCase(), tags: v.vibe_tags || [],
+    price: v.price === "Free" ? "low" : v.price === "high" ? "high" : v.price === "low" ? "low" : "mid",
+    bestTime: "day,night", bookingRequired: false, desc: v.comment || "",
+    emoji: "✨", travelZone: (v.zone || "Central").toLowerCase()
+  }));
+
+  // Fallback to hardcoded if DB is empty
+  const source = allVenues.length > 0 ? allVenues : VENUES;
+
+  const scored = source.map((v) => ({ ...v, score: scoreVenue(v, vibes || [], budget || "mid", area || "anywhere", timeOfDay || "night", extras || []) }))
     .filter((v) => v.score >= 0).sort((a, b) => b.score - a.score);
   const types = STOP_ORDER[timeOfDay] || STOP_ORDER.night;
   const used = new Set(), usedTypes = {}, shortlist = [];
