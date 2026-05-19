@@ -830,7 +830,42 @@ Each object must have this exact structure:
       const txt = await callClaude(prompt, 1500);
       const parsedRaw = JSON.parse(txt);
       const venues = Array.isArray(parsedRaw) ? parsedRaw : [parsedRaw];
-      setPreview({ venues, _caption: caption });
+
+      // Enrich each venue with Google Places data
+      const enriched = await Promise.all(venues.map(async (venue) => {
+        try {
+          const gResp = await fetch("/api/enrich-venue", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: venue.name, area: venue.area })
+          });
+          const gData = await gResp.json();
+          if (gData.found) {
+            return {
+              ...venue,
+              validated_name: gData.validated_name,
+              validated_address: gData.validated_address,
+              postcode: gData.postcode,
+              lat: gData.lat,
+              lng: gData.lng,
+              google_place_id: gData.google_place_id,
+              google_rating: gData.google_rating,
+              google_review_count: gData.google_review_count,
+              google_price_level: gData.google_price_level,
+              price: gData.price || venue.price,
+              website: gData.website,
+              phone: gData.phone,
+              opening_hours: gData.opening_hours,
+              _google_found: true
+            };
+          }
+        } catch (e) {
+          console.error("Google enrichment failed for", venue.name, e);
+        }
+        return { ...venue, _google_found: false };
+      }));
+
+      setPreview({ venues: enriched, _caption: caption });
     } catch (e) {
       setError(e.message || "Couldn't fetch this TikTok. Make sure the video is public.");
     }
@@ -857,8 +892,8 @@ Each object must have this exact structure:
         }
 
         await supabase.from("experiences").insert({
-          name: venue.name,
-          address: venue.address,
+          name: venue.validated_name || venue.name,
+          address: venue.validated_address || venue.address,
           area: venue.area,
           zone: venue.zone || existingMapping?.zone || "Central",
           category: venue.category,
@@ -868,8 +903,18 @@ Each object must have this exact structure:
           event_end: venue.event_end || null,
           comment: venue.comment,
           vibe_tags: venue.vibe_tags || [],
-          tiktok_url: url || null,
-          status: "pending"
+          tiktok_url: cleanUrl || null,
+          status: "pending",
+          lat: venue.lat || null,
+          lng: venue.lng || null,
+          postcode: venue.postcode || null,
+          google_place_id: venue.google_place_id || null,
+          google_rating: venue.google_rating || null,
+          google_review_count: venue.google_review_count || null,
+          google_price_level: venue.google_price_level || null,
+          website: venue.website || null,
+          phone: venue.phone || null,
+          opening_hours: venue.opening_hours || null
         });
       }
 
@@ -923,13 +968,22 @@ Each object must have this exact structure:
                   {i + 1} of {preview.venues.length}
                 </div>
               )}
-              <div className="preview-title">{venue.name || "Unknown venue"}</div>
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "0.5rem", gap: 8 }}>
+                <div className="preview-title" style={{ marginBottom: 0 }}>{venue.validated_name || venue.name || "Unknown venue"}</div>
+                <div style={{ fontSize: "0.62rem", padding: "2px 8px", borderRadius: 100, background: venue._google_found ? "#e0f5f3" : "#f5f0e8", color: venue._google_found ? "#1B998B" : "#9b8f7a", fontWeight: 500, whiteSpace: "nowrap", flexShrink: 0 }}>
+                  {venue._google_found ? "✓ Google verified" : "⚠ Not on Google"}
+                </div>
+              </div>
               {[
+                ["Address", venue.validated_address || venue.address],
+                ["Postcode", venue.postcode],
                 ["Area", venue.area],
                 ["Zone", venue.zone ? <span className="zone-badge">{venue.zone}</span> : null],
                 ["Category", venue.category],
                 ["Price", venue.price],
-                ["Address", venue.address],
+                ["Rating", venue.google_rating ? `⭐ ${venue.google_rating} (${venue.google_review_count?.toLocaleString()} reviews)` : null],
+                ["Hours", venue.opening_hours ? venue.opening_hours[0] : null],
+                ["Website", venue.website ? <a href={venue.website} target="_blank" rel="noreferrer" style={{ color: "#1B998B" }}>Visit ↗</a> : null],
                 ["Is event", venue.is_event ? `Yes — ${venue.event_start || "date TBC"}` : null],
                 ["Vibe tags", venue.vibe_tags?.join(", ")],
                 ["Notes", venue.comment],
