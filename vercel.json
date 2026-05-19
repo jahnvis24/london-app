@@ -10,10 +10,6 @@
     {
       "path": "/api/tiktok-fetch",
       "schedule": "0 6 * * *"
-    },
-    {
-      "path": "/api/process-videos",
-      "schedule": "*/30 6-8 * * *"
     }
   ]
 }
