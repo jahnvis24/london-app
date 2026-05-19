@@ -57,7 +57,6 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Grab 5 unprocessed videos
   const { data: pending } = await supabase
     .from('pending_videos')
     .select('*')
@@ -69,13 +68,11 @@ export default async function handler(req, res) {
     return res.status(200).json({ message: 'No pending videos to process', processed: 0 });
   }
 
-  const results = { processed: 0, saved: 0, skipped: 0, errors: 0 };
+  const results = { processed: 0, saved: 0, skipped: 0, errors: 0, error_details: [] };
 
   for (const video of pending) {
     try {
       const parsed = await parseCaption(video.caption);
-
-      // Mark as processed regardless of outcome
       await supabase.from('pending_videos').update({ processed: true }).eq('id', video.id);
       results.processed++;
 
@@ -86,7 +83,6 @@ export default async function handler(req, res) {
       for (const venue of venues) {
         if (!venue.name || !venue.area) { results.skipped++; continue; }
 
-        // Check not already in experiences
         const { data: existing } = await supabase
           .from('experiences')
           .select('id')
@@ -114,8 +110,9 @@ export default async function handler(req, res) {
         results.saved++;
       }
     } catch (e) {
-      await supabase.from('pending_videos').update({ processed: true }).eq('id', video.id);
       results.errors++;
+      results.error_details.push({ video: video.tiktok_url, error: e.message });
+      // Don't mark as processed so we can retry
     }
   }
 
