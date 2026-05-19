@@ -780,6 +780,7 @@ function TikTokParserScreen({ onSuccess }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+  const [cleanUrl, setCleanUrl] = useState("");
 
   async function parse() {
     if (!url.trim()) { setError("Paste a TikTok URL to get started."); return; }
@@ -788,6 +789,7 @@ function TikTokParserScreen({ onSuccess }) {
     const urlMatch = url.match(/https?:\/\/[^\s]*(tiktok\.com|vm\.tiktok\.com)[^\s]*/i);
     if (!urlMatch) { setError("Couldn't find a TikTok URL in what you pasted. Make sure it includes tiktok.com"); return; }
     const cleanUrl = urlMatch[0];
+    setCleanUrl(cleanUrl);
 
     setParsing(true); setError(null); setPreview(null);
 
@@ -921,6 +923,7 @@ Each object must have this exact structure:
       setSuccess(true);
       setPreview(null);
       setUrl("");
+      setCleanUrl("");
       if (onSuccess) onSuccess();
     } catch (e) {
       setError("Couldn't save. Error: " + e.message);
