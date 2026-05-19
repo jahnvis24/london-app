@@ -94,3 +94,35 @@ export default async function handler(req, res) {
         await supabase.from('experiences').insert({
           name: venue.name,
           address: venue.address || null,
+          area: venue.area,
+          zone: venue.zone || 'Central',
+          category: venue.category,
+          price: venue.price || null,
+          is_event: venue.is_event || false,
+          event_start: venue.event_start || null,
+          event_end: venue.event_end || null,
+          comment: venue.comment,
+          vibe_tags: venue.vibe_tags || [],
+          tiktok_url: video.tiktok_url,
+          status: 'pending'
+        });
+
+        results.saved++;
+      }
+    } catch (e) {
+      results.errors++;
+      results.error_details.push({ video: video.tiktok_url, error: e.message });
+    }
+  }
+
+  const { count } = await supabase
+    .from('pending_videos')
+    .select('*', { count: 'exact', head: true })
+    .eq('processed', false);
+
+  res.status(200).json({
+    message: 'Processing complete',
+    remaining_in_queue: count || 0,
+    ...results
+  });
+}
