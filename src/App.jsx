@@ -745,7 +745,6 @@ function DiscoverScreen({ preferences }) {
 
 function TikTokParserScreen({ onSuccess }) {
   const [url, setUrl] = useState("");
-  const [caption, setCaption] = useState("");
   const [parsing, setParsing] = useState(false);
   const [preview, setPreview] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -753,10 +752,22 @@ function TikTokParserScreen({ onSuccess }) {
   const [success, setSuccess] = useState(false);
 
   async function parse() {
-    if (!caption.trim()) { setError("Paste the caption or description from the TikTok video."); return; }
+    if (!url.trim()) { setError("Paste a TikTok URL to get started."); return; }
     setParsing(true); setError(null); setPreview(null);
 
-    const prompt = `You are parsing a TikTok video caption about a London experience or venue.
+    try {
+      const tikResp = await fetch("/api/tiktok", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url })
+      });
+      const tikData = await tikResp.json();
+      if (tikData.error) throw new Error(tikData.error);
+
+      const caption = tikData.description || tikData.title || "";
+      if (!caption) throw new Error("No caption found in this video. Try a different one.");
+
+      const prompt = `You are parsing a TikTok video caption about a London experience or venue.
 Extract structured data from this caption and return ONLY valid JSON with no markdown:
 Caption: "${caption}"
 TikTok URL: "${url}"
@@ -776,12 +787,11 @@ Return this exact JSON structure:
   "vibe_tags": ["array", "of", "tags", "from: chill, romantic, chaotic, cultural, fancy, hidden_gems, social, foodie, outdoor, aesthetic, iconic"]
 }`;
 
-    try {
       const txt = await callClaude(prompt, 600);
       const parsed = JSON.parse(txt);
-      setPreview(parsed);
+      setPreview({ ...parsed, _caption: caption });
     } catch (e) {
-      setError("Couldn't parse the caption. Try copying more of the caption text.");
+      setError(e.message || "Couldn't fetch this TikTok. Make sure the video is public.");
     }
     setParsing(false);
   }
@@ -791,7 +801,6 @@ Return this exact JSON structure:
     setSaving(true); setError(null);
 
     try {
-      // Check if area is in mapping table, if not add it
       const { data: existingMapping } = await supabase
         .from("area_zone_mapping")
         .select("zone")
@@ -805,7 +814,6 @@ Return this exact JSON structure:
         });
       }
 
-      // Save experience
       const { error: insertError } = await supabase.from("experiences").insert({
         name: preview.name,
         address: preview.address,
@@ -827,10 +835,9 @@ Return this exact JSON structure:
       setSuccess(true);
       setPreview(null);
       setUrl("");
-      setCaption("");
       if (onSuccess) onSuccess();
     } catch (e) {
-      setError("Couldn't save. Try again. Error: " + e.message);
+      setError("Couldn't save. Error: " + e.message);
     }
     setSaving(false);
   }
@@ -838,28 +845,34 @@ Return this exact JSON structure:
   return (
     <div className="parser-wrap">
       <div className="section-title" style={{ marginBottom: "0.25rem" }}>Add a spot</div>
-      <p className="section-sub">Paste a TikTok caption to add it to the database.</p>
+      <p className="section-sub">Paste a TikTok URL and we'll extract the details automatically.</p>
 
       {error && <div className="err">⚠️ {error}</div>}
       {success && <div className="success">✓ Saved! It'll appear after review.</div>}
 
       <div className="input-group">
-        <label className="input-label">TikTok URL (optional)</label>
-        <input className="input-field" type="url" placeholder="https://www.tiktok.com/..." value={url} onChange={e => { setUrl(e.target.value); setSuccess(false); }} />
+        <label className="input-label">TikTok URL *</label>
+        <input
+          className="input-field"
+          type="url"
+          placeholder="https://www.tiktok.com/..."
+          value={url}
+          onChange={e => { setUrl(e.target.value); setSuccess(false); setPreview(null); setError(null); }}
+        />
       </div>
 
-      <div className="input-group">
-        <label className="input-label">Caption / Description *</label>
-        <textarea className="input-field" placeholder="Paste the TikTok caption or description here. Include any text about the venue name, location, price, dates..." value={caption} onChange={e => { setCaption(e.target.value); setSuccess(false); setPreview(null); }} />
-      </div>
-
-      <button className="btn btn-teal" onClick={parse} disabled={parsing || !caption.trim()}>
-        {parsing ? "Parsing..." : "Parse caption ✦"}
+      <button className="btn btn-teal" onClick={parse} disabled={parsing || !url.trim()}>
+        {parsing ? "Fetching & parsing..." : "Parse TikTok ✦"}
       </button>
 
       {preview && (
         <div style={{ marginTop: "1.25rem" }}>
           <div style={{ fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#9b8f7a", marginBottom: "0.75rem", fontWeight: 500 }}>Preview — check before saving</div>
+          {preview._caption && (
+            <div style={{ fontSize: "0.75rem", color: "#9b8f7a", background: "#f5f0e8", borderRadius: 10, padding: "0.75rem", marginBottom: "0.75rem", lineHeight: 1.5 }}>
+              <strong>Caption found:</strong> {preview._caption}
+            </div>
+          )}
           <div className="preview-card">
             <div className="preview-title">{preview.name || "Unknown venue"}</div>
             {[
@@ -878,11 +891,10 @@ Return this exact JSON structure:
               </div>
             ))}
           </div>
-
           <button className="btn btn-teal" onClick={save} disabled={saving}>
             {saving ? "Saving..." : "Submit for review ✦"}
           </button>
-          <button className="btn-outline" onClick={() => setPreview(null)}>Edit caption</button>
+          <button className="btn-outline" onClick={() => setPreview(null)}>Try different URL</button>
         </div>
       )}
     </div>
