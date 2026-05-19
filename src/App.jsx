@@ -619,7 +619,8 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan }) {
                   </div>
                   <div className="stop-footer">
                     <div className="stop-pills-row">
-                      {stop.cost_estimate && <span className="stop-pill">💰 {stop.cost_estimate}</span>}
+                      {stop.price_range && <span className="stop-pill">💰 {stop.price_range}</span>}
+                      {stop.google_rating && <span className="stop-pill">⭐ {stop.google_rating}</span>}
                       {stop.area && <span className="stop-pill">📍 {stop.area}</span>}
                     </div>
                     <div className="stop-booking">{stop.booking}</div>
@@ -1198,11 +1199,13 @@ export default function App() {
     const venueData = JSON.stringify(shortlist.map(v => ({
       name: v.name, type: v.type, area: v.travelZone + " London",
       price: v.price, tags: v.tags, desc: v.desc, emoji: v.emoji,
-      booking: v.bookingRequired ? "Book ahead" : "Walk-in fine"
+      booking: v.bookingRequired ? "Book ahead" : "Walk-in fine",
+      rating: v.google_rating ? `⭐ ${v.google_rating}` : null,
+      price_range: v.price || null,
     })));
 
     const areaNote = ans.area === "surprise_me" ? "anywhere in London — surprise them" : ans.area;
-    const travelNote = ans.travel === "walking" ? "walking only between stops" : ans.travel === "max10" ? "max 10 min travel between each stop" : "walking and tube ok";
+    const travelNote = ans.travel === "walking" ? "walking only between stops, keep stops within walking distance of each other" : ans.travel === "max15" ? "max 15 min walk between each stop, only pick venues close together" : "walking and tube ok between stops";
 
     const prompt = "You are London's sharpest local guide. Build a perfect itinerary from these curated venues. User: " +
       ans.timeOfDay + " plan, vibes: " + (ans.vibes || []).join(", ") +
@@ -1213,15 +1216,81 @@ export default function App() {
       ", include: " + ((ans.extras || []).join(", ") || "no extras") +
       ". Venues (pick best 4-5): " + venueData +
       ". Respond ONLY with valid JSON, no markdown, no backticks: " +
-      '{"title":"punchy name","tagline":"witty sentence","vibe_scores":{"fun":7,"romantic":3,"cultural":6,"chaotic":2},"total_cost_estimate":"35-55pp","stops":[{"time":"18:30","name":"venue name","type":"bar","area":"Shoreditch","emoji":"🍸","hook":"best thing about this place","why_it_fits":"vibe match","booking":"Walk-in fine","cost_estimate":"12pp","travel_to_next":"7 min walk"}],"extend_the_night":"late suggestion","local_tip":"insider tip"}';
+      '{"title":"punchy name","tagline":"witty sentence","vibe_scores":{"fun":7,"romantic":3,"cultural":6,"chaotic":2},"total_cost_estimate":"35-55pp","stops":[{"time":"18:30","name":"venue name","type":"bar","area":"Shoreditch","emoji":"🍸","hook":"best thing about this place","why_it_fits":"vibe match","booking":"Walk-in fine","cost_estimate":"£15-35pp","travel_to_next":"calculating..."}],"extend_the_night":"late suggestion","local_tip":"insider tip"}';
 
     try {
       const txt = await callClaude(prompt, 1000);
       const parsed = JSON.parse(txt);
-      setResult(parsed);
+
+      // Enrich stops with DB data (rating, price) and real travel times
+      const enrichedStops = await Promise.all((parsed.stops || []).map(async (stop, idx) => {
+        // Find this venue in DB to get coordinates and Google data
+        const dbVenue = dbVenues.find(v =>
+          v.name.toLowerCase().includes(stop.name.toLowerCase()) ||
+          stop.name.toLowerCase().includes(v.name.toLowerCase())
+        );
+
+        const enriched = {
+          ...stop,
+          google_rating: dbVenue?.google_rating || null,
+          price_range: dbVenue?.price || stop.cost_estimate || null,
+          lat: dbVenue?.lat || null,
+          lng: dbVenue?.lng || null,
+        };
+
+        // Get real travel time to next stop
+        if (idx < (parsed.stops || []).length - 1) {
+          const nextStop = parsed.stops[idx + 1];
+          const nextDbVenue = dbVenues.find(v =>
+            v.name.toLowerCase().includes(nextStop.name.toLowerCase()) ||
+            nextStop.name.toLowerCase().includes(v.name.toLowerCase())
+          );
+
+          if (dbVenue?.lat && dbVenue?.lng && nextDbVenue?.lat && nextDbVenue?.lng) {
+            try {
+              const travelMode = ans.travel === "walking" || ans.travel === "max15" ? "walking" : "transit";
+              const departureTime = new Date().toISOString(); // use now as proxy
+
+              const travelResp = await fetch("/api/travel-time", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  origin: { lat: dbVenue.lat, lng: dbVenue.lng },
+                  destination: { lat: nextDbVenue.lat, lng: nextDbVenue.lng },
+                  mode: travelMode,
+                  departureTime
+                })
+              });
+              const travelData = await travelResp.json();
+              if (travelData.found) {
+                enriched.travel_to_next = travelData.label;
+                enriched.travel_minutes = travelData.durationMinutes;
+              }
+            } catch (e) {
+              // Keep Claude's estimate if travel API fails
+            }
+          }
+        }
+
+        return enriched;
+      }));
+
+      // Filter stops exceeding 15 min if max15 mode
+      let finalStops = enrichedStops;
+      if (ans.travel === "max15") {
+        finalStops = enrichedStops.filter((stop, idx) => {
+          if (idx === 0) return true;
+          const prevStop = enrichedStops[idx - 1];
+          if (prevStop.travel_minutes && prevStop.travel_minutes > 15) return false;
+          return true;
+        });
+      }
+
+      const finalResult = { ...parsed, stops: finalStops };
+      setResult(finalResult);
       setQuizStep(QUESTIONS.length + 1);
       setPlans(prev => [{
-        result: parsed, ans: { ...ans }, times: { ...times },
+        result: finalResult, ans: { ...ans }, times: { ...times },
         savedAt: new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }),
         id: generateId()
       }, ...prev]);
