@@ -82,18 +82,18 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Fetch experiences missing Google rating OR price
+  // Only process venues that have never been enriched by Google
   const { data: venues, error } = await supabase
     .from('experiences')
     .select('id, name, area')
-    .or('google_rating.is.null,price.is.null')
+    .is('google_place_id', null)
     .order('created_at', { ascending: true })
     .limit(10);
 
   if (error) return res.status(500).json({ error: error.message });
 
   if (!venues || venues.length === 0) {
-    return res.status(200).json({ message: 'All venues already enriched', updated: 0 });
+    return res.status(200).json({ message: 'All venues already enriched', updated: 0, remaining: 0 });
   }
 
   const results = { processed: 0, updated: 0, not_found: 0, errors: 0 };
@@ -106,6 +106,8 @@ export default async function handler(req, res) {
 
     if (!google) {
       console.log(`[backfill] not found: ${venue.name}`);
+      // Mark with a sentinel so we don't keep retrying
+      await supabase.from('experiences').update({ google_place_id: 'NOT_FOUND' }).eq('id', venue.id);
       results.not_found++;
       continue;
     }
@@ -137,11 +139,11 @@ export default async function handler(req, res) {
     }
   }
 
-  // Count remaining
+  // Count remaining unenriched
   const { count } = await supabase
     .from('experiences')
     .select('*', { count: 'exact', head: true })
-    .or('google_rating.is.null,price.is.null');
+    .is('google_place_id', null);
 
   res.status(200).json({
     message: 'Backfill batch complete',
