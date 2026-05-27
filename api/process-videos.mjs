@@ -59,56 +59,64 @@ async function enrichWithGoogle(name, area) {
     if (!apiKey) return null;
 
     const searchQuery = `${name} ${area || ''} London`;
-    const searchResp = await fetch('https://places.googleapis.com/v1/places:searchText', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Goog-Api-Key': apiKey,
-        'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.priceLevel,places.websiteUri,places.nationalPhoneNumber,places.regularOpeningHours,places.shortFormattedAddress'
-      },
-      body: JSON.stringify({
-        textQuery: searchQuery,
-        locationBias: {
-          circle: {
-            center: { latitude: 51.5074, longitude: -0.1278 },
-            radius: 30000.0
-          }
-        },
-        maxResultCount: 1
-      })
-    });
+
+    // Use legacy Places API for better price_level coverage
+    const searchResp = await fetch(
+      `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${encodeURIComponent(searchQuery)}&inputtype=textquery&fields=place_id,name,formatted_address,geometry,rating,user_ratings_total,price_level,website,formatted_phone_number,opening_hours&locationbias=circle:30000@51.5074,-0.1278&key=${apiKey}`,
+      { method: 'GET' }
+    );
 
     const searchData = await searchResp.json();
-    const place = searchData.places?.[0];
-console.log(`[enrich] ${name} — found: ${!!place}, rating: ${place?.rating}, price: ${place?.priceLevel}`);
-if (!place) return null;
+    const place = searchData.candidates?.[0];
+    console.log(`[enrich] ${name} — found: ${!!place}, rating: ${place?.rating}, price: ${place?.price_level}`);
+    if (!place) return null;
 
-    const address = place.formattedAddress || '';
+    const address = place.formatted_address || '';
     const postcodeMatch = address.match(/[A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2}/i);
     const postcode = postcodeMatch ? postcodeMatch[0].toUpperCase() : null;
 
     const priceLevelMap = {
-      'PRICE_LEVEL_FREE': 'Free',
-      'PRICE_LEVEL_INEXPENSIVE': 'Under £15pp',
-      'PRICE_LEVEL_MODERATE': '£15-35pp',
-      'PRICE_LEVEL_EXPENSIVE': '£35-70pp',
-      'PRICE_LEVEL_VERY_EXPENSIVE': '£70pp+'
+      0: 'Free',
+      1: 'Under £15pp',
+      2: '£15-35pp',
+      3: '£35-70pp',
+      4: '£70pp+'
     };
 
+    // Get place details for opening hours and website
+    let website = null;
+    let phone = null;
+    let opening_hours = null;
+
+    if (place.place_id) {
+      try {
+        const detailResp = await fetch(
+          `https://maps.googleapis.com/maps/api/place/details/json?place_id=${place.place_id}&fields=website,formatted_phone_number,opening_hours&key=${apiKey}`,
+          { method: 'GET' }
+        );
+        const detailData = await detailResp.json();
+        website = detailData.result?.website || null;
+        phone = detailData.result?.formatted_phone_number || null;
+        opening_hours = detailData.result?.opening_hours?.weekday_text || null;
+      } catch (e) {
+        console.error(`[enrich] details fetch failed for ${name}:`, e.message);
+      }
+    }
+
     return {
-      validated_name: place.displayName?.text || name,
-      validated_address: place.formattedAddress,
+      validated_name: place.name || name,
+      validated_address: place.formatted_address,
       postcode,
-      lat: place.location?.latitude,
-      lng: place.location?.longitude,
-      google_place_id: place.id,
+      lat: place.geometry?.location?.lat,
+      lng: place.geometry?.location?.lng,
+      google_place_id: place.place_id,
       google_rating: place.rating || null,
-      google_review_count: place.userRatingCount || null,
-      google_price_level: place.priceLevel || null,
-      price: priceLevelMap[place.priceLevel] || null,
-      website: place.websiteUri || null,
-      phone: place.nationalPhoneNumber || null,
-      opening_hours: place.regularOpeningHours?.weekdayDescriptions || null,
+      google_review_count: place.user_ratings_total || null,
+      google_price_level: place.price_level ?? null,
+      price: priceLevelMap[place.price_level] ?? null,
+      website,
+      phone,
+      opening_hours,
     };
   } catch (e) {
     console.error(`[enrich] Google enrichment failed for ${name}:`, e.message);
