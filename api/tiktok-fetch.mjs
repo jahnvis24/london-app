@@ -48,27 +48,37 @@ async function searchTikTok(keyword) {
       body: new URLSearchParams({ keywords: keyword, count: '10', cursor: '0' }).toString()
     });
     const text = await resp.text();
+    console.log(`[keyword:${keyword}] status:${resp.status} body:${text.slice(0, 200)}`);
     if (!text || text.trim().startsWith('<')) return [];
     const data = JSON.parse(text);
     return data.data?.videos || data.data?.items || [];
-  } catch { return []; }
+  } catch (e) {
+    console.error(`[keyword:${keyword}] error:`, e.message);
+    return [];
+  }
 }
 
 async function getUserVideos(username) {
   try {
+    const token = process.env.TIKWM_API_TOKEN;
+    const params = { unique_id: username, count: '80', cursor: '0' };
+    if (token) params.token = token;
+
     const resp = await fetch('https://tikwm.com/api/user/posts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ unique_id: username, count: '80', cursor: '0' }).toString()
+      body: new URLSearchParams(params).toString()
     });
     const text = await resp.text();
-    console.log(`[${username}] status:${resp.status} body:${text.slice(0, 200)}`);
+    console.log(`[user:${username}] status:${resp.status} body:${text.slice(0, 200)}`);
     if (!text || text.trim().startsWith('<')) return [];
     const data = JSON.parse(text);
-    return data.data?.videos || data.data?.items || [];
-  } catch (e) { 
-    console.error(`[${username}] error:`, e.message);
-    return []; 
+    const videos = data.data?.videos || data.data?.items || [];
+    console.log(`[user:${username}] videos returned: ${videos.length}`);
+    return videos;
+  } catch (e) {
+    console.error(`[user:${username}] error:`, e.message);
+    return [];
   }
 }
 
@@ -86,6 +96,8 @@ export default async function handler(req, res) {
   const keywordBatch = KEYWORDS.slice(cursor, cursor + 2);
   const nextCursor = (cursor + 2) >= KEYWORDS.length ? 0 : cursor + 2;
 
+  console.log(`[keywords] running batch: ${keywordBatch}`);
+
   for (const keyword of keywordBatch) {
     await sleep(200);
     const videos = await searchTikTok(keyword);
@@ -94,20 +106,27 @@ export default async function handler(req, res) {
 
   await setConfig('tiktok_keyword_cursor', String(nextCursor));
 
-  // ── USERNAMES: split across 2 days every 10 days ──
+  // ── USERNAMES: run both batches independently every 10 days ──
   const lastUserBatch1 = await getConfig('tiktok_last_user_batch1') || '2000-01-01';
   const lastUserBatch2 = await getConfig('tiktok_last_user_batch2') || '2000-01-01';
   const daysSinceBatch1 = Math.floor((Date.now() - new Date(lastUserBatch1).getTime()) / (1000 * 60 * 60 * 24));
   const daysSinceBatch2 = Math.floor((Date.now() - new Date(lastUserBatch2).getTime()) / (1000 * 60 * 60 * 24));
 
+  console.log(`[userBatch1] days since last run: ${daysSinceBatch1}`);
+  console.log(`[userBatch2] days since last run: ${daysSinceBatch2}`);
+
   if (daysSinceBatch1 >= 10) {
+    console.log(`[userBatch1] triggering for: ${USERNAMES_BATCH_1}`);
     for (const username of USERNAMES_BATCH_1) {
       await sleep(300);
       const videos = await getUserVideos(username);
       allVideos.push(...videos.map(v => ({ ...v, source: `user:${username}` })));
     }
     await setConfig('tiktok_last_user_batch1', new Date().toISOString().split('T')[0]);
-  } else if (daysSinceBatch2 >= 10) {
+  }
+
+  if (daysSinceBatch2 >= 10) {
+    console.log(`[userBatch2] triggering for: ${USERNAMES_BATCH_2}`);
     for (const username of USERNAMES_BATCH_2) {
       await sleep(300);
       const videos = await getUserVideos(username);
@@ -116,10 +135,12 @@ export default async function handler(req, res) {
     await setConfig('tiktok_last_user_batch2', new Date().toISOString().split('T')[0]);
   }
 
-  // Deduplicate and queue raw captions — no Claude calls here
+  // Deduplicate and queue raw captions
   const unique = [...new Map(
     allVideos.filter(v => v.video_id).map(v => [v.video_id, v])
   ).values()];
+
+  console.log(`[dedup] total unique videos: ${unique.length}`);
 
   for (const video of unique) {
     const caption = (video.title || '').slice(0, 800).replace(/[\u0000-\u001F\u007F]/g, ' ');
@@ -127,7 +148,6 @@ export default async function handler(req, res) {
 
     const tiktokUrl = `https://www.tiktok.com/@${video.author?.unique_id}/video/${video.video_id}`;
 
-    // Only queue if not already in pending_videos or experiences
     const { data: existing } = await supabase
       .from('pending_videos')
       .select('id')
@@ -153,6 +173,8 @@ export default async function handler(req, res) {
 
     queued++;
   }
+
+  console.log(`[done] videos_found:${unique.length} queued:${queued}`);
 
   res.status(200).json({
     message: 'Fetch complete',
