@@ -62,10 +62,14 @@ async function getUserVideos(username) {
       body: new URLSearchParams({ unique_id: username, count: '80', cursor: '0' }).toString()
     });
     const text = await resp.text();
+    console.log(`[${username}] status:${resp.status} body:${text.slice(0, 200)}`);
     if (!text || text.trim().startsWith('<')) return [];
     const data = JSON.parse(text);
     return data.data?.videos || data.data?.items || [];
-  } catch { return []; }
+  } catch (e) { 
+    console.error(`[${username}] error:`, e.message);
+    return []; 
+  }
 }
 
 export default async function handler(req, res) {
