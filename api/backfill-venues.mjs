@@ -5,71 +5,76 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY
 );
 
-const PRICE_MAP = {
-  'PRICE_LEVEL_FREE': 'Free',
-  'PRICE_LEVEL_INEXPENSIVE': 'Under £15pp',
-  'PRICE_LEVEL_MODERATE': '£15-35pp',
-  'PRICE_LEVEL_EXPENSIVE': '£35-70pp',
-  'PRICE_LEVEL_VERY_EXPENSIVE': '£70pp+'
-};
-
-const PRICE_LEVEL_INT = {
-  'PRICE_LEVEL_FREE': 0,
-  'PRICE_LEVEL_INEXPENSIVE': 1,
-  'PRICE_LEVEL_MODERATE': 2,
-  'PRICE_LEVEL_EXPENSIVE': 3,
-  'PRICE_LEVEL_VERY_EXPENSIVE': 4
-};
-
-async function enrichVenue(name, area) {
-  const apiKey = process.env.GOOGLE_PLACES_KEY;
-  const searchQuery = `${name} ${area || ''} London`;
-
-  const resp = await fetch('https://places.googleapis.com/v1/places:searchText', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Goog-Api-Key': apiKey,
-      'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.priceLevel,places.websiteUri,places.nationalPhoneNumber,places.regularOpeningHours,places.shortFormattedAddress'
-    },
-    body: JSON.stringify({
-      textQuery: searchQuery,
-      locationBias: {
-        circle: {
-          center: { latitude: 51.5074, longitude: -0.1278 },
-          radius: 30000.0
-        }
-      },
-      maxResultCount: 1
-    })
-  });
-
-  const data = await resp.json();
-  const place = data.places?.[0];
-  if (!place) return null;
-
-  const address = place.formattedAddress || '';
-  const postcodeMatch = address.match(/[A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2}/i);
-
-  return {
-    google_place_id: place.id,
-    address: place.formattedAddress,
-    postcode: postcodeMatch ? postcodeMatch[0].toUpperCase() : null,
-    lat: place.location?.latitude,
-    lng: place.location?.longitude,
-    google_rating: place.rating || null,
-    google_review_count: place.userRatingCount || null,
-    google_price_level: place.priceLevel || null,
-    price_level: PRICE_LEVEL_INT[place.priceLevel] ?? null,
-    price: PRICE_MAP[place.priceLevel] || null,
-    website: place.websiteUri || null,
-    phone: place.nationalPhoneNumber || null,
-    opening_hours: place.regularOpeningHours?.weekdayDescriptions || null,
-  };
-}
-
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function enrichWithGoogle(name, area) {
+  try {
+    const apiKey = process.env.GOOGLE_PLACES_KEY;
+    if (!apiKey) return null;
+
+    const searchQuery = `${name} ${area || ''} London`;
+
+    const searchResp = await fetch(
+      `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${encodeURIComponent(searchQuery)}&inputtype=textquery&fields=place_id,name,formatted_address,geometry,rating,user_ratings_total,price_level&locationbias=circle:30000@51.5074,-0.1278&key=${apiKey}`,
+      { method: 'GET' }
+    );
+
+    const searchData = await searchResp.json();
+    const place = searchData.candidates?.[0];
+    if (!place) return null;
+
+    const address = place.formatted_address || '';
+    const postcodeMatch = address.match(/[A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2}/i);
+    const postcode = postcodeMatch ? postcodeMatch[0].toUpperCase() : null;
+
+    const priceLevelMap = {
+      0: 'Free',
+      1: 'Under £15pp',
+      2: '£15-35pp',
+      3: '£35-70pp',
+      4: '£70pp+'
+    };
+
+    let website = null;
+    let phone = null;
+    let opening_hours = null;
+
+    if (place.place_id) {
+      try {
+        const detailResp = await fetch(
+          `https://maps.googleapis.com/maps/api/place/details/json?place_id=${place.place_id}&fields=website,formatted_phone_number,opening_hours&key=${apiKey}`,
+          { method: 'GET' }
+        );
+        const detailData = await detailResp.json();
+        website = detailData.result?.website || null;
+        phone = detailData.result?.formatted_phone_number || null;
+        opening_hours = detailData.result?.opening_hours?.weekday_text || null;
+      } catch (e) {
+        console.error(`[backfill] details failed for ${name}:`, e.message);
+      }
+    }
+
+    return {
+      validated_name: place.name || name,
+      validated_address: place.formatted_address,
+      postcode,
+      lat: place.geometry?.location?.lat,
+      lng: place.geometry?.location?.lng,
+      google_place_id: place.place_id,
+      google_rating: place.rating || null,
+      google_review_count: place.user_ratings_total || null,
+      google_price_level: place.price_level ?? null,
+      price: priceLevelMap[place.price_level] ?? null,
+      website,
+      phone,
+      opening_hours,
+    };
+  } catch (e) {
+    console.error(`[backfill] enrichment failed for ${name}:`, e.message);
+    return null;
+  }
 }
 
 export default async function handler(req, res) {
@@ -77,67 +82,70 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  try {
-    const { data: venues, error } = await supabase
-      .from('experiences')
-      .select('id, name, area, zone, price')
-      .eq('status', 'approved')
-      .is('google_place_id', null);
+  // Fetch experiences missing Google data
+  const { data: venues, error } = await supabase
+    .from('experiences')
+    .select('id, name, area')
+    .is('google_rating', null)
+    .order('created_at', { ascending: true })
+    .limit(10);
 
-    if (error) throw error;
-    if (!venues || venues.length === 0) {
-      return res.status(200).json({ message: 'All venues already enriched', count: 0 });
-    }
+  if (error) return res.status(500).json({ error: error.message });
 
-    const results = { success: [], failed: [] };
-
-    for (const venue of venues) {
-      try {
-        await sleep(200);
-
-        const enriched = await enrichVenue(venue.name, venue.area);
-
-        if (!enriched) {
-          results.failed.push({ name: venue.name, reason: 'Not found on Google' });
-          continue;
-        }
-
-        const update = {};
-        if (enriched.google_place_id) update.google_place_id = enriched.google_place_id;
-        if (enriched.address) update.address = enriched.address;
-        if (enriched.postcode) update.postcode = enriched.postcode;
-        if (enriched.lat) update.lat = enriched.lat;
-        if (enriched.lng) update.lng = enriched.lng;
-        if (enriched.google_rating) update.google_rating = enriched.google_rating;
-        if (enriched.google_review_count) update.google_review_count = enriched.google_review_count;
-        if (enriched.google_price_level) update.google_price_level = enriched.google_price_level;
-        if (enriched.price_level !== null && enriched.price_level !== undefined) update.price_level = enriched.price_level;
-        if (enriched.price && (!venue.price || ['low','mid','high'].includes(venue.price))) update.price = enriched.price;
-        if (enriched.website) update.website = enriched.website;
-        if (enriched.phone) update.phone = enriched.phone;
-        if (enriched.opening_hours) update.opening_hours = enriched.opening_hours;
-
-        const { error: updateError } = await supabase
-          .from('experiences')
-          .update(update)
-          .eq('id', venue.id);
-
-        if (updateError) throw updateError;
-        results.success.push({ name: venue.name, place_id: enriched.google_place_id });
-
-      } catch (e) {
-        results.failed.push({ name: venue.name, reason: e.message });
-      }
-    }
-
-    res.status(200).json({
-      total: venues.length,
-      enriched: results.success.length,
-      failed: results.failed.length,
-      details: results
-    });
-
-  } catch (e) {
-    res.status(500).json({ error: e.message });
+  if (!venues || venues.length === 0) {
+    return res.status(200).json({ message: 'All venues already enriched', updated: 0 });
   }
+
+  const results = { processed: 0, updated: 0, not_found: 0, errors: 0 };
+
+  for (const venue of venues) {
+    await sleep(200); // avoid rate limiting
+    results.processed++;
+
+    const google = await enrichWithGoogle(venue.name, venue.area);
+
+    if (!google) {
+      console.log(`[backfill] not found: ${venue.name}`);
+      results.not_found++;
+      continue;
+    }
+
+    const { error: updateError } = await supabase
+      .from('experiences')
+      .update({
+        address: google.validated_address,
+        postcode: google.postcode,
+        lat: google.lat,
+        lng: google.lng,
+        google_place_id: google.google_place_id,
+        google_rating: google.google_rating,
+        google_review_count: google.google_review_count,
+        google_price_level: google.google_price_level,
+        price: google.price,
+        website: google.website,
+        phone: google.phone,
+        opening_hours: google.opening_hours,
+      })
+      .eq('id', venue.id);
+
+    if (updateError) {
+      console.error(`[backfill] update failed for ${venue.name}:`, updateError.message);
+      results.errors++;
+    } else {
+      console.log(`[backfill] updated: ${venue.name} — rating: ${google.google_rating}, price: ${google.price}`);
+      results.updated++;
+    }
+  }
+
+  // Count remaining
+  const { count } = await supabase
+    .from('experiences')
+    .select('*', { count: 'exact', head: true })
+    .is('google_rating', null);
+
+  res.status(200).json({
+    message: 'Backfill batch complete',
+    remaining: count || 0,
+    ...results
+  });
 }
