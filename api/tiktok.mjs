@@ -5,15 +5,12 @@ export default async function handler(req, res) {
   if (!url) return res.status(400).json({ error: 'No URL provided' });
 
   try {
-    const response = await fetch('https://tikwm.com/api/', {
-      method: 'POST',
+    const params = new URLSearchParams({ url, hd: '1' });
+    const response = await fetch(`https://api.tikwmapi.com/?${params}`, {
+      method: 'GET',
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        url: url,
-        hd: '1'
-      }).toString()
+        'x-tikwmapi-key': process.env.TIKWM_API_TOKEN
+      }
     });
 
     const text = await response.text();
@@ -22,7 +19,7 @@ export default async function handler(req, res) {
     try {
       data = JSON.parse(text);
     } catch {
-      throw new Error('TIKWM returned invalid response: ' + text.slice(0, 100));
+      throw new Error('tikwmapi returned invalid response: ' + text.slice(0, 100));
     }
 
     if (data.code !== 0) throw new Error(data.msg || 'Failed to fetch TikTok data');
