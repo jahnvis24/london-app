@@ -53,6 +53,7 @@ Return ONLY valid JSON, no markdown.`;
 }
 
 async function enrichWithGoogle(name, area) {
+  console.log(`[enrich] attempting: ${name}, key present: ${!!process.env.GOOGLE_PLACES_KEY}`);
   try {
     const apiKey = process.env.GOOGLE_PLACES_KEY;
     if (!apiKey) return null;
