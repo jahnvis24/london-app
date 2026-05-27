@@ -1143,7 +1143,12 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [loadIdx, setLoadIdx] = useState(0);
   const [error, setError] = useState(null);
-  const [plans, setPlans] = useState([]);
+const [plans, setPlans] = useState(() => {
+  try { return JSON.parse(localStorage.getItem("cl_plans") || "[]"); } catch { return []; }
+});
+useEffect(() => {
+  localStorage.setItem("cl_plans", JSON.stringify(plans));
+}, [plans]);
   const [viewingPlan, setViewingPlan] = useState(null);
   const [toast, setToast] = useState({ msg: "", show: false });
   const [dbVenues, setDbVenues] = useState([]);
