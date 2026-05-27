@@ -1065,8 +1065,8 @@ function AdminScreen({ onBadgeUpdate }) {
           {pending.map((item) => (
             <div key={item.id} className="admin-card">
               <div className="admin-card-name">{item.name}</div>
-              <div className="admin-card-meta">
-                {item.category} · {item.area} · {item.price || "price unknown"}
+             <div className="admin-card-meta">
+  {item.category} · {item.area} · {item.price || "price unknown"}{item.google_rating ? ` · ⭐ ${item.google_rating}` : ""}
                 {item.is_event && item.event_start && ` · 📅 ${new Date(item.event_start).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`}
               </div>
               {item.comment && <div style={{ fontSize: "0.78rem", color: "#6b5e4e", marginBottom: "8px", lineHeight: 1.4 }}>{item.comment}</div>}
