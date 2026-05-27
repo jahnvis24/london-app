@@ -82,11 +82,11 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Fetch experiences missing Google data
+  // Fetch experiences missing Google rating OR price
   const { data: venues, error } = await supabase
     .from('experiences')
     .select('id, name, area')
-    .is('google_rating', null)
+    .or('google_rating.is.null,price.is.null')
     .order('created_at', { ascending: true })
     .limit(10);
 
@@ -99,7 +99,7 @@ export default async function handler(req, res) {
   const results = { processed: 0, updated: 0, not_found: 0, errors: 0 };
 
   for (const venue of venues) {
-    await sleep(200); // avoid rate limiting
+    await sleep(200);
     results.processed++;
 
     const google = await enrichWithGoogle(venue.name, venue.area);
@@ -141,7 +141,7 @@ export default async function handler(req, res) {
   const { count } = await supabase
     .from('experiences')
     .select('*', { count: 'exact', head: true })
-    .is('google_rating', null);
+    .or('google_rating.is.null,price.is.null');
 
   res.status(200).json({
     message: 'Backfill batch complete',
