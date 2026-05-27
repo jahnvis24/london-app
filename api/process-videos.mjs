@@ -80,7 +80,8 @@ async function enrichWithGoogle(name, area) {
 
     const searchData = await searchResp.json();
     const place = searchData.places?.[0];
-    if (!place) return null;
+console.log(`[enrich] ${name} — found: ${!!place}, rating: ${place?.rating}, price: ${place?.priceLevel}`);
+if (!place) return null;
 
     const address = place.formattedAddress || '';
     const postcodeMatch = address.match(/[A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2}/i);
