@@ -1,29 +1,39 @@
 function zoneFromPostcode(postcode) {
   if (!postcode) return null;
   const clean = postcode.trim().toUpperCase();
-  if (clean.startsWith('NW')) return 'Northwest';
-  if (clean.startsWith('NE')) return 'Northeast';
-  if (clean.startsWith('SW')) return 'Southwest';
-  if (clean.startsWith('SE')) return 'Southeast';
+
   if (clean.startsWith('EC')) return 'Central';
   if (clean.startsWith('WC')) return 'Central';
-  if (clean.startsWith('N')) return 'North';
-  if (clean.startsWith('E')) return 'East';
-  if (clean.startsWith('W')) return 'West';
-  if (clean.startsWith('S')) return 'South';
+  if (clean.startsWith('W1')) return 'Central';
+  if (clean.startsWith('SW1')) return 'Central';
+  if (clean.startsWith('NW1')) return 'Central';
+  if (clean.startsWith('SE1')) return 'Central';
+
+  if (clean.startsWith('NW')) return 'Northwest';
   if (clean.startsWith('HA')) return 'Northwest';
+  if (clean.startsWith('WD')) return 'Northwest';
+  if (clean.startsWith('AL')) return 'Northwest';
+
+  if (clean.startsWith('N')) return 'North';
+  if (clean.startsWith('EN')) return 'North';
+
+  if (clean.startsWith('E')) return 'East';
+  if (clean.startsWith('RM')) return 'East';
+  if (clean.startsWith('IG')) return 'East';
+
+  if (clean.startsWith('W')) return 'West';
   if (clean.startsWith('UB')) return 'West';
+
+  if (clean.startsWith('SW')) return 'Southwest';
   if (clean.startsWith('TW')) return 'Southwest';
   if (clean.startsWith('KT')) return 'Southwest';
   if (clean.startsWith('SM')) return 'Southwest';
+
+  if (clean.startsWith('SE')) return 'Southeast';
   if (clean.startsWith('CR')) return 'Southeast';
   if (clean.startsWith('BR')) return 'Southeast';
   if (clean.startsWith('DA')) return 'Southeast';
-  if (clean.startsWith('RM')) return 'East';
-  if (clean.startsWith('IG')) return 'East';
-  if (clean.startsWith('EN')) return 'North';
-  if (clean.startsWith('WD')) return 'Northwest';
-  if (clean.startsWith('AL')) return 'Northwest';
+
   return null;
 }
 
@@ -47,7 +57,6 @@ export default async function handler(req, res) {
 
   try {
     const searchQuery = `${name} ${area || ''} London`;
-
     const searchResp = await fetch(
       `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${encodeURIComponent(searchQuery)}&inputtype=textquery&fields=place_id,name,formatted_address,geometry,rating,user_ratings_total,price_level&locationbias=circle:30000@51.5074,-0.1278&key=${apiKey}`,
       { method: 'GET' }
@@ -56,7 +65,6 @@ export default async function handler(req, res) {
     const searchData = await searchResp.json();
     let place = searchData.candidates?.[0];
 
-    // Retry without area if not found
     if (!place && area) {
       const retryResp = await fetch(
         `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${encodeURIComponent(`${name} London`)}&inputtype=textquery&fields=place_id,name,formatted_address,geometry,rating,user_ratings_total,price_level&locationbias=circle:30000@51.5074,-0.1278&key=${apiKey}`,
@@ -66,9 +74,7 @@ export default async function handler(req, res) {
       place = retryData.candidates?.[0];
     }
 
-    if (!place) {
-      return res.status(200).json({ found: false, message: 'No matching place found on Google' });
-    }
+    if (!place) return res.status(200).json({ found: false, message: 'No matching place found on Google' });
 
     const address = place.formatted_address || '';
     const postcodeMatch = address.match(/[A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2}/i);

@@ -8,29 +8,46 @@ const supabase = createClient(
 function zoneFromPostcode(postcode) {
   if (!postcode) return null;
   const clean = postcode.trim().toUpperCase();
-  if (clean.startsWith('NW')) return 'Northwest';
-  if (clean.startsWith('NE')) return 'Northeast';
-  if (clean.startsWith('SW')) return 'Southwest';
-  if (clean.startsWith('SE')) return 'Southeast';
-  if (clean.startsWith('EC')) return 'Central';
-  if (clean.startsWith('WC')) return 'Central';
-  if (clean.startsWith('N')) return 'North';
-  if (clean.startsWith('E')) return 'East';
-  if (clean.startsWith('W')) return 'West';
-  if (clean.startsWith('S')) return 'South';
-  if (clean.startsWith('HA')) return 'Northwest';
-  if (clean.startsWith('UB')) return 'West';
-  if (clean.startsWith('TW')) return 'Southwest';
-  if (clean.startsWith('KT')) return 'Southwest';
-  if (clean.startsWith('SM')) return 'Southwest';
-  if (clean.startsWith('CR')) return 'Southeast';
-  if (clean.startsWith('BR')) return 'Southeast';
-  if (clean.startsWith('DA')) return 'Southeast';
-  if (clean.startsWith('RM')) return 'East';
-  if (clean.startsWith('IG')) return 'East';
-  if (clean.startsWith('EN')) return 'North';
-  if (clean.startsWith('WD')) return 'Northwest';
-  if (clean.startsWith('AL')) return 'Northwest';
+
+  // Central — check specific districts before broad prefixes
+  if (clean.startsWith('EC')) return 'Central';   // City of London
+  if (clean.startsWith('WC')) return 'Central';   // Covent Garden, Holborn
+  if (clean.startsWith('W1')) return 'Central';   // Mayfair, Soho, Marylebone, Fitzrovia
+  if (clean.startsWith('SW1')) return 'Central';  // Westminster, Whitehall, Belgravia
+  if (clean.startsWith('NW1')) return 'Central';  // Camden Town, Marylebone, Regents Park
+  if (clean.startsWith('SE1')) return 'Central';  // Southwark, Borough, Waterloo, Bermondsey
+
+  // Northwest
+  if (clean.startsWith('NW')) return 'Northwest'; // Hampstead, Kilburn, Cricklewood
+  if (clean.startsWith('HA')) return 'Northwest'; // Harrow
+  if (clean.startsWith('WD')) return 'Northwest'; // Watford
+  if (clean.startsWith('AL')) return 'Northwest'; // St Albans
+
+  // North
+  if (clean.startsWith('N')) return 'North';      // Islington, Highgate, Tottenham, Stoke Newington
+  if (clean.startsWith('EN')) return 'North';     // Enfield
+
+  // East
+  if (clean.startsWith('E')) return 'East';       // Shoreditch, Hackney, Stratford, Bethnal Green
+  if (clean.startsWith('RM')) return 'East';      // Romford
+  if (clean.startsWith('IG')) return 'East';      // Ilford
+
+  // West
+  if (clean.startsWith('W')) return 'West';       // Paddington, Notting Hill, Chiswick, Hammersmith
+  if (clean.startsWith('UB')) return 'West';      // Uxbridge
+
+  // Southwest
+  if (clean.startsWith('SW')) return 'Southwest'; // Brixton, Clapham, Battersea, Chelsea
+  if (clean.startsWith('TW')) return 'Southwest'; // Twickenham, Richmond
+  if (clean.startsWith('KT')) return 'Southwest'; // Kingston
+  if (clean.startsWith('SM')) return 'Southwest'; // Sutton, Morden
+
+  // Southeast
+  if (clean.startsWith('SE')) return 'Southeast'; // Peckham, Greenwich, Lewisham, Deptford
+  if (clean.startsWith('CR')) return 'Southeast'; // Croydon
+  if (clean.startsWith('BR')) return 'Southeast'; // Bromley
+  if (clean.startsWith('DA')) return 'Southeast'; // Dartford, Bexley
+
   return null;
 }
 
@@ -162,7 +179,7 @@ export default async function handler(req, res) {
     .select('*')
     .eq('processed', false)
     .order('created_at', { ascending: true })
-    .limit(10); // increased from 5
+    .limit(10);
 
   if (!pending || pending.length === 0) {
     return res.status(200).json({ message: 'No pending videos to process', processed: 0 });
@@ -183,7 +200,6 @@ export default async function handler(req, res) {
       for (const venue of venues) {
         if (!venue.name || !venue.area) { results.skipped++; continue; }
 
-        // Check duplicate by tiktok_url
         const { data: existingUrl } = await supabase
           .from('experiences')
           .select('id')
@@ -192,7 +208,6 @@ export default async function handler(req, res) {
 
         if (existingUrl && existingUrl.length > 0) { results.skipped++; continue; }
 
-        // Check duplicate by name
         const { data: existingName } = await supabase
           .from('experiences')
           .select('id')
@@ -201,7 +216,6 @@ export default async function handler(req, res) {
 
         if (existingName && existingName.length > 0) { results.skipped++; continue; }
 
-        // Enrich with Google Places — retry once with no area if first attempt fails
         let google = await enrichWithGoogle(venue.name, venue.area);
         if (!google) {
           console.log(`[enrich] retrying ${venue.name} without area bias`);

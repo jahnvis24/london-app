@@ -12,29 +12,39 @@ function sleep(ms) {
 function zoneFromPostcode(postcode) {
   if (!postcode) return null;
   const clean = postcode.trim().toUpperCase();
-  if (clean.startsWith('NW')) return 'Northwest';
-  if (clean.startsWith('NE')) return 'Northeast';
-  if (clean.startsWith('SW')) return 'Southwest';
-  if (clean.startsWith('SE')) return 'Southeast';
+
   if (clean.startsWith('EC')) return 'Central';
   if (clean.startsWith('WC')) return 'Central';
-  if (clean.startsWith('N')) return 'North';
-  if (clean.startsWith('E')) return 'East';
-  if (clean.startsWith('W')) return 'West';
-  if (clean.startsWith('S')) return 'South';
+  if (clean.startsWith('W1')) return 'Central';
+  if (clean.startsWith('SW1')) return 'Central';
+  if (clean.startsWith('NW1')) return 'Central';
+  if (clean.startsWith('SE1')) return 'Central';
+
+  if (clean.startsWith('NW')) return 'Northwest';
   if (clean.startsWith('HA')) return 'Northwest';
+  if (clean.startsWith('WD')) return 'Northwest';
+  if (clean.startsWith('AL')) return 'Northwest';
+
+  if (clean.startsWith('N')) return 'North';
+  if (clean.startsWith('EN')) return 'North';
+
+  if (clean.startsWith('E')) return 'East';
+  if (clean.startsWith('RM')) return 'East';
+  if (clean.startsWith('IG')) return 'East';
+
+  if (clean.startsWith('W')) return 'West';
   if (clean.startsWith('UB')) return 'West';
+
+  if (clean.startsWith('SW')) return 'Southwest';
   if (clean.startsWith('TW')) return 'Southwest';
   if (clean.startsWith('KT')) return 'Southwest';
   if (clean.startsWith('SM')) return 'Southwest';
+
+  if (clean.startsWith('SE')) return 'Southeast';
   if (clean.startsWith('CR')) return 'Southeast';
   if (clean.startsWith('BR')) return 'Southeast';
   if (clean.startsWith('DA')) return 'Southeast';
-  if (clean.startsWith('RM')) return 'East';
-  if (clean.startsWith('IG')) return 'East';
-  if (clean.startsWith('EN')) return 'North';
-  if (clean.startsWith('WD')) return 'Northwest';
-  if (clean.startsWith('AL')) return 'Northwest';
+
   return null;
 }
 
@@ -61,7 +71,6 @@ async function enrichWithGoogle(name, area) {
     const searchData = await searchResp.json();
     let place = searchData.candidates?.[0];
 
-    // Retry without area if not found
     if (!place && area) {
       await sleep(300);
       const retryResp = await fetch(
@@ -124,68 +133,49 @@ export default async function handler(req, res) {
 
   const { data: venues, error } = await supabase
     .from('experiences')
-    .select('id, name, area')
-    .is('google_place_id', null)
+    .select('id, name, area, postcode')
+    .not('postcode', 'is', null)
+    .not('postcode', 'eq', 'NOT_FOUND')
     .order('created_at', { ascending: true })
-    .limit(10);
+    .limit(20);
 
   if (error) return res.status(500).json({ error: error.message });
 
   if (!venues || venues.length === 0) {
-    return res.status(200).json({ message: 'All venues already enriched', updated: 0, remaining: 0 });
+    return res.status(200).json({ message: 'All venues zone-corrected', updated: 0, remaining: 0 });
   }
 
-  const results = { processed: 0, updated: 0, not_found: 0, errors: 0 };
+  const results = { processed: 0, updated: 0, skipped: 0, errors: 0, details: [] };
 
   for (const venue of venues) {
-    await sleep(200);
+    await sleep(100);
     results.processed++;
 
-    const google = await enrichWithGoogle(venue.name, venue.area);
-
-    if (!google) {
-      console.log(`[backfill] not found: ${venue.name}`);
-      await supabase.from('experiences').update({ google_place_id: 'NOT_FOUND' }).eq('id', venue.id);
-      results.not_found++;
-      continue;
-    }
+    const correctedZone = zoneFromPostcode(venue.postcode);
+    if (!correctedZone) { results.skipped++; continue; }
 
     const { error: updateError } = await supabase
       .from('experiences')
-      .update({
-        address: google.validated_address,
-        postcode: google.postcode,
-        zone: google.derived_zone || undefined,
-        area: google.derived_area || undefined,
-        lat: google.lat,
-        lng: google.lng,
-        google_place_id: google.google_place_id,
-        google_rating: google.google_rating,
-        google_review_count: google.google_review_count,
-        google_price_level: google.google_price_level,
-        price: google.price,
-        website: google.website,
-        phone: google.phone,
-        opening_hours: google.opening_hours,
-      })
+      .update({ zone: correctedZone })
       .eq('id', venue.id);
 
     if (updateError) {
-      console.error(`[backfill] update failed for ${venue.name}:`, updateError.message);
       results.errors++;
+      results.details.push({ name: venue.name, error: updateError.message });
     } else {
-      console.log(`[backfill] updated: ${venue.name} — zone: ${google.derived_zone}, area: ${google.derived_area}, price: ${google.price}`);
       results.updated++;
+      results.details.push({ name: venue.name, postcode: venue.postcode, zone: correctedZone });
     }
   }
 
   const { count } = await supabase
     .from('experiences')
     .select('*', { count: 'exact', head: true })
-    .is('google_place_id', null);
+    .not('postcode', 'is', null)
+    .not('postcode', 'eq', 'NOT_FOUND');
 
   res.status(200).json({
-    message: 'Backfill batch complete',
+    message: 'Zone correction batch complete',
     remaining: count || 0,
     ...results
   });
