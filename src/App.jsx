@@ -849,6 +849,8 @@ Each object must have this exact structure:
               validated_name: gData.validated_name,
               validated_address: gData.validated_address,
               postcode: gData.postcode,
+              derived_zone: gData.derived_zone,
+              derived_area: gData.derived_area,
               lat: gData.lat,
               lng: gData.lng,
               google_place_id: gData.google_place_id,
@@ -897,8 +899,8 @@ Each object must have this exact structure:
         await supabase.from("experiences").insert({
           name: venue.validated_name || venue.name,
           address: venue.validated_address || venue.address,
-          area: venue.area,
-          zone: venue.zone || existingMapping?.zone || "Central",
+          area: venue.derived_area || venue.area,
+          zone: venue.derived_zone || venue.zone || existingMapping?.zone || "Central",
           category: venue.category,
           price: venue.price,
           is_event: venue.is_event || false,
@@ -1065,8 +1067,8 @@ function AdminScreen({ onBadgeUpdate }) {
           {pending.map((item) => (
             <div key={item.id} className="admin-card">
               <div className="admin-card-name">{item.name}</div>
-             <div className="admin-card-meta">
-  {item.category} · {item.area} · {item.price || "price unknown"}{item.google_rating ? ` · ⭐ ${item.google_rating}` : ""}
+              <div className="admin-card-meta">
+                {item.category} · {item.area} · {item.price || "price unknown"}
                 {item.is_event && item.event_start && ` · 📅 ${new Date(item.event_start).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`}
               </div>
               {item.comment && <div style={{ fontSize: "0.78rem", color: "#6b5e4e", marginBottom: "8px", lineHeight: 1.4 }}>{item.comment}</div>}
@@ -1143,12 +1145,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [loadIdx, setLoadIdx] = useState(0);
   const [error, setError] = useState(null);
-const [plans, setPlans] = useState(() => {
-  try { return JSON.parse(localStorage.getItem("cl_plans") || "[]"); } catch { return []; }
-});
-useEffect(() => {
-  localStorage.setItem("cl_plans", JSON.stringify(plans));
-}, [plans]);
+  const [plans, setPlans] = useState([]);
   const [viewingPlan, setViewingPlan] = useState(null);
   const [toast, setToast] = useState({ msg: "", show: false });
   const [dbVenues, setDbVenues] = useState([]);

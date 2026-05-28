@@ -5,6 +5,44 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY
 );
 
+function zoneFromPostcode(postcode) {
+  if (!postcode) return null;
+  const clean = postcode.trim().toUpperCase();
+  if (clean.startsWith('NW')) return 'Northwest';
+  if (clean.startsWith('NE')) return 'Northeast';
+  if (clean.startsWith('SW')) return 'Southwest';
+  if (clean.startsWith('SE')) return 'Southeast';
+  if (clean.startsWith('EC')) return 'Central';
+  if (clean.startsWith('WC')) return 'Central';
+  if (clean.startsWith('N')) return 'North';
+  if (clean.startsWith('E')) return 'East';
+  if (clean.startsWith('W')) return 'West';
+  if (clean.startsWith('S')) return 'South';
+  if (clean.startsWith('HA')) return 'Northwest';
+  if (clean.startsWith('UB')) return 'West';
+  if (clean.startsWith('TW')) return 'Southwest';
+  if (clean.startsWith('KT')) return 'Southwest';
+  if (clean.startsWith('SM')) return 'Southwest';
+  if (clean.startsWith('CR')) return 'Southeast';
+  if (clean.startsWith('BR')) return 'Southeast';
+  if (clean.startsWith('DA')) return 'Southeast';
+  if (clean.startsWith('RM')) return 'East';
+  if (clean.startsWith('IG')) return 'East';
+  if (clean.startsWith('EN')) return 'North';
+  if (clean.startsWith('WD')) return 'Northwest';
+  if (clean.startsWith('AL')) return 'Northwest';
+  return null;
+}
+
+function areaFromAddress(address) {
+  if (!address) return null;
+  const parts = address.split(',').map(p => p.trim());
+  const londonIdx = parts.findIndex(p => p === 'London' || p === 'Greater London');
+  if (londonIdx > 1) return parts[londonIdx - 1];
+  if (londonIdx === 1) return parts[0];
+  return null;
+}
+
 async function parseCaption(caption) {
   const prompt = `You are parsing a TikTok video caption about London experiences or venues.
 The caption may mention ONE venue or MULTIPLE venues, or may not be about a specific London venue at all.
@@ -90,10 +128,15 @@ async function enrichWithGoogle(name, area) {
       }
     }
 
+    const derivedZone = zoneFromPostcode(postcode);
+    const derivedArea = areaFromAddress(address);
+
     return {
       validated_name: place.name || name,
-      validated_address: place.formatted_address,
+      validated_address: address,
       postcode,
+      derived_zone: derivedZone,
+      derived_area: derivedArea,
       lat: place.geometry?.location?.lat,
       lng: place.geometry?.location?.lng,
       google_place_id: place.place_id,
@@ -119,7 +162,7 @@ export default async function handler(req, res) {
     .select('*')
     .eq('processed', false)
     .order('created_at', { ascending: true })
-    .limit(5);
+    .limit(10); // increased from 5
 
   if (!pending || pending.length === 0) {
     return res.status(200).json({ message: 'No pending videos to process', processed: 0 });
@@ -158,14 +201,22 @@ export default async function handler(req, res) {
 
         if (existingName && existingName.length > 0) { results.skipped++; continue; }
 
-        // Enrich with Google Places data
-        const google = await enrichWithGoogle(venue.name, venue.area);
+        // Enrich with Google Places — retry once with no area if first attempt fails
+        let google = await enrichWithGoogle(venue.name, venue.area);
+        if (!google) {
+          console.log(`[enrich] retrying ${venue.name} without area bias`);
+          await new Promise(r => setTimeout(r, 500));
+          google = await enrichWithGoogle(venue.name, '');
+        }
+
+        const finalZone = google?.derived_zone || venue.zone || 'Central';
+        const finalArea = google?.derived_area || venue.area;
 
         await supabase.from('experiences').insert({
           name: google?.validated_name || venue.name,
           address: google?.validated_address || venue.address || null,
-          area: venue.area,
-          zone: venue.zone || 'Central',
+          area: finalArea,
+          zone: finalZone,
           category: venue.category,
           price: google?.price || venue.price || null,
           is_event: venue.is_event || false,
