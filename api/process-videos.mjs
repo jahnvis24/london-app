@@ -59,10 +59,8 @@ async function enrichWithGoogle(name, area) {
     if (!apiKey) return null;
 
     const searchQuery = `${name} ${area || ''} London`;
-
-    // Use legacy Places API for better price_level coverage
     const searchResp = await fetch(
-      `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${encodeURIComponent(searchQuery)}&inputtype=textquery&fields=place_id,name,formatted_address,geometry,rating,user_ratings_total,price_level,website,formatted_phone_number,opening_hours&locationbias=circle:30000@51.5074,-0.1278&key=${apiKey}`,
+      `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${encodeURIComponent(searchQuery)}&inputtype=textquery&fields=place_id,name,formatted_address,geometry,rating,user_ratings_total,price_level&locationbias=circle:30000@51.5074,-0.1278&key=${apiKey}`,
       { method: 'GET' }
     );
 
@@ -74,20 +72,9 @@ async function enrichWithGoogle(name, area) {
     const address = place.formatted_address || '';
     const postcodeMatch = address.match(/[A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2}/i);
     const postcode = postcodeMatch ? postcodeMatch[0].toUpperCase() : null;
+    const priceLevelMap = { 0: 'Free', 1: 'Under £15pp', 2: '£15-35pp', 3: '£35-70pp', 4: '£70pp+' };
 
-    const priceLevelMap = {
-      0: 'Free',
-      1: 'Under £15pp',
-      2: '£15-35pp',
-      3: '£35-70pp',
-      4: '£70pp+'
-    };
-
-    // Get place details for opening hours and website
-    let website = null;
-    let phone = null;
-    let opening_hours = null;
-
+    let website = null, phone = null, opening_hours = null;
     if (place.place_id) {
       try {
         const detailResp = await fetch(
@@ -99,7 +86,7 @@ async function enrichWithGoogle(name, area) {
         phone = detailData.result?.formatted_phone_number || null;
         opening_hours = detailData.result?.opening_hours?.weekday_text || null;
       } catch (e) {
-        console.error(`[enrich] details fetch failed for ${name}:`, e.message);
+        console.error(`[enrich] details failed for ${name}:`, e.message);
       }
     }
 
@@ -114,9 +101,7 @@ async function enrichWithGoogle(name, area) {
       google_review_count: place.user_ratings_total || null,
       google_price_level: place.price_level ?? null,
       price: priceLevelMap[place.price_level] ?? null,
-      website,
-      phone,
-      opening_hours,
+      website, phone, opening_hours,
     };
   } catch (e) {
     console.error(`[enrich] Google enrichment failed for ${name}:`, e.message);
@@ -155,13 +140,23 @@ export default async function handler(req, res) {
       for (const venue of venues) {
         if (!venue.name || !venue.area) { results.skipped++; continue; }
 
-        const { data: existing } = await supabase
+        // Check duplicate by tiktok_url
+        const { data: existingUrl } = await supabase
           .from('experiences')
           .select('id')
-          .or(`tiktok_url.eq.${video.tiktok_url},name.ilike.${venue.name}`)
+          .eq('tiktok_url', video.tiktok_url)
           .limit(1);
 
-        if (existing && existing.length > 0) { results.skipped++; continue; }
+        if (existingUrl && existingUrl.length > 0) { results.skipped++; continue; }
+
+        // Check duplicate by name
+        const { data: existingName } = await supabase
+          .from('experiences')
+          .select('id')
+          .ilike('name', venue.name)
+          .limit(1);
+
+        if (existingName && existingName.length > 0) { results.skipped++; continue; }
 
         // Enrich with Google Places data
         const google = await enrichWithGoogle(venue.name, venue.area);
@@ -179,6 +174,7 @@ export default async function handler(req, res) {
           comment: venue.comment,
           vibe_tags: venue.vibe_tags || [],
           tiktok_url: video.tiktok_url,
+          source: video.source || null,
           status: 'pending',
           lat: google?.lat || null,
           lng: google?.lng || null,

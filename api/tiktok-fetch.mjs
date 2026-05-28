@@ -5,6 +5,8 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY
 );
 
+const TIKWM_API_BASE = 'https://api.tikwmapi.com';
+
 const KEYWORDS = [
   "things to do London",
   "hidden gems London",
@@ -12,6 +14,20 @@ const KEYWORDS = [
   "bars London",
   "London food",
   "London experiences",
+  "London brunch",
+  "London cocktail bars",
+  "South London things to do",
+  "East London restaurants",
+  "North London hidden gems",
+  "West London bars",
+  "Peckham things to do",
+  "Shoreditch bars",
+  "Brixton nightlife",
+  "London date ideas",
+  "London solo activities",
+  "London rooftop bars",
+  "London markets",
+  "London galleries",
 ];
 
 const USERNAMES_BATCH_1 = [
@@ -42,10 +58,10 @@ async function setConfig(key, value) {
 
 async function searchTikTok(keyword) {
   try {
-    const resp = await fetch('https://tikwm.com/api/feed/search', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ keywords: keyword, count: '10', cursor: '0' }).toString()
+    const params = new URLSearchParams({ keywords: keyword, count: '30', cursor: '0' });
+    const resp = await fetch(`${TIKWM_API_BASE}/feed/search?${params}`, {
+      method: 'GET',
+      headers: { 'x-tikwmapi-key': process.env.TIKWM_API_TOKEN }
     });
     const text = await resp.text();
     console.log(`[keyword:${keyword}] status:${resp.status} body:${text.slice(0, 200)}`);
@@ -60,14 +76,10 @@ async function searchTikTok(keyword) {
 
 async function getUserVideos(username) {
   try {
-    const token = process.env.TIKWM_API_TOKEN;
-    const params = { unique_id: username, count: '80', cursor: '0' };
-    if (token) params.token = token;
-
-    const resp = await fetch('https://tikwm.com/api/user/posts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams(params).toString()
+    const params = new URLSearchParams({ unique_id: username, count: '30', cursor: '0' });
+    const resp = await fetch(`${TIKWM_API_BASE}/user/posts?${params}`, {
+      method: 'GET',
+      headers: { 'x-tikwmapi-key': process.env.TIKWM_API_TOKEN }
     });
     const text = await resp.text();
     console.log(`[user:${username}] status:${resp.status} body:${text.slice(0, 200)}`);
@@ -90,11 +102,11 @@ export default async function handler(req, res) {
   const allVideos = [];
   let queued = 0;
 
-  // ── KEYWORDS: rotate 2 per day ──
+  // ── KEYWORDS: rotate 4 per run ──
   const cursorStr = await getConfig('tiktok_keyword_cursor') || '0';
   const cursor = parseInt(cursorStr);
-  const keywordBatch = KEYWORDS.slice(cursor, cursor + 2);
-  const nextCursor = (cursor + 2) >= KEYWORDS.length ? 0 : cursor + 2;
+  const keywordBatch = KEYWORDS.slice(cursor, cursor + 4);
+  const nextCursor = (cursor + 4) >= KEYWORDS.length ? 0 : cursor + 4;
 
   console.log(`[keywords] running batch: ${keywordBatch}`);
 
