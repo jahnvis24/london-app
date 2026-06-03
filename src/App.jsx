@@ -1207,7 +1207,11 @@ export default function App() {
     })));
 
     const areaNote = ans.area;
-    const travelNote = ans.travel === "walking" ? "walking only between stops, keep stops within walking distance of each other" : ans.travel === "max15" ? "max 15 min walk between each stop, only pick venues close together" : "walking and tube ok between stops";
+    const travelNote = ans.travel === "walking"
+  ? "walking only, all stops must be within 15 min walk of each other"
+  : ans.travel === "max10"
+  ? "strict: max 20 min total travel between ANY two consecutive stops, prioritise venues in the same neighbourhood"
+  : "walking and tube ok, keep total travel between stops under 20 min";
 
     const prompt = "You are London's sharpest local guide. Build a perfect itinerary from these curated venues. User: " +
       ans.timeOfDay + " plan, vibes: " + (ans.vibes || []).join(", ") +
@@ -1250,7 +1254,7 @@ export default function App() {
 
           if (dbVenue?.lat && dbVenue?.lng && nextDbVenue?.lat && nextDbVenue?.lng) {
             try {
-              const travelMode = ans.travel === "walking" || ans.travel === "max15" ? "walking" : "transit";
+              const travelMode = ans.travel === "walking" || ans.travel === "max10" ? "walking" : "transit";
               const departureTime = new Date().toISOString(); // use now as proxy
 
               const travelResp = await fetch("/api/travel-time", {
@@ -1279,11 +1283,11 @@ export default function App() {
 
       // Filter stops exceeding 15 min if max15 mode
       let finalStops = enrichedStops;
-      if (ans.travel === "max15") {
+      if (ans.travel === "max10") {
         finalStops = enrichedStops.filter((stop, idx) => {
           if (idx === 0) return true;
           const prevStop = enrichedStops[idx - 1];
-          if (prevStop.travel_minutes && prevStop.travel_minutes > 15) return false;
+          if (prevStop.travel_minutes && prevStop.travel_minutes > 20) return false;
           return true;
         });
       }
