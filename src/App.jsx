@@ -89,10 +89,9 @@ const ZONES = ["North", "Northwest", "Northeast", "South", "Southwest", "Southea
 
 function scoreVenue(v, vibes, budget, area, timeOfDay, extras) {
   let score = 0;
-  const zones = AREA_ZONES[area] || AREA_ZONES.anywhere;
-  if (!zones.includes(v.travelZone)) return -1;
-  const prices = BUDGET_MAP[budget] || ["low", "mid", "high"];
-  if (!prices.includes(v.price)) return -1;
+const prices = BUDGET_MAP[budget] || ["low", "mid", "high", "Under £15pp", "£15-35pp", "£35-70pp", "£70pp+"];
+  const vPrice = v.price || "mid";
+  if (!prices.some(p => vPrice.toLowerCase().includes(p.toLowerCase()) || p.toLowerCase().includes(vPrice.toLowerCase()))) return -1;
   const tod = timeOfDay === "full" ? "day,night" : timeOfDay;
   if (!v.bestTime.split(",").some((t) => tod.split(",").includes(t))) return -1;
   const wt = vibes.flatMap((vb) => VIBE_TAG_MAP[vb] || [vb]);
@@ -106,18 +105,39 @@ function scoreVenue(v, vibes, budget, area, timeOfDay, extras) {
 
 function buildShortlist(answers, dbVenues = []) {
   const { vibes, area, budget, timeOfDay, extras } = answers;
+  const isSurprise = area === "surprise_me";
+
+  // Pick zone
+  let targetZone = area;
+  if (isSurprise) {
+    // Pick zone with most venues
+    const zoneCounts = {};
+    dbVenues.forEach(v => { const z = (v.zone || "Central").toLowerCase(); zoneCounts[z] = (zoneCounts[z] || 0) + 1; });
+    const zones = Object.keys(zoneCounts).filter(z => zoneCounts[z] >= 3);
+    targetZone = zones.length > 0 ? zones[Math.floor(Math.random() * zones.length)] : "central";
+  }
+
   const allVenues = dbVenues.map(v => ({
     id: v.id, name: v.name, type: v.category || "experience",
     area: (v.zone || "Central").toLowerCase(), tags: v.vibe_tags || [],
-    price: v.price === "Free" ? "low" : v.price === "high" ? "high" : v.price === "low" ? "low" : "mid",
-    bestTime: "day,night", bookingRequired: false, desc: v.comment || "",
-    emoji: "✨", travelZone: (v.zone || "Central").toLowerCase()
+    price: v.price || "mid", bestTime: "day,night", bookingRequired: false,
+    desc: v.comment || "", emoji: "✨", travelZone: (v.zone || "Central").toLowerCase(),
+    google_rating: v.google_rating, lat: v.lat, lng: v.lng
   }));
 
-  // Fallback to hardcoded if DB is empty
   const source = allVenues.length > 0 ? allVenues : VENUES;
 
-  const scored = source.map((v) => ({ ...v, score: scoreVenue(v, vibes || [], budget || "mid", area || "anywhere", timeOfDay || "night", extras || []) }))
+  // Strict single zone for surprise_me, neighbour zones for named areas
+  let zoneFiltered = source.filter(v => v.travelZone === targetZone?.toLowerCase());
+  if (!isSurprise && zoneFiltered.length < 4) {
+    // expand to neighbours only for named areas
+    const neighbours = { central: ["central","east","south"], east: ["east","northeast","central"], south: ["south","southeast","southwest"], west: ["west","northwest","southwest"], north: ["north","northeast","northwest"], southwest: ["southwest","west","south"], northwest: ["northwest","north","west"], northeast: ["northeast","east","north"], southeast: ["southeast","south","east"] };
+    const neighbourList = neighbours[targetZone?.toLowerCase()] || [targetZone?.toLowerCase()];
+    zoneFiltered = source.filter(v => neighbourList.includes(v.travelZone));
+  }
+  if (zoneFiltered.length < 3) zoneFiltered = source;
+
+  const scored = zoneFiltered.map((v) => ({ ...v, score: scoreVenue(v, vibes || [], budget || "mid", timeOfDay || "night", extras || []) }))
     .filter((v) => v.score >= 0).sort((a, b) => b.score - a.score);
   const types = STOP_ORDER[timeOfDay] || STOP_ORDER.night;
   const used = new Set(), usedTypes = {}, shortlist = [];
@@ -130,7 +150,7 @@ function buildShortlist(answers, dbVenues = []) {
     if (!n) break;
     shortlist.push(n); used.add(n.id);
   }
-  return shortlist.slice(0, 5);
+  return { venues: shortlist.slice(0, 6), zone: targetZone };
 }
 
 const QUESTIONS = [
@@ -1195,7 +1215,9 @@ export default function App() {
 
   async function generate() {
     setLoading(true); setError(null);
-    const shortlist = buildShortlist(ans, dbVenues);
+    const shortlistResult = buildShortlist(ans, dbVenues);
+    const shortlistVenues = shortlistResult.venues || shortlistResult;
+    const chosenZone = shortlistResult.zone || ans.area;
     const venueData = JSON.stringify(shortlist.map(v => ({
       name: v.name, type: v.type, area: v.travelZone + " London",
       price: v.price, tags: v.tags, desc: v.desc, emoji: v.emoji,
@@ -1207,17 +1229,20 @@ export default function App() {
     const areaNote = ans.area === "surprise_me" ? "anywhere in London — surprise them" : ans.area;
     const travelNote = ans.travel === "walking" ? "walking only between stops, keep stops within walking distance of each other" : ans.travel === "max15" ? "max 15 min walk between each stop, only pick venues close together" : "walking and tube ok between stops";
 
-    const prompt = "You are London's sharpest local guide. Build a perfect itinerary from these curated venues. User: " +
+    const prompt = "You are London's sharpest local guide. CRITICAL RULES: 1) You MUST ONLY use venues from the list I give you — do NOT invent or hallucinate any other venues. 2) All stops must be within 20 min " + (ans.travel === "walking" ? "walk" : "travel") + " of each other — this is non-negotiable. User: " +
       ans.timeOfDay + " plan, vibes: " + (ans.vibes || []).join(", ") +
       ", area: " + areaNote + ", budget: " + ans.budget +
       ", group: " + ans.groupSize + ", energy: " + ans.energy +
       ", travel: " + travelNote +
       ", " + times.start + " to " + times.end +
       ", include: " + ((ans.extras || []).join(", ") || "no extras") +
-      ". Venues (pick best 4-5): " + venueData +
-      ". Respond ONLY with valid JSON, no markdown, no backticks: " +
-      '{"title":"punchy name","tagline":"witty sentence","vibe_scores":{"fun":7,"romantic":3,"cultural":6,"chaotic":2},"total_cost_estimate":"35-55pp","stops":[{"time":"18:30","name":"venue name","type":"bar","area":"Shoreditch","emoji":"🍸","hook":"best thing about this place","why_it_fits":"vibe match","booking":"Walk-in fine","cost_estimate":"£15-35pp","travel_to_next":"calculating..."}],"extend_the_night":"late suggestion","local_tip":"insider tip"}';
-
+      ". ONLY USE THESE VENUES — pick 4 that are closest together geographically: " + venueData +
+      ". Do NOT use any venue not in this list. Respond ONLY with valid JSON, no markdown: " +
+      '{"title":"punchy name","tagline":"witty sentence","chosen_area":"' + chosenZone + '",' +
+      '"vibe_scores":{"fun":7,"romantic":3,"cultural":6,"chaotic":2},"total_cost_estimate":"35-55pp",' +
+      '"stops":[{"time":"18:30","name":"EXACT name from list","type":"bar","area":"Shoreditch","emoji":"🍸","hook":"best thing","why_it_fits":"vibe match","booking":"Walk-in fine","cost_estimate":"£15-35pp","travel_to_next":"calculating..."}],' +
+      '"extend_the_night":"late suggestion","local_tip":"insider tip"}';
+      
     try {
       const txt = await callClaude(prompt, 1000);
       const parsed = JSON.parse(txt);
