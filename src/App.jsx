@@ -156,7 +156,7 @@ function buildShortlist(answers, dbVenues = []) {
 const QUESTIONS = [
   { id: "timeOfDay", label: "1 of 8", title: "Day out or night in London?", multi: false, options: [{ value: "day", label: "Day plan", emoji: "☀️" }, { value: "night", label: "Night plan", emoji: "🌙" }, { value: "full", label: "Full day + night", emoji: "🌅" }] },
   { id: "vibes", label: "2 of 8", title: "Pick your vibe", multi: true, options: [{ value: "chill", label: "Chill", emoji: "😌" }, { value: "romantic", label: "Romantic", emoji: "🌹" }, { value: "chaotic", label: "Chaotic fun", emoji: "🌀" }, { value: "cultural", label: "Cultural", emoji: "🏛️" }, { value: "fancy", label: "Fancy", emoji: "🥂" }, { value: "hidden_gems", label: "Hidden gems", emoji: "💎" }, { value: "social", label: "Social", emoji: "🎉" }, { value: "solo", label: "Solo reset", emoji: "🧘" }, { value: "creative", label: "Creative", emoji: "🎨" }, { value: "activity", label: "Activity-based", emoji: "🎯" }, { value: "active", label: "Active", emoji: "🏃" }] },
-  { id: "area", label: "3 of 8", title: "Any area preference?", multi: false, options: [{ value: "central", label: "Central", emoji: "🎭" }, { value: "east", label: "East", emoji: "🧱" }, { value: "south", label: "South", emoji: "🌉" }, { value: "west", label: "West", emoji: "🌳" }, { value: "north", label: "North", emoji: "🌲" }, { value: "southwest", label: "Southwest", emoji: "🏡" }, { value: "northwest", label: "Northwest", emoji: "🌿" }, { value: "outskirts", label: "Outskirts", emoji: "🚂" }, { value: "surprise_me", label: "Surprise me!", emoji: "🎲" }] },
+  { id: "area", label: "3 of 8", title: "Any area preference?", multi: false, options: [{ value: "central", label: "Central", emoji: "🎭" }, { value: "east", label: "East", emoji: "🧱" }, { value: "south", label: "South", emoji: "🌉" }, { value: "west", label: "West", emoji: "🌳" }] },
   { id: "travel", label: "4 of 8", title: "How do you want to get around?", multi: false, options: [{ value: "walking", label: "Walking only", emoji: "🚶" }, { value: "walk_tube", label: "Walk + tube", emoji: "🚇" }, { value: "max10", label: "Max 10 min each stop", emoji: "⚡" }] },
   { id: "budget", label: "5 of 8", title: "Budget vibe?", multi: false, options: [{ value: "low", label: "Broke but fun", emoji: "💸" }, { value: "mid", label: "Mid range", emoji: "💳" }, { value: "high", label: "Treat yourself", emoji: "✨" }, { value: "unlimited", label: "No limit", emoji: "🚀" }] },
   { id: "groupSize", label: "6 of 8", title: "Who's coming?", multi: false, options: [{ value: "solo", label: "Just me", emoji: "🙋" }, { value: "duo", label: "Two of us", emoji: "👫" }, { value: "small", label: "3–5 people", emoji: "👯" }, { value: "large", label: "5+ crew", emoji: "🎊" }] },
@@ -1242,7 +1242,7 @@ export default function App() {
       '"vibe_scores":{"fun":7,"romantic":3,"cultural":6,"chaotic":2},"total_cost_estimate":"35-55pp",' +
       '"stops":[{"time":"18:30","name":"EXACT name from list","type":"bar","area":"Shoreditch","emoji":"🍸","hook":"best thing","why_it_fits":"vibe match","booking":"Walk-in fine","cost_estimate":"£15-35pp","travel_to_next":"calculating..."}],' +
       '"extend_the_night":"late suggestion","local_tip":"insider tip"}';
-      
+
     try {
       const txt = await callClaude(prompt, 1000);
       const parsed = JSON.parse(txt);
