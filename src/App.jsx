@@ -127,6 +127,25 @@ function buildShortlist(answers, dbVenues = []) {
   }));
   const source = allVenues.length > 0 ? allVenues : VENUES;
 
+  // ── MAP PIN MODE: filter strictly by 1.5km radius ────────────
+  if (area === "map_pin" && answers.mapPin) {
+    const { lat: pinLat, lng: pinLng } = answers.mapPin;
+    const nearby = source
+      .filter(v => v.lat && v.lng && haversineKm(pinLat, pinLng, v.lat, v.lng) <= 1.5)
+      .map(v => ({ ...v, score: scoreVenue(v, vibes || [], budget || "mid", timeOfDay || "night", extras || []) }))
+      .filter(v => v.score >= 0)
+      .sort((a, b) => b.score - a.score);
+    const types = STOP_ORDER[timeOfDay] || STOP_ORDER.night;
+    const used = new Set(), usedTypes = {}, shortlist = [];
+    for (const t of types) {
+      const c = nearby.filter(v => v.type === t && !used.has(v.id) && (usedTypes[t] || 0) < 2);
+      if (c[0]) { shortlist.push(c[0]); used.add(c[0].id); usedTypes[t] = (usedTypes[t] || 0) + 1; }
+    }
+    while (shortlist.length < 4) { const n = nearby.find(v => !used.has(v.id)); if (!n) break; shortlist.push(n); used.add(n.id); }
+    return { venues: shortlist.slice(0, 6), zone: "map_pin" };
+  }
+
+  // ── ZONE MODE ─────────────────────────────────────────────────
   let targetZone = area;
   if (isSurprise) {
     const zoneCounts = {};
@@ -178,7 +197,7 @@ function buildShortlist(answers, dbVenues = []) {
 const QUESTIONS = [
   { id: "timeOfDay", label: "1 of 8", title: "Day out or night in London?", multi: false, options: [{ value: "day", label: "Day plan", emoji: "☀️" }, { value: "night", label: "Night plan", emoji: "🌙" }, { value: "full", label: "Full day + night", emoji: "🌅" }] },
   { id: "vibes", label: "2 of 8", title: "Pick your vibe", multi: true, options: [{ value: "chill", label: "Chill", emoji: "😌" }, { value: "romantic", label: "Romantic", emoji: "🌹" }, { value: "chaotic", label: "Chaotic fun", emoji: "🌀" }, { value: "cultural", label: "Cultural", emoji: "🏛️" }, { value: "fancy", label: "Fancy", emoji: "🥂" }, { value: "hidden_gems", label: "Hidden gems", emoji: "💎" }, { value: "social", label: "Social", emoji: "🎉" }, { value: "solo", label: "Solo reset", emoji: "🧘" }, { value: "creative", label: "Creative", emoji: "🎨" }, { value: "activity", label: "Activity-based", emoji: "🎯" }, { value: "active", label: "Active", emoji: "🏃" }] },
-  { id: "area", label: "3 of 8", title: "Any area preference?", multi: false, options: [{ value: "central", label: "Central", emoji: "🎭" }, { value: "east", label: "East", emoji: "🧱" }, { value: "south", label: "South", emoji: "🌉" }, { value: "west", label: "West", emoji: "🌳" }, { value: "north", label: "North", emoji: "🌲" }, { value: "southwest", label: "Southwest", emoji: "🏡" }, { value: "northwest", label: "Northwest", emoji: "🌿" }, { value: "outskirts", label: "Outskirts", emoji: "🚂" }] },
+  { id: "area", label: "3 of 8", title: "Any area preference?", multi: false, options: [{ value: "central", label: "Central", emoji: "🎭" }, { value: "east", label: "East", emoji: "🧱" }, { value: "south", label: "South", emoji: "🌉" }, { value: "west", label: "West", emoji: "🌳" }, { value: "north", label: "North", emoji: "🌲" }, { value: "southwest", label: "Southwest", emoji: "🏡" }, { value: "northwest", label: "Northwest", emoji: "🌿" }, { value: "outskirts", label: "Outskirts", emoji: "🚂" }, { value: "map_pin", label: "Pick on map", emoji: "📍" }] },
   { id: "travel", label: "4 of 8", title: "How do you want to get around?", multi: false, options: [{ value: "walking", label: "Walking only", emoji: "🚶" }, { value: "walk_tube", label: "Walk + tube", emoji: "🚇" }, { value: "max10", label: "Max 10 min each stop", emoji: "⚡" }] },
   { id: "budget", label: "5 of 8", title: "Budget vibe?", multi: false, options: [{ value: "low", label: "Broke but fun", emoji: "💸" }, { value: "mid", label: "Mid range", emoji: "💳" }, { value: "high", label: "Treat yourself", emoji: "✨" }, { value: "unlimited", label: "No limit", emoji: "🚀" }] },
   { id: "groupSize", label: "6 of 8", title: "Who's coming?", multi: false, options: [{ value: "solo", label: "Just me", emoji: "🙋" }, { value: "duo", label: "Two of us", emoji: "👫" }, { value: "small", label: "3–5 people", emoji: "👯" }, { value: "large", label: "5+ crew", emoji: "🎊" }] },
@@ -502,6 +521,95 @@ function HomeScreen({ onStart }) {
   );
 }
 
+
+function MapPicker({ onPin, currentPin }) {
+  const mapRef = useRef(null);
+  const mapInstanceRef = useRef(null);
+  const markerRef = useRef(null);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    // Load Leaflet CSS
+    if (!document.getElementById('leaflet-css')) {
+      const link = document.createElement('link');
+      link.id = 'leaflet-css';
+      link.rel = 'stylesheet';
+      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+      document.head.appendChild(link);
+    }
+
+    // Load Leaflet JS
+    if (window.L) { setLoaded(true); return; }
+    const script = document.createElement('script');
+    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    script.onload = () => setLoaded(true);
+    document.head.appendChild(script);
+  }, []);
+
+  useEffect(() => {
+    if (!loaded || !mapRef.current || mapInstanceRef.current) return;
+
+    const L = window.L;
+    const map = L.map(mapRef.current, {
+      center: [51.505, -0.09],
+      zoom: 12,
+      zoomControl: true,
+    });
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors',
+      maxZoom: 18,
+    }).addTo(map);
+
+    // Custom pin icon
+    const pinIcon = L.divIcon({
+      html: '<div style="width:28px;height:28px;background:#1B998B;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.3)"></div>',
+      iconSize: [28, 28],
+      iconAnchor: [14, 28],
+      className: '',
+    });
+
+    // Restore existing pin
+    if (currentPin) {
+      markerRef.current = L.marker([currentPin.lat, currentPin.lng], { icon: pinIcon }).addTo(map);
+      map.setView([currentPin.lat, currentPin.lng], 14);
+    }
+
+    map.on('click', (e) => {
+      const { lat, lng } = e.latlng;
+      if (markerRef.current) markerRef.current.remove();
+      markerRef.current = L.marker([lat, lng], { icon: pinIcon }).addTo(map);
+      onPin({ lat, lng });
+    });
+
+    mapInstanceRef.current = map;
+    // Fix tile rendering after mount
+    setTimeout(() => map.invalidateSize(), 100);
+  }, [loaded]);
+
+  return (
+    <div style={{ marginTop: "1rem" }}>
+      <div style={{ fontSize: "0.72rem", color: "#6b5e4e", marginBottom: "8px", lineHeight: 1.5 }}>
+        Tap anywhere on the map to drop a pin. We'll find venues within 1.5km.
+      </div>
+      {!loaded && (
+        <div style={{ height: 280, background: "#f5f0e8", borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center", color: "#9b8f7a", fontSize: "0.82rem" }}>
+          Loading map...
+        </div>
+      )}
+      <div
+        ref={mapRef}
+        style={{ height: 280, borderRadius: 14, overflow: "hidden", border: "1.5px solid #ddd8ce", display: loaded ? "block" : "none" }}
+      />
+      {currentPin && (
+        <div style={{ marginTop: "0.5rem", fontSize: "0.75rem", color: "#1B998B", display: "flex", alignItems: "center", gap: 4 }}>
+          ✓ Pin dropped · {currentPin.lat.toFixed(4)}, {currentPin.lng.toFixed(4)}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function QuizScreen({ step, ans, times, setTimes, onToggle, onNext, onBack, onGenerate, loading, loadIdx, error }) {
   const q = QUESTIONS[step];
   const totalSteps = QUESTIONS.length + 1;
@@ -526,6 +634,7 @@ function QuizScreen({ step, ans, times, setTimes, onToggle, onNext, onBack, onGe
   function canNext() {
     if (step >= QUESTIONS.length) return true;
     const a = ans[q.id];
+    if (q.id === "area" && a === "map_pin") return !!ans.mapPin;
     return q.multi ? a && a.length > 0 : !!a;
   }
 
@@ -589,6 +698,17 @@ function QuizScreen({ step, ans, times, setTimes, onToggle, onNext, onBack, onGe
                 <div style={{ marginTop: "0.5rem", fontSize: "0.75rem", color: "#1B998B" }}>✦ Selected: {ans.area}</div>
               )}
             </div>
+          )}
+          {isAreaStep && ans.area === "map_pin" && (
+            <MapPicker
+              onPin={(pin) => { onToggle("mapPin", pin, false); }}
+              currentPin={ans.mapPin}
+            />
+          )}
+          {isAreaStep && ans.area === "map_pin" && ans.mapPin && (
+            <button className="btn btn-teal" style={{ marginTop: "1rem" }} onClick={onNext}>
+              Use this location →
+            </button>
           )}
           {q.multi && <button className="btn" style={{ marginTop: "1.25rem" }} disabled={!canNext()} onClick={onNext}>Continue →</button>}
         </div>
@@ -1111,7 +1231,6 @@ function AdminScreen({ onBadgeUpdate }) {
               <div className="admin-card-name">{item.name}</div>
               <div className="admin-card-meta">
                 {item.category} · {item.area} · {item.price || "price unknown"}
-                {item.google_rating && ` · ⭐ ${item.google_rating}`}
                 {item.is_event && item.event_start && ` · 📅 ${new Date(item.event_start).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`}
               </div>
               {item.comment && <div style={{ fontSize: "0.78rem", color: "#6b5e4e", marginBottom: "8px", lineHeight: 1.4 }}>{item.comment}</div>}
@@ -1253,7 +1372,7 @@ export default function App() {
       price_range: v.price || null,
     })));
 
-    const areaNote = ans.area;
+    const areaNote = ans.area === "map_pin" ? `near dropped pin (${ans.mapPin?.lat?.toFixed(3)}, ${ans.mapPin?.lng?.toFixed(3)})` : ans.area;
     const travelNote = ans.travel === "walking"
   ? "walking only, all stops must be within 15 min walk of each other"
   : ans.travel === "max10"
