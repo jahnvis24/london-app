@@ -112,6 +112,14 @@ function haversineKm(lat1, lng1, lat2, lng2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
+function haversineKm(lat1, lng1, lat2, lng2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
 function buildShortlist(answers, dbVenues = []) {
   const { vibes, area, budget, timeOfDay, extras } = answers;
   const isSurprise = area === "surprise_me";
@@ -197,7 +205,7 @@ function buildShortlist(answers, dbVenues = []) {
 const QUESTIONS = [
   { id: "timeOfDay", label: "1 of 8", title: "Day out or night in London?", multi: false, options: [{ value: "day", label: "Day plan", emoji: "☀️" }, { value: "night", label: "Night plan", emoji: "🌙" }, { value: "full", label: "Full day + night", emoji: "🌅" }] },
   { id: "vibes", label: "2 of 8", title: "Pick your vibe", multi: true, options: [{ value: "chill", label: "Chill", emoji: "😌" }, { value: "romantic", label: "Romantic", emoji: "🌹" }, { value: "chaotic", label: "Chaotic fun", emoji: "🌀" }, { value: "cultural", label: "Cultural", emoji: "🏛️" }, { value: "fancy", label: "Fancy", emoji: "🥂" }, { value: "hidden_gems", label: "Hidden gems", emoji: "💎" }, { value: "social", label: "Social", emoji: "🎉" }, { value: "solo", label: "Solo reset", emoji: "🧘" }, { value: "creative", label: "Creative", emoji: "🎨" }, { value: "activity", label: "Activity-based", emoji: "🎯" }, { value: "active", label: "Active", emoji: "🏃" }] },
-  { id: "area", label: "3 of 8", title: "Any area preference?", multi: false, options: [{ value: "central", label: "Central", emoji: "🎭" }, { value: "east", label: "East", emoji: "🧱" }, { value: "south", label: "South", emoji: "🌉" }, { value: "west", label: "West", emoji: "🌳" }, { value: "north", label: "North", emoji: "🌲" }, { value: "southwest", label: "Southwest", emoji: "🏡" }, { value: "northwest", label: "Northwest", emoji: "🌿" }, { value: "outskirts", label: "Outskirts", emoji: "🚂" }, { value: "map_pin", label: "Pick on map", emoji: "📍" }] },
+  { id: "area", label: "3 of 8", title: "Any area preference?", multi: false, options: [{ value: "central", label: "Central", emoji: "🎭" }, { value: "east", label: "East", emoji: "🧱" }, { value: "south", label: "South", emoji: "🌉" }, { value: "west", label: "West", emoji: "🌳" }, { value: "north", label: "North", emoji: "🌲" }, { value: "southwest", label: "Southwest", emoji: "🏡" }, { value: "northwest", label: "Northwest", emoji: "🌿" }, { value: "outskirts", label: "Outskirts", emoji: "🚂" }, { value: "map_pin", label: "Pick on map", emoji: "📍" }, { value: "map_pin", label: "Pick on map", emoji: "📍" }] },
   { id: "travel", label: "4 of 8", title: "How do you want to get around?", multi: false, options: [{ value: "walking", label: "Walking only", emoji: "🚶" }, { value: "walk_tube", label: "Walk + tube", emoji: "🚇" }, { value: "max10", label: "Max 10 min each stop", emoji: "⚡" }] },
   { id: "budget", label: "5 of 8", title: "Budget vibe?", multi: false, options: [{ value: "low", label: "Broke but fun", emoji: "💸" }, { value: "mid", label: "Mid range", emoji: "💳" }, { value: "high", label: "Treat yourself", emoji: "✨" }, { value: "unlimited", label: "No limit", emoji: "🚀" }] },
   { id: "groupSize", label: "6 of 8", title: "Who's coming?", multi: false, options: [{ value: "solo", label: "Just me", emoji: "🙋" }, { value: "duo", label: "Two of us", emoji: "👫" }, { value: "small", label: "3–5 people", emoji: "👯" }, { value: "large", label: "5+ crew", emoji: "🎊" }] },
@@ -610,6 +618,72 @@ function MapPicker({ onPin, currentPin }) {
   );
 }
 
+function MapPicker({ onPin, currentPin }) {
+  const mapRef = useRef(null);
+  const mapInstanceRef = useRef(null);
+  const markerRef = useRef(null);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!document.getElementById('leaflet-css')) {
+      const link = document.createElement('link');
+      link.id = 'leaflet-css';
+      link.rel = 'stylesheet';
+      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+      document.head.appendChild(link);
+    }
+    if (window.L) { setLoaded(true); return; }
+    const script = document.createElement('script');
+    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    script.onload = () => setLoaded(true);
+    document.head.appendChild(script);
+  }, []);
+
+  useEffect(() => {
+    if (!loaded || !mapRef.current || mapInstanceRef.current) return;
+    const L = window.L;
+    const map = L.map(mapRef.current, { center: [51.505, -0.09], zoom: 12 });
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors', maxZoom: 18,
+    }).addTo(map);
+    const pinIcon = L.divIcon({
+      html: '<div style="width:28px;height:28px;background:#1B998B;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.3)"></div>',
+      iconSize: [28, 28], iconAnchor: [14, 28], className: '',
+    });
+    if (currentPin) {
+      markerRef.current = L.marker([currentPin.lat, currentPin.lng], { icon: pinIcon }).addTo(map);
+      map.setView([currentPin.lat, currentPin.lng], 14);
+    }
+    map.on('click', (e) => {
+      const { lat, lng } = e.latlng;
+      if (markerRef.current) markerRef.current.remove();
+      markerRef.current = L.marker([lat, lng], { icon: pinIcon }).addTo(map);
+      onPin({ lat, lng });
+    });
+    mapInstanceRef.current = map;
+    setTimeout(() => map.invalidateSize(), 100);
+  }, [loaded]);
+
+  return (
+    <div style={{ marginTop: "1rem" }}>
+      <div style={{ fontSize: "0.72rem", color: "#6b5e4e", marginBottom: "8px", lineHeight: 1.5 }}>
+        Tap anywhere on the map to drop a pin. We'll find venues within 1.5km.
+      </div>
+      {!loaded && (
+        <div style={{ height: 280, background: "#f5f0e8", borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center", color: "#9b8f7a", fontSize: "0.82rem" }}>
+          Loading map...
+        </div>
+      )}
+      <div ref={mapRef} style={{ height: 280, borderRadius: 14, overflow: "hidden", border: "1.5px solid #ddd8ce", display: loaded ? "block" : "none" }} />
+      {currentPin && (
+        <div style={{ marginTop: "0.5rem", fontSize: "0.75rem", color: "#1B998B" }}>
+          ✓ Pin dropped · {currentPin.lat.toFixed(4)}, {currentPin.lng.toFixed(4)}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function QuizScreen({ step, ans, times, setTimes, onToggle, onNext, onBack, onGenerate, loading, loadIdx, error }) {
   const q = QUESTIONS[step];
   const totalSteps = QUESTIONS.length + 1;
@@ -632,11 +706,11 @@ function QuizScreen({ step, ans, times, setTimes, onToggle, onNext, onBack, onGe
   }
 
   function canNext() {
-    if (step >= QUESTIONS.length) return true;
-    const a = ans[q.id];
-    if (q.id === "area" && a === "map_pin") return !!ans.mapPin;
-    return q.multi ? a && a.length > 0 : !!a;
-  }
+  if (step >= QUESTIONS.length) return true;
+  const a = ans[q.id];
+  if (q.id === "area" && a === "map_pin") return !!ans.mapPin;
+  return q.multi ? a && a.length > 0 : !!a;
+}
 
   if (loading) return (
     <div className="loading">
@@ -710,6 +784,17 @@ function QuizScreen({ step, ans, times, setTimes, onToggle, onNext, onBack, onGe
               Use this location →
             </button>
           )}
+          {isAreaStep && ans.area === "map_pin" && (
+  <MapPicker
+    onPin={(pin) => { onToggle("mapPin", pin, false); }}
+    currentPin={ans.mapPin}
+  />
+)}
+{isAreaStep && ans.area === "map_pin" && ans.mapPin && (
+  <button className="btn btn-teal" style={{ marginTop: "1rem" }} onClick={onNext}>
+    Use this location →
+  </button>
+)}
           {q.multi && <button className="btn" style={{ marginTop: "1.25rem" }} disabled={!canNext()} onClick={onNext}>Continue →</button>}
         </div>
       ) : (
