@@ -8,46 +8,31 @@ const supabase = createClient(
 function zoneFromPostcode(postcode) {
   if (!postcode) return null;
   const clean = postcode.trim().toUpperCase();
-
-  // Central — check specific districts before broad prefixes
-  if (clean.startsWith('EC')) return 'Central';   // City of London
-  if (clean.startsWith('WC')) return 'Central';   // Covent Garden, Holborn
-  if (clean.startsWith('W1')) return 'Central';   // Mayfair, Soho, Marylebone, Fitzrovia
-  if (clean.startsWith('SW1')) return 'Central';  // Westminster, Whitehall, Belgravia
-  if (clean.startsWith('NW1')) return 'Central';  // Camden Town, Marylebone, Regents Park
-  if (clean.startsWith('SE1')) return 'Central';  // Southwark, Borough, Waterloo, Bermondsey
-
-  // Northwest
-  if (clean.startsWith('NW')) return 'Northwest'; // Hampstead, Kilburn, Cricklewood
-  if (clean.startsWith('HA')) return 'Northwest'; // Harrow
-  if (clean.startsWith('WD')) return 'Northwest'; // Watford
-  if (clean.startsWith('AL')) return 'Northwest'; // St Albans
-
-  // North
-  if (clean.startsWith('N')) return 'North';      // Islington, Highgate, Tottenham, Stoke Newington
-  if (clean.startsWith('EN')) return 'North';     // Enfield
-
-  // East
-  if (clean.startsWith('E')) return 'East';       // Shoreditch, Hackney, Stratford, Bethnal Green
-  if (clean.startsWith('RM')) return 'East';      // Romford
-  if (clean.startsWith('IG')) return 'East';      // Ilford
-
-  // West
-  if (clean.startsWith('W')) return 'West';       // Paddington, Notting Hill, Chiswick, Hammersmith
-  if (clean.startsWith('UB')) return 'West';      // Uxbridge
-
-  // Southwest
-  if (clean.startsWith('SW')) return 'Southwest'; // Brixton, Clapham, Battersea, Chelsea
-  if (clean.startsWith('TW')) return 'Southwest'; // Twickenham, Richmond
-  if (clean.startsWith('KT')) return 'Southwest'; // Kingston
-  if (clean.startsWith('SM')) return 'Southwest'; // Sutton, Morden
-
-  // Southeast
-  if (clean.startsWith('SE')) return 'Southeast'; // Peckham, Greenwich, Lewisham, Deptford
-  if (clean.startsWith('CR')) return 'Southeast'; // Croydon
-  if (clean.startsWith('BR')) return 'Southeast'; // Bromley
-  if (clean.startsWith('DA')) return 'Southeast'; // Dartford, Bexley
-
+  if (clean.startsWith('EC')) return 'Central';
+  if (clean.startsWith('WC')) return 'Central';
+  if (clean.startsWith('W1')) return 'Central';
+  if (clean.startsWith('SW1')) return 'Central';
+  if (clean.startsWith('NW1')) return 'Central';
+  if (clean.startsWith('SE1')) return 'Central';
+  if (clean.startsWith('NW')) return 'Northwest';
+  if (clean.startsWith('HA')) return 'Northwest';
+  if (clean.startsWith('WD')) return 'Northwest';
+  if (clean.startsWith('AL')) return 'Northwest';
+  if (clean.startsWith('N')) return 'North';
+  if (clean.startsWith('EN')) return 'North';
+  if (clean.startsWith('E')) return 'East';
+  if (clean.startsWith('RM')) return 'East';
+  if (clean.startsWith('IG')) return 'East';
+  if (clean.startsWith('W')) return 'West';
+  if (clean.startsWith('UB')) return 'West';
+  if (clean.startsWith('SW')) return 'Southwest';
+  if (clean.startsWith('TW')) return 'Southwest';
+  if (clean.startsWith('KT')) return 'Southwest';
+  if (clean.startsWith('SM')) return 'Southwest';
+  if (clean.startsWith('SE')) return 'Southeast';
+  if (clean.startsWith('CR')) return 'Southeast';
+  if (clean.startsWith('BR')) return 'Southeast';
+  if (clean.startsWith('DA')) return 'Southeast';
   return null;
 }
 
@@ -114,54 +99,70 @@ async function enrichWithGoogle(name, area) {
     if (!apiKey) return null;
 
     const searchQuery = `${name} ${area || ''} London`;
-    const searchResp = await fetch(
-      `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${encodeURIComponent(searchQuery)}&inputtype=textquery&fields=place_id,name,formatted_address,geometry,rating,user_ratings_total,price_level&locationbias=circle:30000@51.5074,-0.1278&key=${apiKey}`,
-      { method: 'GET' }
-    );
+    const searchResp = await fetch('https://places.googleapis.com/v1/places:searchText', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': apiKey,
+        'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.priceLevel,places.websiteUri,places.nationalPhoneNumber,places.regularOpeningHours'
+      },
+      body: JSON.stringify({
+        textQuery: searchQuery,
+        locationBias: {
+          circle: {
+            center: { latitude: 51.5074, longitude: -0.1278 },
+            radius: 30000.0
+          }
+        },
+        maxResultCount: 1
+      })
+    });
 
     const searchData = await searchResp.json();
-    const place = searchData.candidates?.[0];
-    console.log(`[enrich] ${name} — found: ${!!place}, rating: ${place?.rating}, price: ${place?.price_level}`);
+    const place = searchData.places?.[0];
+    console.log(`[enrich] ${name} — found: ${!!place}, rating: ${place?.rating}, price: ${place?.priceLevel}`);
     if (!place) return null;
 
-    const address = place.formatted_address || '';
+    const address = place.formattedAddress || '';
     const postcodeMatch = address.match(/[A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2}/i);
     const postcode = postcodeMatch ? postcodeMatch[0].toUpperCase() : null;
-    const priceLevelMap = { 0: 'Free', 1: 'Under £15pp', 2: '£15-35pp', 3: '£35-70pp', 4: '£70pp+' };
 
-    let website = null, phone = null, opening_hours = null;
-    if (place.place_id) {
-      try {
-        const detailResp = await fetch(
-          `https://maps.googleapis.com/maps/api/place/details/json?place_id=${place.place_id}&fields=website,formatted_phone_number,opening_hours&key=${apiKey}`,
-          { method: 'GET' }
-        );
-        const detailData = await detailResp.json();
-        website = detailData.result?.website || null;
-        phone = detailData.result?.formatted_phone_number || null;
-        opening_hours = detailData.result?.opening_hours?.weekday_text || null;
-      } catch (e) {
-        console.error(`[enrich] details failed for ${name}:`, e.message);
-      }
-    }
+    const PRICE_MAP = {
+      'PRICE_LEVEL_FREE': 'Free',
+      'PRICE_LEVEL_INEXPENSIVE': 'Under £15pp',
+      'PRICE_LEVEL_MODERATE': '£15-35pp',
+      'PRICE_LEVEL_EXPENSIVE': '£35-70pp',
+      'PRICE_LEVEL_VERY_EXPENSIVE': '£70pp+'
+    };
+
+    const PRICE_INT = {
+      'PRICE_LEVEL_FREE': 0,
+      'PRICE_LEVEL_INEXPENSIVE': 1,
+      'PRICE_LEVEL_MODERATE': 2,
+      'PRICE_LEVEL_EXPENSIVE': 3,
+      'PRICE_LEVEL_VERY_EXPENSIVE': 4
+    };
 
     const derivedZone = zoneFromPostcode(postcode);
     const derivedArea = areaFromAddress(address);
 
     return {
-      validated_name: place.name || name,
+      validated_name: place.displayName?.text || name,
       validated_address: address,
       postcode,
       derived_zone: derivedZone,
       derived_area: derivedArea,
-      lat: place.geometry?.location?.lat,
-      lng: place.geometry?.location?.lng,
-      google_place_id: place.place_id,
+      lat: place.location?.latitude,
+      lng: place.location?.longitude,
+      google_place_id: place.id,
       google_rating: place.rating || null,
-      google_review_count: place.user_ratings_total || null,
-      google_price_level: place.price_level ?? null,
-      price: priceLevelMap[place.price_level] ?? null,
-      website, phone, opening_hours,
+      google_review_count: place.userRatingCount || null,
+      google_price_level: place.priceLevel || null,
+      price_level: PRICE_INT[place.priceLevel] ?? null,
+      price: PRICE_MAP[place.priceLevel] || null,
+      website: place.websiteUri || null,
+      phone: place.nationalPhoneNumber || null,
+      opening_hours: place.regularOpeningHours?.weekdayDescriptions || null,
     };
   } catch (e) {
     console.error(`[enrich] Google enrichment failed for ${name}:`, e.message);
@@ -248,6 +249,7 @@ export default async function handler(req, res) {
           google_rating: google?.google_rating || null,
           google_review_count: google?.google_review_count || null,
           google_price_level: google?.google_price_level || null,
+          price_level: google?.price_level || null,
           website: google?.website || null,
           phone: google?.phone || null,
           opening_hours: google?.opening_hours || null,
