@@ -87,50 +87,92 @@ const STOP_ORDER = { day: ["cafe", "outdoor", "museum", "gallery", "market", "ex
 
 const ZONES = ["North", "Northwest", "Northeast", "South", "Southwest", "Southeast", "East", "West", "Central", "Outskirts"];
 
-function scoreVenue(v, vibes, budget, area, timeOfDay, extras) {
+function scoreVenue(v, vibes, budget, timeOfDay, extras) {
   let score = 0;
-  const zones = AREA_ZONES[area] || AREA_ZONES.anywhere;
-  if (!zones.includes(v.travelZone)) return -1;
-  const prices = BUDGET_MAP[budget] || ["low", "mid", "high"];
-  if (!prices.includes(v.price)) return -1;
+  const BUDGET_PRICE_MAP = { low: ["low","Free","Under £15pp"], mid: ["low","mid","Free","Under £15pp","£15-35pp"], high: ["low","mid","high","Free","Under £15pp","£15-35pp","£35-70pp"], unlimited: ["low","mid","high","Free","Under £15pp","£15-35pp","£35-70pp","£70pp+"] };
+  const prices = BUDGET_PRICE_MAP[budget] || ["low","mid","high"];
+  const vPrice = v.price || "mid";
+  if (!prices.some(p => vPrice.toLowerCase().includes(p.toLowerCase()) || p.toLowerCase().includes(vPrice.toLowerCase()))) return -1;
   const tod = timeOfDay === "full" ? "day,night" : timeOfDay;
-  if (!v.bestTime.split(",").some((t) => tod.split(",").includes(t))) return -1;
-  const wt = vibes.flatMap((vb) => VIBE_TAG_MAP[vb] || [vb]);
-  score += v.tags.filter((t) => wt.includes(t)).length * 3;
-  if (extras.includes("food") && ["restaurant", "cafe"].includes(v.type)) score += 4;
+  if (v.bestTime && !v.bestTime.split(",").some(t => tod.split(",").includes(t))) return -1;
+  const wt = vibes.flatMap(vb => VIBE_TAG_MAP[vb] || [vb]);
+  score += (v.tags || []).filter(t => wt.includes(t)).length * 3;
+  if (extras.includes("food") && ["restaurant","cafe"].includes(v.type)) score += 4;
   if (extras.includes("drinks") && v.type === "bar") score += 4;
-  if (extras.includes("outdoor") && v.tags.includes("outdoor")) score += 3;
-  if (extras.includes("social") && v.tags.includes("social")) score += 3;
+  if (extras.includes("outdoor") && (v.tags || []).includes("outdoor")) score += 3;
+  if (extras.includes("social") && (v.tags || []).includes("social")) score += 3;
   return score;
+}
+
+function haversineKm(lat1, lng1, lat2, lng2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
 function buildShortlist(answers, dbVenues = []) {
   const { vibes, area, budget, timeOfDay, extras } = answers;
+  const isSurprise = area === "surprise_me";
+
   const allVenues = dbVenues.map(v => ({
     id: v.id, name: v.name, type: v.category || "experience",
-    area: (v.zone || "Central").toLowerCase(), tags: v.vibe_tags || [],
-    price: v.price === "Free" ? "low" : v.price === "high" ? "high" : v.price === "low" ? "low" : "mid",
+    tags: v.vibe_tags || [], price: v.price || "mid",
     bestTime: "day,night", bookingRequired: false, desc: v.comment || "",
-    emoji: "✨", travelZone: (v.zone || "Central").toLowerCase()
+    emoji: "✨", travelZone: (v.zone || "Central").toLowerCase(),
+    google_rating: v.google_rating,
+    lat: v.lat ? parseFloat(v.lat) : null,
+    lng: v.lng ? parseFloat(v.lng) : null,
   }));
-
-  // Fallback to hardcoded if DB is empty
   const source = allVenues.length > 0 ? allVenues : VENUES;
 
-  const scored = source.map((v) => ({ ...v, score: scoreVenue(v, vibes || [], budget || "mid", area || "anywhere", timeOfDay || "night", extras || []) }))
-    .filter((v) => v.score >= 0).sort((a, b) => b.score - a.score);
+  let targetZone = area;
+  if (isSurprise) {
+    const zoneCounts = {};
+    source.forEach(v => { const z = v.travelZone; zoneCounts[z] = (zoneCounts[z] || 0) + 1; });
+    const zones = Object.keys(zoneCounts).filter(z => zoneCounts[z] >= 3);
+    targetZone = zones.length > 0 ? zones[Math.floor(Math.random() * zones.length)] : "central";
+  }
+
+  const NEIGHBOURS = { central:["central","east","south"], east:["east","northeast","central"], south:["south","southeast","southwest"], west:["west","northwest","southwest"], north:["north","northeast","northwest"], southwest:["southwest","west","south"], northwest:["northwest","north","west"], northeast:["northeast","east","north"], southeast:["southeast","south","east"] };
+  let zoneFiltered = source.filter(v => v.travelZone === (targetZone || "").toLowerCase());
+  if (!isSurprise && zoneFiltered.length < 4) {
+    const nl = NEIGHBOURS[(targetZone || "").toLowerCase()] || [(targetZone || "").toLowerCase()];
+    zoneFiltered = source.filter(v => nl.includes(v.travelZone));
+  }
+  if (zoneFiltered.length < 3) zoneFiltered = source;
+
+  const scored = zoneFiltered.map(v => ({ ...v, score: scoreVenue(v, vibes || [], budget || "mid", timeOfDay || "night", extras || []) }))
+    .filter(v => v.score >= 0).sort((a, b) => b.score - a.score);
+
+  const withCoords = scored.filter(v => v.lat && v.lng);
+  if (withCoords.length >= 4) {
+    let bestCluster = null;
+    for (const anchor of withCoords.slice(0, 8)) {
+      const nearby = scored.filter(v => v.lat && v.lng && haversineKm(anchor.lat, anchor.lng, v.lat, v.lng) <= 1.5);
+      if (nearby.length >= 3 && (!bestCluster || nearby.length > bestCluster.length)) bestCluster = nearby;
+    }
+    if (bestCluster && bestCluster.length >= 3) {
+      const types = STOP_ORDER[timeOfDay] || STOP_ORDER.night;
+      const used = new Set(), usedTypes = {}, shortlist = [];
+      for (const t of types) {
+        const c = bestCluster.filter(v => v.type === t && !used.has(v.id) && (usedTypes[t] || 0) < 2);
+        if (c[0]) { shortlist.push(c[0]); used.add(c[0].id); usedTypes[t] = (usedTypes[t] || 0) + 1; }
+      }
+      while (shortlist.length < 4) { const n = bestCluster.find(v => !used.has(v.id)); if (!n) break; shortlist.push(n); used.add(n.id); }
+      return { venues: shortlist.slice(0, 6), zone: targetZone };
+    }
+  }
+
   const types = STOP_ORDER[timeOfDay] || STOP_ORDER.night;
   const used = new Set(), usedTypes = {}, shortlist = [];
   for (const t of types) {
-    const c = scored.filter((v) => v.type === t && !used.has(v.id) && (usedTypes[t] || 0) < 2);
+    const c = scored.filter(v => v.type === t && !used.has(v.id) && (usedTypes[t] || 0) < 2);
     if (c[0]) { shortlist.push(c[0]); used.add(c[0].id); usedTypes[t] = (usedTypes[t] || 0) + 1; }
   }
-  while (shortlist.length < 4) {
-    const n = scored.find((v) => !used.has(v.id));
-    if (!n) break;
-    shortlist.push(n); used.add(n.id);
-  }
-  return shortlist.slice(0, 5);
+  while (shortlist.length < 4) { const n = scored.find(v => !used.has(v.id)); if (!n) break; shortlist.push(n); used.add(n.id); }
+  return { venues: shortlist.slice(0, 6), zone: targetZone };
 }
 
 const QUESTIONS = [
@@ -1069,6 +1111,7 @@ function AdminScreen({ onBadgeUpdate }) {
               <div className="admin-card-name">{item.name}</div>
               <div className="admin-card-meta">
                 {item.category} · {item.area} · {item.price || "price unknown"}
+                {item.google_rating && ` · ⭐ ${item.google_rating}`}
                 {item.is_event && item.event_start && ` · 📅 ${new Date(item.event_start).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`}
               </div>
               {item.comment && <div style={{ fontSize: "0.78rem", color: "#6b5e4e", marginBottom: "8px", lineHeight: 1.4 }}>{item.comment}</div>}
@@ -1145,7 +1188,9 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [loadIdx, setLoadIdx] = useState(0);
   const [error, setError] = useState(null);
-  const [plans, setPlans] = useState([]);
+  const [plans, setPlans] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("cl_plans") || "[]"); } catch { return []; }
+  });
   const [viewingPlan, setViewingPlan] = useState(null);
   const [toast, setToast] = useState({ msg: "", show: false });
   const [dbVenues, setDbVenues] = useState([]);
@@ -1197,7 +1242,9 @@ export default function App() {
 
   async function generate() {
     setLoading(true); setError(null);
-    const shortlist = buildShortlist(ans, dbVenues);
+    const shortlistResult = buildShortlist(ans, dbVenues);
+    const shortlist = shortlistResult.venues || shortlistResult;
+    const chosenZone = shortlistResult.zone || ans.area;
     const venueData = JSON.stringify(shortlist.map(v => ({
       name: v.name, type: v.type, area: v.travelZone + " London",
       price: v.price, tags: v.tags, desc: v.desc, emoji: v.emoji,
@@ -1295,11 +1342,11 @@ export default function App() {
       const finalResult = { ...parsed, stops: finalStops };
       setResult(finalResult);
       setQuizStep(QUESTIONS.length + 1);
-      setPlans(prev => [{
-        result: finalResult, ans: { ...ans }, times: { ...times },
-        savedAt: new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }),
-        id: generateId()
-      }, ...prev]);
+      setPlans(prev => {
+        const updated = [{ result: finalResult, ans: { ...ans }, times: { ...times }, savedAt: new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }), id: generateId() }, ...prev];
+        localStorage.setItem("cl_plans", JSON.stringify(updated.slice(0, 20)));
+        return updated;
+      });
       showToast("Plan saved to My Plans");
     } catch (e) {
       setError("Couldn't generate your plan. Check your API key and try again.");
