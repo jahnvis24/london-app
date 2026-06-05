@@ -112,14 +112,6 @@ function haversineKm(lat1, lng1, lat2, lng2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
-function haversineKm(lat1, lng1, lat2, lng2) {
-  const R = 6371;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLng = (lng2 - lng1) * Math.PI / 180;
-  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-}
-
 function buildShortlist(answers, dbVenues = []) {
   const { vibes, area, budget, timeOfDay, extras } = answers;
   const isSurprise = area === "surprise_me";
@@ -547,7 +539,11 @@ function MapPicker({ onPin, currentPin }) {
     }
 
     // Load Leaflet JS
-    if (window.L) { setLoaded(true); return; }
+    if (window.L) {
+      setLoaded(true);
+      return;
+    }
+
     const script = document.createElement('script');
     script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
     script.onload = () => setLoaded(true);
@@ -558,6 +554,7 @@ function MapPicker({ onPin, currentPin }) {
     if (!loaded || !mapRef.current || mapInstanceRef.current) return;
 
     const L = window.L;
+
     const map = L.map(mapRef.current, {
       center: [51.505, -0.09],
       zoom: 12,
@@ -569,7 +566,6 @@ function MapPicker({ onPin, currentPin }) {
       maxZoom: 18,
     }).addTo(map);
 
-    // Custom pin icon
     const pinIcon = L.divIcon({
       html: '<div style="width:28px;height:28px;background:#1B998B;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.3)"></div>',
       iconSize: [28, 28],
@@ -577,38 +573,48 @@ function MapPicker({ onPin, currentPin }) {
       className: '',
     });
 
-    // Restore existing pin
     if (currentPin) {
-      markerRef.current = L.marker([currentPin.lat, currentPin.lng], { icon: pinIcon }).addTo(map);
+      markerRef.current = L.marker(
+        [currentPin.lat, currentPin.lng],
+        { icon: pinIcon }
+      ).addTo(map);
+
       map.setView([currentPin.lat, currentPin.lng], 14);
     }
 
     map.on('click', (e) => {
       const { lat, lng } = e.latlng;
+
       if (markerRef.current) markerRef.current.remove();
+
       markerRef.current = L.marker([lat, lng], { icon: pinIcon }).addTo(map);
       onPin({ lat, lng });
     });
 
     mapInstanceRef.current = map;
-    // Fix tile rendering after mount
-    setTimeout(() => map.invalidateSize(), 100);
-  }, [loaded]);
+
+    setTimeout(() => {
+      map.invalidateSize();
+    }, 100);
+  }, [loaded, currentPin, onPin]);
 
   return (
     <div style={{ marginTop: "1rem" }}>
       <div style={{ fontSize: "0.72rem", color: "#6b5e4e", marginBottom: "8px", lineHeight: 1.5 }}>
         Tap anywhere on the map to drop a pin. We'll find venues within 1.5km.
       </div>
+
       {!loaded && (
         <div style={{ height: 280, background: "#f5f0e8", borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center", color: "#9b8f7a", fontSize: "0.82rem" }}>
           Loading map...
         </div>
       )}
+
       <div
         ref={mapRef}
         style={{ height: 280, borderRadius: 14, overflow: "hidden", border: "1.5px solid #ddd8ce", display: loaded ? "block" : "none" }}
       />
+
       {currentPin && (
         <div style={{ marginTop: "0.5rem", fontSize: "0.75rem", color: "#1B998B", display: "flex", alignItems: "center", gap: 4 }}>
           ✓ Pin dropped · {currentPin.lat.toFixed(4)}, {currentPin.lng.toFixed(4)}
@@ -618,71 +624,6 @@ function MapPicker({ onPin, currentPin }) {
   );
 }
 
-function MapPicker({ onPin, currentPin }) {
-  const mapRef = useRef(null);
-  const mapInstanceRef = useRef(null);
-  const markerRef = useRef(null);
-  const [loaded, setLoaded] = useState(false);
-
-  useEffect(() => {
-    if (!document.getElementById('leaflet-css')) {
-      const link = document.createElement('link');
-      link.id = 'leaflet-css';
-      link.rel = 'stylesheet';
-      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-      document.head.appendChild(link);
-    }
-    if (window.L) { setLoaded(true); return; }
-    const script = document.createElement('script');
-    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-    script.onload = () => setLoaded(true);
-    document.head.appendChild(script);
-  }, []);
-
-  useEffect(() => {
-    if (!loaded || !mapRef.current || mapInstanceRef.current) return;
-    const L = window.L;
-    const map = L.map(mapRef.current, { center: [51.505, -0.09], zoom: 12 });
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors', maxZoom: 18,
-    }).addTo(map);
-    const pinIcon = L.divIcon({
-      html: '<div style="width:28px;height:28px;background:#1B998B;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.3)"></div>',
-      iconSize: [28, 28], iconAnchor: [14, 28], className: '',
-    });
-    if (currentPin) {
-      markerRef.current = L.marker([currentPin.lat, currentPin.lng], { icon: pinIcon }).addTo(map);
-      map.setView([currentPin.lat, currentPin.lng], 14);
-    }
-    map.on('click', (e) => {
-      const { lat, lng } = e.latlng;
-      if (markerRef.current) markerRef.current.remove();
-      markerRef.current = L.marker([lat, lng], { icon: pinIcon }).addTo(map);
-      onPin({ lat, lng });
-    });
-    mapInstanceRef.current = map;
-    setTimeout(() => map.invalidateSize(), 100);
-  }, [loaded]);
-
-  return (
-    <div style={{ marginTop: "1rem" }}>
-      <div style={{ fontSize: "0.72rem", color: "#6b5e4e", marginBottom: "8px", lineHeight: 1.5 }}>
-        Tap anywhere on the map to drop a pin. We'll find venues within 1.5km.
-      </div>
-      {!loaded && (
-        <div style={{ height: 280, background: "#f5f0e8", borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center", color: "#9b8f7a", fontSize: "0.82rem" }}>
-          Loading map...
-        </div>
-      )}
-      <div ref={mapRef} style={{ height: 280, borderRadius: 14, overflow: "hidden", border: "1.5px solid #ddd8ce", display: loaded ? "block" : "none" }} />
-      {currentPin && (
-        <div style={{ marginTop: "0.5rem", fontSize: "0.75rem", color: "#1B998B" }}>
-          ✓ Pin dropped · {currentPin.lat.toFixed(4)}, {currentPin.lng.toFixed(4)}
-        </div>
-      )}
-    </div>
-  );
-}
 
 function QuizScreen({ step, ans, times, setTimes, onToggle, onNext, onBack, onGenerate, loading, loadIdx, error }) {
   const q = QUESTIONS[step];
