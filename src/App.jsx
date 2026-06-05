@@ -740,7 +740,8 @@ function QuizScreen({ step, ans, times, setTimes, onToggle, onNext, onBack, onGe
               return (
                 <div key={opt.value} className={`chip ${sel ? "sel" : ""}`}
                   onClick={() => { onToggle(q.id, opt.value, q.multi); if (!q.multi && opt.value !== "map_pin") { setAreaSearch(""); setAreaMatches([]); setTimeout(onNext, 200); } }}
-                  <span>{opt.emoji}</span>{opt.label}
+                  >
+                    <span>{opt.emoji}</span>{opt.label}
                 </div>
               );
             })}
