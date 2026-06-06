@@ -6,6 +6,19 @@ const supabase = createClient(
 );
 
 export default async function handler(req, res) {
+  // POST: bulk update venues by name
+  if (req.method === 'POST') {
+    const { updates } = req.body;
+    if (!updates || !Array.isArray(updates)) return res.status(400).json({ error: 'updates array required' });
+    const results = [];
+    for (const u of updates) {
+      const { name, ...fields } = u;
+      const { error } = await supabase.from("experiences").update(fields).ilike("name", `%${name}%`);
+      results.push({ name, status: error ? 'error' : 'updated', error: error?.message });
+    }
+    return res.status(200).json({ results });
+  }
+
   const { data: venues, error } = await supabase
     .from("experiences")
     .select("id, name, zone, category, vibe_tags, lat, lng, price")
