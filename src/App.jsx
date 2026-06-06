@@ -198,65 +198,98 @@ function buildShortlist(answers, dbVenues = []) {
     }
   }
 
-  // ── ZONE MODE ─────────────────────────────────────────────────
+  // ── CHAIN MODE with relaxation cascade ─────────────────────
+  // Pick best anchor, then chain: each next venue within radius of previous
+  // Cascade: full filters → relax vibe → relax budget → expand to 2km
   let targetZone = area;
 
   const NEIGHBOURS = { central:["central","east","south"], east:["east","northeast","central"], south:["south","southeast","southwest"], west:["west","northwest","southwest"], north:["north","northeast","northwest"], southwest:["southwest","west","south"], northwest:["northwest","north","west"], northeast:["northeast","east","north"], southeast:["southeast","south","east"] };
   let zoneFiltered = source.filter(v => v.travelZone === (targetZone || "").toLowerCase());
-  if (!isSurprise && zoneFiltered.length < 4) {
+  if (zoneFiltered.length < 4) {
     const nl = NEIGHBOURS[(targetZone || "").toLowerCase()] || [(targetZone || "").toLowerCase()];
     zoneFiltered = source.filter(v => nl.includes(v.travelZone));
   }
   if (zoneFiltered.length < 3) zoneFiltered = source;
 
-  const scored = zoneFiltered.map(v => ({ ...v, score: scoreVenue(v, vibes || [], budget || "mid", timeOfDay || "night", extras || [], groupSize, energy) }))
+  const withCoords = zoneFiltered.filter(v => v.lat && v.lng);
+
+  // Find best anchor: highest scoring venue with coordinates
+  const scoredAll = withCoords.map(v => ({ ...v, score: scoreVenue(v, vibes || [], budget || "mid", timeOfDay || "night", extras || [], groupSize, energy) }))
     .filter(v => v.score >= 0).sort((a, b) => b.score - a.score);
 
-  const withCoords = scored.filter(v => v.lat && v.lng);
-  if (withCoords.length >= 4) {
-    let bestCluster = null;
-    for (const anchor of withCoords.slice(0, 8)) {
-      const nearby = scored.filter(v => v.lat && v.lng && haversineKm(anchor.lat, anchor.lng, v.lat, v.lng) <= 1.5);
-      if (nearby.length >= 3 && (!bestCluster || nearby.length > bestCluster.length)) bestCluster = nearby;
-    }
-    if (bestCluster && bestCluster.length >= 3) {
-      const types = STOP_ORDER[timeOfDay] || STOP_ORDER.night;
-      const used = new Set(), usedTypes = {}, shortlist = [];
-      for (const t of types) {
-        const c = bestCluster.filter(v => v.type === t && !used.has(v.id) && (usedTypes[t] || 0) < 2);
-        if (c[0]) { shortlist.push(c[0]); used.add(c[0].id); usedTypes[t] = (usedTypes[t] || 0) + 1; }
-      }
-      while (shortlist.length < 4) { const n = bestCluster.find(v => !used.has(v.id)); if (!n) break; shortlist.push(n); used.add(n.id); }
-      return { venues: shortlist.slice(0, 6), zone: targetZone };
-    }
-  }
-
+  const targetStops = timeOfDay === "full" ? 5 : 4;
   const types = STOP_ORDER[timeOfDay] || STOP_ORDER.night;
-  const used = new Set(), usedTypes = {}, shortlist = [];
-  for (const t of types) {
-    const c = scored.filter(v => v.type === t && !used.has(v.id) && (usedTypes[t] || 0) < 2);
-    if (c[0]) { shortlist.push(c[0]); used.add(c[0].id); usedTypes[t] = (usedTypes[t] || 0) + 1; }
-  }
-  while (shortlist.length < 4) { const n = scored.find(v => !used.has(v.id)); if (!n) break; shortlist.push(n); used.add(n.id); }
 
-  // If still too few, relax filters and pull from full source
-  if (shortlist.length < 4) {
-    const relaxed = zoneFiltered
-      .filter(v => !used.has(v.id))
-      .map(v => ({ ...v, score: (v.tags || []).length }))
-      .sort((a, b) => b.score - a.score);
-    while (shortlist.length < 5 && relaxed.length > 0) {
-      const n = relaxed.shift();
-      shortlist.push(n);
-      used.add(n.id);
+  function chainBuild(anchor, pool, radius) {
+    const used = new Set([anchor.id]), shortlist = [anchor], usedTypes = { [anchor.type]: 1 };
+    let lastVenue = anchor;
+    for (let i = 0; i < targetStops - 1; i++) {
+      // Try each cascade level
+      let next = null;
+      for (const level of ["strict", "relax_vibe", "relax_budget", "expand_radius"]) {
+        const r = level === "expand_radius" ? 2.0 : radius;
+        const candidates = pool.filter(v => {
+          if (used.has(v.id) || !v.lat || !v.lng) return false;
+          if (haversineKm(lastVenue.lat, lastVenue.lng, v.lat, v.lng) > r) return false;
+          return true;
+        }).map(v => {
+          let s = 0;
+          if (level === "strict") {
+            s = scoreVenue(v, vibes || [], budget || "mid", timeOfDay || "night", extras || [], groupSize, energy);
+            if (s < 0) return null;
+          } else if (level === "relax_vibe") {
+            s = scoreVenue(v, [], budget || "mid", timeOfDay || "night", extras || [], groupSize, energy);
+            if (s < 0) return null;
+            s += (v.tags || []).length;
+          } else if (level === "relax_budget") {
+            s = (v.tags || []).length * 2;
+            const tod = timeOfDay === "full" ? "day,night" : timeOfDay;
+            if (v.bestTime && !v.bestTime.split(",").some(t => tod.split(",").includes(t))) return null;
+          } else {
+            s = (v.tags || []).length;
+          }
+          // Prefer type diversity
+          const t = v.type;
+          if (!usedTypes[t]) s += 3;
+          else if (usedTypes[t] < 2) s += 1;
+          // Prefer types in the STOP_ORDER
+          if (types.includes(t)) s += 2;
+          return { ...v, score: s };
+        }).filter(Boolean).sort((a, b) => b.score - a.score);
+
+        if (candidates.length > 0) { next = candidates[0]; break; }
+      }
+      if (!next) break;
+      shortlist.push(next);
+      used.add(next.id);
+      usedTypes[next.type] = (usedTypes[next.type] || 0) + 1;
+      lastVenue = next;
     }
-  }
-  if (shortlist.length < 4) {
-    const allRelaxed = source.filter(v => !used.has(v.id)).slice(0, 5 - shortlist.length);
-    shortlist.push(...allRelaxed);
+    return shortlist;
   }
 
-  return { venues: shortlist.slice(0, 6), zone: targetZone };
+  // Try top 5 anchors and pick the chain that produces the most stops
+  let bestChain = [];
+  for (const anchor of scoredAll.slice(0, 5)) {
+    const chain = chainBuild(anchor, zoneFiltered, 1.5);
+    if (chain.length > bestChain.length) bestChain = chain;
+    if (bestChain.length >= targetStops) break;
+  }
+
+  // Fallback: if chain mode produced too few, try from full source
+  if (bestChain.length < 3 && scoredAll.length > 0) {
+    const chain = chainBuild(scoredAll[0], source, 2.0);
+    if (chain.length > bestChain.length) bestChain = chain;
+  }
+
+  // Last resort: non-geo scored list
+  if (bestChain.length < 3) {
+    const scored = zoneFiltered.map(v => ({ ...v, score: scoreVenue(v, vibes || [], budget || "mid", timeOfDay || "night", extras || [], groupSize, energy) }))
+      .filter(v => v.score >= 0).sort((a, b) => b.score - a.score);
+    bestChain = scored.slice(0, targetStops);
+  }
+
+  return { venues: bestChain.slice(0, 6), zone: targetZone };
 }
 
 const QUESTIONS = [
