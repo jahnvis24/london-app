@@ -87,7 +87,7 @@ const STOP_ORDER = { day: ["cafe", "outdoor", "museum", "gallery", "market", "ex
 
 const ZONES = ["North", "Northwest", "Northeast", "South", "Southwest", "Southeast", "East", "West", "Central", "Outskirts"];
 
-function scoreVenue(v, vibes, budget, timeOfDay, extras) {
+function scoreVenue(v, vibes, budget, timeOfDay, extras, groupSize, energy) {
   let score = 0;
   const BUDGET_PRICE_MAP = { low: ["low","Free","Under £15pp"], mid: ["low","mid","Free","Under £15pp","£15-35pp"], high: ["low","mid","high","Free","Under £15pp","£15-35pp","£35-70pp"], unlimited: ["low","mid","high","Free","Under £15pp","£15-35pp","£35-70pp","£70pp+"] };
   const prices = BUDGET_PRICE_MAP[budget] || ["low","mid","high"];
@@ -101,6 +101,12 @@ function scoreVenue(v, vibes, budget, timeOfDay, extras) {
   if (extras.includes("drinks") && v.type === "bar") score += 4;
   if (extras.includes("outdoor") && (v.tags || []).includes("outdoor")) score += 3;
   if (extras.includes("social") && (v.tags || []).includes("social")) score += 3;
+  // Energy: high → boost chaotic/social venues, low → boost chill/solo
+  if (energy === "high") { score += (v.tags || []).filter(t => ["chaotic","social","night","underground"].includes(t)).length * 2; }
+  if (energy === "low") { score += (v.tags || []).filter(t => ["chill","solo","outdoor"].includes(t)).length * 2; }
+  // Group size: large groups → boost social/walk-in venues, solo → boost solo/chill
+  if (groupSize === "large") { score += (v.tags || []).filter(t => ["social","chaotic"].includes(t)).length * 2; if (!v.bookingRequired) score += 2; }
+  if (groupSize === "solo") { score += (v.tags || []).filter(t => ["solo","chill","cultural"].includes(t)).length * 2; }
   return score;
 }
 
@@ -113,7 +119,7 @@ function haversineKm(lat1, lng1, lat2, lng2) {
 }
 
 function buildShortlist(answers, dbVenues = []) {
-  const { vibes, area, budget, timeOfDay, extras } = answers;
+  const { vibes, area, budget, timeOfDay, extras, groupSize, energy } = answers;
   const isSurprise = area === "surprise_me";
 
   const allVenues = dbVenues.map(v => ({
@@ -132,7 +138,7 @@ function buildShortlist(answers, dbVenues = []) {
     const { lat: pinLat, lng: pinLng } = answers.mapPin;
     const nearby = source
       .filter(v => v.lat && v.lng && haversineKm(pinLat, pinLng, v.lat, v.lng) <= 1.5)
-      .map(v => ({ ...v, score: scoreVenue(v, vibes || [], budget || "mid", timeOfDay || "night", extras || []) }))
+      .map(v => ({ ...v, score: scoreVenue(v, vibes || [], budget || "mid", timeOfDay || "night", extras || [], groupSize, energy) }))
       .filter(v => v.score >= 0)
       .sort((a, b) => b.score - a.score);
     const types = STOP_ORDER[timeOfDay] || STOP_ORDER.night;
@@ -152,7 +158,7 @@ function buildShortlist(answers, dbVenues = []) {
       // Score each zone by how well its venues match the user's vibes
       const zoneScores = {};
       withCoords.forEach(v => {
-        const s = scoreVenue(v, vibes || [], budget || "mid", timeOfDay || "night", extras || []);
+        const s = scoreVenue(v, vibes || [], budget || "mid", timeOfDay || "night", extras || [], groupSize, energy);
         if (s >= 0) {
           if (!zoneScores[v.travelZone]) zoneScores[v.travelZone] = { total: 0, count: 0 };
           zoneScores[v.travelZone].total += s;
@@ -170,14 +176,14 @@ function buildShortlist(answers, dbVenues = []) {
       // Find best anchor venue in that zone (highest individual score)
       const zoneVenues = withCoords
         .filter(v => v.travelZone === chosenZone)
-        .map(v => ({ ...v, score: scoreVenue(v, vibes || [], budget || "mid", timeOfDay || "night", extras || []) }))
+        .map(v => ({ ...v, score: scoreVenue(v, vibes || [], budget || "mid", timeOfDay || "night", extras || [], groupSize, energy) }))
         .filter(v => v.score >= 0)
         .sort((a, b) => b.score - a.score);
       const anchor = zoneVenues[0] || withCoords.find(v => v.travelZone === chosenZone);
       if (anchor) {
         const nearby = source
           .filter(v => v.lat && v.lng && haversineKm(anchor.lat, anchor.lng, v.lat, v.lng) <= 1.5)
-          .map(v => ({ ...v, score: scoreVenue(v, vibes || [], budget || "mid", timeOfDay || "night", extras || []) }))
+          .map(v => ({ ...v, score: scoreVenue(v, vibes || [], budget || "mid", timeOfDay || "night", extras || [], groupSize, energy) }))
           .filter(v => v.score >= 0)
           .sort((a, b) => b.score - a.score);
         const types = STOP_ORDER[timeOfDay] || STOP_ORDER.night;
@@ -203,7 +209,7 @@ function buildShortlist(answers, dbVenues = []) {
   }
   if (zoneFiltered.length < 3) zoneFiltered = source;
 
-  const scored = zoneFiltered.map(v => ({ ...v, score: scoreVenue(v, vibes || [], budget || "mid", timeOfDay || "night", extras || []) }))
+  const scored = zoneFiltered.map(v => ({ ...v, score: scoreVenue(v, vibes || [], budget || "mid", timeOfDay || "night", extras || [], groupSize, energy) }))
     .filter(v => v.score >= 0).sort((a, b) => b.score - a.score);
 
   const withCoords = scored.filter(v => v.lat && v.lng);
