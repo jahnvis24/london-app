@@ -145,29 +145,50 @@ function buildShortlist(answers, dbVenues = []) {
     return { venues: shortlist.slice(0, 6), zone: "map_pin" };
   }
 
-  // ── SURPRISE ME: random zone → random anchor → 1.5km radius ──
+  // ── SURPRISE ME: vibe-matched zone → best anchor → 1.5km radius ──
   if (isSurprise) {
     const withCoords = source.filter(v => v.lat && v.lng);
     if (withCoords.length >= 3) {
-      const zoneCounts = {};
-      withCoords.forEach(v => { zoneCounts[v.travelZone] = (zoneCounts[v.travelZone] || 0) + 1; });
-      const zones = Object.keys(zoneCounts).filter(z => zoneCounts[z] >= 3);
-      const randomZone = zones.length > 0 ? zones[Math.floor(Math.random() * zones.length)] : "central";
-      const zoneVenues = withCoords.filter(v => v.travelZone === randomZone);
-      const anchor = zoneVenues[Math.floor(Math.random() * zoneVenues.length)];
-      const nearby = source
-        .filter(v => v.lat && v.lng && haversineKm(anchor.lat, anchor.lng, v.lat, v.lng) <= 1.5)
+      // Score each zone by how well its venues match the user's vibes
+      const zoneScores = {};
+      withCoords.forEach(v => {
+        const s = scoreVenue(v, vibes || [], budget || "mid", timeOfDay || "night", extras || []);
+        if (s >= 0) {
+          if (!zoneScores[v.travelZone]) zoneScores[v.travelZone] = { total: 0, count: 0 };
+          zoneScores[v.travelZone].total += s;
+          zoneScores[v.travelZone].count += 1;
+        }
+      });
+      // Pick from zones with 3+ matching venues, weighted by average score
+      const scoredZones = Object.entries(zoneScores)
+        .filter(([, d]) => d.count >= 3)
+        .map(([z, d]) => ({ zone: z, avg: d.total / d.count, count: d.count }))
+        .sort((a, b) => b.avg - a.avg);
+      // Pick randomly from top 3 best-matching zones for variety
+      const topZones = scoredZones.slice(0, 3);
+      const chosenZone = topZones.length > 0 ? topZones[Math.floor(Math.random() * topZones.length)].zone : "central";
+      // Find best anchor venue in that zone (highest individual score)
+      const zoneVenues = withCoords
+        .filter(v => v.travelZone === chosenZone)
         .map(v => ({ ...v, score: scoreVenue(v, vibes || [], budget || "mid", timeOfDay || "night", extras || []) }))
         .filter(v => v.score >= 0)
         .sort((a, b) => b.score - a.score);
-      const types = STOP_ORDER[timeOfDay] || STOP_ORDER.night;
-      const used = new Set(), usedTypes = {}, shortlist = [];
-      for (const t of types) {
-        const c = nearby.filter(v => v.type === t && !used.has(v.id) && (usedTypes[t] || 0) < 2);
-        if (c[0]) { shortlist.push(c[0]); used.add(c[0].id); usedTypes[t] = (usedTypes[t] || 0) + 1; }
+      const anchor = zoneVenues[0] || withCoords.find(v => v.travelZone === chosenZone);
+      if (anchor) {
+        const nearby = source
+          .filter(v => v.lat && v.lng && haversineKm(anchor.lat, anchor.lng, v.lat, v.lng) <= 1.5)
+          .map(v => ({ ...v, score: scoreVenue(v, vibes || [], budget || "mid", timeOfDay || "night", extras || []) }))
+          .filter(v => v.score >= 0)
+          .sort((a, b) => b.score - a.score);
+        const types = STOP_ORDER[timeOfDay] || STOP_ORDER.night;
+        const used = new Set(), usedTypes = {}, shortlist = [];
+        for (const t of types) {
+          const c = nearby.filter(v => v.type === t && !used.has(v.id) && (usedTypes[t] || 0) < 2);
+          if (c[0]) { shortlist.push(c[0]); used.add(c[0].id); usedTypes[t] = (usedTypes[t] || 0) + 1; }
+        }
+        while (shortlist.length < 4) { const n = nearby.find(v => !used.has(v.id)); if (!n) break; shortlist.push(n); used.add(n.id); }
+        if (shortlist.length >= 3) return { venues: shortlist.slice(0, 6), zone: chosenZone };
       }
-      while (shortlist.length < 4) { const n = nearby.find(v => !used.has(v.id)); if (!n) break; shortlist.push(n); used.add(n.id); }
-      if (shortlist.length >= 3) return { venues: shortlist.slice(0, 6), zone: randomZone };
     }
   }
 
