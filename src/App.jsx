@@ -1394,10 +1394,10 @@ export default function App() {
 
     const areaNote = ans.area === "map_pin" ? `near dropped pin (${ans.mapPin?.lat?.toFixed(3)}, ${ans.mapPin?.lng?.toFixed(3)})` : ans.area;
     const travelNote = ans.travel === "walking"
-  ? "walking only, all stops must be within 15 min walk of each other"
+  ? "walking only, all stops must be within 20 min walk of each other"
   : ans.travel === "max10"
-  ? "strict: max 20 min total travel between ANY two consecutive stops, prioritise venues in the same neighbourhood"
-  : "walking and tube ok, keep total travel between stops under 20 min";
+  ? "strict: max 10 min walk between ANY two consecutive stops, prioritise venues in the same neighbourhood"
+  : "walking and tube ok, keep total travel between stops under 30 min";
 
     const prompt = "You are London's sharpest local guide. Build a perfect itinerary from these curated venues. User: " +
       ans.timeOfDay + " plan, vibes: " + (ans.vibes || []).join(", ") +
@@ -1441,7 +1441,7 @@ export default function App() {
 
           if (dbVenue?.lat && dbVenue?.lng && nextDbVenue?.lat && nextDbVenue?.lng) {
             try {
-              const travelMode = ans.travel === "walking" || ans.travel === "max10" ? "walking" : "transit";
+              const travelMode = ans.travel === "walk_tube" ? "transit" : "walking";
               const departureTime = new Date().toISOString(); // use now as proxy
 
               const travelResp = await fetch("/api/travel-time", {
@@ -1468,16 +1468,14 @@ export default function App() {
         return enriched;
       }));
 
-      // Filter stops exceeding 15 min if max15 mode
-      let finalStops = enrichedStops;
-      if (ans.travel === "max10") {
-        finalStops = enrichedStops.filter((stop, idx) => {
-          if (idx === 0) return true;
-          const prevStop = enrichedStops[idx - 1];
-          if (prevStop.travel_minutes && prevStop.travel_minutes > 20) return false;
-          return true;
-        });
-      }
+      // Hard filter: drop stops that exceed travel time limit
+      const travelLimit = ans.travel === "max10" ? 10 : ans.travel === "walking" ? 20 : 30;
+      let finalStops = enrichedStops.filter((stop, idx) => {
+        if (idx === 0) return true;
+        const prevStop = enrichedStops[idx - 1];
+        if (prevStop.travel_minutes && prevStop.travel_minutes > travelLimit) return false;
+        return true;
+      });
 
       const finalResult = { ...parsed, stops: finalStops };
       setResult(finalResult);
