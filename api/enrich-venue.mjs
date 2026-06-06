@@ -9,6 +9,7 @@ const NEIGHBOURHOOD_ZONES = {
   'piccadilly': 'Central', 'the strand': 'Central', 'trafalgar': 'Central',
   'clerkenwell': 'Central', 'farringdon': 'Central',
   'king\'s cross': 'Central', 'kings cross': 'Central', 'euston': 'Central',
+  'south bank': 'Central', 'bankside': 'Central',
   'pimlico': 'Central',
 
   // East
