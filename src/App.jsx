@@ -1783,9 +1783,8 @@ export default function App() {
     { id: "home", label: "Plan", icon: "✦" },
     { id: "plans", label: "My Plans", icon: "📋" },
     { id: "discover", label: "Discover", icon: "🔍" },
-    { id: "add", label: "Add", icon: "➕" },
     { id: "prefs", label: "For me", icon: "🎯" },
-    ...(isAdmin ? [{ id: "admin", label: "Admin", icon: "⚙️", badge: adminBadge }] : []),
+    ...(isAdmin ? [{ id: "add", label: "Add", icon: "➕" }, { id: "admin", label: "Admin", icon: "⚙️", badge: adminBadge }] : []),
   ];
 
   if (authLoading) return (
