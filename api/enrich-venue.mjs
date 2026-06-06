@@ -1,41 +1,61 @@
-function zoneFromPostcode(postcode) {
-  if (!postcode) return null;
-  const clean = postcode.trim().toUpperCase();
+// ── LONDON ZONE CLASSIFIER (Deterministic Spec v2) ──────────
+// Hierarchy: known neighbourhood in address → postcode fallback
+// Address-first means "Shoreditch" always wins over an EC2 postcode.
 
-  if (clean.startsWith('EC')) return 'Central';
-  if (clean.startsWith('WC')) return 'Central';
-  if (clean.startsWith('W1')) return 'Central';
-  if (clean.startsWith('SW1')) return 'Central';
-  if (clean.startsWith('NW1')) return 'Central';
-  if (clean.startsWith('SE1')) return 'Central';
+const NEIGHBOURHOOD_ZONES = {
+  // Central
+  'soho': 'Central', 'covent garden': 'Central', 'fitzrovia': 'Central',
+  'bloomsbury': 'Central', 'holborn': 'Central', 'westminster': 'Central',
+  'piccadilly': 'Central', 'strand': 'Central', 'trafalgar': 'Central',
+  'clerkenwell': 'Central', 'farringdon': 'Central', 'the city': 'Central',
+  'king\'s cross': 'Central', 'kings cross': 'Central', 'euston': 'Central',
+  'waterloo': 'Central', 'south bank': 'Central', 'bankside': 'Central',
+  'pimlico': 'Central', 'victoria': 'Central', 'st james': 'Central',
 
-  if (clean.startsWith('NW')) return 'Northwest';
-  if (clean.startsWith('HA')) return 'Northwest';
-  if (clean.startsWith('WD')) return 'Northwest';
-  if (clean.startsWith('AL')) return 'Northwest';
+  // East
+  'shoreditch': 'East', 'hoxton': 'East', 'bethnal green': 'East',
+  'whitechapel': 'East', 'spitalfields': 'East', 'mile end': 'East',
+  'bow': 'East', 'stratford': 'East', 'canary wharf': 'East',
+  'poplar': 'East', 'limehouse': 'East', 'old street': 'East',
+  'hackney': 'East', 'dalston': 'East', 'de beauvoir': 'East',
 
-  if (clean.startsWith('N')) return 'North';
-  if (clean.startsWith('EN')) return 'North';
+  // North
+  'islington': 'North', 'angel': 'North', 'highbury': 'North',
+  'camden': 'North', 'kentish town': 'North', 'holloway': 'North',
+  'finsbury park': 'North', 'archway': 'North', 'highgate': 'North',
+  'crouch end': 'North', 'muswell hill': 'North',
+  'stoke newington': 'North',
 
-  if (clean.startsWith('E')) return 'East';
-  if (clean.startsWith('RM')) return 'East';
-  if (clean.startsWith('IG')) return 'East';
+  // Northwest
+  'hampstead': 'Northwest', 'kilburn': 'Northwest', 'queen\'s park': 'Northwest',
+  'queens park': 'Northwest', 'maida vale': 'Northwest', 'st john\'s wood': 'Northwest',
+  'swiss cottage': 'Northwest', 'wembley': 'Northwest', 'harrow': 'Northwest',
 
-  if (clean.startsWith('W')) return 'West';
-  if (clean.startsWith('UB')) return 'West';
+  // Northeast
+  'clapton': 'Northeast', 'walthamstow': 'Northeast', 'leyton': 'Northeast',
+  'tottenham': 'Northeast', 'wood green': 'Northeast',
 
-  if (clean.startsWith('SW')) return 'Southwest';
-  if (clean.startsWith('TW')) return 'Southwest';
-  if (clean.startsWith('KT')) return 'Southwest';
-  if (clean.startsWith('SM')) return 'Southwest';
+  // West
+  'mayfair': 'West', 'marylebone': 'West', 'notting hill': 'West',
+  'kensington': 'West', 'chelsea': 'West', 'knightsbridge': 'West',
+  'holland park': 'West', 'shepherd\'s bush': 'West', 'shepherds bush': 'West',
+  'hammersmith': 'West', 'fulham': 'West', 'chiswick': 'West',
 
-  if (clean.startsWith('SE')) return 'Southeast';
-  if (clean.startsWith('CR')) return 'Southeast';
-  if (clean.startsWith('BR')) return 'Southeast';
-  if (clean.startsWith('DA')) return 'Southeast';
+  // Southwest
+  'clapham': 'Southwest', 'battersea': 'Southwest', 'brixton': 'Southwest',
+  'putney': 'Southwest', 'tooting': 'Southwest', 'balham': 'Southwest',
+  'wandsworth': 'Southwest', 'richmond': 'Southwest', 'wimbledon': 'Southwest',
+  'kingston': 'Southwest',
 
-  return null;
-}
+  // Southeast
+  'peckham': 'Southeast', 'bermondsey': 'Southeast', 'london bridge': 'Southeast',
+  'borough': 'Southeast', 'camberwell': 'Southeast', 'dulwich': 'Southeast',
+  'greenwich': 'Southeast', 'deptford': 'Southeast', 'new cross': 'Southeast',
+  'lewisham': 'Southeast', 'elephant and castle': 'Southeast',
+
+  // South (Kennington/Vauxhall corridor)
+  'kennington': 'South', 'stockwell': 'South', 'vauxhall': 'South',
+};
 
 function areaFromAddress(address) {
   if (!address) return null;
@@ -44,6 +64,39 @@ function areaFromAddress(address) {
   if (londonIdx > 1) return parts[londonIdx - 1];
   if (londonIdx === 1) return parts[0];
   return null;
+}
+
+function zoneFromAddress(address) {
+  if (!address) return null;
+  const addr = address.toLowerCase();
+  for (const [neighbourhood, zone] of Object.entries(NEIGHBOURHOOD_ZONES)) {
+    if (addr.includes(neighbourhood)) return zone;
+  }
+  return null;
+}
+
+function zoneFromPostcode(postcode) {
+  if (!postcode) return null;
+  const pc = postcode.trim().toUpperCase().replace(/\s/g, '');
+
+  if (pc.startsWith('WC') || pc.startsWith('EC') || pc.startsWith('W1') || pc.startsWith('SW1')) return 'Central';
+  if (pc.startsWith('NW3') || pc.startsWith('NW11')) return 'Northwest';
+  if (pc.startsWith('NW') || pc.startsWith('HA') || pc.startsWith('WD') || pc.startsWith('AL')) return 'Northwest';
+  if (pc.startsWith('N6')) return 'Northwest';
+  if (pc.startsWith('N') || pc.startsWith('EN')) return 'North';
+  if (pc.startsWith('E') || pc.startsWith('RM') || pc.startsWith('IG')) return 'East';
+  if (pc.startsWith('SE') || pc.startsWith('CR') || pc.startsWith('BR') || pc.startsWith('DA')) return 'Southeast';
+  if (pc.startsWith('SW') || pc.startsWith('TW') || pc.startsWith('KT') || pc.startsWith('SM')) return 'Southwest';
+  if (pc.startsWith('W') || pc.startsWith('UB')) return 'West';
+
+  return null;
+}
+
+function classifyZone(postcode, address) {
+  const area = areaFromAddress(address);
+  const zoneByAddress = zoneFromAddress(address);
+  if (zoneByAddress) return { zone: zoneByAddress, area };
+  return { zone: zoneFromPostcode(postcode), area };
 }
 
 export default async function handler(req, res) {
@@ -81,8 +134,7 @@ export default async function handler(req, res) {
     const postcode = postcodeMatch ? postcodeMatch[0].toUpperCase() : null;
     const priceLevelMap = { 0: 'Free', 1: 'Under £15pp', 2: '£15-35pp', 3: '£35-70pp', 4: '£70pp+' };
 
-    const derivedZone = zoneFromPostcode(postcode);
-    const derivedArea = areaFromAddress(address);
+    const { zone: derivedZone, area: derivedArea } = classifyZone(postcode, address);
 
     let website = null, phone = null, opening_hours = null;
     if (place.place_id) {
