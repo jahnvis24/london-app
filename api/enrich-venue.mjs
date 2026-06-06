@@ -36,7 +36,7 @@ const NEIGHBOURHOOD_ZONES = {
   'tottenham': 'Northeast', 'wood green': 'Northeast',
 
   // West
-  'mayfair': 'West', 'marylebone': 'West', 'notting hill': 'West',
+  'mayfair': 'West', 'marylebone': 'Central', 'notting hill': 'West',
   'kensington': 'West', 'chelsea': 'West', 'knightsbridge': 'West',
   'holland park': 'West', 'shepherd\'s bush': 'West', 'shepherds bush': 'West',
   'hammersmith': 'West', 'fulham': 'West', 'chiswick': 'West',
