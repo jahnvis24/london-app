@@ -87,7 +87,7 @@ const STOP_ORDER = { day: ["cafe", "walk", "outdoor", "museum", "gallery", "mark
 
 const ZONES = ["North", "Northwest", "Northeast", "South", "Southwest", "Southeast", "East", "West", "Central", "Outskirts"];
 
-function scoreVenue(v, vibes, budget, timeOfDay, extras, groupSize, energy) {
+function scoreVenue(v, vibes, budget, timeOfDay, extras, groupSize, energy, venueRatings) {
   let score = 0;
   const BUDGET_PRICE_MAP = { low: ["low","Free","Under £15pp"], mid: ["low","mid","Free","Under £15pp","£15-35pp"], high: ["low","mid","high","Free","Under £15pp","£15-35pp","£35-70pp"], unlimited: ["low","mid","high","Free","Under £15pp","£15-35pp","£35-70pp","£70pp+"] };
   const prices = BUDGET_PRICE_MAP[budget] || ["low","mid","high"];
@@ -109,6 +109,8 @@ function scoreVenue(v, vibes, budget, timeOfDay, extras, groupSize, energy) {
   // Group size: large groups → boost social/walk-in venues, solo → boost solo/chill
   if (groupSize === "large") { score += (v.tags || []).filter(t => ["social","chaotic"].includes(t)).length * 2; if (!v.bookingRequired) score += 2; }
   if (groupSize === "solo") { score += (v.tags || []).filter(t => ["solo","chill","cultural"].includes(t)).length * 2; }
+  // Boost/demote based on user review ratings
+  if (venueRatings && venueRatings[v.name]) { score += (venueRatings[v.name] - 3) * 2; }
   return score;
 }
 
@@ -120,7 +122,7 @@ function haversineKm(lat1, lng1, lat2, lng2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
-function buildShortlist(answers, dbVenues = []) {
+function buildShortlist(answers, dbVenues = [], venueRatings = {}) {
   const { vibes, area, budget, timeOfDay, extras, groupSize, energy } = answers;
   const isSurprise = area === "surprise_me";
 
@@ -140,7 +142,7 @@ function buildShortlist(answers, dbVenues = []) {
     const { lat: pinLat, lng: pinLng } = answers.mapPin;
     const nearby = source
       .filter(v => v.lat && v.lng && haversineKm(pinLat, pinLng, v.lat, v.lng) <= 1.5)
-      .map(v => ({ ...v, score: scoreVenue(v, vibes || [], budget || "mid", timeOfDay || "night", extras || [], groupSize, energy) }))
+      .map(v => ({ ...v, score: scoreVenue(v, vibes || [], budget || "mid", timeOfDay || "night", extras || [], groupSize, energy, venueRatings) }))
       .filter(v => v.score >= 0)
       .sort((a, b) => b.score - a.score);
     const types = STOP_ORDER[timeOfDay] || STOP_ORDER.night;
@@ -160,7 +162,7 @@ function buildShortlist(answers, dbVenues = []) {
       // Score each zone by how well its venues match the user's vibes
       const zoneScores = {};
       withCoords.forEach(v => {
-        const s = scoreVenue(v, vibes || [], budget || "mid", timeOfDay || "night", extras || [], groupSize, energy);
+        const s = scoreVenue(v, vibes || [], budget || "mid", timeOfDay || "night", extras || [], groupSize, energy, venueRatings);
         if (s >= 0) {
           if (!zoneScores[v.travelZone]) zoneScores[v.travelZone] = { total: 0, count: 0 };
           zoneScores[v.travelZone].total += s;
@@ -178,14 +180,14 @@ function buildShortlist(answers, dbVenues = []) {
       // Find best anchor venue in that zone (highest individual score)
       const zoneVenues = withCoords
         .filter(v => v.travelZone === chosenZone)
-        .map(v => ({ ...v, score: scoreVenue(v, vibes || [], budget || "mid", timeOfDay || "night", extras || [], groupSize, energy) }))
+        .map(v => ({ ...v, score: scoreVenue(v, vibes || [], budget || "mid", timeOfDay || "night", extras || [], groupSize, energy, venueRatings) }))
         .filter(v => v.score >= 0)
         .sort((a, b) => b.score - a.score);
       const anchor = zoneVenues[0] || withCoords.find(v => v.travelZone === chosenZone);
       if (anchor) {
         const nearby = source
           .filter(v => v.lat && v.lng && haversineKm(anchor.lat, anchor.lng, v.lat, v.lng) <= 1.5)
-          .map(v => ({ ...v, score: scoreVenue(v, vibes || [], budget || "mid", timeOfDay || "night", extras || [], groupSize, energy) }))
+          .map(v => ({ ...v, score: scoreVenue(v, vibes || [], budget || "mid", timeOfDay || "night", extras || [], groupSize, energy, venueRatings) }))
           .filter(v => v.score >= 0)
           .sort((a, b) => b.score - a.score);
         const types = STOP_ORDER[timeOfDay] || STOP_ORDER.night;
@@ -216,7 +218,7 @@ function buildShortlist(answers, dbVenues = []) {
   const withCoords = zoneFiltered.filter(v => v.lat && v.lng);
 
   // Find best anchor: highest scoring venue with coordinates
-  const scoredAll = withCoords.map(v => ({ ...v, score: scoreVenue(v, vibes || [], budget || "mid", timeOfDay || "night", extras || [], groupSize, energy) }))
+  const scoredAll = withCoords.map(v => ({ ...v, score: scoreVenue(v, vibes || [], budget || "mid", timeOfDay || "night", extras || [], groupSize, energy, venueRatings) }))
     .filter(v => v.score >= 0).sort((a, b) => b.score - a.score);
 
   const targetStops = timeOfDay === "full" ? 5 : 4;
@@ -237,7 +239,7 @@ function buildShortlist(answers, dbVenues = []) {
         }).map(v => {
           let s = 0;
           if (level === "strict") {
-            s = scoreVenue(v, vibes || [], budget || "mid", timeOfDay || "night", extras || [], groupSize, energy);
+            s = scoreVenue(v, vibes || [], budget || "mid", timeOfDay || "night", extras || [], groupSize, energy, venueRatings);
             if (s < 0) return null;
           } else if (level === "relax_vibe") {
             s = scoreVenue(v, [], budget || "mid", timeOfDay || "night", extras || [], groupSize, energy);
@@ -286,7 +288,7 @@ function buildShortlist(answers, dbVenues = []) {
 
   // Last resort: non-geo scored list
   if (bestChain.length < 3) {
-    const scored = zoneFiltered.map(v => ({ ...v, score: scoreVenue(v, vibes || [], budget || "mid", timeOfDay || "night", extras || [], groupSize, energy) }))
+    const scored = zoneFiltered.map(v => ({ ...v, score: scoreVenue(v, vibes || [], budget || "mid", timeOfDay || "night", extras || [], groupSize, energy, venueRatings) }))
       .filter(v => v.score >= 0).sort((a, b) => b.score - a.score);
     bestChain = scored.slice(0, targetStops);
   }
@@ -1572,6 +1574,79 @@ function LoginScreen({ onLogin }) {
   );
 }
 
+function RatingPrompt({ plan, user, onDismiss, onSubmit }) {
+  const [overall, setOverall] = useState(0);
+  const [stopRatings, setStopRatings] = useState({});
+  const [comment, setComment] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  function rateStop(name, rating) {
+    setStopRatings(prev => ({ ...prev, [name]: rating }));
+  }
+
+  async function submit() {
+    if (overall === 0) return;
+    setSubmitting(true);
+    const ratings = Object.entries(stopRatings).map(([name, rating]) => ({ name, rating }));
+    await supabase.from("plan_reviews").insert({
+      user_id: user.id,
+      plan_id: plan.id,
+      overall_rating: overall,
+      stop_ratings: ratings,
+      comment: comment || null,
+    });
+    // Mark as reviewed in localStorage
+    const reviewed = JSON.parse(localStorage.getItem("cl_reviewed") || "[]");
+    reviewed.push(plan.id);
+    localStorage.setItem("cl_reviewed", JSON.stringify(reviewed));
+    setSubmitting(false);
+    onSubmit();
+  }
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: "1.5rem" }}>
+      <div style={{ background: "#fff", borderRadius: 20, maxWidth: 380, width: "100%", maxHeight: "80vh", overflow: "auto", padding: "1.5rem" }}>
+        <div style={{ fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#1B998B", fontWeight: 500, marginBottom: "0.5rem" }}>How was it?</div>
+        <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.3rem", color: "#1c1c1a", marginBottom: "0.25rem" }}>{plan.result.title}</div>
+        <div style={{ fontSize: "0.78rem", color: "#9b8f7a", marginBottom: "1.25rem" }}>{plan.savedAt}</div>
+
+        <div style={{ marginBottom: "1.25rem" }}>
+          <div style={{ fontSize: "0.75rem", fontWeight: 500, color: "#4a4438", marginBottom: "0.5rem" }}>Overall rating</div>
+          <div style={{ display: "flex", gap: 6 }}>
+            {[1,2,3,4,5].map(n => (
+              <button key={n} onClick={() => setOverall(n)} style={{ width: 36, height: 36, borderRadius: "50%", border: "1.5px solid", borderColor: overall >= n ? "#1B998B" : "#ddd8ce", background: overall >= n ? "#1B998B" : "#fff", color: overall >= n ? "#fff" : "#9b8f7a", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>{n}</button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ marginBottom: "1.25rem" }}>
+          <div style={{ fontSize: "0.75rem", fontWeight: 500, color: "#4a4438", marginBottom: "0.5rem" }}>Rate each stop</div>
+          {(plan.result.stops || []).map((stop, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.4rem 0", borderBottom: "1px solid #f0ebe2" }}>
+              <span style={{ fontSize: "0.8rem", color: "#1c1c1a", flex: 1 }}>{stop.emoji} {stop.name}</span>
+              <div style={{ display: "flex", gap: 3 }}>
+                {[1,2,3,4,5].map(n => (
+                  <button key={n} onClick={() => rateStop(stop.name, n)} style={{ width: 24, height: 24, borderRadius: "50%", border: "1px solid", borderColor: (stopRatings[stop.name] || 0) >= n ? "#1B998B" : "#e8e2d8", background: (stopRatings[stop.name] || 0) >= n ? "#e0f5f3" : "#fff", color: (stopRatings[stop.name] || 0) >= n ? "#1B998B" : "#b8ac9a", fontSize: "0.6rem", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>{n}</button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ marginBottom: "1.25rem" }}>
+          <div style={{ fontSize: "0.75rem", fontWeight: 500, color: "#4a4438", marginBottom: "0.5rem" }}>Any notes? (optional)</div>
+          <textarea className="input-field" value={comment} onChange={e => setComment(e.target.value)} placeholder="What stood out? What would you change?" style={{ minHeight: 60 }} />
+        </div>
+
+        <button className="btn btn-teal" onClick={submit} disabled={overall === 0 || submitting}>
+          {submitting ? "Saving..." : "Submit review"}
+        </button>
+        <button className="btn-outline" onClick={onDismiss} style={{ marginTop: "0.5rem" }}>Skip for now</button>
+      </div>
+    </div>
+  );
+}
+
 // ── MAIN APP ─────────────────────────────────────────────────
 export default function App() {
   const [user, setUser] = useState(null);
@@ -1589,6 +1664,7 @@ export default function App() {
   });
   const [viewingPlan, setViewingPlan] = useState(null);
   const [toast, setToast] = useState({ msg: "", show: false });
+  const [ratingPlan, setRatingPlan] = useState(null);
   const [dbVenues, setDbVenues] = useState([]);
   const [adminBadge, setAdminBadge] = useState(0);
   const [preferences, setPreferences] = useState(() => {
@@ -1618,10 +1694,39 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Check for unrated past plans
+  useEffect(() => {
+    if (!user || plans.length === 0) return;
+    const reviewed = JSON.parse(localStorage.getItem("cl_reviewed") || "[]");
+    const unrated = plans.find(p => p.id && !reviewed.includes(p.id));
+    if (unrated) setTimeout(() => setRatingPlan(unrated), 1500);
+  }, [user, plans]);
+
   // Persist preferences
   useEffect(() => {
     localStorage.setItem("cl_prefs", JSON.stringify(preferences));
   }, [preferences]);
+
+  // Load venue ratings from reviews
+  const [venueRatings, setVenueRatings] = useState({});
+  useEffect(() => {
+    async function loadRatings() {
+      const { data } = await supabase.from("plan_reviews").select("stop_ratings");
+      if (!data) return;
+      const agg = {};
+      for (const review of data) {
+        for (const sr of (review.stop_ratings || [])) {
+          if (!agg[sr.name]) agg[sr.name] = { total: 0, count: 0 };
+          agg[sr.name].total += sr.rating;
+          agg[sr.name].count += 1;
+        }
+      }
+      const avgs = {};
+      for (const [name, d] of Object.entries(agg)) { avgs[name] = d.total / d.count; }
+      setVenueRatings(avgs);
+    }
+    loadRatings();
+  }, []);
 
   // Load approved venues from Supabase
   useEffect(() => {
@@ -1660,7 +1765,7 @@ export default function App() {
 
   async function generate() {
     setLoading(true); setError(null);
-    const shortlistResult = buildShortlist(ans, dbVenues);
+    const shortlistResult = buildShortlist(ans, dbVenues, venueRatings);
     const shortlist = shortlistResult.venues || shortlistResult;
     const chosenZone = shortlistResult.zone || ans.area;
     const venueData = JSON.stringify(shortlist.map(v => ({
@@ -1806,6 +1911,7 @@ export default function App() {
       <style>{styles}</style>
       <div className="app">
         <div className={"toast" + (toast.show ? " show" : "")}>{toast.msg}</div>
+        {ratingPlan && <RatingPrompt plan={ratingPlan} user={user} onDismiss={() => { const reviewed = JSON.parse(localStorage.getItem("cl_reviewed") || "[]"); reviewed.push(ratingPlan.id); localStorage.setItem("cl_reviewed", JSON.stringify(reviewed)); setRatingPlan(null); }} onSubmit={() => { setRatingPlan(null); showToast("Thanks for your review!"); }} />}
 
         {showHome && <HomeScreen onStart={startQuiz} />}
         {showQuiz && <QuizScreen step={quizStep} ans={ans} times={times} setTimes={setTimes} onToggle={toggle} onNext={nextStep} onBack={prevStep} onGenerate={generate} loading={loading} loadIdx={loadIdx} error={error} />}
