@@ -28,6 +28,23 @@ const KEYWORDS = [
   "London rooftop bars",
   "London markets",
   "London galleries",
+  // Gap-targeted keywords
+  "Brixton restaurants",
+  "Kennington things to do",
+  "Stockwell food",
+  "South London cafes",
+  "South London markets",
+  "Hampstead things to do",
+  "Camden market food",
+  "Northwest London cafes",
+  "Battersea things to do",
+  "Tooting restaurants",
+  "Wimbledon things to do",
+  "London museums free",
+  "South London galleries",
+  "Brixton brunch",
+  "Vauxhall things to do",
+  "Herne Hill cafes",
 ];
 
 const USERNAMES_BATCH_1 = [
