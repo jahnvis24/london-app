@@ -969,7 +969,7 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
                       {stop.price_range && <span className="stop-pill">💰 {stop.price_range}</span>}
                       {stop.google_rating && <span className="stop-pill">⭐ {stop.google_rating}</span>}
                       {stop.area && <span className="stop-pill">📍 {stop.area}</span>}
-                      {stop.celebrity_tags && stop.celebrity_tags.map((celeb, ci) => (
+                      {stop.celebrity_tags && [...new Set(stop.celebrity_tags)].map((celeb, ci) => (
                         <span key={ci} className="stop-pill" style={{ background: "#f3e8ff", color: "#7c3aed" }}>💫 {celeb}'s fav</span>
                       ))}
                     </div>
