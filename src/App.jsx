@@ -1252,12 +1252,20 @@ function AdminScreen({ onBadgeUpdate }) {
   const [pending, setPending] = useState([]);
   const [loading, setLoading] = useState(true);
   const [zoneEdits, setZoneEdits] = useState({});
+  const [users, setUsers] = useState([]);
+  const [showUsers, setShowUsers] = useState(false);
+
+  async function loadUsers() {
+    const { data } = await supabase.from("profiles").select("*").order("last_login", { ascending: false });
+    setUsers(data || []);
+  }
 
   async function load() {
     setLoading(true);
     const { data } = await supabase.from("experiences").select("*").eq("status", "pending").order("created_at", { ascending: false });
     setPending(data || []);
     if (onBadgeUpdate) onBadgeUpdate(data?.length || 0);
+    await loadUsers();
     setLoading(false);
   }
 
@@ -1290,7 +1298,28 @@ function AdminScreen({ onBadgeUpdate }) {
     <div>
       <div className="section-pad" style={{ paddingBottom: "0.5rem" }}>
         <div className="section-title">Admin</div>
-        <p className="section-sub">{pending.length} item{pending.length !== 1 ? "s" : ""} pending review</p>
+        <p className="section-sub">{pending.length} item{pending.length !== 1 ? "s" : ""} pending review · {users.length} users</p>
+      </div>
+
+      <div style={{ padding: "0 1.5rem 1rem" }}>
+        <button className="btn-outline" style={{ marginTop: 0, marginBottom: "1rem" }} onClick={() => setShowUsers(!showUsers)}>
+          {showUsers ? "Hide" : "Show"} users ({users.length})
+        </button>
+        {showUsers && users.length > 0 && (
+          <div style={{ marginBottom: "1rem" }}>
+            {users.map(u => (
+              <div key={u.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "0.6rem 0", borderBottom: "1px solid #f0ebe2" }}>
+                {u.avatar_url && <img src={u.avatar_url} style={{ width: 28, height: 28, borderRadius: "50%" }} alt="" />}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: "0.82rem", color: "#1c1c1a", fontWeight: 500 }}>{u.name || u.email}</div>
+                  <div style={{ fontSize: "0.7rem", color: "#9b8f7a" }}>
+                    {u.login_count} login{u.login_count !== 1 ? "s" : ""} · last: {new Date(u.last_login).toLocaleDateString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {pending.length === 0 ? (
@@ -1439,14 +1468,23 @@ export default function App() {
   const timerRef = useRef(null);
   const isAdmin = user?.email === ADMIN_EMAIL;
 
-  // Auth listener
+  // Auth listener + login tracking
   useEffect(() => {
+    function trackLogin(u) {
+      if (!u) return;
+      fetch("/api/track-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: u.id, email: u.email, name: u.user_metadata?.full_name, avatar_url: u.user_metadata?.avatar_url })
+      }).catch(() => {});
+    }
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user || null);
       setAuthLoading(false);
     });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user || null);
+      if (event === "SIGNED_IN") trackLogin(session?.user);
     });
     return () => subscription.unsubscribe();
   }, []);
