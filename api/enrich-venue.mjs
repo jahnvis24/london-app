@@ -42,7 +42,7 @@ const NEIGHBOURHOOD_ZONES = {
   'hammersmith': 'West', 'fulham': 'West', 'chiswick': 'West',
 
   // Southwest
-  'clapham': 'Southwest', 'battersea': 'Southwest', 'brixton': 'Southwest',
+  'clapham': 'Southwest', 'battersea': 'Southwest', 'brixton': 'South',
   'putney': 'Southwest', 'tooting': 'Southwest', 'balham': 'Southwest',
   'wandsworth': 'Southwest', 'richmond': 'Southwest', 'wimbledon': 'Southwest',
   'kingston': 'Southwest',
