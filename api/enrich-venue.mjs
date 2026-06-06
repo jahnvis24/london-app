@@ -6,11 +6,10 @@ const NEIGHBOURHOOD_ZONES = {
   // Central
   'soho': 'Central', 'covent garden': 'Central', 'fitzrovia': 'Central',
   'bloomsbury': 'Central', 'holborn': 'Central', 'westminster': 'Central',
-  'piccadilly': 'Central', 'strand': 'Central', 'trafalgar': 'Central',
-  'clerkenwell': 'Central', 'farringdon': 'Central', 'the city': 'Central',
+  'piccadilly': 'Central', 'the strand': 'Central', 'trafalgar': 'Central',
+  'clerkenwell': 'Central', 'farringdon': 'Central',
   'king\'s cross': 'Central', 'kings cross': 'Central', 'euston': 'Central',
-  'waterloo': 'Central', 'south bank': 'Central', 'bankside': 'Central',
-  'pimlico': 'Central', 'victoria': 'Central', 'st james': 'Central',
+  'pimlico': 'Central',
 
   // East
   'shoreditch': 'East', 'hoxton': 'East', 'bethnal green': 'East',
@@ -70,7 +69,8 @@ function zoneFromAddress(address) {
   if (!address) return null;
   const addr = address.toLowerCase();
   for (const [neighbourhood, zone] of Object.entries(NEIGHBOURHOOD_ZONES)) {
-    if (addr.includes(neighbourhood)) return zone;
+    const regex = new RegExp(`\\b${neighbourhood.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+    if (regex.test(addr)) return zone;
   }
   return null;
 }
@@ -79,14 +79,30 @@ function zoneFromPostcode(postcode) {
   if (!postcode) return null;
   const pc = postcode.trim().toUpperCase().replace(/\s/g, '');
 
-  if (pc.startsWith('WC') || pc.startsWith('EC') || pc.startsWith('W1') || pc.startsWith('SW1')) return 'Central';
+  // Central: WC, EC, W1 (not W10+), SW1 (not SW10+), NW1 (not NW10+)
+  if (pc.startsWith('WC') || pc.startsWith('EC')) return 'Central';
+  if (/^W1[A-Z]/.test(pc)) return 'Central';
+  if (/^SW1[A-Z]/.test(pc)) return 'Central';
+  if (/^NW1[A-Z]/.test(pc)) return 'Central';
+
+  // Northwest
   if (pc.startsWith('NW3') || pc.startsWith('NW11')) return 'Northwest';
   if (pc.startsWith('NW') || pc.startsWith('HA') || pc.startsWith('WD') || pc.startsWith('AL')) return 'Northwest';
+
+  // North
   if (pc.startsWith('N6')) return 'Northwest';
   if (pc.startsWith('N') || pc.startsWith('EN')) return 'North';
+
+  // East
   if (pc.startsWith('E') || pc.startsWith('RM') || pc.startsWith('IG')) return 'East';
+
+  // Southeast
   if (pc.startsWith('SE') || pc.startsWith('CR') || pc.startsWith('BR') || pc.startsWith('DA')) return 'Southeast';
+
+  // Southwest (SW2–SW20, not SW1)
   if (pc.startsWith('SW') || pc.startsWith('TW') || pc.startsWith('KT') || pc.startsWith('SM')) return 'Southwest';
+
+  // West (W2–W14, UB)
   if (pc.startsWith('W') || pc.startsWith('UB')) return 'West';
 
   return null;
