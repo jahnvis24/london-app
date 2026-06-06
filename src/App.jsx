@@ -726,17 +726,6 @@ function QuizScreen({ step, ans, times, setTimes, onToggle, onNext, onBack, onGe
               Use this location →
             </button>
           )}
-          {isAreaStep && ans.area === "map_pin" && (
-  <MapPicker
-    onPin={(pin) => { onToggle("mapPin", pin, false); }}
-    currentPin={ans.mapPin}
-  />
-)}
-{isAreaStep && ans.area === "map_pin" && ans.mapPin && (
-  <button className="btn btn-teal" style={{ marginTop: "1rem" }} onClick={onNext}>
-    Use this location →
-  </button>
-)}
           {q.multi && <button className="btn" style={{ marginTop: "1.25rem" }} disabled={!canNext()} onClick={onNext}>Continue →</button>}
         </div>
       ) : (
@@ -811,6 +800,9 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan }) {
                       {stop.price_range && <span className="stop-pill">💰 {stop.price_range}</span>}
                       {stop.google_rating && <span className="stop-pill">⭐ {stop.google_rating}</span>}
                       {stop.area && <span className="stop-pill">📍 {stop.area}</span>}
+                      {stop.celebrity_tags && stop.celebrity_tags.map((celeb, ci) => (
+                        <span key={ci} className="stop-pill" style={{ background: "#f3e8ff", color: "#7c3aed" }}>💫 {celeb}'s fav</span>
+                      ))}
                     </div>
                     <div className="stop-booking">{stop.booking}</div>
                   </div>
@@ -1258,6 +1250,7 @@ function AdminScreen({ onBadgeUpdate }) {
               <div className="admin-card-name">{item.name}</div>
               <div className="admin-card-meta">
                 {item.category} · {item.area} · {item.price || "price unknown"}
+                {item.google_rating && ` · ⭐ ${item.google_rating}`}
                 {item.is_event && item.event_start && ` · 📅 ${new Date(item.event_start).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`}
               </div>
               {item.comment && <div style={{ fontSize: "0.78rem", color: "#6b5e4e", marginBottom: "8px", lineHeight: 1.4 }}>{item.comment}</div>}
@@ -1435,6 +1428,7 @@ export default function App() {
           price_range: dbVenue?.price || stop.cost_estimate || null,
           lat: dbVenue?.lat || null,
           lng: dbVenue?.lng || null,
+          celebrity_tags: dbVenue?.celebrity_tags || null,
         };
 
         // Get real travel time to next stop
