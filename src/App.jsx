@@ -799,10 +799,63 @@ function QuizScreen({ step, ans, times, setTimes, onToggle, onNext, onBack, onGe
   );
 }
 
-function ResultScreen({ result, times, ans, onRestart, onNewPlan }) {
+function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUpdateResult }) {
   const [view, setView] = useState("plan");
   const [shareId] = useState(generateId);
   const [copied, setCopied] = useState(false);
+  const [swappingIdx, setSwappingIdx] = useState(null);
+  const [alternatives, setAlternatives] = useState([]);
+
+  function findAlternatives(stopIdx) {
+    const stop = result.stops[stopIdx];
+    const usedNames = new Set(result.stops.map(s => s.name.toLowerCase()));
+    const source = dbVenues.map(v => ({
+      id: v.id, name: v.name, type: v.category || "experience",
+      tags: v.vibe_tags || [], price: v.price || "mid",
+      desc: v.comment || "", emoji: "✨",
+      travelZone: (v.zone || "Central").toLowerCase(),
+      google_rating: v.google_rating,
+      lat: v.lat ? parseFloat(v.lat) : null,
+      lng: v.lng ? parseFloat(v.lng) : null,
+      celebrity_tags: v.celebrity_tags || null,
+    }));
+
+    // Find venues of same type, not already in plan, scored by vibe match
+    const candidates = source
+      .filter(v => !usedNames.has(v.name.toLowerCase()))
+      .filter(v => v.type === stop.type || v.tags.some(t => (stop.tags || []).includes(t)))
+      .map(v => {
+        let score = 0;
+        if (v.type === stop.type) score += 5;
+        if (v.travelZone === (stop.area || "").toLowerCase()) score += 3;
+        const vibes = ans.vibes || [];
+        const wt = vibes.flatMap(vb => VIBE_TAG_MAP[vb] || [vb]);
+        score += (v.tags || []).filter(t => wt.includes(t)).length * 2;
+        return { ...v, score };
+      })
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3);
+
+    setAlternatives(candidates);
+    setSwappingIdx(stopIdx);
+  }
+
+  function swapVenue(alt) {
+    const newStops = [...result.stops];
+    newStops[swappingIdx] = {
+      ...newStops[swappingIdx],
+      name: alt.name,
+      emoji: alt.emoji,
+      type: alt.type,
+      hook: alt.desc,
+      google_rating: alt.google_rating,
+      price_range: alt.price,
+      celebrity_tags: alt.celebrity_tags,
+    };
+    onUpdateResult({ ...result, stops: newStops });
+    setSwappingIdx(null);
+    setAlternatives([]);
+  }
 
   return (
     <div>
@@ -860,8 +913,26 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan }) {
                         <span key={ci} className="stop-pill" style={{ background: "#f3e8ff", color: "#7c3aed" }}>💫 {celeb}'s fav</span>
                       ))}
                     </div>
-                    <div className="stop-booking">{stop.booking}</div>
+                    <button onClick={() => findAlternatives(idx)} style={{ border: "none", background: "none", color: "#1B998B", fontSize: "0.72rem", fontWeight: 500, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", padding: "2px 0" }}>↻ Swap</button>
                   </div>
+                  {swappingIdx === idx && alternatives.length > 0 && (
+                    <div style={{ padding: "0.75rem 1.1rem", borderTop: "1px solid #f0ebe2", background: "#fafaf7" }}>
+                      <div style={{ fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "#9b8f7a", marginBottom: "0.5rem", fontWeight: 500 }}>Swap with...</div>
+                      {alternatives.map((alt, ai) => (
+                        <div key={ai} onClick={() => swapVenue(alt)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "0.5rem 0", borderBottom: ai < alternatives.length - 1 ? "1px solid #f0ebe2" : "none", cursor: "pointer" }}>
+                          <span style={{ fontSize: "1.1rem" }}>{alt.emoji}</span>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: "0.82rem", fontWeight: 500, color: "#1c1c1a" }}>{alt.name}</div>
+                            <div style={{ fontSize: "0.7rem", color: "#9b8f7a" }}>{alt.type} {alt.google_rating ? `· ⭐ ${alt.google_rating}` : ""}</div>
+                          </div>
+                        </div>
+                      ))}
+                      <button onClick={() => { setSwappingIdx(null); setAlternatives([]); }} style={{ border: "none", background: "none", color: "#9b8f7a", fontSize: "0.72rem", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", marginTop: "0.4rem" }}>Cancel</button>
+                    </div>
+                  )}
+                  {swappingIdx === idx && alternatives.length === 0 && (
+                    <div style={{ padding: "0.5rem 1.1rem", borderTop: "1px solid #f0ebe2", fontSize: "0.75rem", color: "#9b8f7a" }}>No alternatives found for this stop type.</div>
+                  )}
                   {stop.why_it_fits && <div className="why-fit">↳ {stop.why_it_fits}</div>}
                 </div>
                 {stop.travel_to_next && idx < (result.stops || []).length - 1 && (
@@ -1680,13 +1751,13 @@ export default function App() {
 
         {showHome && <HomeScreen onStart={startQuiz} />}
         {showQuiz && <QuizScreen step={quizStep} ans={ans} times={times} setTimes={setTimes} onToggle={toggle} onNext={nextStep} onBack={prevStep} onGenerate={generate} loading={loading} loadIdx={loadIdx} error={error} />}
-        {showResult && <ResultScreen result={result} times={times} ans={ans} onRestart={resetToHome} onNewPlan={startQuiz} />}
+        {showResult && <ResultScreen result={result} times={times} ans={ans} onRestart={resetToHome} onNewPlan={startQuiz} dbVenues={dbVenues} onUpdateResult={setResult} />}
 
         {activeTab === "plans" && !showViewingPlan && <MyPlansScreen plans={plans} onViewPlan={(plan) => setViewingPlan(plan)} onNewPlan={() => { setActiveTab("home"); startQuiz(); }} />}
         {showViewingPlan && (
           <div>
             <button className="btn-ghost" onClick={() => setViewingPlan(null)} style={{ paddingTop: "1.5rem" }}>← My Plans</button>
-            <ResultScreen result={viewingPlan.result} times={viewingPlan.times} ans={viewingPlan.ans} onRestart={() => setViewingPlan(null)} onNewPlan={() => { setViewingPlan(null); setActiveTab("home"); startQuiz(); }} />
+            <ResultScreen result={viewingPlan.result} times={viewingPlan.times} ans={viewingPlan.ans} onRestart={() => setViewingPlan(null)} onNewPlan={() => { setViewingPlan(null); setActiveTab("home"); startQuiz(); }} dbVenues={dbVenues} onUpdateResult={(r) => setViewingPlan(p => ({ ...p, result: r }))} />
           </div>
         )}
 
