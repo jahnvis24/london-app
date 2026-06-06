@@ -238,6 +238,24 @@ function buildShortlist(answers, dbVenues = []) {
     if (c[0]) { shortlist.push(c[0]); used.add(c[0].id); usedTypes[t] = (usedTypes[t] || 0) + 1; }
   }
   while (shortlist.length < 4) { const n = scored.find(v => !used.has(v.id)); if (!n) break; shortlist.push(n); used.add(n.id); }
+
+  // If still too few, relax filters and pull from full source
+  if (shortlist.length < 4) {
+    const relaxed = zoneFiltered
+      .filter(v => !used.has(v.id))
+      .map(v => ({ ...v, score: (v.tags || []).length }))
+      .sort((a, b) => b.score - a.score);
+    while (shortlist.length < 5 && relaxed.length > 0) {
+      const n = relaxed.shift();
+      shortlist.push(n);
+      used.add(n.id);
+    }
+  }
+  if (shortlist.length < 4) {
+    const allRelaxed = source.filter(v => !used.has(v.id)).slice(0, 5 - shortlist.length);
+    shortlist.push(...allRelaxed);
+  }
+
   return { venues: shortlist.slice(0, 6), zone: targetZone };
 }
 
@@ -836,6 +854,11 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
       .sort((a, b) => b.score - a.score)
       .slice(0, 3);
 
+    if (swappingIdx === stopIdx) {
+      setSwappingIdx(null);
+      setAlternatives([]);
+      return;
+    }
     setAlternatives(candidates);
     setSwappingIdx(stopIdx);
   }
@@ -1620,6 +1643,7 @@ export default function App() {
   ? "strict: max 10 min walk between ANY two consecutive stops, prioritise venues in the same neighbourhood"
   : "walking and tube ok, keep total travel between stops under 30 min";
 
+    const stopCount = shortlist.length >= 5 ? "pick best 4-5" : `use ALL ${shortlist.length} venues`;
     const prompt = "You are London's sharpest local guide. Build a perfect itinerary from these curated venues. User: " +
       ans.timeOfDay + " plan, vibes: " + (ans.vibes || []).join(", ") +
       ", area: " + areaNote + ", budget: " + ans.budget +
@@ -1627,8 +1651,8 @@ export default function App() {
       ", travel: " + travelNote +
       ", " + times.start + " to " + times.end +
       ", include: " + ((ans.extras || []).join(", ") || "no extras") +
-      ". Venues (pick best 4-5): " + venueData +
-      ". Respond ONLY with valid JSON, no markdown, no backticks: " +
+      ". Venues (" + stopCount + "): " + venueData +
+      ". Space stops evenly across the time window. Respond ONLY with valid JSON, no markdown, no backticks: " +
       '{"title":"punchy name","tagline":"witty sentence","vibe_scores":{"fun":7,"romantic":3,"cultural":6,"chaotic":2},"total_cost_estimate":"35-55pp","stops":[{"time":"18:30","name":"venue name","type":"bar","area":"Shoreditch","emoji":"🍸","hook":"best thing about this place","why_it_fits":"vibe match","booking":"Walk-in fine","cost_estimate":"£15-35pp","travel_to_next":"calculating..."}],"extend_the_night":"late suggestion","local_tip":"insider tip"}';
 
     try {
