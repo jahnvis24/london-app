@@ -14,7 +14,10 @@
       "Bash(node -e \"process.stdin.resume\\(\\);let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{const j=JSON.parse\\(d\\);const venues=j.zones;console.log\\(JSON.stringify\\(venues\\)\\);}\\)\")",
       "Bash(node -e \"process.stdin.resume\\(\\);let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{const j=JSON.parse\\(d\\);const txt=j.content[0].text.replace\\(/\\\\`\\\\`\\\\`json|\\\\`\\\\`\\\\`/g,''\\).trim\\(\\);const venues=JSON.parse\\(txt\\);console.log\\('Batch 1:',venues.length,'venues'\\);const zones={};venues.forEach\\(v=>{zones[v.zone]=\\(zones[v.zone]||0\\)+1}\\);console.log\\(JSON.stringify\\(zones\\)\\);}\\)\")",
       "Bash(node -e \"process.stdin.resume\\(\\);let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{const j=JSON.parse\\(d\\);const txt=j.content[0].text.replace\\(/\\\\`\\\\`\\\\`json|\\\\`\\\\`\\\\`/g,''\\).trim\\(\\);const venues=JSON.parse\\(txt\\);console.log\\(JSON.stringify\\(venues.length\\),'venues'\\);console.log\\(JSON.stringify\\(venues\\)\\);}\\)\")",
-      "Bash(node *)"
+      "Bash(node *)",
+      "Bash(npm install *)",
+      "Bash(xxd)",
+      "Bash(SUPABASE_URL=\"https://hhkmbyrwyardhozufusu.supabase.co\" SUPABASE_SERVICE_KEY=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhoa21ieXJ3eWFyZGhvenVmdXN1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTE4OTU4MywiZXhwIjoyMDk0NzY1NTgzfQ.3Yp-vYfPuonbYzAISpsRxOKlC3fUKmH-X2DxNY7S4BE\" GOOGLE_PLACES_KEY=\"AIzaSyCMAkNJaIa2CT5_sSdSoU7D-AQi4aoUhUw\" BLOB_READ_WRITE_TOKEN=\"vercel_blob_rw_Q1yoRd2Ie65Y4p5n_99wDMsX0mUHRHvwx7soVQ7edfnNSUo\" node *)"
     ]
   }
 }
