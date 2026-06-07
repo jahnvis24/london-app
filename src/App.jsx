@@ -1572,7 +1572,12 @@ function SavedScreen({ user, onBuildPlan }) {
   const [loading, setLoading] = useState(true);
   const [pasteUrl, setPasteUrl] = useState("");
   const [parsing, setParsing] = useState(false);
+  const [parseStatus, setParseStatus] = useState("");
   const [error, setError] = useState(null);
+  const [openFolder, setOpenFolder] = useState(null);
+
+  const CAT_EMOJI = { restaurant: "\u{1F37D}️", bar: "\u{1F378}", cafe: "☕", market: "\u{1F6CD}️", experience: "✨", outdoor: "\u{1F33F}", museum: "\u{1F3DB}️", gallery: "\u{1F3A8}", nightlife: "\u{1F319}", event: "\u{1F3AB}" };
+  const CAT_COLOURS = { restaurant: "#E84855", bar: "#2D1B69", cafe: "#F7B731", market: "#F0A500", experience: "#1B998B", outdoor: "#3D8B37", museum: "#3D5A80", gallery: "#9B59B6", nightlife: "#2D1B69", event: "#1B998B" };
 
   async function loadSaves() {
     setLoading(true);
@@ -1593,11 +1598,68 @@ function SavedScreen({ user, onBuildPlan }) {
     }
   }, []);
 
+  async function parseFromImage(file) {
+    setParsing(true); setError(null); setParseStatus("Reading image...");
+    try {
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(",")[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const mediaType = file.type || "image/jpeg";
+
+      setParseStatus("Extracting venue info...");
+      const resp = await fetch("/api/claude", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-5",
+          max_tokens: 500,
+          messages: [{ role: "user", content: [
+            { type: "image", source: { type: "base64", media_type: mediaType, data: base64 } },
+            { type: "text", text: "This is a screenshot about a London venue/place. Extract: name, area (neighbourhood), category (restaurant/bar/cafe/market/experience/outdoor/gallery/museum/nightlife), vibe_tags (from: chill, romantic, chaotic, cultural, fancy, hidden_gems, social, foodie, outdoor, aesthetic, iconic, solo, underground), comment (one sentence summary). Return ONLY JSON: {name, area, category, vibe_tags, comment}" }
+          ] }]
+        }),
+      });
+      const data = await resp.json();
+      const txt = (data.content?.find(b => b.type === "text")?.text || "").replace(/```json|```/g, "").trim();
+      const parsed = JSON.parse(txt);
+
+      setParseStatus("Looking up on Google...");
+      const enrichResp = await fetch("/api/enrich-venue", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: parsed.name, area: parsed.area }) });
+      const enrichData = await enrichResp.json();
+
+      setParseStatus("Saving...");
+      const save = {
+        user_id: user.id,
+        name: enrichData.found ? enrichData.validated_name : parsed.name,
+        area: enrichData.found ? (enrichData.derived_area || parsed.area) : parsed.area,
+        zone: enrichData.found ? enrichData.derived_zone : null,
+        category: parsed.category,
+        price: enrichData.found ? enrichData.price : null,
+        vibe_tags: parsed.vibe_tags || [],
+        comment: parsed.comment,
+        google_rating: enrichData.found ? enrichData.google_rating : null,
+        lat: enrichData.found ? enrichData.lat : null,
+        lng: enrichData.found ? enrichData.lng : null,
+      };
+
+      await supabase.from("user_saves").insert(save);
+      setParseStatus("");
+      await loadSaves();
+    } catch (e) {
+      setError(e.message || "Couldn't read this image.");
+      setParseStatus("");
+    }
+    setParsing(false);
+  }
+
   async function parseAndSave(url) {
     const urlMatch = (url || pasteUrl).match(/https?:\/\/[^\s]*(tiktok\.com|vm\.tiktok\.com)[^\s]*/i);
     if (!urlMatch) { setError("No TikTok URL found. Paste a link containing tiktok.com"); return; }
     const cleanUrl = urlMatch[0];
-    setParsing(true); setError(null);
+    setParsing(true); setError(null); setParseStatus("Fetching TikTok...");
 
     try {
       const tikResp = await fetch("/api/tiktok", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url: cleanUrl }) });
@@ -1607,15 +1669,17 @@ function SavedScreen({ user, onBuildPlan }) {
       const caption = (tikData.description || tikData.title || "").slice(0, 800).replace(/[ -]/g, " ");
       if (!caption) throw new Error("No caption found in this video.");
 
-      const prompt = `Parse this TikTok caption about a London venue. Extract: name, area (neighbourhood), category (restaurant/bar/cafe/market/experience/outdoor/gallery/museum), vibe_tags (from: chill, romantic, chaotic, cultural, fancy, hidden_gems, social, foodie, outdoor, aesthetic, iconic, solo, underground), comment (one sentence). Return ONLY JSON: {name, area, category, vibe_tags, comment}. Caption: ${JSON.stringify(caption)}`;
+      setParseStatus("Parsing venue...");
+      const prompt = `Parse this TikTok caption about a London venue. Extract: name, area (neighbourhood), category (restaurant/bar/cafe/market/experience/outdoor/gallery/museum/nightlife), vibe_tags (from: chill, romantic, chaotic, cultural, fancy, hidden_gems, social, foodie, outdoor, aesthetic, iconic, solo, underground), comment (one sentence). Return ONLY JSON: {name, area, category, vibe_tags, comment}. Caption: ${JSON.stringify(caption)}`;
 
       const txt = await callClaude(prompt, 500);
       const parsed = JSON.parse(txt.replace(/```json|```/g, "").trim());
 
-      // Enrich with Google
+      setParseStatus("Looking up on Google...");
       const enrichResp = await fetch("/api/enrich-venue", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: parsed.name, area: parsed.area }) });
       const enrichData = await enrichResp.json();
 
+      setParseStatus("Saving...");
       const save = {
         user_id: user.id,
         name: enrichData.found ? enrichData.validated_name : parsed.name,
@@ -1633,9 +1697,11 @@ function SavedScreen({ user, onBuildPlan }) {
 
       await supabase.from("user_saves").insert(save);
       setPasteUrl("");
+      setParseStatus("");
       await loadSaves();
     } catch (e) {
       setError(e.message || "Couldn't parse this TikTok.");
+      setParseStatus("");
     }
     setParsing(false);
   }
@@ -1647,11 +1713,19 @@ function SavedScreen({ user, onBuildPlan }) {
 
   if (loading) return <div className="loading"><div className="loading-ring" /><div className="loading-sub">Loading saves...</div></div>;
 
+  const folders = saves.reduce((acc, s) => {
+    const cat = (s.category || "experience").toLowerCase();
+    if (!acc[cat]) acc[cat] = [];
+    acc[cat].push(s);
+    return acc;
+  }, {});
+  const folderKeys = Object.keys(folders).sort();
+
   return (
     <div>
       <div className="section-pad" style={{ paddingBottom: "0.5rem" }}>
         <div className="section-title">Saved</div>
-        <p className="section-sub">Paste a TikTok link to save a venue. Build an itinerary from your saves.</p>
+        <p className="section-sub">Paste a TikTok link to save a venue</p>
       </div>
 
       <div style={{ padding: "0 1.5rem 1rem" }}>
@@ -1669,6 +1743,14 @@ function SavedScreen({ user, onBuildPlan }) {
             {parsing ? "..." : "+ Save"}
           </button>
         </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "0.78rem", color: "#6b5e4e", cursor: "pointer", padding: "8px 14px", border: "1.5px dashed #ddd8ce", borderRadius: 100 }}>
+            <span>📷</span> Upload screenshot
+            <input type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={e => { if (e.target.files[0]) parseFromImage(e.target.files[0]); e.target.value = ""; }} disabled={parsing} />
+          </label>
+          <span style={{ fontSize: "0.68rem", color: "#b8ac9a" }}>or paste a URL above</span>
+        </div>
+        {parseStatus && <div style={{ fontSize: "0.75rem", color: "#1B998B", marginTop: 8 }}>{parseStatus}</div>}
 
         {saves.length > 0 && (
           <button className="btn btn-teal" style={{ marginTop: "1rem" }} onClick={() => onBuildPlan(saves)}>
@@ -1683,25 +1765,47 @@ function SavedScreen({ user, onBuildPlan }) {
           <div className="empty-title">No saves yet</div>
           <div className="empty-sub">Share a TikTok to this app or paste a link above to start building your list.</div>
         </div>
-      ) : (
+      ) : openFolder ? (
         <div style={{ padding: "0 1.5rem 1rem" }}>
-          {saves.map(s => (
-            <div key={s.id} className="admin-card">
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                <div className="admin-card-name">{s.name}</div>
-                <button onClick={() => removeSave(s.id)} style={{ border: "none", background: "none", color: "#b8ac9a", cursor: "pointer", fontSize: "1rem" }}>×</button>
+          <button className="btn-ghost" onClick={() => setOpenFolder(null)} style={{ marginBottom: "0.75rem" }}>← All folders</button>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: "1rem" }}>
+            <span style={{ fontSize: "1.5rem" }}>{CAT_EMOJI[openFolder] || "✨"}</span>
+            <span style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.1rem", textTransform: "capitalize" }}>{openFolder}</span>
+            <span style={{ fontSize: "0.72rem", color: "#9b8f7a" }}>({folders[openFolder]?.length || 0})</span>
+          </div>
+          {(folders[openFolder] || []).map(s => (
+            <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderBottom: "1px solid #f0ebe2" }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: CAT_COLOURS[openFolder] || "#3D5A80", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.2rem", flexShrink: 0 }}>
+                {CAT_EMOJI[openFolder] || "✨"}
               </div>
-              <div className="admin-card-meta">
-                {s.category} · {s.area}{s.google_rating ? ` · ⭐ ${s.google_rating}` : ""}{s.price ? ` · ${s.price}` : ""}
-              </div>
-              {s.comment && <div style={{ fontSize: "0.78rem", color: "#6b5e4e", lineHeight: 1.4 }}>{s.comment}</div>}
-              {s.vibe_tags?.length > 0 && (
-                <div style={{ display: "flex", gap: "4px", flexWrap: "wrap", marginTop: "6px" }}>
-                  {s.vibe_tags.map(t => <span key={t} className="stop-pill">{t}</span>)}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: "0.88rem", fontWeight: 500, color: "#1c1c1a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.name}</div>
+                <div style={{ fontSize: "0.72rem", color: "#9b8f7a" }}>
+                  {s.area || "London"}{s.price ? ` · ${s.price}` : ""}{s.google_rating ? ` · ⭐ ${s.google_rating}` : ""}
                 </div>
-              )}
+              </div>
+              <button onClick={() => removeSave(s.id)} style={{ border: "none", background: "none", color: "#b8ac9a", cursor: "pointer", fontSize: "1.2rem", padding: 4 }}>×</button>
             </div>
           ))}
+        </div>
+      ) : (
+        <div style={{ padding: "0 1.5rem 1rem", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          {folderKeys.map(cat => {
+            const items = folders[cat];
+            const colour = CAT_COLOURS[cat] || "#3D5A80";
+            const emoji = CAT_EMOJI[cat] || "✨";
+            return (
+              <div key={cat} onClick={() => setOpenFolder(cat)} style={{ cursor: "pointer", borderRadius: 16, overflow: "hidden", boxShadow: "0 2px 8px rgba(0,0,0,0.06)", background: "#fff", transition: "transform 0.15s" }}>
+                <div style={{ height: 80, background: colour, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <span style={{ fontSize: "2rem" }}>{emoji}</span>
+                </div>
+                <div style={{ padding: "10px 12px" }}>
+                  <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "#1c1c1a", textTransform: "capitalize" }}>{cat}</div>
+                  <div style={{ fontSize: "0.68rem", color: "#9b8f7a" }}>{items.length} save{items.length !== 1 ? "s" : ""}</div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
