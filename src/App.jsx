@@ -360,7 +360,7 @@ const styles = `
 
   .shapes-wrap { position: absolute; top: 0; right: -20px; width: 220px; height: 260px; pointer-events: none; z-index: 0; }
   .shape-circle { position: absolute; border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden; animation: spin-cw 14s linear infinite; }
-  .shape-teal { width: 130px; height: 130px; background: #1B998B; top: 0; right: 40px; animation-duration: 16s; }
+  .shape-teal { width: 130px; height: 130px; background: #6B1A1A; top: 0; right: 40px; animation-duration: 16s; }
   .shape-yellow { width: 160px; height: 160px; background: #F4C842; top: 80px; right: -10px; animation-duration: 20s; }
   .shape-cream { width: 80px; height: 80px; background: #F7EFD4; top: 150px; right: 140px; animation-duration: 12s; }
   .inner-oval { width: 56px; height: 32px; background: #B8A9D9; border-radius: 50%; animation: spin-cw 8s linear infinite; }
@@ -375,7 +375,7 @@ const styles = `
   .home-hero { padding: 3.5rem 1.5rem 2rem; position: relative; overflow: hidden; min-height: 300px; background: #ffffff; }
   .home-eyebrow { font-size: 0.68rem; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: #9b8f7a; margin-bottom: 0.6rem; position: relative; z-index: 1; }
   .home-title { font-family: 'DM Serif Display', Georgia, serif; font-size: 3rem; font-weight: 400; line-height: 1.0; letter-spacing: -0.03em; color: #1c1c1a; margin-bottom: 0.75rem; position: relative; z-index: 1; }
-  .home-title em { font-style: italic; color: #1B998B; }
+  .home-title em { font-style: italic; color: #6B1A1A; }
   .home-sub { font-size: 0.85rem; color: #6b5e4e; line-height: 1.5; position: relative; z-index: 1; max-width: 200px; }
   .home-cta { margin-top: 1.5rem; position: relative; z-index: 1; }
 
@@ -385,7 +385,7 @@ const styles = `
   .nav-tab.active .nav-tab-icon { transform: scale(1.15); }
   .nav-tab-label { font-family: 'DM Sans', sans-serif; font-size: 0.6rem; font-weight: 500; letter-spacing: 0.04em; color: #b8ac9a; text-transform: uppercase; transition: color 0.15s; }
   .nav-tab.active .nav-tab-label { color: #1c1c1a; }
-  .nav-tab-dot { width: 4px; height: 4px; border-radius: 50%; background: #1B998B; opacity: 0; transition: opacity 0.15s; }
+  .nav-tab-dot { width: 4px; height: 4px; border-radius: 50%; background: #6B1A1A; opacity: 0; transition: opacity 0.15s; }
   .nav-tab.active .nav-tab-dot { opacity: 1; }
 
   .section-pad { padding: 1.5rem; }
@@ -397,7 +397,7 @@ const styles = `
   .btn:disabled { opacity: 0.25; cursor: not-allowed; }
   .btn:hover:not(:disabled) { opacity: 0.88; }
   .btn:active:not(:disabled) { transform: scale(0.99); }
-  .btn-teal { background: #1B998B; }
+  .btn-teal { background: #6B1A1A; }
   .btn-outline { width: 100%; padding: 13px; border-radius: 100px; border: 1.5px solid #ddd8ce; background: transparent; color: #4a4438; font-family: 'DM Sans', sans-serif; font-size: 0.85rem; cursor: pointer; margin-top: 0.6rem; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.15s; }
   .btn-outline:hover { border-color: #1c1c1a; color: #1c1c1a; }
   .btn-ghost { background: none; border: none; color: #9b8f7a; font-family: 'DM Sans', sans-serif; font-size: 0.82rem; cursor: pointer; padding: 1rem 1.5rem 0; display: flex; align-items: center; gap: 5px; }
@@ -414,20 +414,20 @@ const styles = `
   .q-title { font-family: 'DM Serif Display', Georgia, serif; font-size: 1.6rem; line-height: 1.2; color: #1c1c1a; margin-bottom: 1.5rem; }
   .progress-label { font-size: 0.68rem; color: #b8ac9a; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 0.5rem; }
   .progress-bg { height: 2px; background: #e8e2d8; border-radius: 2px; overflow: hidden; }
-  .progress-fill { height: 100%; background: #1B998B; border-radius: 2px; transition: width 0.4s ease; }
+  .progress-fill { height: 100%; background: #6B1A1A; border-radius: 2px; transition: width 0.4s ease; }
   .time-row { display: flex; gap: 10px; }
   .time-wrap { flex: 1; }
   .time-wrap label { font-size: 0.68rem; color: #9b8f7a; text-transform: uppercase; letter-spacing: 0.08em; display: block; margin-bottom: 6px; }
   .time-wrap input { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1.5px solid #ddd8ce; background: #fff; color: #1c1c1a; font-family: 'DM Sans', sans-serif; font-size: 0.9rem; }
-  .time-wrap input:focus { outline: none; border-color: #1B998B; }
+  .time-wrap input:focus { outline: none; border-color: #6B1A1A; }
 
   .loading { display: flex; flex-direction: column; align-items: center; padding: 5rem 2rem; text-align: center; }
-  .loading-ring { width: 44px; height: 44px; border: 2.5px solid #e8e2d8; border-top-color: #1B998B; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 1.5rem; }
+  .loading-ring { width: 44px; height: 44px; border: 2.5px solid #e8e2d8; border-top-color: #6B1A1A; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 1.5rem; }
   .loading-title { font-family: 'DM Serif Display', Georgia, serif; font-size: 1.3rem; color: #1c1c1a; margin-bottom: 0.4rem; }
   .loading-sub { font-size: 0.82rem; color: #9b8f7a; }
 
   .result-hero { padding: 2rem 1.5rem 1.5rem; border-bottom: 1px solid #e8e2d8; animation: fadeUp 0.4s ease; }
-  .result-eyebrow { font-size: 0.68rem; font-weight: 500; color: #1B998B; text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 0.5rem; }
+  .result-eyebrow { font-size: 0.68rem; font-weight: 500; color: #6B1A1A; text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 0.5rem; }
   .result-title { font-family: 'DM Serif Display', Georgia, serif; font-size: 1.8rem; line-height: 1.15; color: #1c1c1a; margin-bottom: 0.3rem; }
   .result-tagline { font-size: 0.88rem; color: #6b5e4e; line-height: 1.5; margin-bottom: 0.85rem; font-style: italic; }
   .result-meta { display: flex; gap: 1rem; font-size: 0.78rem; color: #9b8f7a; flex-wrap: wrap; }
@@ -436,7 +436,7 @@ const styles = `
 
   .tab-bar { display: flex; border-bottom: 1px solid #e8e2d8; background: #ffffff; }
   .tab { flex: 1; padding: 0.85rem; border: none; background: none; font-family: 'DM Sans', sans-serif; font-size: 0.8rem; cursor: pointer; color: #9b8f7a; border-bottom: 2px solid transparent; transition: all 0.15s; margin-bottom: -1px; }
-  .tab.active { color: #1B998B; border-bottom-color: #1B998B; font-weight: 500; }
+  .tab.active { color: #6B1A1A; border-bottom-color: #6B1A1A; font-weight: 500; }
 
   .stat-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 1px; background: #e8e2d8; border-bottom: 1px solid #e8e2d8; }
   .stat { background: #ffffff; padding: 1rem; text-align: center; }
@@ -450,7 +450,7 @@ const styles = `
   .stop-emoji-wrap { width: 44px; height: 44px; border-radius: 12px; background: #f5f0e8; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; flex-shrink: 0; }
   .stop-body { flex: 1; min-width: 0; }
   .stop-meta { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
-  .stop-time { font-size: 0.68rem; font-weight: 500; color: #1B998B; text-transform: uppercase; letter-spacing: 0.06em; }
+  .stop-time { font-size: 0.68rem; font-weight: 500; color: #6B1A1A; text-transform: uppercase; letter-spacing: 0.06em; }
   .stop-type { font-size: 0.62rem; color: #b8ac9a; text-transform: uppercase; letter-spacing: 0.06em; }
   .stop-dot { width: 3px; height: 3px; border-radius: 50%; background: #ddd8ce; }
   .stop-name { font-family: 'DM Serif Display', Georgia, serif; font-size: 1.05rem; color: #1c1c1a; margin-bottom: 4px; line-height: 1.2; }
@@ -476,7 +476,7 @@ const styles = `
   .plan-card-date { font-size: 0.68rem; color: #9b8f7a; }
   .plan-card-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 0.5rem; }
   .plan-tag { font-size: 0.66rem; padding: 2px 8px; border-radius: 100px; background: #f5f0e8; color: #6b5e4e; }
-  .plan-tag.teal { background: #e0f5f3; color: #1B998B; }
+  .plan-tag.teal { background: #e0f5f3; color: #6B1A1A; }
   .empty-state { text-align: center; padding: 3rem 2rem; }
   .empty-emoji { font-size: 3rem; margin-bottom: 1rem; }
   .empty-title { font-family: 'DM Serif Display', Georgia, serif; font-size: 1.2rem; color: #1c1c1a; margin-bottom: 0.5rem; }
@@ -497,9 +497,9 @@ const styles = `
   .event-card-venue { font-size: 0.75rem; color: #9b8f7a; margin-bottom: 6px; }
   .event-card-row { display: flex; align-items: center; justify-content: space-between; }
   .event-card-date { font-size: 0.72rem; color: #6b5e4e; }
-  .event-card-price { font-size: 0.72rem; font-weight: 500; color: #1B998B; }
+  .event-card-price { font-size: 0.72rem; font-weight: 500; color: #6B1A1A; }
   .events-loading { text-align: center; padding: 3rem 1.5rem; color: #9b8f7a; font-size: 0.85rem; }
-  .api-note { background: #f5f0e8; border-radius: 12px; padding: 1rem; margin: 0 1.5rem 1rem; font-size: 0.75rem; color: #6b5e4e; line-height: 1.5; border-left: 3px solid #1B998B; }
+  .api-note { background: #f5f0e8; border-radius: 12px; padding: 1rem; margin: 0 1.5rem 1rem; font-size: 0.75rem; color: #6b5e4e; line-height: 1.5; border-left: 3px solid #6B1A1A; }
 
   .social-wrap { padding: 1.5rem; }
   .social-section-title { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.1em; color: #9b8f7a; margin-bottom: 0.75rem; font-weight: 500; }
@@ -514,19 +514,19 @@ const styles = `
   .feat-title { font-size: 0.84rem; font-weight: 500; color: #1c1c1a; margin-bottom: 2px; }
   .feat-sub { font-size: 0.73rem; color: #9b8f7a; line-height: 1.35; }
   .feat-badge { display: inline-block; font-size: 0.6rem; padding: 2px 7px; border-radius: 100px; margin-top: 4px; background: #f5f0e8; color: #8b7355; }
-  .feat-badge.live { background: #e0f5f3; color: #1B998B; }
+  .feat-badge.live { background: #e0f5f3; color: #6B1A1A; }
 
   .toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); background: #1c1c1a; color: #ffffff; padding: 10px 20px; border-radius: 100px; font-size: 0.82rem; white-space: nowrap; z-index: 999; pointer-events: none; opacity: 0; transition: opacity 0.2s; font-family: 'DM Sans', sans-serif; }
   .toast.show { opacity: 1; }
   .err { margin: 1rem 1.5rem; padding: 0.9rem 1rem; border-radius: 10px; background: #fdf0ef; border: 1px solid #f5d0cc; color: #c0392b; font-size: 0.82rem; line-height: 1.4; }
-  .success { margin: 1rem 1.5rem; padding: 0.9rem 1rem; border-radius: 10px; background: #e0f5f3; border: 1px solid #1B998B; color: #1B998B; font-size: 0.82rem; line-height: 1.4; }
+  .success { margin: 1rem 1.5rem; padding: 0.9rem 1rem; border-radius: 10px; background: #e0f5f3; border: 1px solid #6B1A1A; color: #6B1A1A; font-size: 0.82rem; line-height: 1.4; }
 
   /* ── TIKTOK PARSER ── */
   .parser-wrap { padding: 1.5rem; }
   .input-group { margin-bottom: 1rem; }
   .input-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; color: #9b8f7a; display: block; margin-bottom: 6px; font-weight: 500; }
   .input-field { width: 100%; padding: 12px 14px; border-radius: 12px; border: 1.5px solid #ddd8ce; background: #fff; color: #1c1c1a; font-family: 'DM Sans', sans-serif; font-size: 0.9rem; transition: border-color 0.15s; }
-  .input-field:focus { outline: none; border-color: #1B998B; }
+  .input-field:focus { outline: none; border-color: #6B1A1A; }
   .input-field::placeholder { color: #c0b8ad; }
   textarea.input-field { min-height: 100px; resize: vertical; }
   .preview-card { border: 1px solid #e8e2d8; border-radius: 16px; padding: 1.25rem; margin-bottom: 1rem; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.04); animation: fadeUp 0.3s ease; }
@@ -534,14 +534,14 @@ const styles = `
   .preview-field { display: flex; gap: 8px; margin-bottom: 6px; align-items: flex-start; }
   .preview-key { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; color: #9b8f7a; min-width: 80px; padding-top: 2px; font-weight: 500; }
   .preview-val { font-size: 0.82rem; color: #1c1c1a; line-height: 1.4; flex: 1; }
-  .zone-badge { display: inline-block; padding: 2px 10px; border-radius: 100px; font-size: 0.7rem; font-weight: 500; background: #e0f5f3; color: #1B998B; }
+  .zone-badge { display: inline-block; padding: 2px 10px; border-radius: 100px; font-size: 0.7rem; font-weight: 500; background: #e0f5f3; color: #6B1A1A; }
 
   /* ── ADMIN ── */
   .admin-card { border: 1px solid #e8e2d8; border-radius: 14px; padding: 1rem; margin-bottom: 10px; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.04); animation: fadeUp 0.3s ease; }
   .admin-card-name { font-family: 'DM Serif Display', Georgia, serif; font-size: 1rem; color: #1c1c1a; margin-bottom: 4px; }
   .admin-card-meta { font-size: 0.75rem; color: #9b8f7a; margin-bottom: 8px; }
   .admin-actions { display: flex; gap: 8px; }
-  .btn-approve { flex: 1; padding: 8px; border-radius: 8px; border: none; background: #1B998B; color: #fff; font-family: 'DM Sans', sans-serif; font-size: 0.8rem; cursor: pointer; font-weight: 500; }
+  .btn-approve { flex: 1; padding: 8px; border-radius: 8px; border: none; background: #6B1A1A; color: #fff; font-family: 'DM Sans', sans-serif; font-size: 0.8rem; cursor: pointer; font-weight: 500; }
   .btn-reject { flex: 1; padding: 8px; border-radius: 8px; border: 1.5px solid #ddd8ce; background: transparent; color: #9b8f7a; font-family: 'DM Sans', sans-serif; font-size: 0.8rem; cursor: pointer; }
   .zone-select { width: 100%; padding: 8px 10px; border-radius: 8px; border: 1.5px solid #ddd8ce; background: #fff; color: #1c1c1a; font-family: 'DM Sans', sans-serif; font-size: 0.82rem; margin-bottom: 8px; }
 
@@ -596,7 +596,7 @@ function HomeScreen({ onStart }) {
           ["→", "One perfect plan", "Claude sequences them geographically and temporally. Just follow it."]
         ].map(([icon, title, desc], i) => (
           <div key={i} style={{ display: "flex", gap: "1rem", marginBottom: "1.1rem", alignItems: "flex-start" }}>
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: i === 0 ? "#1B998B" : i === 1 ? "#F7B731" : "#1c1c1a", display: "flex", alignItems: "center", justifyContent: "center", color: i === 1 ? "#1c1c1a" : "#fff", fontSize: "1rem", flexShrink: 0, fontWeight: 700 }}>{icon}</div>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: i === 0 ? "#6B1A1A" : i === 1 ? "#F7B731" : "#1c1c1a", display: "flex", alignItems: "center", justifyContent: "center", color: i === 1 ? "#1c1c1a" : "#fff", fontSize: "1rem", flexShrink: 0, fontWeight: 700 }}>{icon}</div>
             <div>
               <div style={{ fontSize: "0.88rem", fontWeight: 500, color: "#1c1c1a", marginBottom: 2 }}>{title}</div>
               <div style={{ fontSize: "0.78rem", color: "#9b8f7a", lineHeight: 1.45 }}>{desc}</div>
@@ -653,7 +653,7 @@ function MapPicker({ onPin, currentPin, compact }) {
     }).addTo(map);
 
     const pinIcon = L.divIcon({
-      html: '<div style="width:28px;height:28px;background:#1B998B;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.3)"></div>',
+      html: '<div style="width:28px;height:28px;background:#6B1A1A;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.3)"></div>',
       iconSize: [28, 28],
       iconAnchor: [14, 28],
       className: '',
@@ -710,7 +710,7 @@ function MapPicker({ onPin, currentPin, compact }) {
       />
 
       {currentPin && (
-        <div style={{ marginTop: "0.5rem", fontSize: "0.75rem", color: "#1B998B", display: "flex", alignItems: "center", gap: 4 }}>
+        <div style={{ marginTop: "0.5rem", fontSize: "0.75rem", color: "#6B1A1A", display: "flex", alignItems: "center", gap: 4 }}>
           ✓ Pin dropped · {currentPin.lat.toFixed(4)}, {currentPin.lng.toFixed(4)}
         </div>
       )}
@@ -805,7 +805,7 @@ function QuizScreen({ step, ans, times, setTimes, onToggle, onNext, onBack, onGe
                 </div>
               )}
               {ans.area && !q.options.find(o => o.value === ans.area) && (
-                <div style={{ marginTop: "0.5rem", fontSize: "0.75rem", color: "#1B998B" }}>✦ Selected: {ans.area}</div>
+                <div style={{ marginTop: "0.5rem", fontSize: "0.75rem", color: "#6B1A1A" }}>✦ Selected: {ans.area}</div>
               )}
             </div>
           )}
@@ -958,7 +958,7 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
                         <span key={ci} className="stop-pill" style={{ background: "#f3e8ff", color: "#7c3aed" }}>💫 {celeb}'s fav</span>
                       ))}
                     </div>
-                    <button onClick={() => findAlternatives(idx)} style={{ border: "none", background: "none", color: "#1B998B", fontSize: "0.72rem", fontWeight: 500, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", padding: "2px 0" }}>↻ Swap</button>
+                    <button onClick={() => findAlternatives(idx)} style={{ border: "none", background: "none", color: "#6B1A1A", fontSize: "0.72rem", fontWeight: 500, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", padding: "2px 0" }}>↻ Swap</button>
                   </div>
                   {swappingIdx === idx && alternatives.length > 0 && (
                     <div style={{ padding: "0.75rem 1.1rem", borderTop: "1px solid #f0ebe2", background: "#fafaf7" }}>
@@ -1077,7 +1077,7 @@ function DiscoverScreen({ preferences, dbVenues }) {
   const [celebFilter, setCelebFilter] = useState("All");
 
   const CATEGORY_EMOJI = { restaurant: "🍽️", bar: "🍸", cafe: "☕", market: "🛍️", experience: "✨", outdoor: "🌿", museum: "🏛️", gallery: "🎨", nightlife: "🌙", event: "🎫" };
-  const CATEGORY_COLOURS = { restaurant: "#E84855", bar: "#2D1B69", cafe: "#F7B731", market: "#F0A500", experience: "#1B998B", outdoor: "#3D8B37", museum: "#3D5A80", gallery: "#9B59B6", nightlife: "#2D1B69", event: "#1B998B" };
+  const CATEGORY_COLOURS = { restaurant: "#E84855", bar: "#2D1B69", cafe: "#F7B731", market: "#F0A500", experience: "#6B1A1A", outdoor: "#3D8B37", museum: "#3D5A80", gallery: "#9B59B6", nightlife: "#2D1B69", event: "#6B1A1A" };
 
   const today = new Date().toISOString().split("T")[0];
   const events = dbVenues.filter(v => v.is_event && v.event_start && (!v.event_end || v.event_end >= today))
@@ -1373,13 +1373,13 @@ Each object must have this exact structure:
           {preview.venues.map((venue, i) => (
             <div key={i} className="preview-card" style={{ marginBottom: "0.75rem" }}>
               {preview.venues.length > 1 && (
-                <div style={{ fontSize: "0.6rem", color: "#1B998B", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "0.4rem", fontWeight: 600 }}>
+                <div style={{ fontSize: "0.6rem", color: "#6B1A1A", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "0.4rem", fontWeight: 600 }}>
                   {i + 1} of {preview.venues.length}
                 </div>
               )}
               <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "0.5rem", gap: 8 }}>
                 <div className="preview-title" style={{ marginBottom: 0 }}>{venue.validated_name || venue.name || "Unknown venue"}</div>
-                <div style={{ fontSize: "0.62rem", padding: "2px 8px", borderRadius: 100, background: venue._google_found ? "#e0f5f3" : "#f5f0e8", color: venue._google_found ? "#1B998B" : "#9b8f7a", fontWeight: 500, whiteSpace: "nowrap", flexShrink: 0 }}>
+                <div style={{ fontSize: "0.62rem", padding: "2px 8px", borderRadius: 100, background: venue._google_found ? "#e0f5f3" : "#f5f0e8", color: venue._google_found ? "#6B1A1A" : "#9b8f7a", fontWeight: 500, whiteSpace: "nowrap", flexShrink: 0 }}>
                   {venue._google_found ? "✓ Google verified" : "⚠ Not on Google"}
                 </div>
               </div>
@@ -1392,7 +1392,7 @@ Each object must have this exact structure:
                 ["Price", venue.price],
                 ["Rating", venue.google_rating ? `⭐ ${venue.google_rating} (${venue.google_review_count?.toLocaleString()} reviews)` : null],
                 ["Hours", venue.opening_hours ? venue.opening_hours[0] : null],
-                ["Website", venue.website ? <a href={venue.website} target="_blank" rel="noreferrer" style={{ color: "#1B998B" }}>Visit ↗</a> : null],
+                ["Website", venue.website ? <a href={venue.website} target="_blank" rel="noreferrer" style={{ color: "#6B1A1A" }}>Visit ↗</a> : null],
                 ["Is event", venue.is_event ? `Yes — ${venue.event_start || "date TBC"}` : null],
                 ["Vibe tags", venue.vibe_tags?.join(", ")],
                 ["Notes", venue.comment],
@@ -1518,7 +1518,7 @@ function AdminScreen({ onBadgeUpdate }) {
               )}
               {item.tiktok_url && (
                 <div style={{ fontSize: "0.72rem", color: "#9b8f7a", marginBottom: "8px" }}>
-                  <a href={item.tiktok_url} target="_blank" rel="noreferrer" style={{ color: "#1B998B" }}>View TikTok ↗</a>
+                  <a href={item.tiktok_url} target="_blank" rel="noreferrer" style={{ color: "#6B1A1A" }}>View TikTok ↗</a>
                 </div>
               )}
               <div style={{ marginBottom: "8px" }}>
@@ -1634,7 +1634,7 @@ function SavedScreen({ user, onBuildPlan }) {
   }
 
   const CAT_EMOJI = { restaurant: "\u{1F37D}️", bar: "\u{1F378}", cafe: "☕", market: "\u{1F6CD}️", experience: "✨", outdoor: "\u{1F33F}", museum: "\u{1F3DB}️", gallery: "\u{1F3A8}", nightlife: "\u{1F319}", event: "\u{1F3AB}" };
-  const CAT_COLOURS = { restaurant: "#E84855", bar: "#2D1B69", cafe: "#F7B731", market: "#F0A500", experience: "#1B998B", outdoor: "#3D8B37", museum: "#3D5A80", gallery: "#9B59B6", nightlife: "#2D1B69", event: "#1B998B" };
+  const CAT_COLOURS = { restaurant: "#E84855", bar: "#2D1B69", cafe: "#F7B731", market: "#F0A500", experience: "#6B1A1A", outdoor: "#3D8B37", museum: "#3D5A80", gallery: "#9B59B6", nightlife: "#2D1B69", event: "#6B1A1A" };
 
   async function loadSaves() {
     setLoading(true);
@@ -1828,7 +1828,7 @@ Return a JSON object with this exact structure:
           </label>
           <span style={{ fontSize: "0.68rem", color: "#b8ac9a" }}>or paste a URL above</span>
         </div>
-        {parseStatus && <div style={{ fontSize: "0.75rem", color: "#1B998B", marginTop: 8 }}>{parseStatus}</div>}
+        {parseStatus && <div style={{ fontSize: "0.75rem", color: "#6B1A1A", marginTop: 8 }}>{parseStatus}</div>}
 
         {saves.length > 0 && (
           <button className="btn btn-teal" style={{ marginTop: "1rem" }} onClick={() => onBuildPlan(saves)}>
@@ -1968,7 +1968,7 @@ function RatingPrompt({ plan, user, onDismiss, onSubmit }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: "1.5rem" }}>
       <div style={{ background: "#fff", borderRadius: 20, maxWidth: 380, width: "100%", maxHeight: "80vh", overflow: "auto", padding: "1.5rem" }}>
-        <div style={{ fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#1B998B", fontWeight: 500, marginBottom: "0.5rem" }}>How was it?</div>
+        <div style={{ fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#6B1A1A", fontWeight: 500, marginBottom: "0.5rem" }}>How was it?</div>
         <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.3rem", color: "#1c1c1a", marginBottom: "0.25rem" }}>{plan.result.title}</div>
         <div style={{ fontSize: "0.78rem", color: "#9b8f7a", marginBottom: "1.25rem" }}>{plan.savedAt}</div>
 
@@ -1976,7 +1976,7 @@ function RatingPrompt({ plan, user, onDismiss, onSubmit }) {
           <div style={{ fontSize: "0.75rem", fontWeight: 500, color: "#4a4438", marginBottom: "0.5rem" }}>Overall rating</div>
           <div style={{ display: "flex", gap: 6 }}>
             {[1,2,3,4,5].map(n => (
-              <button key={n} onClick={() => setOverall(n)} style={{ width: 36, height: 36, borderRadius: "50%", border: "1.5px solid", borderColor: overall >= n ? "#1B998B" : "#ddd8ce", background: overall >= n ? "#1B998B" : "#fff", color: overall >= n ? "#fff" : "#9b8f7a", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>{n}</button>
+              <button key={n} onClick={() => setOverall(n)} style={{ width: 36, height: 36, borderRadius: "50%", border: "1.5px solid", borderColor: overall >= n ? "#6B1A1A" : "#ddd8ce", background: overall >= n ? "#6B1A1A" : "#fff", color: overall >= n ? "#fff" : "#9b8f7a", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>{n}</button>
             ))}
           </div>
         </div>
@@ -1988,7 +1988,7 @@ function RatingPrompt({ plan, user, onDismiss, onSubmit }) {
               <span style={{ fontSize: "0.8rem", color: "#1c1c1a", flex: 1 }}>{stop.emoji} {stop.name}</span>
               <div style={{ display: "flex", gap: 3 }}>
                 {[1,2,3,4,5].map(n => (
-                  <button key={n} onClick={() => rateStop(stop.name, n)} style={{ width: 24, height: 24, borderRadius: "50%", border: "1px solid", borderColor: (stopRatings[stop.name] || 0) >= n ? "#1B998B" : "#e8e2d8", background: (stopRatings[stop.name] || 0) >= n ? "#e0f5f3" : "#fff", color: (stopRatings[stop.name] || 0) >= n ? "#1B998B" : "#b8ac9a", fontSize: "0.6rem", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>{n}</button>
+                  <button key={n} onClick={() => rateStop(stop.name, n)} style={{ width: 24, height: 24, borderRadius: "50%", border: "1px solid", borderColor: (stopRatings[stop.name] || 0) >= n ? "#6B1A1A" : "#e8e2d8", background: (stopRatings[stop.name] || 0) >= n ? "#e0f5f3" : "#fff", color: (stopRatings[stop.name] || 0) >= n ? "#6B1A1A" : "#b8ac9a", fontSize: "0.6rem", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>{n}</button>
                 ))}
               </div>
             </div>
