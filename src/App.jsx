@@ -103,6 +103,7 @@ function scoreVenue(v, vibes, budget, timeOfDay, extras, groupSize, energy, venu
   if (extras.includes("social") && (v.tags || []).includes("social")) score += 3;
   if (extras.includes("scenic_walk") && v.type === "walk") score += 4;
   if (extras.includes("nature_trails") && v.type === "walk" && (v.tags || []).includes("active")) score += 6;
+  if (extras.includes("plant_friendly") && v.plantFriendly) score += 6;
   // Energy: high → boost chaotic/social venues, low → boost chill/solo
   if (energy === "high") { score += (v.tags || []).filter(t => ["chaotic","social","night","underground"].includes(t)).length * 2; }
   if (energy === "low") { score += (v.tags || []).filter(t => ["chill","solo","outdoor"].includes(t)).length * 2; }
@@ -132,6 +133,7 @@ function buildShortlist(answers, dbVenues = [], venueRatings = {}) {
     bestTime: "day,night", bookingRequired: false, desc: v.comment || "",
     emoji: "✨", travelZone: (v.zone || "Central").toLowerCase(),
     google_rating: v.google_rating,
+    plantFriendly: v.plant_friendly || false,
     lat: v.lat ? parseFloat(v.lat) : null,
     lng: v.lng ? parseFloat(v.lng) : null,
   }));
@@ -304,7 +306,7 @@ const QUESTIONS = [
   { id: "budget", label: "5 of 8", title: "Budget vibe?", multi: false, options: [{ value: "low", label: "Broke but fun", emoji: "💸" }, { value: "mid", label: "Mid range", emoji: "💳" }, { value: "high", label: "Treat yourself", emoji: "✨" }, { value: "unlimited", label: "No limit", emoji: "🚀" }] },
   { id: "groupSize", label: "6 of 8", title: "Who's coming?", multi: false, options: [{ value: "solo", label: "Just me", emoji: "🙋" }, { value: "duo", label: "Two of us", emoji: "👫" }, { value: "small", label: "3–5 people", emoji: "👯" }, { value: "large", label: "5+ crew", emoji: "🎊" }] },
   { id: "energy", label: "7 of 8", title: "Energy level today?", multi: false, options: [{ value: "low", label: "Low & breezy", emoji: "🌿" }, { value: "medium", label: "Up for it", emoji: "⚡" }, { value: "high", label: "Max chaos", emoji: "🔥" }] },
-  { id: "extras", label: "8 of 8", title: "Must-haves?", multi: true, options: [{ value: "food", label: "Food included", emoji: "🍜" }, { value: "drinks", label: "Drinks/bars", emoji: "🍸" }, { value: "outdoor", label: "Outdoor spaces", emoji: "🌳" }, { value: "social", label: "Meet people", emoji: "🤝" }, { value: "scenic_walk", label: "Scenic walk", emoji: "🚶" }, { value: "nature_trails", label: "Nature trails", emoji: "🌿" }] },
+  { id: "extras", label: "8 of 8", title: "Must-haves?", multi: true, options: [{ value: "food", label: "Food included", emoji: "🍜" }, { value: "drinks", label: "Drinks/bars", emoji: "🍸" }, { value: "outdoor", label: "Outdoor spaces", emoji: "🌳" }, { value: "social", label: "Meet people", emoji: "🤝" }, { value: "scenic_walk", label: "Scenic walk", emoji: "🚶" }, { value: "nature_trails", label: "Nature trails", emoji: "🌿" }, { value: "plant_friendly", label: "Plant-friendly food", emoji: "🌱" }] },
 ];
 
 const ALL_AREAS = Object.keys({
@@ -969,6 +971,7 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
                       {stop.price_range && <span className="stop-pill">💰 {stop.price_range}</span>}
                       {stop.google_rating && <span className="stop-pill">⭐ {stop.google_rating}</span>}
                       {stop.area && <span className="stop-pill">📍 {stop.area}</span>}
+                      {stop.plant_friendly && <span className="stop-pill" style={{ background: "#ecfdf5", color: "#059669" }}>🌱 Plant-friendly</span>}
                       {stop.celebrity_tags && [...new Set(stop.celebrity_tags)].map((celeb, ci) => (
                         <span key={ci} className="stop-pill" style={{ background: "#f3e8ff", color: "#7c3aed" }}>💫 {celeb}'s fav</span>
                       ))}
@@ -1814,6 +1817,7 @@ export default function App() {
           lat: dbVenue?.lat || null,
           lng: dbVenue?.lng || null,
           celebrity_tags: dbVenue?.celebrity_tags || null,
+          plant_friendly: dbVenue?.plant_friendly || false,
         };
 
         // Get real travel time to next stop
