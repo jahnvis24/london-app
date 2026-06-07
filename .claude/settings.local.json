@@ -9,7 +9,12 @@
       "Bash(curl -s \"https://london-app.vercel.app/api/reclassify-zones\")",
       "Bash(python -m json.tool)",
       "Bash(curl -s https://london-app.vercel.app/api/claude -X POST -H 'Content-Type: application/json' -d '{ *)",
-      "Bash(curl *)"
+      "Bash(curl *)",
+      "Bash(npx vite *)",
+      "Bash(node -e \"process.stdin.resume\\(\\);let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{const j=JSON.parse\\(d\\);const venues=j.zones;console.log\\(JSON.stringify\\(venues\\)\\);}\\)\")",
+      "Bash(node -e \"process.stdin.resume\\(\\);let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{const j=JSON.parse\\(d\\);const txt=j.content[0].text.replace\\(/\\\\`\\\\`\\\\`json|\\\\`\\\\`\\\\`/g,''\\).trim\\(\\);const venues=JSON.parse\\(txt\\);console.log\\('Batch 1:',venues.length,'venues'\\);const zones={};venues.forEach\\(v=>{zones[v.zone]=\\(zones[v.zone]||0\\)+1}\\);console.log\\(JSON.stringify\\(zones\\)\\);}\\)\")",
+      "Bash(node -e \"process.stdin.resume\\(\\);let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{const j=JSON.parse\\(d\\);const txt=j.content[0].text.replace\\(/\\\\`\\\\`\\\\`json|\\\\`\\\\`\\\\`/g,''\\).trim\\(\\);const venues=JSON.parse\\(txt\\);console.log\\(JSON.stringify\\(venues.length\\),'venues'\\);console.log\\(JSON.stringify\\(venues\\)\\);}\\)\")",
+      "Bash(node *)"
     ]
   }
 }

@@ -1542,6 +1542,147 @@ function PreferencesScreen({ preferences, setPreferences, user }) {
   );
 }
 
+function SavedScreen({ user, onBuildPlan }) {
+  const [saves, setSaves] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [pasteUrl, setPasteUrl] = useState("");
+  const [parsing, setParsing] = useState(false);
+  const [error, setError] = useState(null);
+
+  async function loadSaves() {
+    setLoading(true);
+    const { data } = await supabase.from("user_saves").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
+    setSaves(data || []);
+    setLoading(false);
+  }
+
+  useEffect(() => { loadSaves(); }, []);
+
+  // Check URL params for share target
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sharedText = params.get("text") || params.get("url") || "";
+    if (sharedText && sharedText.includes("tiktok.com")) {
+      setPasteUrl(sharedText);
+      window.history.replaceState({}, "", "/");
+    }
+  }, []);
+
+  async function parseAndSave(url) {
+    const urlMatch = (url || pasteUrl).match(/https?:\/\/[^\s]*(tiktok\.com|vm\.tiktok\.com)[^\s]*/i);
+    if (!urlMatch) { setError("No TikTok URL found. Paste a link containing tiktok.com"); return; }
+    const cleanUrl = urlMatch[0];
+    setParsing(true); setError(null);
+
+    try {
+      const tikResp = await fetch("/api/tiktok", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url: cleanUrl }) });
+      const tikData = await tikResp.json();
+      if (tikData.error) throw new Error(tikData.error);
+
+      const caption = (tikData.description || tikData.title || "").slice(0, 800).replace(/[ -]/g, " ");
+      if (!caption) throw new Error("No caption found in this video.");
+
+      const prompt = `Parse this TikTok caption about a London venue. Extract: name, area (neighbourhood), category (restaurant/bar/cafe/market/experience/outdoor/gallery/museum), vibe_tags (from: chill, romantic, chaotic, cultural, fancy, hidden_gems, social, foodie, outdoor, aesthetic, iconic, solo, underground), comment (one sentence). Return ONLY JSON: {name, area, category, vibe_tags, comment}. Caption: ${JSON.stringify(caption)}`;
+
+      const txt = await callClaude(prompt, 500);
+      const parsed = JSON.parse(txt.replace(/```json|```/g, "").trim());
+
+      // Enrich with Google
+      const enrichResp = await fetch("/api/enrich-venue", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: parsed.name, area: parsed.area }) });
+      const enrichData = await enrichResp.json();
+
+      const save = {
+        user_id: user.id,
+        name: enrichData.found ? enrichData.validated_name : parsed.name,
+        area: enrichData.found ? (enrichData.derived_area || parsed.area) : parsed.area,
+        zone: enrichData.found ? enrichData.derived_zone : null,
+        category: parsed.category,
+        price: enrichData.found ? enrichData.price : null,
+        vibe_tags: parsed.vibe_tags || [],
+        comment: parsed.comment,
+        tiktok_url: cleanUrl,
+        google_rating: enrichData.found ? enrichData.google_rating : null,
+        lat: enrichData.found ? enrichData.lat : null,
+        lng: enrichData.found ? enrichData.lng : null,
+      };
+
+      await supabase.from("user_saves").insert(save);
+      setPasteUrl("");
+      await loadSaves();
+    } catch (e) {
+      setError(e.message || "Couldn't parse this TikTok.");
+    }
+    setParsing(false);
+  }
+
+  async function removeSave(id) {
+    await supabase.from("user_saves").delete().eq("id", id);
+    setSaves(prev => prev.filter(s => s.id !== id));
+  }
+
+  if (loading) return <div className="loading"><div className="loading-ring" /><div className="loading-sub">Loading saves...</div></div>;
+
+  return (
+    <div>
+      <div className="section-pad" style={{ paddingBottom: "0.5rem" }}>
+        <div className="section-title">Saved</div>
+        <p className="section-sub">Paste a TikTok link to save a venue. Build an itinerary from your saves.</p>
+      </div>
+
+      <div style={{ padding: "0 1.5rem 1rem" }}>
+        {error && <div className="err" style={{ marginBottom: "0.75rem" }}>{error}</div>}
+        <div style={{ display: "flex", gap: 8 }}>
+          <input
+            className="input-field"
+            type="text"
+            placeholder="Paste TikTok URL..."
+            value={pasteUrl}
+            onChange={e => { setPasteUrl(e.target.value); setError(null); }}
+            style={{ flex: 1 }}
+          />
+          <button className="btn btn-teal" onClick={() => parseAndSave()} disabled={parsing || !pasteUrl.trim()} style={{ width: "auto", padding: "12px 16px", whiteSpace: "nowrap" }}>
+            {parsing ? "..." : "+ Save"}
+          </button>
+        </div>
+
+        {saves.length > 0 && (
+          <button className="btn btn-teal" style={{ marginTop: "1rem" }} onClick={() => onBuildPlan(saves)}>
+            Build plan from my {saves.length} save{saves.length !== 1 ? "s" : ""} ✦
+          </button>
+        )}
+      </div>
+
+      {saves.length === 0 ? (
+        <div className="empty-state">
+          <div className="empty-emoji">📌</div>
+          <div className="empty-title">No saves yet</div>
+          <div className="empty-sub">Share a TikTok to this app or paste a link above to start building your list.</div>
+        </div>
+      ) : (
+        <div style={{ padding: "0 1.5rem 1rem" }}>
+          {saves.map(s => (
+            <div key={s.id} className="admin-card">
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <div className="admin-card-name">{s.name}</div>
+                <button onClick={() => removeSave(s.id)} style={{ border: "none", background: "none", color: "#b8ac9a", cursor: "pointer", fontSize: "1rem" }}>×</button>
+              </div>
+              <div className="admin-card-meta">
+                {s.category} · {s.area}{s.google_rating ? ` · ⭐ ${s.google_rating}` : ""}{s.price ? ` · ${s.price}` : ""}
+              </div>
+              {s.comment && <div style={{ fontSize: "0.78rem", color: "#6b5e4e", lineHeight: 1.4 }}>{s.comment}</div>}
+              {s.vibe_tags?.length > 0 && (
+                <div style={{ display: "flex", gap: "4px", flexWrap: "wrap", marginTop: "6px" }}>
+                  {s.vibe_tags.map(t => <span key={t} className="stop-pill">{t}</span>)}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function LoginScreen({ onLogin }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -1891,6 +2032,7 @@ export default function App() {
   const TABS = [
     { id: "home", label: "Plan", icon: "✦" },
     { id: "plans", label: "My Plans", icon: "📋" },
+    { id: "saved", label: "Saved", icon: "📌" },
     { id: "discover", label: "Discover", icon: "🔍" },
     { id: "prefs", label: "For me", icon: "🎯" },
     ...(isAdmin ? [{ id: "add", label: "Add", icon: "➕" }, { id: "admin", label: "Admin", icon: "⚙️", badge: adminBadge }] : []),
@@ -1930,6 +2072,7 @@ export default function App() {
         )}
 
         {activeTab === "discover" && <DiscoverScreen preferences={preferences} />}
+        {activeTab === "saved" && <SavedScreen user={user} onBuildPlan={(saves) => { setAns(prev => ({ ...prev, savedVenues: saves })); setActiveTab("home"); startQuiz(); }} />}
         {activeTab === "add" && <TikTokParserScreen onSuccess={() => showToast("Added! Check Admin to approve.")} />}
         {activeTab === "prefs" && <PreferencesScreen preferences={preferences} setPreferences={setPreferences} user={user} />}
         {activeTab === "admin" && <AdminScreen onBadgeUpdate={setAdminBadge} />}
