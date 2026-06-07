@@ -955,7 +955,7 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
                       {stop.area && <span className="stop-pill">📍 {stop.area}</span>}
                       {stop.plant_friendly && <span className="stop-pill" style={{ background: "#ecfdf5", color: "#059669" }}>🌱 Plant-friendly</span>}
                       {stop.celebrity_tags && [...new Set(stop.celebrity_tags)].map((celeb, ci) => (
-                        <span key={ci} className="stop-pill" style={{ background: "#f3e8ff", color: "#7c3aed" }}>💫 {celeb}'s fav</span>
+                        <span key={ci} className="stop-pill" style={{ background: "#e8f4fa", color: "#bcdaeb" }}>💫 {celeb}'s fav</span>
                       ))}
                     </div>
                     <button onClick={() => findAlternatives(idx)} style={{ border: "none", background: "none", color: "#6B1A1A", fontSize: "0.72rem", fontWeight: 500, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", padding: "2px 0" }}>↻ Swap</button>
@@ -1077,7 +1077,7 @@ function DiscoverScreen({ preferences, dbVenues }) {
   const [celebFilter, setCelebFilter] = useState("All");
 
   const CATEGORY_EMOJI = { restaurant: "🍽️", bar: "🍸", cafe: "☕", market: "🛍️", experience: "✨", outdoor: "🌿", museum: "🏛️", gallery: "🎨", nightlife: "🌙", event: "🎫" };
-  const CATEGORY_COLOURS = { restaurant: "#E84855", bar: "#2D1B69", cafe: "#F7B731", market: "#F0A500", experience: "#6B1A1A", outdoor: "#3D8B37", museum: "#3D5A80", gallery: "#9B59B6", nightlife: "#2D1B69", event: "#6B1A1A" };
+  const CATEGORY_COLOURS = { restaurant: "#E84855", bar: "#bcdaeb", cafe: "#F7B731", market: "#F0A500", experience: "#6B1A1A", outdoor: "#3D8B37", museum: "#3D5A80", gallery: "#bcdaeb", nightlife: "#bcdaeb", event: "#6B1A1A" };
 
   const today = new Date().toISOString().split("T")[0];
   const events = dbVenues.filter(v => v.is_event && v.event_start && (!v.event_end || v.event_end >= today))
@@ -1634,7 +1634,7 @@ function SavedScreen({ user, onBuildPlan }) {
   }
 
   const CAT_EMOJI = { restaurant: "\u{1F37D}️", bar: "\u{1F378}", cafe: "☕", market: "\u{1F6CD}️", experience: "✨", outdoor: "\u{1F33F}", museum: "\u{1F3DB}️", gallery: "\u{1F3A8}", nightlife: "\u{1F319}", event: "\u{1F3AB}" };
-  const CAT_COLOURS = { restaurant: "#E84855", bar: "#2D1B69", cafe: "#F7B731", market: "#F0A500", experience: "#6B1A1A", outdoor: "#3D8B37", museum: "#3D5A80", gallery: "#9B59B6", nightlife: "#2D1B69", event: "#6B1A1A" };
+  const CAT_COLOURS = { restaurant: "#E84855", bar: "#bcdaeb", cafe: "#F7B731", market: "#F0A500", experience: "#6B1A1A", outdoor: "#3D8B37", museum: "#3D5A80", gallery: "#bcdaeb", nightlife: "#bcdaeb", event: "#6B1A1A" };
 
   async function loadSaves() {
     setLoading(true);
