@@ -1387,6 +1387,7 @@ function AdminScreen({ onBadgeUpdate }) {
   const [pending, setPending] = useState([]);
   const [loading, setLoading] = useState(true);
   const [zoneEdits, setZoneEdits] = useState({});
+  const [eventEdits, setEventEdits] = useState({});
   const [users, setUsers] = useState([]);
   const [showUsers, setShowUsers] = useState(false);
 
@@ -1408,11 +1409,16 @@ function AdminScreen({ onBadgeUpdate }) {
 
   async function approve(id) {
     const zone = zoneEdits[id];
+    const ev = eventEdits[id];
     const update = { status: "approved" };
     if (zone) update.zone = zone;
+    if (ev?.is_event) {
+      update.is_event = true;
+      if (ev.event_start) update.event_start = ev.event_start;
+      if (ev.event_end) update.event_end = ev.event_end;
+    }
     await supabase.from("experiences").update(update).eq("id", id);
 
-    // If zone was edited, update the mapping table too
     if (zone) {
       const item = pending.find(p => p.id === id);
       if (item?.area) {
@@ -1490,6 +1496,24 @@ function AdminScreen({ onBadgeUpdate }) {
                   <option value="">Keep as is</option>
                   {ZONES.map(z => <option key={z} value={z}>{z}</option>)}
                 </select>
+              </div>
+              <div style={{ marginBottom: "8px", padding: "8px", background: "#fdf6e3", borderRadius: 10 }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "0.78rem", color: "#1c1c1a", cursor: "pointer" }}>
+                  <input type="checkbox" checked={eventEdits[item.id]?.is_event || item.is_event || false} onChange={e => setEventEdits(prev => ({ ...prev, [item.id]: { ...prev[item.id], is_event: e.target.checked } }))} />
+                  This is a time-bound event
+                </label>
+                {(eventEdits[item.id]?.is_event || item.is_event) && (
+                  <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+                    <div style={{ flex: 1 }}>
+                      <label className="input-label">Start</label>
+                      <input type="date" className="zone-select" value={eventEdits[item.id]?.event_start || item.event_start || ""} onChange={e => setEventEdits(prev => ({ ...prev, [item.id]: { ...prev[item.id], is_event: true, event_start: e.target.value } }))} />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <label className="input-label">End</label>
+                      <input type="date" className="zone-select" value={eventEdits[item.id]?.event_end || item.event_end || ""} onChange={e => setEventEdits(prev => ({ ...prev, [item.id]: { ...prev[item.id], is_event: true, event_end: e.target.value } }))} />
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="admin-actions">
                 <button className="btn-approve" onClick={() => approve(item.id)}>✓ Approve</button>
