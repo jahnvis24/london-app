@@ -1709,17 +1709,32 @@ function SavedScreen({ user, onBuildPlan }) {
 
     try {
       const tikResp = await fetch("/api/tiktok", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url: cleanUrl }) });
+      if (!tikResp.ok) throw new Error("TikTok API returned " + tikResp.status);
       const tikData = await tikResp.json();
       if (tikData.error) throw new Error(tikData.error);
 
-      const caption = (tikData.description || tikData.title || "").slice(0, 800).replace(/[ -]/g, " ");
-      if (!caption) throw new Error("No caption found in this video.");
+      const rawCaption = tikData.description || tikData.title || "";
+      if (!rawCaption.trim()) throw new Error("No caption found in this video. Try a different one.");
+      const caption = rawCaption.slice(0, 800).replace(/[\u0000-\u001F\u007F]/g, " ");
 
       setParseStatus("Parsing venue...");
-      const prompt = `Parse this TikTok caption about a London venue. Extract: name, area (neighbourhood), category (restaurant/bar/cafe/market/experience/outdoor/gallery/museum/nightlife), vibe_tags (from: chill, romantic, chaotic, cultural, fancy, hidden_gems, social, foodie, outdoor, aesthetic, iconic, solo, underground), comment (one sentence). Return ONLY JSON: {name, area, category, vibe_tags, comment}. Caption: ${JSON.stringify(caption)}`;
+      const prompt = `You are parsing a TikTok video caption about London experiences or venues.
+Extract structured data and return ONLY valid JSON with no markdown.
+Caption: ${JSON.stringify(caption)}
+
+Return a JSON object with this exact structure:
+{
+  "name": "venue name",
+  "area": "neighbourhood e.g. Shoreditch, Chelsea, Clapham",
+  "category": "one of: restaurant, bar, cafe, market, experience, outdoor, museum, gallery, event, nightlife",
+  "price": "e.g. Free, Under 15pp, 15-35pp, or null if unknown",
+  "vibe_tags": ["tags from: chill, romantic, chaotic, cultural, fancy, hidden_gems, social, foodie, outdoor, aesthetic, iconic, solo, underground"],
+  "comment": "one sentence about this venue"
+}`;
 
       const txt = await callClaude(prompt, 500);
-      const parsed = JSON.parse(txt.replace(/```json|```/g, "").trim());
+      if (!txt) throw new Error("AI returned empty response. Try again.");
+      const parsed = JSON.parse(txt);
 
       setParseStatus("Looking up on Google...");
       const enrichResp = await fetch("/api/enrich-venue", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: parsed.name, area: parsed.area }) });
@@ -1732,7 +1747,7 @@ function SavedScreen({ user, onBuildPlan }) {
         area: enrichData.found ? (enrichData.derived_area || parsed.area) : parsed.area,
         zone: enrichData.found ? enrichData.derived_zone : null,
         category: parsed.category,
-        price: enrichData.found ? enrichData.price : null,
+        price: enrichData.found ? enrichData.price : parsed.price,
         vibe_tags: parsed.vibe_tags || [],
         comment: parsed.comment,
         tiktok_url: cleanUrl,
