@@ -933,7 +933,7 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
             {(result.stops || []).map((stop, idx) => (
               <div key={idx}>
                 <div className="stop">
-                  <div className="stop-inner" onClick={() => { window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(stop.name + " London")}`, "_blank"); }} style={{ cursor: "pointer" }}>
+                  <div className="stop-inner" onClick={() => { setSwappingIdx(null); setAlternatives([]); window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(stop.name + " London")}`, "_blank"); }} style={{ cursor: "pointer" }}>
                     <div className="stop-top">
                       <div className="stop-emoji-wrap">{stop.emoji}</div>
                       <div className="stop-body">
@@ -1100,7 +1100,7 @@ function DiscoverScreen({ preferences, dbVenues }) {
     const colour = CATEGORY_COLOURS[cat] || "#3D5A80";
     const emoji = CATEGORY_EMOJI[cat] || "✨";
     return (
-      <div key={v.id} className="event-card" onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(v.name + " London")}`, "_blank")} style={{ cursor: "pointer" }}>
+      <a key={v.id} className="event-card" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(v.name + " London")}`} target="_blank" rel="noreferrer" style={{ cursor: "pointer", textDecoration: "none", color: "inherit", display: "block" }}>
         {v.photo_url ? (
           <div className="event-card-img" style={{ background: colour }}>
             <img src={v.photo_url} alt={v.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
@@ -1137,7 +1137,7 @@ function DiscoverScreen({ preferences, dbVenues }) {
             </div>
           )}
         </div>
-      </div>
+      </a>
     );
   };
 
