@@ -330,7 +330,7 @@ const ALL_AREAS = Object.keys({
 
 const LOADS = ["Raiding our London database...", "Matching your vibe to venues...", "Checking geographic flow...", "Building your perfect sequence...", "Final polish..."];
 
-const PREF_OPTIONS = ["Restaurants", "Bars", "Hidden gems", "Outdoor", "Culture", "Markets", "Events", "Late night", "Brunch", "Fine dining"];
+const PREF_OPTIONS = ["Restaurants", "Bars", "Hidden gems", "Outdoor", "Culture", "Markets", "Events", "Late night", "Brunch", "Fine dining", "Plant based", "Arts & crafts", "Active"];
 const ADMIN_EMAIL = "jahnvisolanki2412@gmail.com";
 
 function generateId() { return Math.random().toString(36).slice(2, 8).toUpperCase(); }
@@ -548,7 +548,8 @@ const styles = `
   /* ── PREFERENCES ── */
   .pref-wrap { padding: 1.5rem; }
   .pref-chip { padding: 8px 14px; border-radius: 100px; border: 1.5px solid #ddd8ce; font-size: 0.82rem; cursor: pointer; background: #fff; color: #4a4438; transition: all 0.15s; display: inline-flex; align-items: center; gap: 5px; font-family: 'DM Sans', sans-serif; }
-  .pref-chip.sel { background: #1B998B; color: #fff; border-color: #1B998B; }
+  .pref-chip.sel-blue { background: #A8C4D4; color: #1c1c1a; border-color: #A8C4D4; }
+  .pref-chip.sel-yellow { background: #F0EAC8; color: #1c1c1a; border-color: #F0EAC8; }
   .pref-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 1.25rem; }
 `;
 
@@ -1570,7 +1571,7 @@ function PreferencesScreen({ preferences, setPreferences, user }) {
       <div style={{ fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#9b8f7a", marginBottom: "0.75rem", fontWeight: 500 }}>I'm into...</div>
       <div className="pref-chips">
         {PREF_OPTIONS.map(p => (
-          <div key={p} className={`pref-chip ${preferences.includes(p) ? "sel" : ""}`} onClick={() => toggle(p)}>{p}</div>
+          <div key={p} className={`pref-chip ${preferences.includes(p) ? (PREF_OPTIONS.indexOf(p) % 2 === 0 ? "sel-blue" : "sel-yellow") : ""}`} onClick={() => toggle(p)}>{p}</div>
         ))}
       </div>
 
