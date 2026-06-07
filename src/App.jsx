@@ -369,6 +369,8 @@ const styles = `
   @keyframes spin-cw { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
   @keyframes spin { to{transform:rotate(360deg)} }
   @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+  @keyframes popIn { from{opacity:0;transform:scale(0.7)} to{opacity:1;transform:scale(1)} }
 
   .home-hero { padding: 3.5rem 1.5rem 2rem; position: relative; overflow: hidden; min-height: 300px; background: #ffffff; }
   .home-eyebrow { font-size: 0.68rem; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: #9b8f7a; margin-bottom: 0.6rem; position: relative; z-index: 1; }
@@ -1575,6 +1577,32 @@ function SavedScreen({ user, onBuildPlan }) {
   const [parseStatus, setParseStatus] = useState("");
   const [error, setError] = useState(null);
   const [openFolder, setOpenFolder] = useState(null);
+  const [successVenue, setSuccessVenue] = useState(null);
+
+  function playChime() {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const notes = [523.25, 659.25, 783.99];
+      notes.forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.3, ctx.currentTime + i * 0.12);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.12 + 0.4);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(ctx.currentTime + i * 0.12);
+        osc.stop(ctx.currentTime + i * 0.12 + 0.4);
+      });
+    } catch (e) {}
+  }
+
+  function showSuccess(name) {
+    setSuccessVenue(name);
+    playChime();
+    setTimeout(() => setSuccessVenue(null), 2200);
+  }
 
   const CAT_EMOJI = { restaurant: "\u{1F37D}️", bar: "\u{1F378}", cafe: "☕", market: "\u{1F6CD}️", experience: "✨", outdoor: "\u{1F33F}", museum: "\u{1F3DB}️", gallery: "\u{1F3A8}", nightlife: "\u{1F319}", event: "\u{1F3AB}" };
   const CAT_COLOURS = { restaurant: "#E84855", bar: "#2D1B69", cafe: "#F7B731", market: "#F0A500", experience: "#1B998B", outdoor: "#3D8B37", museum: "#3D5A80", gallery: "#9B59B6", nightlife: "#2D1B69", event: "#1B998B" };
@@ -1647,6 +1675,7 @@ function SavedScreen({ user, onBuildPlan }) {
 
       await supabase.from("user_saves").insert(save);
       setParseStatus("");
+      showSuccess(save.name);
       await loadSaves();
     } catch (e) {
       setError(e.message || "Couldn't read this image.");
@@ -1698,6 +1727,7 @@ function SavedScreen({ user, onBuildPlan }) {
       await supabase.from("user_saves").insert(save);
       setPasteUrl("");
       setParseStatus("");
+      showSuccess(save.name);
       await loadSaves();
     } catch (e) {
       setError(e.message || "Couldn't parse this TikTok.");
@@ -1806,6 +1836,17 @@ function SavedScreen({ user, onBuildPlan }) {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {successVenue && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, animation: "fadeIn 0.2s" }}>
+          <div style={{ background: "#fff", borderRadius: 20, padding: "2rem 1.5rem", textAlign: "center", maxWidth: 280, animation: "popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)" }}>
+            <div style={{ fontSize: "3rem", marginBottom: "0.5rem" }}>✨</div>
+            <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.1rem", color: "#1c1c1a", marginBottom: 6 }}>Saved!</div>
+            <div style={{ fontSize: "0.82rem", color: "#6b5e4e" }}>{successVenue}</div>
+            <div style={{ fontSize: "0.72rem", color: "#9b8f7a", marginTop: 4 }}>Added to your collection</div>
+          </div>
         </div>
       )}
     </div>
