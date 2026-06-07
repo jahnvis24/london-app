@@ -933,7 +933,7 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
             {(result.stops || []).map((stop, idx) => (
               <div key={idx}>
                 <div className="stop">
-                  <div className="stop-inner">
+                  <div className="stop-inner" onClick={() => { const q = stop.lat && stop.lng ? `${stop.lat},${stop.lng}` : encodeURIComponent(`${stop.name} London`); window.open(`https://www.google.com/maps/search/?api=1&query=${q}`, "_blank"); }} style={{ cursor: "pointer" }}>
                     <div className="stop-top">
                       <div className="stop-emoji-wrap">{stop.emoji}</div>
                       <div className="stop-body">
@@ -988,6 +988,17 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
           {result.extend_the_night && <div className="night-box"><div className="night-box-label">Extend the night</div><div className="night-box-text">🌙 {result.extend_the_night}</div></div>}
           {result.local_tip && <div className="tip-box"><div className="tip-label">Local tip</div><div className="tip-text">🗣️ {result.local_tip}</div></div>}
           <div style={{ padding: "0 1.5rem 1rem" }}>
+            <button className="btn btn-teal" onClick={() => {
+              const stops = (result.stops || []).filter(s => s.lat && s.lng);
+              if (stops.length === 0) return;
+              const origin = `${stops[0].lat},${stops[0].lng}`;
+              const dest = `${stops[stops.length - 1].lat},${stops[stops.length - 1].lng}`;
+              const waypoints = stops.slice(1, -1).map(s => `${s.lat},${s.lng}`).join("|");
+              const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}${waypoints ? `&waypoints=${waypoints}` : ""}&travelmode=walking`;
+              window.open(url, "_blank");
+            }}>
+              🗺️ Create Google Maps route
+            </button>
             <button className="btn-outline" onClick={() => setView("social")}>👥 Share with friends</button>
             <button className="btn-outline" onClick={onRestart}>↺ Plan a different day</button>
           </div>
@@ -1087,9 +1098,15 @@ function DiscoverScreen({ preferences, dbVenues }) {
     const emoji = CATEGORY_EMOJI[cat] || "✨";
     return (
       <div key={v.id} className="event-card">
-        <div className="event-card-img" style={{ background: colour }}>
-          <span className="event-card-emoji">{emoji}</span>
-        </div>
+        {v.photo_url ? (
+          <div className="event-card-img" style={{ background: colour }}>
+            <img src={v.photo_url} alt={v.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          </div>
+        ) : (
+          <div className="event-card-img" style={{ background: colour }}>
+            <span className="event-card-emoji">{emoji}</span>
+          </div>
+        )}
         <div className="event-card-body">
           <div className="event-card-cat" style={{ color: colour }}>{cat}</div>
           <div className="event-card-name">{v.name}</div>
