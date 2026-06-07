@@ -933,7 +933,7 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
             {(result.stops || []).map((stop, idx) => (
               <div key={idx}>
                 <div className="stop">
-                  <div className="stop-inner" onClick={() => { const q = stop.lat && stop.lng ? `${stop.lat},${stop.lng}` : encodeURIComponent(`${stop.name} London`); window.open(`https://www.google.com/maps/search/?api=1&query=${q}`, "_blank"); }} style={{ cursor: "pointer" }}>
+                  <div className="stop-inner" onClick={() => { window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(stop.name + " London")}`, "_blank"); }} style={{ cursor: "pointer" }}>
                     <div className="stop-top">
                       <div className="stop-emoji-wrap">{stop.emoji}</div>
                       <div className="stop-body">
@@ -989,11 +989,11 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
           {result.local_tip && <div className="tip-box"><div className="tip-label">Local tip</div><div className="tip-text">🗣️ {result.local_tip}</div></div>}
           <div style={{ padding: "0 1.5rem 1rem" }}>
             <button className="btn btn-teal" onClick={() => {
-              const stops = (result.stops || []).filter(s => s.lat && s.lng);
+              const stops = result.stops || [];
               if (stops.length === 0) return;
-              const origin = `${stops[0].lat},${stops[0].lng}`;
-              const dest = `${stops[stops.length - 1].lat},${stops[stops.length - 1].lng}`;
-              const waypoints = stops.slice(1, -1).map(s => `${s.lat},${s.lng}`).join("|");
+              const origin = encodeURIComponent(stops[0].name + " London");
+              const dest = encodeURIComponent(stops[stops.length - 1].name + " London");
+              const waypoints = stops.slice(1, -1).map(s => encodeURIComponent(s.name + " London")).join("|");
               const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}${waypoints ? `&waypoints=${waypoints}` : ""}&travelmode=walking`;
               window.open(url, "_blank");
             }}>
@@ -1668,7 +1668,9 @@ function SavedScreen({ user, onBuildPlan }) {
         }),
       });
       const data = await resp.json();
+      if (data.error) throw new Error(data.error.message || "AI API error");
       const txt = (data.content?.find(b => b.type === "text")?.text || "").replace(/```json|```/g, "").trim();
+      if (!txt) throw new Error("Couldn't extract venue info from this image. Try a clearer screenshot.");
       const parsed = JSON.parse(txt);
 
       setParseStatus("Looking up on Google...");
