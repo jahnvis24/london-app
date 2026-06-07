@@ -548,8 +548,8 @@ const styles = `
   /* ── PREFERENCES ── */
   .pref-wrap { padding: 1.5rem; }
   .pref-chip { padding: 8px 14px; border-radius: 100px; border: 1.5px solid #ddd8ce; font-size: 0.82rem; cursor: pointer; background: #fff; color: #4a4438; transition: all 0.15s; display: inline-flex; align-items: center; gap: 5px; font-family: 'DM Sans', sans-serif; }
-  .pref-chip.sel-blue { background: #A8C4D4; color: #1c1c1a; border-color: #A8C4D4; }
-  .pref-chip.sel-yellow { background: #F0EAC8; color: #1c1c1a; border-color: #F0EAC8; }
+  .pref-chip.sel-blue { background: #bcdaeb; color: #1c1c1a; border-color: #bcdaeb; }
+  .pref-chip.sel-yellow { background: #fff8d1; color: #1c1c1a; border-color: #fff8d1; }
   .pref-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 1.25rem; }
 `;
 
