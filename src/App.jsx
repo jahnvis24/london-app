@@ -1185,6 +1185,82 @@ function TikTokParserScreen({ onSuccess }) {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
   const [cleanUrl, setCleanUrl] = useState("");
+  const [parseStatus, setParseStatus] = useState("");
+
+  async function parseFromImage(file) {
+    setParsing(true); setError(null); setPreview(null); setParseStatus("Reading image...");
+    try {
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(",")[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const mediaType = file.type || "image/jpeg";
+
+      setParseStatus("Extracting venue info...");
+      const resp = await fetch("/api/claude", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-5",
+          max_tokens: 1500,
+          messages: [{ role: "user", content: [
+            { type: "image", source: { type: "base64", media_type: mediaType, data: base64 } },
+            { type: "text", text: `This is a screenshot about a London venue, event, or place. It may show ONE or MULTIPLE venues.
+Extract structured data and return ONLY valid JSON with no markdown.
+
+If ONE venue: return a JSON object.
+If MULTIPLE venues: return a JSON array of objects.
+
+Each object must have this exact structure:
+{
+  "name": "venue name",
+  "address": "full address if visible, or null",
+  "area": "neighbourhood e.g. Shoreditch, Chelsea, Clapham",
+  "zone": "one of: North, Northwest, Northeast, South, Southwest, Southeast, East, West, Central",
+  "category": "one of: restaurant, bar, cafe, market, experience, outdoor, museum, gallery, event, nightlife",
+  "price": "e.g. Free, £10, £20-30, or null if unknown",
+  "is_event": true or false,
+  "event_start": "YYYY-MM-DD or null",
+  "event_end": "YYYY-MM-DD or null",
+  "comment": "one sentence description",
+  "vibe_tags": ["from: chill, romantic, chaotic, cultural, fancy, hidden_gems, social, foodie, outdoor, aesthetic, iconic, solo, underground"]
+}` }
+          ] }]
+        }),
+      });
+      const data = await resp.json();
+      if (data.error) throw new Error(data.error.message || "AI API error");
+      const txt = (data.content?.find(b => b.type === "text")?.text || "").replace(/```json|```/g, "").trim();
+      if (!txt) throw new Error("Couldn't extract venue info from this image.");
+      const parsedRaw = JSON.parse(txt);
+      const venues = Array.isArray(parsedRaw) ? parsedRaw : [parsedRaw];
+
+      setParseStatus("Looking up on Google...");
+      const enriched = await Promise.all(venues.map(async (venue) => {
+        try {
+          const gResp = await fetch("/api/enrich-venue", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: venue.name, area: venue.area })
+          });
+          const gData = await gResp.json();
+          if (gData.found) {
+            return { ...venue, validated_name: gData.validated_name, validated_address: gData.validated_address, postcode: gData.postcode, derived_zone: gData.derived_zone, derived_area: gData.derived_area, lat: gData.lat, lng: gData.lng, google_place_id: gData.google_place_id, google_rating: gData.google_rating, google_review_count: gData.google_review_count, google_price_level: gData.google_price_level, price: gData.price || venue.price, website: gData.website, phone: gData.phone, opening_hours: gData.opening_hours, _google_found: true };
+          }
+        } catch (e) {}
+        return { ...venue, _google_found: false };
+      }));
+
+      setPreview({ venues: enriched, _caption: "From screenshot" });
+      setParseStatus("");
+    } catch (e) {
+      setError(e.message || "Couldn't read this image.");
+      setParseStatus("");
+    }
+    setParsing(false);
+  }
 
   async function parse() {
     if (!url.trim()) { setError("Paste a TikTok URL to get started."); return; }
@@ -1359,6 +1435,18 @@ Each object must have this exact structure:
       <button className="btn btn-teal" onClick={parse} disabled={parsing || !url.trim()}>
         {parsing ? "Fetching & parsing..." : "Parse TikTok ✦"}
       </button>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: "0.75rem" }}>
+        <div style={{ flex: 1, height: 1, background: "#e8e2d8" }} />
+        <span style={{ fontSize: "0.72rem", color: "#9b8f7a" }}>or</span>
+        <div style={{ flex: 1, height: 1, background: "#e8e2d8" }} />
+      </div>
+
+      <label style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginTop: "0.75rem", padding: "12px 16px", border: "1.5px dashed #ddd8ce", borderRadius: 100, fontSize: "0.82rem", color: "#4a4438", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>
+        📷 Upload a screenshot
+        <input type="file" accept="image/*" style={{ display: "none" }} onChange={e => { if (e.target.files[0]) parseFromImage(e.target.files[0]); e.target.value = ""; }} disabled={parsing} />
+      </label>
+      {parseStatus && <div style={{ fontSize: "0.75rem", color: "#1B998B", marginTop: 8, textAlign: "center" }}>{parseStatus}</div>}
 
       {preview && (
         <div style={{ marginTop: "1.25rem" }}>
@@ -1675,7 +1763,7 @@ function SavedScreen({ user, onBuildPlan }) {
           max_tokens: 500,
           messages: [{ role: "user", content: [
             { type: "image", source: { type: "base64", media_type: mediaType, data: base64 } },
-            { type: "text", text: "This is a screenshot about a London venue/place. Extract: name, area (neighbourhood), category (restaurant/bar/cafe/market/experience/outdoor/gallery/museum/nightlife), vibe_tags (from: chill, romantic, chaotic, cultural, fancy, hidden_gems, social, foodie, outdoor, aesthetic, iconic, solo, underground), comment (one sentence summary). Return ONLY JSON: {name, area, category, vibe_tags, comment}" }
+            { type: "text", text: "This is a screenshot about a London venue, event, or place. Extract: name, area (neighbourhood), category (one of: restaurant, bar, cafe, market, experience, outdoor, museum, gallery, event, nightlife — use 'event' if it's a time-bound thing like a pop-up, exhibition, show, or festival), vibe_tags (from: chill, romantic, chaotic, cultural, fancy, hidden_gems, social, foodie, outdoor, aesthetic, iconic, solo, underground), comment (one sentence summary). Return ONLY JSON: {name, area, category, vibe_tags, comment}" }
           ] }]
         }),
       });
