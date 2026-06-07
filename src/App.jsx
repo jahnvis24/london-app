@@ -1776,7 +1776,7 @@ function SavedScreen({ user, onBuildPlan }) {
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
           <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "0.78rem", color: "#6b5e4e", cursor: "pointer", padding: "8px 14px", border: "1.5px dashed #ddd8ce", borderRadius: 100 }}>
             <span>📷</span> Upload screenshot
-            <input type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={e => { if (e.target.files[0]) parseFromImage(e.target.files[0]); e.target.value = ""; }} disabled={parsing} />
+            <input type="file" accept="image/*" style={{ display: "none" }} onChange={e => { if (e.target.files[0]) parseFromImage(e.target.files[0]); e.target.value = ""; }} disabled={parsing} />
           </label>
           <span style={{ fontSize: "0.68rem", color: "#b8ac9a" }}>or paste a URL above</span>
         </div>
