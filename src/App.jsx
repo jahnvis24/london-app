@@ -1073,6 +1073,7 @@ function MyPlansScreen({ plans, onViewPlan, onNewPlan }) {
 
 function DiscoverScreen({ preferences, dbVenues }) {
   const [section, setSection] = useState("events");
+  const [celebFilter, setCelebFilter] = useState("All");
 
   const CATEGORY_EMOJI = { restaurant: "🍽️", bar: "🍸", cafe: "☕", market: "🛍️", experience: "✨", outdoor: "🌿", museum: "🏛️", gallery: "🎨", nightlife: "🌙", event: "🎫" };
   const CATEGORY_COLOURS = { restaurant: "#E84855", bar: "#2D1B69", cafe: "#F7B731", market: "#F0A500", experience: "#1B998B", outdoor: "#3D8B37", museum: "#3D5A80", gallery: "#9B59B6", nightlife: "#2D1B69", event: "#1B998B" };
@@ -1081,7 +1082,9 @@ function DiscoverScreen({ preferences, dbVenues }) {
   const events = dbVenues.filter(v => v.is_event && v.event_start && (!v.event_end || v.event_end >= today))
     .sort((a, b) => new Date(a.event_start) - new Date(b.event_start));
 
-  const celebSpots = dbVenues.filter(v => v.celebrity_tags && v.celebrity_tags.length > 0)
+  const allCelebSpots = dbVenues.filter(v => v.celebrity_tags && v.celebrity_tags.length > 0);
+  const celebNames = [...new Set(allCelebSpots.flatMap(v => v.celebrity_tags))].filter(Boolean).sort();
+  const celebSpots = (celebFilter === "All" ? allCelebSpots : allCelebSpots.filter(v => v.celebrity_tags.includes(celebFilter)))
     .sort((a, b) => (parseFloat(b.google_rating) || 0) - (parseFloat(a.google_rating) || 0));
 
   const formatDate = (start, end) => {
@@ -1097,7 +1100,7 @@ function DiscoverScreen({ preferences, dbVenues }) {
     const colour = CATEGORY_COLOURS[cat] || "#3D5A80";
     const emoji = CATEGORY_EMOJI[cat] || "✨";
     return (
-      <div key={v.id} className="event-card">
+      <div key={v.id} className="event-card" onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(v.name + " London")}`, "_blank")} style={{ cursor: "pointer" }}>
         {v.photo_url ? (
           <div className="event-card-img" style={{ background: colour }}>
             <img src={v.photo_url} alt={v.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
@@ -1151,6 +1154,14 @@ function DiscoverScreen({ preferences, dbVenues }) {
         <div className={`filter-chip ${section === "events" ? "sel" : ""}`} onClick={() => setSection("events")}>📅 What's On</div>
         <div className={`filter-chip ${section === "celeb" ? "sel" : ""}`} onClick={() => setSection("celeb")}>💫 Celebrity Spots</div>
       </div>
+      {section === "celeb" && celebNames.length > 0 && (
+        <div className="filter-row" style={{ paddingTop: 0 }}>
+          <div className={`filter-chip ${celebFilter === "All" ? "sel" : ""}`} onClick={() => setCelebFilter("All")}>All</div>
+          {celebNames.map(name => (
+            <div key={name} className={`filter-chip ${celebFilter === name ? "sel" : ""}`} onClick={() => setCelebFilter(name)}>💫 {name}</div>
+          ))}
+        </div>
+      )}
 
       <div style={{ padding: "0 1.5rem 1rem" }}>
         {list.length === 0 ? (
@@ -1692,7 +1703,8 @@ function SavedScreen({ user, onBuildPlan }) {
         lng: enrichData.found ? enrichData.lng : null,
       };
 
-      await supabase.from("user_saves").insert(save);
+      const { error: insertErr } = await supabase.from("user_saves").insert(save);
+      if (insertErr) throw new Error("Save failed: " + insertErr.message);
       setParseStatus("");
       showSuccess(save.name);
       await loadSaves();
@@ -1758,7 +1770,8 @@ Return a JSON object with this exact structure:
         lng: enrichData.found ? enrichData.lng : null,
       };
 
-      await supabase.from("user_saves").insert(save);
+      const { error: insertErr } = await supabase.from("user_saves").insert(save);
+      if (insertErr) throw new Error("Save failed: " + insertErr.message);
       setPasteUrl("");
       setParseStatus("");
       showSuccess(save.name);
