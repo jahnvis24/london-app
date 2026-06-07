@@ -45,6 +45,17 @@ const KEYWORDS = [
   "Brixton brunch",
   "Vauxhall things to do",
   "Herne Hill cafes",
+  // Neighbourhood-specific gaps
+  "Ealing restaurants bars",
+  "Fulham things to do",
+  "Parsons Green brunch",
+  "Wimbledon village restaurants",
+  "Balham bars restaurants",
+  "Tooting Broadway food",
+  "Battersea Power Station food",
+  "Vauxhall bars restaurants",
+  "Elephant and Castle food",
+  "London plant friendly restaurants",
 ];
 
 const USERNAMES_BATCH_1 = [
@@ -122,8 +133,8 @@ export default async function handler(req, res) {
   // ── KEYWORDS: rotate 4 per run ──
   const cursorStr = await getConfig('tiktok_keyword_cursor') || '0';
   const cursor = parseInt(cursorStr);
-  const keywordBatch = KEYWORDS.slice(cursor, cursor + 4);
-  const nextCursor = (cursor + 4) >= KEYWORDS.length ? 0 : cursor + 4;
+  const keywordBatch = KEYWORDS.slice(cursor, cursor + 6);
+  const nextCursor = (cursor + 6) >= KEYWORDS.length ? 0 : cursor + 6;
 
   console.log(`[keywords] running batch: ${keywordBatch}`);
 
