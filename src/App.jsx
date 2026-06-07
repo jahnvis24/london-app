@@ -330,15 +330,8 @@ const ALL_AREAS = Object.keys({
 
 const LOADS = ["Raiding our London database...", "Matching your vibe to venues...", "Checking geographic flow...", "Building your perfect sequence...", "Final polish..."];
 
-const EVENT_COLOURS = {
-  Music: { bg: "#1B998B", text: "#fff" }, Nightlife: { bg: "#2D1B69", text: "#fff" },
-  Arts: { bg: "#F7B731", text: "#1a1a1a" }, Food: { bg: "#E84855", text: "#fff" },
-  Comedy: { bg: "#F7B731", text: "#1a1a1a" }, Theatre: { bg: "#6B4226", text: "#fff" },
-  default: { bg: "#3D5A80", text: "#fff" },
-};
-
-const AREA_FILTERS = ["All", "Central", "East", "South", "West"];
-const EVENT_FILTERS = ["All", "Music", "Nightlife", "Arts", "Food", "Comedy", "Theatre"];
+const AREA_FILTERS = ["All", "Central", "East", "South", "West", "North"];
+const DISCOVER_CATS = ["All", "Restaurant", "Bar", "Cafe", "Experience", "Outdoor", "Market", "Nightlife", "Museum", "Gallery"];
 const PREF_OPTIONS = ["Restaurants", "Bars", "Hidden gems", "Outdoor", "Culture", "Markets", "Events", "Late night", "Brunch", "Fine dining"];
 const ADMIN_EMAIL = "jahnvisolanki2412@gmail.com";
 
@@ -560,18 +553,6 @@ const styles = `
 `;
 
 // ── MOCK EVENTS ───────────────────────────────────────────────
-const MOCK_EVENTS = [
-  { id: "e1", name: "Floating Points at Fabric", venue: "Fabric, Farringdon", date: "Fri 16 May", category: "Nightlife", area: "central", price: "£15", emoji: "💿", colour: EVENT_COLOURS.Nightlife },
-  { id: "e2", name: "Summer Exhibition Preview", venue: "Royal Academy of Arts", date: "Sat 17 May", category: "Arts", area: "central", price: "£22", emoji: "🖼️", colour: EVENT_COLOURS.Arts },
-  { id: "e3", name: "Night Markets: Peckham", venue: "Peckham Levels Rooftop", date: "Sat 17 May", category: "Food", area: "south", price: "Free", emoji: "🍜", colour: EVENT_COLOURS.Food },
-  { id: "e4", name: "Ibeyi Live", venue: "Roundhouse, Camden", date: "Sun 18 May", category: "Music", area: "central", price: "£28", emoji: "🎵", colour: EVENT_COLOURS.Music },
-  { id: "e5", name: "East End Film Festival", venue: "Genesis Cinema, Stepney", date: "Thu 22 May", category: "Arts", area: "east", price: "£12", emoji: "🎬", colour: EVENT_COLOURS.Arts },
-  { id: "e6", name: "Hackney Colliery Band", venue: "Victoria Park", date: "Sat 24 May", category: "Music", area: "east", price: "Free", emoji: "🎺", colour: EVENT_COLOURS.Music },
-  { id: "e7", name: "Soho Comedy Night", venue: "Soho Theatre", date: "Wed 21 May", category: "Comedy", area: "central", price: "£18", emoji: "🎭", colour: EVENT_COLOURS.Comedy },
-  { id: "e8", name: "Bermondsey Antiques Market", venue: "Bermondsey Square", date: "Fri 16 May", category: "Food", area: "south", price: "Free", emoji: "🏺", colour: EVENT_COLOURS.Food },
-  { id: "e9", name: "FOLD: All Night Long", venue: "Fold, Canning Town", date: "Sat 17 May", category: "Nightlife", area: "east", price: "£12", emoji: "🔊", colour: EVENT_COLOURS.Nightlife },
-  { id: "e10", name: "Kew After Hours", venue: "Kew Gardens", date: "Fri 23 May", category: "Arts", area: "west", price: "£30", emoji: "🌺", colour: EVENT_COLOURS.Arts },
-];
 
 // ── COMPONENTS ────────────────────────────────────────────────
 
@@ -1079,67 +1060,74 @@ function MyPlansScreen({ plans, onViewPlan, onNewPlan }) {
   );
 }
 
-function DiscoverScreen({ preferences }) {
-  const [events] = useState(MOCK_EVENTS);
-  const [areaFilter, setAreaFilter] = useState("All");
+function DiscoverScreen({ preferences, dbVenues }) {
+  const [zoneFilter, setZoneFilter] = useState("All");
   const [catFilter, setCatFilter] = useState("All");
 
-  const filtered = events.filter(e => {
-    const areaOk = areaFilter === "All" || e.area === areaFilter.toLowerCase();
-    const catOk = catFilter === "All" || e.category === catFilter;
-    return areaOk && catOk;
-  });
+  const CATEGORY_EMOJI = { restaurant: "🍽️", bar: "🍸", cafe: "☕", market: "🛍️", experience: "✨", outdoor: "🌿", museum: "🏛️", gallery: "🎨", nightlife: "🌙", event: "🎫" };
+  const CATEGORY_COLOURS = { restaurant: "#E84855", bar: "#2D1B69", cafe: "#F7B731", market: "#F0A500", experience: "#1B998B", outdoor: "#3D8B37", museum: "#3D5A80", gallery: "#9B59B6", nightlife: "#2D1B69", event: "#1B998B" };
+
+  const venues = dbVenues.filter(v => {
+    const zoneOk = zoneFilter === "All" || (v.zone || "").toLowerCase().startsWith(zoneFilter.toLowerCase());
+    const catOk = catFilter === "All" || (v.category || "").toLowerCase() === catFilter.toLowerCase();
+    return zoneOk && catOk;
+  }).sort((a, b) => (parseFloat(b.google_rating) || 0) - (parseFloat(a.google_rating) || 0));
 
   return (
     <div>
       <div className="section-pad" style={{ paddingBottom: "0.75rem" }}>
         <div className="section-title">Discover</div>
-        <p className="section-sub">What's on in London this week</p>
-        {preferences.length > 0 && (
-          <div style={{ fontSize: "0.75rem", color: "#1B998B", marginTop: "-0.5rem" }}>
-            ✦ Filtered for your preferences
-          </div>
-        )}
-      </div>
-
-      <div className="api-note">
-        <strong>Live events coming soon.</strong> Showing curated picks for now.
+        <p className="section-sub">Hand-picked London spots, rated and ready</p>
       </div>
 
       <div className="filter-row">
         {AREA_FILTERS.map(f => (
-          <div key={f} className={`filter-chip ${areaFilter === f ? "sel" : ""}`} onClick={() => setAreaFilter(f)}>{f}</div>
+          <div key={f} className={`filter-chip ${zoneFilter === f ? "sel" : ""}`} onClick={() => setZoneFilter(f)}>{f}</div>
         ))}
       </div>
       <div className="filter-row" style={{ paddingTop: 0 }}>
-        {EVENT_FILTERS.map(f => (
+        {DISCOVER_CATS.map(f => (
           <div key={f} className={`filter-chip ${catFilter === f ? "sel" : ""}`} onClick={() => setCatFilter(f)}>{f}</div>
         ))}
       </div>
 
       <div style={{ padding: "0 1.5rem 1rem" }}>
-        {filtered.length === 0 ? (
+        {venues.length === 0 ? (
           <div className="empty-state">
             <div className="empty-emoji">🔍</div>
             <div className="empty-title">Nothing matching</div>
-            <div className="empty-sub">Try a different filter.</div>
+            <div className="empty-sub">Try a different filter combination.</div>
           </div>
-        ) : filtered.map((ev) => (
-          <div key={ev.id} className="event-card" onClick={() => ev.url && window.open(ev.url, "_blank")}>
-            <div className="event-card-img" style={{ background: ev.colour.bg }}>
-              <span className="event-card-emoji">{ev.emoji}</span>
-            </div>
-            <div className="event-card-body">
-              <div className="event-card-cat" style={{ color: ev.colour.bg }}>{ev.category}</div>
-              <div className="event-card-name">{ev.name}</div>
-              <div className="event-card-venue">📍 {ev.venue}</div>
-              <div className="event-card-row">
-                <div className="event-card-date">📅 {ev.date}</div>
-                <div className="event-card-price">{ev.price}</div>
+        ) : venues.map((v) => {
+          const cat = (v.category || "experience").toLowerCase();
+          const colour = CATEGORY_COLOURS[cat] || "#3D5A80";
+          const emoji = CATEGORY_EMOJI[cat] || "✨";
+          const tags = v.vibe_tags || [];
+          return (
+            <div key={v.id} className="event-card">
+              <div className="event-card-img" style={{ background: colour }}>
+                <span className="event-card-emoji">{emoji}</span>
+              </div>
+              <div className="event-card-body">
+                <div className="event-card-cat" style={{ color: colour }}>{cat}</div>
+                <div className="event-card-name">{v.name}</div>
+                <div className="event-card-venue">{v.area || v.zone || "London"}</div>
+                {v.comment && <div style={{ fontSize: "0.72rem", color: "#6b5e4e", marginTop: 4, lineHeight: 1.4 }}>{v.comment.length > 80 ? v.comment.slice(0, 80) + "..." : v.comment}</div>}
+                <div className="event-card-row">
+                  <div className="event-card-date">{v.google_rating ? `⭐ ${v.google_rating}` : ""}{v.celebrity_tags ? " 💫" : ""}</div>
+                  <div className="event-card-price">{v.price || ""}</div>
+                </div>
+                {tags.length > 0 && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 6 }}>
+                    {tags.slice(0, 3).map(t => (
+                      <span key={t} style={{ fontSize: "0.62rem", background: "#f5f0e8", color: "#6b5e4e", padding: "2px 8px", borderRadius: 100 }}>{t}</span>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -2071,7 +2059,7 @@ export default function App() {
           </div>
         )}
 
-        {activeTab === "discover" && <DiscoverScreen preferences={preferences} />}
+        {activeTab === "discover" && <DiscoverScreen preferences={preferences} dbVenues={dbVenues} />}
         {activeTab === "saved" && <SavedScreen user={user} onBuildPlan={(saves) => { setAns(prev => ({ ...prev, savedVenues: saves })); setActiveTab("home"); startQuiz(); }} />}
         {activeTab === "add" && <TikTokParserScreen onSuccess={() => showToast("Added! Check Admin to approve.")} />}
         {activeTab === "prefs" && <PreferencesScreen preferences={preferences} setPreferences={setPreferences} user={user} />}
