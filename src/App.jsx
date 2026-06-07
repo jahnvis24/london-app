@@ -330,8 +330,6 @@ const ALL_AREAS = Object.keys({
 
 const LOADS = ["Raiding our London database...", "Matching your vibe to venues...", "Checking geographic flow...", "Building your perfect sequence...", "Final polish..."];
 
-const AREA_FILTERS = ["All", "Central", "East", "South", "West", "North"];
-const DISCOVER_CATS = ["All", "Restaurant", "Bar", "Cafe", "Experience", "Outdoor", "Market", "Nightlife", "Museum", "Gallery"];
 const PREF_OPTIONS = ["Restaurants", "Bars", "Hidden gems", "Outdoor", "Culture", "Markets", "Events", "Late night", "Brunch", "Fine dining"];
 const ADMIN_EMAIL = "jahnvisolanki2412@gmail.com";
 
@@ -1061,73 +1059,88 @@ function MyPlansScreen({ plans, onViewPlan, onNewPlan }) {
 }
 
 function DiscoverScreen({ preferences, dbVenues }) {
-  const [zoneFilter, setZoneFilter] = useState("All");
-  const [catFilter, setCatFilter] = useState("All");
+  const [section, setSection] = useState("events");
 
   const CATEGORY_EMOJI = { restaurant: "🍽️", bar: "🍸", cafe: "☕", market: "🛍️", experience: "✨", outdoor: "🌿", museum: "🏛️", gallery: "🎨", nightlife: "🌙", event: "🎫" };
   const CATEGORY_COLOURS = { restaurant: "#E84855", bar: "#2D1B69", cafe: "#F7B731", market: "#F0A500", experience: "#1B998B", outdoor: "#3D8B37", museum: "#3D5A80", gallery: "#9B59B6", nightlife: "#2D1B69", event: "#1B998B" };
 
-  const venues = dbVenues.filter(v => {
-    const zoneOk = zoneFilter === "All" || (v.zone || "").toLowerCase().startsWith(zoneFilter.toLowerCase());
-    const catOk = catFilter === "All" || (v.category || "").toLowerCase() === catFilter.toLowerCase();
-    return zoneOk && catOk;
-  }).sort((a, b) => (parseFloat(b.google_rating) || 0) - (parseFloat(a.google_rating) || 0));
+  const today = new Date().toISOString().split("T")[0];
+  const events = dbVenues.filter(v => v.is_event && v.event_start && (!v.event_end || v.event_end >= today))
+    .sort((a, b) => new Date(a.event_start) - new Date(b.event_start));
+
+  const celebSpots = dbVenues.filter(v => v.celebrity_tags && v.celebrity_tags.length > 0)
+    .sort((a, b) => (parseFloat(b.google_rating) || 0) - (parseFloat(a.google_rating) || 0));
+
+  const formatDate = (start, end) => {
+    const opts = { day: "numeric", month: "short" };
+    const s = new Date(start).toLocaleDateString("en-GB", opts);
+    if (!end) return s;
+    const e = new Date(end).toLocaleDateString("en-GB", opts);
+    return `${s} – ${e}`;
+  };
+
+  const renderCard = (v, showDate) => {
+    const cat = (v.category || "experience").toLowerCase();
+    const colour = CATEGORY_COLOURS[cat] || "#3D5A80";
+    const emoji = CATEGORY_EMOJI[cat] || "✨";
+    return (
+      <div key={v.id} className="event-card">
+        <div className="event-card-img" style={{ background: colour }}>
+          <span className="event-card-emoji">{emoji}</span>
+        </div>
+        <div className="event-card-body">
+          <div className="event-card-cat" style={{ color: colour }}>{cat}</div>
+          <div className="event-card-name">{v.name}</div>
+          <div className="event-card-venue">{v.area || v.zone || "London"}</div>
+          {v.comment && <div style={{ fontSize: "0.72rem", color: "#6b5e4e", marginTop: 4, lineHeight: 1.4 }}>{v.comment.length > 90 ? v.comment.slice(0, 90) + "..." : v.comment}</div>}
+          <div className="event-card-row">
+            <div className="event-card-date">
+              {showDate && v.event_start ? `📅 ${formatDate(v.event_start, v.event_end)}` : ""}
+              {!showDate && v.google_rating ? `⭐ ${v.google_rating}` : ""}
+            </div>
+            <div className="event-card-price">{v.price || ""}</div>
+          </div>
+          {v.celebrity_tags && v.celebrity_tags.length > 0 && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 6 }}>
+              {[...new Set(v.celebrity_tags)].slice(0, 3).map(c => (
+                <span key={c} style={{ fontSize: "0.62rem", background: "#fdf6e3", color: "#b8860b", padding: "2px 8px", borderRadius: 100 }}>💫 {c}</span>
+              ))}
+            </div>
+          )}
+          {!v.celebrity_tags && (v.vibe_tags || []).length > 0 && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 6 }}>
+              {v.vibe_tags.slice(0, 3).map(t => (
+                <span key={t} style={{ fontSize: "0.62rem", background: "#f5f0e8", color: "#6b5e4e", padding: "2px 8px", borderRadius: 100 }}>{t}</span>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const list = section === "events" ? events : celebSpots;
 
   return (
     <div>
       <div className="section-pad" style={{ paddingBottom: "0.75rem" }}>
         <div className="section-title">Discover</div>
-        <p className="section-sub">Hand-picked London spots, rated and ready</p>
+        <p className="section-sub">What's happening and where the celebs go</p>
       </div>
 
       <div className="filter-row">
-        {AREA_FILTERS.map(f => (
-          <div key={f} className={`filter-chip ${zoneFilter === f ? "sel" : ""}`} onClick={() => setZoneFilter(f)}>{f}</div>
-        ))}
-      </div>
-      <div className="filter-row" style={{ paddingTop: 0 }}>
-        {DISCOVER_CATS.map(f => (
-          <div key={f} className={`filter-chip ${catFilter === f ? "sel" : ""}`} onClick={() => setCatFilter(f)}>{f}</div>
-        ))}
+        <div className={`filter-chip ${section === "events" ? "sel" : ""}`} onClick={() => setSection("events")}>📅 What's On</div>
+        <div className={`filter-chip ${section === "celeb" ? "sel" : ""}`} onClick={() => setSection("celeb")}>💫 Celebrity Spots</div>
       </div>
 
       <div style={{ padding: "0 1.5rem 1rem" }}>
-        {venues.length === 0 ? (
+        {list.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-emoji">🔍</div>
-            <div className="empty-title">Nothing matching</div>
-            <div className="empty-sub">Try a different filter combination.</div>
+            <div className="empty-emoji">{section === "events" ? "📅" : "💫"}</div>
+            <div className="empty-title">{section === "events" ? "No events right now" : "No celebrity spots yet"}</div>
+            <div className="empty-sub">{section === "events" ? "Check back soon — we add new events weekly." : "Celebrity-tagged venues will appear here."}</div>
           </div>
-        ) : venues.map((v) => {
-          const cat = (v.category || "experience").toLowerCase();
-          const colour = CATEGORY_COLOURS[cat] || "#3D5A80";
-          const emoji = CATEGORY_EMOJI[cat] || "✨";
-          const tags = v.vibe_tags || [];
-          return (
-            <div key={v.id} className="event-card">
-              <div className="event-card-img" style={{ background: colour }}>
-                <span className="event-card-emoji">{emoji}</span>
-              </div>
-              <div className="event-card-body">
-                <div className="event-card-cat" style={{ color: colour }}>{cat}</div>
-                <div className="event-card-name">{v.name}</div>
-                <div className="event-card-venue">{v.area || v.zone || "London"}</div>
-                {v.comment && <div style={{ fontSize: "0.72rem", color: "#6b5e4e", marginTop: 4, lineHeight: 1.4 }}>{v.comment.length > 80 ? v.comment.slice(0, 80) + "..." : v.comment}</div>}
-                <div className="event-card-row">
-                  <div className="event-card-date">{v.google_rating ? `⭐ ${v.google_rating}` : ""}{v.celebrity_tags ? " 💫" : ""}</div>
-                  <div className="event-card-price">{v.price || ""}</div>
-                </div>
-                {tags.length > 0 && (
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 6 }}>
-                    {tags.slice(0, 3).map(t => (
-                      <span key={t} style={{ fontSize: "0.62rem", background: "#f5f0e8", color: "#6b5e4e", padding: "2px 8px", borderRadius: 100 }}>{t}</span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
+        ) : list.map(v => renderCard(v, section === "events"))}
       </div>
     </div>
   );
