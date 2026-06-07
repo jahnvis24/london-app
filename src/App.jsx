@@ -361,7 +361,7 @@ const styles = `
   .shapes-wrap { position: absolute; top: 0; right: -20px; width: 220px; height: 260px; pointer-events: none; z-index: 0; }
   .shape-circle { position: absolute; border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden; animation: spin-cw 14s linear infinite; }
   .shape-teal { width: 130px; height: 130px; background: #6B1A1A; top: 0; right: 40px; animation-duration: 16s; }
-  .shape-yellow { width: 160px; height: 160px; background: #F4C842; top: 80px; right: -10px; animation-duration: 20s; }
+  .shape-yellow { width: 160px; height: 160px; background: #fff8d1; top: 80px; right: -10px; animation-duration: 20s; }
   .shape-cream { width: 80px; height: 80px; background: #F7EFD4; top: 150px; right: 140px; animation-duration: 12s; }
   .inner-oval { width: 56px; height: 32px; background: #B8A9D9; border-radius: 50%; animation: spin-cw 8s linear infinite; }
   .inner-starburst { animation: spin-cw 6s linear infinite; }
@@ -596,7 +596,7 @@ function HomeScreen({ onStart }) {
           ["→", "One perfect plan", "Claude sequences them geographically and temporally. Just follow it."]
         ].map(([icon, title, desc], i) => (
           <div key={i} style={{ display: "flex", gap: "1rem", marginBottom: "1.1rem", alignItems: "flex-start" }}>
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: i === 0 ? "#6B1A1A" : i === 1 ? "#F7B731" : "#1c1c1a", display: "flex", alignItems: "center", justifyContent: "center", color: i === 1 ? "#1c1c1a" : "#fff", fontSize: "1rem", flexShrink: 0, fontWeight: 700 }}>{icon}</div>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: i === 0 ? "#6B1A1A" : i === 1 ? "#fff8d1" : "#1c1c1a", display: "flex", alignItems: "center", justifyContent: "center", color: i === 1 ? "#1c1c1a" : "#fff", fontSize: "1rem", flexShrink: 0, fontWeight: 700 }}>{icon}</div>
             <div>
               <div style={{ fontSize: "0.88rem", fontWeight: 500, color: "#1c1c1a", marginBottom: 2 }}>{title}</div>
               <div style={{ fontSize: "0.78rem", color: "#9b8f7a", lineHeight: 1.45 }}>{desc}</div>
