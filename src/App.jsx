@@ -1726,7 +1726,7 @@ function SavedScreen({ user, onBuildPlan }) {
     { id: "instagram", label: "Instagram", emoji: "\u{1F4F8}", placeholder: "Paste the Instagram caption + link..." },
     { id: "screenshot", label: "Screenshot(s)", emoji: "\u{1F5BC}️", placeholder: "" },
     { id: "maps", label: "Google Maps link", emoji: "\u{1F4CD}", placeholder: "Paste a Google Maps place link..." },
-    { id: "mapslist", label: "Google Maps list", emoji: "\u{1F5FA}️", placeholder: "Paste a shared Google Maps list link..." },
+    { id: "bulk", label: "Bulk paste", emoji: "\u{1F4CB}", placeholder: "Paste place names or Google Maps links — one per line..." },
   ];
 
   function playChime() {
@@ -1926,6 +1926,39 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
     return drafts;
   }
 
+  // Bulk paste: one place name OR Maps link per line → enrich each.
+  async function parseBulk(input) {
+    const lines = input.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    if (!lines.length) throw new Error("Paste at least one place name or Maps link, one per line.");
+    const drafts = [];
+    const isMapsUrl = (s) => /google\.[a-z.]+\/maps|maps\.app\.goo\.gl|goo\.gl\/maps/i.test(s);
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      setParseStatus(`Processing ${i + 1} of ${lines.length}: ${line.slice(0, 40)}...`);
+      try {
+        if (/^https?:\/\//i.test(line) && isMapsUrl(line)) {
+          const r = await fetch("/api/saved-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool: "maps", url: line }) });
+          const data = await r.json();
+          if (data.found) {
+            for (const place of data.places) {
+              const g = await enrich(place.name, null);
+              drafts.push(buildDraft({ name: place.name, lat: place.lat, lng: place.lng, category: "experience" }, g, { source_type: "maps", source_url: line }));
+            }
+            continue;
+          }
+          // couldn't resolve the link — skip it
+          continue;
+        }
+        // treat as a plain place name
+        const g = await enrich(line, null);
+        drafts.push(buildDraft({ name: line, category: "experience" }, g, { source_type: "manual", source_url: null }));
+      } catch (e) {
+        console.error("[parseBulk] line failed:", line, e);
+      }
+    }
+    return drafts;
+  }
+
   async function handleParse(files) {
     if (!user?.id) { setError("You're not signed in — please sign in to save."); return; }
     setParsing(true); setError(null);
@@ -1938,8 +1971,10 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
         drafts = await parseTikTok(textInput);
       } else if (mediaType === "instagram") {
         drafts = await parseInstagram(textInput);
+      } else if (mediaType === "bulk") {
+        drafts = await parseBulk(textInput);
       } else {
-        drafts = await parseMaps(textInput, mediaType === "mapslist");
+        drafts = await parseMaps(textInput, false);
       }
       if (!drafts.length) throw new Error("Nothing found to add. Try a clearer source.");
       setPreview(prev => [...prev, ...drafts]);
@@ -2087,7 +2122,7 @@ Return a JSON object with this exact structure:
 
   if (loading) return <div className="loading"><div className="loading-ring" /><div className="loading-sub">Loading saves...</div></div>;
 
-  const SOURCE_ICON = { tiktok: "\u{1F3B5}", instagram: "\u{1F4F8}", screenshot: "\u{1F5BC}️", maps: "\u{1F4CD}", mapslist: "\u{1F5FA}️" };
+  const SOURCE_ICON = { tiktok: "\u{1F3B5}", instagram: "\u{1F4F8}", screenshot: "\u{1F5BC}️", maps: "\u{1F4CD}", manual: "\u{1F4DD}" };
   const fmtDate = (d) => { if (!d) return null; try { return new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short" }); } catch { return d; } };
   const current = MEDIA_TYPES.find(m => m.id === mediaType) || MEDIA_TYPES[0];
 
@@ -2158,9 +2193,9 @@ Return a JSON object with this exact structure:
             <input type="file" accept="image/*" multiple style={{ display: "none" }} disabled={parsing || saving}
               onChange={e => { const f = [...e.target.files]; e.target.value = ""; if (f.length) handleParse(f); }} />
           </label>
-        ) : mediaType === "instagram" ? (
+        ) : (mediaType === "instagram" || mediaType === "bulk") ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <textarea className="input-field" rows={3} placeholder={current.placeholder} value={textInput}
+            <textarea className="input-field" rows={mediaType === "bulk" ? 5 : 3} placeholder={current.placeholder} value={textInput}
               onChange={e => { setTextInput(e.target.value); setError(null); }} style={{ resize: "vertical" }} />
             <button className="btn btn-teal" onClick={() => handleParse()} disabled={parsing || saving || !textInput.trim()}>{parsing ? "Parsing..." : "Parse ✦"}</button>
           </div>
@@ -2172,7 +2207,7 @@ Return a JSON object with this exact structure:
           </div>
         )}
 
-        {mediaType === "mapslist" && <div style={{ fontSize: "0.66rem", color: "#b8ac9a", marginTop: 6 }}>Heads up: Google often blocks list scraping. If nothing comes back, export the list via Google Takeout and paste the place names (or add them as individual Maps links).</div>}
+        {mediaType === "bulk" && <div style={{ fontSize: "0.66rem", color: "#b8ac9a", marginTop: 6 }}>One per line. Google Maps links are resolved; plain place names are looked up on Google. Great for importing a whole list.</div>}
 
         {(parsing || saving) && parseStatus && <div style={{ fontSize: "0.75rem", color: "#1B998B", marginTop: 8 }}>{parseStatus}</div>}
       </div>
