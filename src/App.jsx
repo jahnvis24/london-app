@@ -340,7 +340,7 @@ async function callClaude(prompt, maxTokens = 1000) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "claude-sonnet-4-5",
+      model: "claude-sonnet-4-6",
       max_tokens: maxTokens,
       messages: [{ role: "user", content: prompt }]
     }),
@@ -348,6 +348,34 @@ async function callClaude(prompt, maxTokens = 1000) {
   const data = await resp.json();
   const txt = data.content?.find(b => b.type === "text")?.text || "";
   return txt.replace(/```json|```/g, "").trim();
+}
+
+// Downscale + JPEG-compress an image file so the /api/claude payload stays
+// under Vercel's ~4.5MB request limit (large phone screenshots otherwise fail).
+async function fileToDownscaledBase64(file, maxDim = 1280, quality = 0.8) {
+  const dataUrl = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error("Couldn't read the image file."));
+    reader.readAsDataURL(file);
+  });
+  const img = await new Promise((resolve, reject) => {
+    const im = new Image();
+    im.onload = () => resolve(im);
+    im.onerror = () => reject(new Error("That file doesn't look like a valid image."));
+    im.src = dataUrl;
+  });
+  let { width, height } = img;
+  if (Math.max(width, height) > maxDim) {
+    const scale = maxDim / Math.max(width, height);
+    width = Math.round(width * scale);
+    height = Math.round(height * scale);
+  }
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+  return { base64: canvas.toDataURL("image/jpeg", quality).split(",")[1], mediaType: "image/jpeg" };
 }
 
 // ── STYLES ───────────────────────────────────────────────────
@@ -1190,20 +1218,14 @@ function TikTokParserScreen({ onSuccess }) {
   async function parseFromImage(file) {
     setParsing(true); setError(null); setPreview(null); setParseStatus("Reading image...");
     try {
-      const base64 = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result.split(",")[1]);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-      const mediaType = file.type || "image/jpeg";
+      const { base64, mediaType } = await fileToDownscaledBase64(file);
 
       setParseStatus("Extracting venue info...");
       const resp = await fetch("/api/claude", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "claude-sonnet-4-5",
+          model: "claude-sonnet-4-6",
           max_tokens: 1500,
           messages: [{ role: "user", content: [
             { type: "image", source: { type: "base64", media_type: mediaType, data: base64 } },
@@ -1256,6 +1278,7 @@ Each object must have this exact structure:
       setPreview({ venues: enriched, _caption: "From screenshot" });
       setParseStatus("");
     } catch (e) {
+      console.error("[parseFromImage]", e);
       setError(e.message || "Couldn't read this image.");
       setParseStatus("");
     }
@@ -1726,7 +1749,9 @@ function SavedScreen({ user, onBuildPlan }) {
 
   async function loadSaves() {
     setLoading(true);
-    const { data } = await supabase.from("user_saves").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
+    if (!user?.id) { setError("You're not signed in, so saves can't load. Try signing out and back in."); setSaves([]); setLoading(false); return; }
+    const { data, error: loadErr } = await supabase.from("user_saves").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
+    if (loadErr) { console.error("[loadSaves]", loadErr); setError("Couldn't load saves: " + loadErr.message); }
     setSaves(data || []);
     setLoading(false);
   }
@@ -1744,22 +1769,18 @@ function SavedScreen({ user, onBuildPlan }) {
   }, []);
 
   async function parseFromImage(file) {
+    if (!user?.id) { setError("You're not signed in — please sign in to save."); return; }
+    if (!file) { setError("No image selected."); return; }
     setParsing(true); setError(null); setParseStatus("Reading image...");
     try {
-      const base64 = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result.split(",")[1]);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-      const mediaType = file.type || "image/jpeg";
+      const { base64, mediaType } = await fileToDownscaledBase64(file);
 
       setParseStatus("Extracting venue info...");
       const resp = await fetch("/api/claude", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "claude-sonnet-4-5",
+          model: "claude-sonnet-4-6",
           max_tokens: 500,
           messages: [{ role: "user", content: [
             { type: "image", source: { type: "base64", media_type: mediaType, data: base64 } },
@@ -1792,12 +1813,14 @@ function SavedScreen({ user, onBuildPlan }) {
         lng: enrichData.found ? enrichData.lng : null,
       };
 
-      const { error: insertErr } = await supabase.from("user_saves").insert(save);
+      const { data: inserted, error: insertErr } = await supabase.from("user_saves").insert(save).select();
       if (insertErr) throw new Error("Save failed: " + insertErr.message);
+      if (!inserted || inserted.length === 0) throw new Error("Save didn't persist — the database accepted the request but returned no row. Check you're signed in and that RLS allows this user to read/write user_saves.");
       setParseStatus("");
       showSuccess(save.name);
       await loadSaves();
     } catch (e) {
+      console.error("[parseFromImage]", e);
       setError(e.message || "Couldn't read this image.");
       setParseStatus("");
     }
@@ -1808,6 +1831,7 @@ function SavedScreen({ user, onBuildPlan }) {
     const urlMatch = (url || pasteUrl).match(/https?:\/\/[^\s]*(tiktok\.com|vm\.tiktok\.com)[^\s]*/i);
     if (!urlMatch) { setError("No TikTok URL found. Paste a link containing tiktok.com"); return; }
     const cleanUrl = urlMatch[0];
+    if (!user?.id) { setError("You're not signed in — please sign in to save."); return; }
     setParsing(true); setError(null); setParseStatus("Fetching TikTok...");
 
     try {
@@ -1859,13 +1883,15 @@ Return a JSON object with this exact structure:
         lng: enrichData.found ? enrichData.lng : null,
       };
 
-      const { error: insertErr } = await supabase.from("user_saves").insert(save);
+      const { data: inserted, error: insertErr } = await supabase.from("user_saves").insert(save).select();
       if (insertErr) throw new Error("Save failed: " + insertErr.message);
+      if (!inserted || inserted.length === 0) throw new Error("Save didn't persist — the database accepted the request but returned no row. Check you're signed in and that RLS allows this user to read/write user_saves.");
       setPasteUrl("");
       setParseStatus("");
       showSuccess(save.name);
       await loadSaves();
     } catch (e) {
+      console.error("[parseAndSave]", e);
       setError(e.message || "Couldn't parse this TikTok.");
       setParseStatus("");
     }
@@ -1891,7 +1917,7 @@ Return a JSON object with this exact structure:
     <div>
       <div className="section-pad" style={{ paddingBottom: "0.5rem" }}>
         <div className="section-title">Saved</div>
-        <p className="section-sub">Paste a TikTok link to save a venue</p>
+        <p className="section-sub">Paste a TikTok link or upload a screenshot to save a venue</p>
       </div>
 
       <div style={{ padding: "0 1.5rem 1rem" }}>
