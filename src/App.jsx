@@ -1712,12 +1712,22 @@ function PreferencesScreen({ preferences, setPreferences, user }) {
 function SavedScreen({ user, onBuildPlan }) {
   const [saves, setSaves] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [pasteUrl, setPasteUrl] = useState("");
+  const [mediaType, setMediaType] = useState("tiktok"); // tiktok | instagram | screenshot | maps | mapslist
+  const [textInput, setTextInput] = useState("");
   const [parsing, setParsing] = useState(false);
   const [parseStatus, setParseStatus] = useState("");
   const [error, setError] = useState(null);
-  const [openFolder, setOpenFolder] = useState(null);
+  const [preview, setPreview] = useState([]); // normalized venue drafts awaiting save
+  const [saving, setSaving] = useState(false);
   const [successVenue, setSuccessVenue] = useState(null);
+
+  const MEDIA_TYPES = [
+    { id: "tiktok", label: "TikTok URL", emoji: "\u{1F3B5}", placeholder: "Paste a TikTok link (or text containing one)..." },
+    { id: "instagram", label: "Instagram", emoji: "\u{1F4F8}", placeholder: "Paste the Instagram caption + link..." },
+    { id: "screenshot", label: "Screenshot(s)", emoji: "\u{1F5BC}️", placeholder: "" },
+    { id: "maps", label: "Google Maps link", emoji: "\u{1F4CD}", placeholder: "Paste a Google Maps place link..." },
+    { id: "mapslist", label: "Google Maps list", emoji: "\u{1F5FA}️", placeholder: "Paste a shared Google Maps list link..." },
+  ];
 
   function playChime() {
     try {
@@ -1750,7 +1760,7 @@ function SavedScreen({ user, onBuildPlan }) {
   async function loadSaves() {
     setLoading(true);
     if (!user?.id) { setError("You're not signed in, so saves can't load. Try signing out and back in."); setSaves([]); setLoading(false); return; }
-    const { data, error: loadErr } = await supabase.from("user_saves").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
+    const { data, error: loadErr } = await supabase.from("experiences").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
     if (loadErr) { console.error("[loadSaves]", loadErr); setError("Couldn't load saves: " + loadErr.message); }
     setSaves(data || []);
     setLoading(false);
@@ -1768,70 +1778,243 @@ function SavedScreen({ user, onBuildPlan }) {
     }
   }, []);
 
-  async function parseFromImage(file) {
-    if (!user?.id) { setError("You're not signed in — please sign in to save."); return; }
-    if (!file) { setError("No image selected."); return; }
-    setParsing(true); setError(null); setParseStatus("Reading image...");
-    try {
-      const { base64, mediaType } = await fileToDownscaledBase64(file);
+  // Shared richer extraction schema used for captions / pasted text / screenshots.
+  const EXTRACT_SCHEMA = `Return ONLY valid JSON (no markdown) with this exact structure:
+{
+  "name": "venue or event name",
+  "address": "full street address if present, else null",
+  "area": "neighbourhood e.g. Shoreditch, Chelsea, Clapham",
+  "category": "one of: restaurant, bar, cafe, market, experience, outdoor, museum, gallery, event, nightlife",
+  "price": "e.g. Free, Under £15pp, £15-35pp, or null if unknown",
+  "is_event": true if it's a time-bound thing (pop-up, exhibition, show, festival) else false,
+  "event_start": "YYYY-MM-DD or null",
+  "event_end": "YYYY-MM-DD or null",
+  "event_time": "e.g. '7pm-11pm' or null",
+  "vibe_tags": ["tags from: chill, romantic, chaotic, cultural, fancy, hidden_gems, social, foodie, outdoor, aesthetic, iconic, solo, underground"],
+  "comment": "one sentence describing this place"
+}
+If multiple distinct venues are present, return a JSON array of such objects.`;
 
-      setParseStatus("Extracting venue info...");
+  async function enrich(name, area) {
+    try {
+      const r = await fetch("/api/enrich-venue", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, area }) });
+      return await r.json();
+    } catch { return { found: false }; }
+  }
+
+  // Merge a Claude-parsed object with Google enrichment into a normalized draft.
+  function buildDraft(p, g, extra) {
+    const found = g?.found ? g : null;
+    return {
+      name: found?.validated_name || p.name || "Unknown",
+      address: found?.validated_address || p.address || null,
+      area: found?.derived_area || p.area || null,
+      zone: found?.derived_zone || p.zone || null,
+      postcode: found?.postcode || p.postcode || null,
+      category: p.category || "experience",
+      price: found?.price || p.price || null,
+      is_event: p.is_event || p.category === "event" || false,
+      event_start: p.event_start || null,
+      event_end: p.event_end || null,
+      event_time: p.event_time || null,
+      comment: p.comment || p.description || null,
+      vibe_tags: Array.isArray(p.vibe_tags) ? p.vibe_tags : [],
+      lat: found?.lat ?? p.lat ?? null,
+      lng: found?.lng ?? p.lng ?? null,
+      google_place_id: found?.google_place_id || null,
+      google_rating: found?.google_rating || null,
+      google_review_count: found?.google_review_count || null,
+      google_price_level: found?.google_price_level ?? null,
+      website: found?.website || null,
+      opening_hours: found?.opening_hours || null,
+      _google_found: !!found,
+      ...extra, // source_type, source_url, tiktok_url, _screenshot_b64, _cover_url
+    };
+  }
+
+  // Parse free text (TikTok / Instagram caption / notes) → 1+ drafts.
+  async function parseTextToDrafts(text, extra) {
+    const caption = text.slice(0, 1200).replace(/[ -]/g, " ");
+    const txt = await callClaude(`You are extracting London venues/events from social-media text.\nText: ${JSON.stringify(caption)}\n\n${EXTRACT_SCHEMA}`, 900);
+    if (!txt) throw new Error("AI returned an empty response. Try again.");
+    const raw = JSON.parse(txt);
+    const items = Array.isArray(raw) ? raw : [raw];
+    const drafts = [];
+    for (const p of items) {
+      if (!p?.name) continue;
+      const g = await enrich(p.name, p.area);
+      drafts.push(buildDraft(p, g, extra));
+    }
+    return drafts;
+  }
+
+  async function parseTikTok(input) {
+    const urlMatch = input.match(/https?:\/\/[^\s]*(tiktok\.com|vm\.tiktok\.com)[^\s]*/i);
+    if (!urlMatch) throw new Error("No TikTok URL found. Paste a link containing tiktok.com");
+    const cleanUrl = urlMatch[0];
+    setParseStatus("Fetching TikTok...");
+    const tikResp = await fetch("/api/tiktok", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url: cleanUrl }) });
+    if (!tikResp.ok) throw new Error("TikTok API returned " + tikResp.status);
+    const tikData = await tikResp.json();
+    if (tikData.error) throw new Error(tikData.error);
+    const caption = (tikData.description || tikData.title || "").trim();
+    if (!caption) throw new Error("No caption found in this video. Try a different one.");
+    setParseStatus("Parsing venue...");
+    return parseTextToDrafts(caption, { source_type: "tiktok", source_url: cleanUrl, tiktok_url: cleanUrl, _cover_url: tikData.cover || null });
+  }
+
+  async function parseInstagram(input) {
+    const urlMatch = input.match(/https?:\/\/[^\s]*instagram\.com[^\s]*/i);
+    const igUrl = urlMatch ? urlMatch[0] : null;
+    const text = input.replace(/https?:\/\/\S+/g, "").trim();
+    if (!text) throw new Error("Paste the Instagram caption text — Instagram blocks automatic reading, so we parse the caption you paste in.");
+    setParseStatus("Parsing caption...");
+    return parseTextToDrafts(text, { source_type: "instagram", source_url: igUrl });
+  }
+
+  async function parseScreenshots(files) {
+    const drafts = [];
+    let n = 0;
+    for (const file of files) {
+      n++;
+      setParseStatus(`Reading image ${n} of ${files.length}...`);
+      const { base64, mediaType } = await fileToDownscaledBase64(file);
       const resp = await fetch("/api/claude", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "claude-sonnet-4-6",
-          max_tokens: 500,
+          model: "claude-sonnet-4-6", max_tokens: 900,
           messages: [{ role: "user", content: [
             { type: "image", source: { type: "base64", media_type: mediaType, data: base64 } },
-            { type: "text", text: "This is a screenshot about a London venue, event, or place. Extract: name, area (neighbourhood), category (one of: restaurant, bar, cafe, market, experience, outdoor, museum, gallery, event, nightlife — use 'event' if it's a time-bound thing like a pop-up, exhibition, show, or festival), vibe_tags (from: chill, romantic, chaotic, cultural, fancy, hidden_gems, social, foodie, outdoor, aesthetic, iconic, solo, underground), comment (one sentence summary). Return ONLY JSON: {name, area, category, vibe_tags, comment}" }
-          ] }]
+            { type: "text", text: `This is a screenshot about a London venue, event, or place. ${EXTRACT_SCHEMA}` },
+          ] }],
         }),
       });
       const data = await resp.json();
       if (data.error) throw new Error(data.error.message || "AI API error");
-      const txt = (data.content?.find(b => b.type === "text")?.text || "").replace(/```json|```/g, "").trim();
-      if (!txt) throw new Error("Couldn't extract venue info from this image. Try a clearer screenshot.");
-      const parsed = JSON.parse(txt);
+      const t = (data.content?.find(b => b.type === "text")?.text || "").replace(/```json|```/g, "").trim();
+      if (!t) continue;
+      const raw = JSON.parse(t);
+      const items = Array.isArray(raw) ? raw : [raw];
+      for (const p of items) {
+        if (!p?.name) continue;
+        setParseStatus(`Looking up "${p.name}" on Google...`);
+        const g = await enrich(p.name, p.area);
+        drafts.push(buildDraft(p, g, { source_type: "screenshot", source_url: null, _screenshot_b64: base64 }));
+      }
+    }
+    return drafts;
+  }
 
-      setParseStatus("Looking up on Google...");
-      const enrichResp = await fetch("/api/enrich-venue", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: parsed.name, area: parsed.area }) });
-      const enrichData = await enrichResp.json();
+  async function parseMaps(input, isList) {
+    setParseStatus(isList ? "Reading Maps list..." : "Resolving Maps link...");
+    const r = await fetch("/api/maps-resolve", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url: input.trim() }) });
+    const data = await r.json();
+    if (data.error) throw new Error(data.error);
+    if (!data.found) throw new Error(data.message || "Couldn't read that Maps link.");
+    const drafts = [];
+    let n = 0;
+    for (const place of data.places) {
+      n++;
+      setParseStatus(`Enriching ${n} of ${data.places.length}: ${place.name}...`);
+      const g = await enrich(place.name, null);
+      drafts.push(buildDraft(
+        { name: place.name, lat: place.lat, lng: place.lng, category: "experience" },
+        g,
+        { source_type: isList ? "mapslist" : "maps", source_url: input.trim() },
+      ));
+    }
+    return drafts;
+  }
 
-      setParseStatus("Saving...");
-      const save = {
-        user_id: user.id,
-        name: enrichData.found ? enrichData.validated_name : parsed.name,
-        area: enrichData.found ? (enrichData.derived_area || parsed.area) : parsed.area,
-        zone: enrichData.found ? enrichData.derived_zone : null,
-        category: parsed.category,
-        price: enrichData.found ? enrichData.price : null,
-        vibe_tags: parsed.vibe_tags || [],
-        comment: parsed.comment,
-        google_rating: enrichData.found ? enrichData.google_rating : null,
-        lat: enrichData.found ? enrichData.lat : null,
-        lng: enrichData.found ? enrichData.lng : null,
-      };
-
-      const { data: inserted, error: insertErr } = await supabase.from("user_saves").insert(save).select();
-      if (insertErr) throw new Error("Save failed: " + insertErr.message);
-      if (!inserted || inserted.length === 0) throw new Error("Save didn't persist — the database accepted the request but returned no row. Check you're signed in and that RLS allows this user to read/write user_saves.");
+  async function handleParse(files) {
+    if (!user?.id) { setError("You're not signed in — please sign in to save."); return; }
+    setParsing(true); setError(null);
+    try {
+      let drafts = [];
+      if (mediaType === "screenshot") {
+        if (!files || !files.length) throw new Error("Pick one or more screenshots.");
+        drafts = await parseScreenshots(files);
+      } else if (mediaType === "tiktok") {
+        drafts = await parseTikTok(textInput);
+      } else if (mediaType === "instagram") {
+        drafts = await parseInstagram(textInput);
+      } else {
+        drafts = await parseMaps(textInput, mediaType === "mapslist");
+      }
+      if (!drafts.length) throw new Error("Nothing found to add. Try a clearer source.");
+      setPreview(prev => [...prev, ...drafts]);
+      setTextInput("");
       setParseStatus("");
-      showSuccess(save.name);
-      await loadSaves();
     } catch (e) {
-      console.error("[parseFromImage]", e);
-      setError(e.message || "Couldn't read this image.");
+      console.error("[handleParse]", e);
+      setError(e.message || "Couldn't parse that.");
       setParseStatus("");
     }
     setParsing(false);
   }
 
-  async function parseAndSave(url) {
-    const urlMatch = (url || pasteUrl).match(/https?:\/\/[^\s]*(tiktok\.com|vm\.tiktok\.com)[^\s]*/i);
-    if (!urlMatch) { setError("No TikTok URL found. Paste a link containing tiktok.com"); return; }
+  async function resolvePhoto(d) {
+    try {
+      let body = null;
+      if (d._screenshot_b64) body = { image_base64: d._screenshot_b64, content_type: "image/jpeg" };
+      else if (d._cover_url) body = { image_url: d._cover_url };
+      else if (d.google_place_id) body = { place_id: d.google_place_id };
+      if (!body) return null;
+      const r = await fetch("/api/save-image", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const j = await r.json();
+      return j.found ? j.url : null;
+    } catch { return null; }
+  }
+
+  async function saveAll() {
+    if (!preview.length || !user?.id) return;
+    setSaving(true); setError(null);
+    let savedCount = 0;
+    try {
+      for (let i = 0; i < preview.length; i++) {
+        const d = preview[i];
+        setParseStatus(`Saving ${i + 1} of ${preview.length}: ${d.name}...`);
+        const photo_url = await resolvePhoto(d);
+        const row = {
+          user_id: user.id,
+          name: d.name, address: d.address, area: d.area, zone: d.zone || "Central",
+          category: d.category, price: d.price,
+          is_event: d.is_event, event_start: d.event_start, event_end: d.event_end, event_time: d.event_time,
+          comment: d.comment, vibe_tags: d.vibe_tags || [],
+          lat: d.lat, lng: d.lng, postcode: d.postcode,
+          google_place_id: d.google_place_id, google_rating: d.google_rating,
+          google_review_count: d.google_review_count, google_price_level: d.google_price_level,
+          website: d.website, opening_hours: d.opening_hours,
+          tiktok_url: d.tiktok_url || (d.source_type === "tiktok" ? d.source_url : null),
+          source_url: d.source_url, source_type: d.source_type,
+          photo_url, status: "pending",
+        };
+        const { data: inserted, error: insertErr } = await supabase.from("experiences").insert(row).select();
+        if (insertErr) throw new Error("Save failed: " + insertErr.message);
+        if (!inserted || !inserted.length) throw new Error("Save didn't persist — check you're signed in and that the migration has been run.");
+        savedCount++;
+      }
+      setParseStatus("");
+      setPreview([]);
+      showSuccess(savedCount === 1 ? preview[0].name : `${savedCount} spots`);
+      await loadSaves();
+    } catch (e) {
+      console.error("[saveAll]", e);
+      setError(e.message + (savedCount ? ` (${savedCount} saved before this)` : ""));
+      setParseStatus("");
+      if (savedCount) { setPreview(prev => prev.slice(savedCount)); await loadSaves(); }
+    }
+    setSaving(false);
+  }
+
+  function removeDraft(i) { setPreview(prev => prev.filter((_, idx) => idx !== i)); }
+
+  // eslint-disable-next-line no-unused-vars
+  async function parseAndSave_legacy(url) {
+    const urlMatch = (url || "").match(/https?:\/\/[^\s]*(tiktok\.com|vm\.tiktok\.com)[^\s]*/i);
+    if (!urlMatch) { return; }
     const cleanUrl = urlMatch[0];
-    if (!user?.id) { setError("You're not signed in — please sign in to save."); return; }
+    if (!user?.id) { return; }
     setParsing(true); setError(null); setParseStatus("Fetching TikTok...");
 
     try {
@@ -1886,7 +2069,6 @@ Return a JSON object with this exact structure:
       const { data: inserted, error: insertErr } = await supabase.from("user_saves").insert(save).select();
       if (insertErr) throw new Error("Save failed: " + insertErr.message);
       if (!inserted || inserted.length === 0) throw new Error("Save didn't persist — the database accepted the request but returned no row. Check you're signed in and that RLS allows this user to read/write user_saves.");
-      setPasteUrl("");
       setParseStatus("");
       showSuccess(save.name);
       await loadSaves();
@@ -1905,101 +2087,120 @@ Return a JSON object with this exact structure:
 
   if (loading) return <div className="loading"><div className="loading-ring" /><div className="loading-sub">Loading saves...</div></div>;
 
-  const folders = saves.reduce((acc, s) => {
-    const cat = (s.category || "experience").toLowerCase();
-    if (!acc[cat]) acc[cat] = [];
-    acc[cat].push(s);
-    return acc;
-  }, {});
-  const folderKeys = Object.keys(folders).sort();
+  const SOURCE_ICON = { tiktok: "\u{1F3B5}", instagram: "\u{1F4F8}", screenshot: "\u{1F5BC}️", maps: "\u{1F4CD}", mapslist: "\u{1F5FA}️" };
+  const fmtDate = (d) => { if (!d) return null; try { return new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short" }); } catch { return d; } };
+  const current = MEDIA_TYPES.find(m => m.id === mediaType) || MEDIA_TYPES[0];
+
+  function VenueCard({ v, onRemove, draft }) {
+    const cat = (v.category || "experience").toLowerCase();
+    const colour = CAT_COLOURS[cat] || "#3D5A80";
+    const emoji = CAT_EMOJI[cat] || "✨";
+    const dateLabel = v.is_event && (v.event_start || v.event_end)
+      ? [fmtDate(v.event_start), fmtDate(v.event_end)].filter(Boolean).join(" – ")
+      : null;
+    return (
+      <div style={{ display: "flex", gap: 12, padding: 12, background: "#fff", border: "1px solid #f0ebe2", borderRadius: 14, marginBottom: 10 }}>
+        <div style={{ width: 64, height: 64, borderRadius: 10, overflow: "hidden", flexShrink: 0, background: colour, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          {v.photo_url
+            ? <img src={v.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            : <span style={{ fontSize: "1.6rem" }}>{emoji}</span>}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+            <div style={{ fontSize: "0.9rem", fontWeight: 600, color: "#1c1c1a" }}>{v.name}</div>
+            {onRemove && <button onClick={onRemove} style={{ border: "none", background: "none", color: "#b8ac9a", cursor: "pointer", fontSize: "1.1rem", lineHeight: 1, flexShrink: 0 }}>×</button>}
+          </div>
+          <div style={{ fontSize: "0.72rem", color: "#9b8f7a", marginTop: 2 }}>
+            {emoji} {cat}{v.zone ? ` · ${v.zone}` : ""}{v.area ? ` · ${v.area}` : ""}{v.google_rating ? ` · ⭐ ${v.google_rating}` : ""}{v.price ? ` · ${v.price}` : ""}
+          </div>
+          {dateLabel && <div style={{ fontSize: "0.72rem", color: "#1B998B", marginTop: 3 }}>📅 {dateLabel}{v.event_time ? ` · 🕐 ${v.event_time}` : ""}</div>}
+          {!dateLabel && v.event_time && <div style={{ fontSize: "0.72rem", color: "#1B998B", marginTop: 3 }}>🕐 {v.event_time}</div>}
+          {v.address && <div style={{ fontSize: "0.68rem", color: "#b8ac9a", marginTop: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>📍 {v.address}</div>}
+          {v.vibe_tags?.length > 0 && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 5 }}>
+              {v.vibe_tags.slice(0, 5).map((t, i) => <span key={i} style={{ fontSize: "0.6rem", background: "#f5f0e8", color: "#6b5e4e", padding: "2px 7px", borderRadius: 100 }}>{String(t).replace(/_/g, " ")}</span>)}
+            </div>
+          )}
+          <div style={{ display: "flex", gap: 10, marginTop: 6, alignItems: "center" }}>
+            {v.source_url && <a href={v.source_url} target="_blank" rel="noreferrer" style={{ fontSize: "0.68rem", color: "#1B998B", fontWeight: 500 }}>{SOURCE_ICON[v.source_type] || "🔗"} View source ↗</a>}
+            {draft && !v._google_found && <span style={{ fontSize: "0.6rem", color: "#c98a3a" }}>⚠ not on Google</span>}
+            {!draft && v.status === "pending" && <span style={{ fontSize: "0.6rem", color: "#9b8f7a" }}>· pending review</span>}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
       <div className="section-pad" style={{ paddingBottom: "0.5rem" }}>
         <div className="section-title">Saved</div>
-        <p className="section-sub">Paste a TikTok link or upload a screenshot to save a venue</p>
+        <p className="section-sub">Capture spots from anywhere — added to the itinerary database (pending review).</p>
       </div>
 
       <div style={{ padding: "0 1.5rem 1rem" }}>
         {error && <div className="err" style={{ marginBottom: "0.75rem" }}>{error}</div>}
-        <div style={{ display: "flex", gap: 8 }}>
-          <input
-            className="input-field"
-            type="text"
-            placeholder="Paste TikTok URL..."
-            value={pasteUrl}
-            onChange={e => { setPasteUrl(e.target.value); setError(null); }}
-            style={{ flex: 1 }}
-          />
-          <button className="btn btn-teal" onClick={() => parseAndSave()} disabled={parsing || !pasteUrl.trim()} style={{ width: "auto", padding: "12px 16px", whiteSpace: "nowrap" }}>
-            {parsing ? "..." : "+ Save"}
-          </button>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
-          <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "0.78rem", color: "#6b5e4e", cursor: "pointer", padding: "8px 14px", border: "1.5px dashed #ddd8ce", borderRadius: 100 }}>
-            <span>📷</span> Upload screenshot
-            <input type="file" accept="image/*" style={{ display: "none" }} onChange={e => { if (e.target.files[0]) parseFromImage(e.target.files[0]); e.target.value = ""; }} disabled={parsing} />
-          </label>
-          <span style={{ fontSize: "0.68rem", color: "#b8ac9a" }}>or paste a URL above</span>
-        </div>
-        {parseStatus && <div style={{ fontSize: "0.75rem", color: "#1B998B", marginTop: 8 }}>{parseStatus}</div>}
 
-        {saves.length > 0 && (
-          <button className="btn btn-teal" style={{ marginTop: "1rem" }} onClick={() => onBuildPlan(saves)}>
-            Build plan from my {saves.length} save{saves.length !== 1 ? "s" : ""} ✦
-          </button>
-        )}
-      </div>
-
-      {saves.length === 0 ? (
-        <div className="empty-state">
-          <div className="empty-emoji">📌</div>
-          <div className="empty-title">No saves yet</div>
-          <div className="empty-sub">Share a TikTok to this app or paste a link above to start building your list.</div>
-        </div>
-      ) : openFolder ? (
-        <div style={{ padding: "0 1.5rem 1rem" }}>
-          <button className="btn-ghost" onClick={() => setOpenFolder(null)} style={{ marginBottom: "0.75rem" }}>← All folders</button>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: "1rem" }}>
-            <span style={{ fontSize: "1.5rem" }}>{CAT_EMOJI[openFolder] || "✨"}</span>
-            <span style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.1rem", textTransform: "capitalize" }}>{openFolder}</span>
-            <span style={{ fontSize: "0.72rem", color: "#9b8f7a" }}>({folders[openFolder]?.length || 0})</span>
-          </div>
-          {(folders[openFolder] || []).map(s => (
-            <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderBottom: "1px solid #f0ebe2" }}>
-              <div style={{ width: 44, height: 44, borderRadius: 12, background: CAT_COLOURS[openFolder] || "#3D5A80", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.2rem", flexShrink: 0 }}>
-                {CAT_EMOJI[openFolder] || "✨"}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: "0.88rem", fontWeight: 500, color: "#1c1c1a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.name}</div>
-                <div style={{ fontSize: "0.72rem", color: "#9b8f7a" }}>
-                  {s.area || "London"}{s.price ? ` · ${s.price}` : ""}{s.google_rating ? ` · ⭐ ${s.google_rating}` : ""}
-                </div>
-              </div>
-              <button onClick={() => removeSave(s.id)} style={{ border: "none", background: "none", color: "#b8ac9a", cursor: "pointer", fontSize: "1.2rem", padding: 4 }}>×</button>
-            </div>
+        <div style={{ display: "flex", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
+          {MEDIA_TYPES.map(m => (
+            <button key={m.id} onClick={() => { setMediaType(m.id); setError(null); }} disabled={parsing || saving}
+              style={{ fontSize: "0.74rem", padding: "7px 12px", borderRadius: 100, cursor: "pointer",
+                border: mediaType === m.id ? "1.5px solid #1B998B" : "1.5px solid #e8e2d8",
+                background: mediaType === m.id ? "#e0f5f3" : "#fff", color: mediaType === m.id ? "#1B998B" : "#6b5e4e", fontWeight: mediaType === m.id ? 600 : 400 }}>
+              {m.emoji} {m.label}
+            </button>
           ))}
         </div>
-      ) : (
-        <div style={{ padding: "0 1.5rem 1rem", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          {folderKeys.map(cat => {
-            const items = folders[cat];
-            const colour = CAT_COLOURS[cat] || "#3D5A80";
-            const emoji = CAT_EMOJI[cat] || "✨";
-            return (
-              <div key={cat} onClick={() => setOpenFolder(cat)} style={{ cursor: "pointer", borderRadius: 16, overflow: "hidden", boxShadow: "0 2px 8px rgba(0,0,0,0.06)", background: "#fff", transition: "transform 0.15s" }}>
-                <div style={{ height: 80, background: colour, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <span style={{ fontSize: "2rem" }}>{emoji}</span>
-                </div>
-                <div style={{ padding: "10px 12px" }}>
-                  <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "#1c1c1a", textTransform: "capitalize" }}>{cat}</div>
-                  <div style={{ fontSize: "0.68rem", color: "#9b8f7a" }}>{items.length} save{items.length !== 1 ? "s" : ""}</div>
-                </div>
-              </div>
-            );
-          })}
+
+        {mediaType === "screenshot" ? (
+          <label style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "14px 16px", border: "1.5px dashed #ddd8ce", borderRadius: 12, fontSize: "0.82rem", color: "#4a4438", cursor: "pointer" }}>
+            📷 Upload screenshot(s) — pick several at once
+            <input type="file" accept="image/*" multiple style={{ display: "none" }} disabled={parsing || saving}
+              onChange={e => { const f = [...e.target.files]; e.target.value = ""; if (f.length) handleParse(f); }} />
+          </label>
+        ) : mediaType === "instagram" ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <textarea className="input-field" rows={3} placeholder={current.placeholder} value={textInput}
+              onChange={e => { setTextInput(e.target.value); setError(null); }} style={{ resize: "vertical" }} />
+            <button className="btn btn-teal" onClick={() => handleParse()} disabled={parsing || saving || !textInput.trim()}>{parsing ? "Parsing..." : "Parse ✦"}</button>
+          </div>
+        ) : (
+          <div style={{ display: "flex", gap: 8 }}>
+            <input className="input-field" type="text" placeholder={current.placeholder} value={textInput}
+              onChange={e => { setTextInput(e.target.value); setError(null); }} style={{ flex: 1 }} />
+            <button className="btn btn-teal" onClick={() => handleParse()} disabled={parsing || saving || !textInput.trim()} style={{ width: "auto", padding: "12px 16px", whiteSpace: "nowrap" }}>{parsing ? "..." : "Parse"}</button>
+          </div>
+        )}
+
+        {mediaType === "mapslist" && <div style={{ fontSize: "0.66rem", color: "#b8ac9a", marginTop: 6 }}>Heads up: Google often blocks list scraping. If nothing comes back, export the list via Google Takeout and paste the place names (or add them as individual Maps links).</div>}
+
+        {(parsing || saving) && parseStatus && <div style={{ fontSize: "0.75rem", color: "#1B998B", marginTop: 8 }}>{parseStatus}</div>}
+      </div>
+
+      {preview.length > 0 && (
+        <div style={{ padding: "0 1.5rem 1rem" }}>
+          <div style={{ fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#9b8f7a", marginBottom: 8, fontWeight: 500 }}>{preview.length} to review — check, then save</div>
+          {preview.map((v, i) => <VenueCard key={i} v={v} draft onRemove={() => removeDraft(i)} />)}
+          <button className="btn btn-teal" onClick={saveAll} disabled={saving} style={{ marginTop: 4 }}>{saving ? "Saving..." : `Save ${preview.length} spot${preview.length !== 1 ? "s" : ""} to collection ✦`}</button>
         </div>
       )}
+
+      <div style={{ padding: "0 1.5rem 1rem" }}>
+        {saves.length > 0 && (
+          <>
+            <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a", margin: "0.5rem 0 0.75rem" }}>Your spots ({saves.length})</div>
+            {saves.map(s => <VenueCard key={s.id} v={s} onRemove={() => removeSave(s.id)} />)}
+            <button className="btn btn-teal" style={{ marginTop: "0.5rem" }} onClick={() => onBuildPlan(saves)}>Build plan from my {saves.length} spot{saves.length !== 1 ? "s" : ""} ✦</button>
+          </>
+        )}
+        {saves.length === 0 && preview.length === 0 && (
+          <div className="empty-state">
+            <div className="empty-emoji">📌</div>
+            <div className="empty-title">No saved spots yet</div>
+            <div className="empty-sub">Pick a source above — TikTok, Instagram, screenshots, or Google Maps — and start capturing.</div>
+          </div>
+        )}
+      </div>
 
       {successVenue && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, animation: "fadeIn 0.2s" }}>
