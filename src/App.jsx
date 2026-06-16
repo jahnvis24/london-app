@@ -1907,7 +1907,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
 
   async function parseMaps(input, isList) {
     setParseStatus(isList ? "Reading Maps list..." : "Resolving Maps link...");
-    const r = await fetch("/api/maps-resolve", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url: input.trim() }) });
+    const r = await fetch("/api/saved-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool: "maps", url: input.trim() }) });
     const data = await r.json();
     if (data.error) throw new Error(data.error);
     if (!data.found) throw new Error(data.message || "Couldn't read that Maps link.");
@@ -1960,7 +1960,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
       else if (d._cover_url) body = { image_url: d._cover_url };
       else if (d.google_place_id) body = { place_id: d.google_place_id };
       if (!body) return null;
-      const r = await fetch("/api/save-image", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const r = await fetch("/api/saved-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool: "image", ...body }) });
       const j = await r.json();
       return j.found ? j.url : null;
     } catch { return null; }
