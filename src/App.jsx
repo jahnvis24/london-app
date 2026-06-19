@@ -1723,7 +1723,7 @@ function SavedScreen({ user, onBuildPlan }) {
 
   const MEDIA_TYPES = [
     { id: "tiktok", label: "TikTok URL", emoji: "\u{1F3B5}", placeholder: "Paste a TikTok link (or text containing one)..." },
-    { id: "instagram", label: "Instagram", emoji: "\u{1F4F8}", placeholder: "Paste the Instagram caption + link..." },
+    { id: "instagram", label: "Instagram", emoji: "\u{1F4F8}", placeholder: "Paste the Instagram link (caption optional — we'll try to read it)..." },
     { id: "screenshot", label: "Screenshot(s)", emoji: "\u{1F5BC}️", placeholder: "" },
     { id: "maps", label: "Google Maps link", emoji: "\u{1F4CD}", placeholder: "Paste a Google Maps place link..." },
     { id: "bulk", label: "Bulk paste", emoji: "\u{1F4CB}", placeholder: "Paste place names or Google Maps links — one per line..." },
@@ -1866,10 +1866,19 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
   async function parseInstagram(input) {
     const urlMatch = input.match(/https?:\/\/[^\s]*instagram\.com[^\s]*/i);
     const igUrl = urlMatch ? urlMatch[0] : null;
-    const text = input.replace(/https?:\/\/\S+/g, "").trim();
-    if (!text) throw new Error("Paste the Instagram caption text — Instagram blocks automatic reading, so we parse the caption you paste in.");
+    let text = input.replace(/https?:\/\/\S+/g, "").trim();
+    let coverUrl = null;
+    if (igUrl) {
+      setParseStatus("Reading Instagram post...");
+      try {
+        const r = await fetch("/api/saved-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool: "instagram", url: igUrl }) });
+        const d = await r.json();
+        if (d.found) { if (!text) text = d.caption || ""; coverUrl = d.image_url || null; }
+      } catch { /* fall through to pasted-caption path */ }
+    }
+    if (!text) throw new Error("Couldn't read that Instagram post automatically (login wall). Paste the caption text along with the link and try again.");
     setParseStatus("Parsing caption...");
-    return parseTextToDrafts(text, { source_type: "instagram", source_url: igUrl });
+    return parseTextToDrafts(text, { source_type: "instagram", source_url: igUrl, _cover_url: coverUrl });
   }
 
   async function parseScreenshots(files) {

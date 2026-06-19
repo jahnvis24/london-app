@@ -12,7 +12,8 @@ export default async function handler(req, res) {
   try {
     if (tool === 'image') return await handleImage(req, res);
     if (tool === 'maps') return await handleMaps(req, res);
-    return res.status(400).json({ error: 'Unknown tool (expected "image" or "maps")' });
+    if (tool === 'instagram') return await handleInstagram(req, res);
+    return res.status(400).json({ error: 'Unknown tool (expected "image", "maps", or "instagram")' });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -48,6 +49,45 @@ async function handleImage(req, res) {
   const key = `saves/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
   const blob = await put(key, buffer, { access: 'public', contentType });
   return res.status(200).json({ found: true, url: blob.url });
+}
+
+// Pulls the caption + thumbnail from a public Instagram post via its Open Graph
+// tags, so the user can paste just the link. Instagram sometimes serves a login
+// wall to servers — then caption is empty and the client falls back to asking
+// for the pasted caption.
+async function handleInstagram(req, res) {
+  const { url } = req.body || {};
+  if (!url) return res.status(400).json({ error: 'No URL provided' });
+
+  const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15';
+  const decode = (s) => (s || '')
+    .replace(/&quot;/g, '"').replace(/&#039;/g, "'").replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+
+  try {
+    const r = await fetch(url, { headers: { 'User-Agent': UA, 'Accept-Language': 'en-US,en;q=0.9' }, redirect: 'follow' });
+    const html = await r.text();
+
+    const grab = (prop) => {
+      const m = html.match(new RegExp(`<meta[^>]+property=["']${prop}["'][^>]+content=["']([^"']*)["']`, 'i'))
+        || html.match(new RegExp(`<meta[^>]+content=["']([^"']*)["'][^>]+property=["']${prop}["']`, 'i'));
+      return m ? decode(m[1]) : null;
+    };
+
+    let caption = grab('og:description') || '';
+    const image_url = grab('og:image');
+    // og:description looks like: '123 likes, 4 comments - user on date: "the caption"'.
+    const quoted = caption.match(/[:\-]\s*[""](.+)[""]\s*$/s) || caption.match(/:\s*"(.+)"$/s);
+    if (quoted) caption = quoted[1];
+
+    const blocked = /login|log in/i.test(grab('og:title') || '') && !image_url;
+    if ((!caption || caption.length < 4) && !image_url) {
+      return res.status(200).json({ found: false, blocked, message: 'Instagram did not return the caption (likely a login wall). Paste the caption text instead.' });
+    }
+    return res.status(200).json({ found: true, caption, image_url });
+  } catch (e) {
+    return res.status(200).json({ found: false, message: e.message });
+  }
 }
 
 async function handleMaps(req, res) {
