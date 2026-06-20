@@ -1709,6 +1709,155 @@ function PreferencesScreen({ preferences, setPreferences, user }) {
   );
 }
 
+const CAT_PIN_COLOURS = { restaurant: "#E84855", bar: "#2D1B69", cafe: "#F7B731", market: "#F0A500", experience: "#1B998B", outdoor: "#3D8B37", museum: "#3D5A80", gallery: "#9B59B6", nightlife: "#2D1B69", event: "#1B998B" };
+
+// Map of saved spots that have coordinates. Uses the same CDN Leaflet as MapPicker.
+function SpotsMap({ saves }) {
+  const mapRef = useRef(null);
+  const instRef = useRef(null);
+  const [loaded, setLoaded] = useState(typeof window !== "undefined" && !!window.L);
+  const pts = saves.filter(s => s.lat && s.lng);
+
+  useEffect(() => {
+    if (window.L) { setLoaded(true); return; }
+    if (!document.getElementById("leaflet-css")) {
+      const link = document.createElement("link");
+      link.id = "leaflet-css"; link.rel = "stylesheet";
+      link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+      document.head.appendChild(link);
+    }
+    let s = document.getElementById("leaflet-js");
+    if (!s) {
+      s = document.createElement("script");
+      s.id = "leaflet-js";
+      s.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+      document.head.appendChild(s);
+    }
+    s.addEventListener("load", () => setLoaded(true));
+  }, []);
+
+  useEffect(() => {
+    if (!loaded || !mapRef.current || instRef.current) return;
+    const L = window.L;
+    const map = L.map(mapRef.current, { center: [51.505, -0.09], zoom: 11 });
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "© OpenStreetMap", maxZoom: 18 }).addTo(map);
+    const markers = [];
+    pts.forEach(s => {
+      const colour = CAT_PIN_COLOURS[String(s.category || "").toLowerCase()] || "#3D5A80";
+      const m = L.circleMarker([s.lat, s.lng], { radius: 9, color: "#fff", weight: 2, fillColor: colour, fillOpacity: 0.95 }).addTo(map);
+      const photo = s.photo_url ? `<img src="${s.photo_url}" style="width:100%;height:80px;object-fit:cover;border-radius:6px;margin-bottom:4px"/>` : "";
+      m.bindPopup(`<div style="min-width:150px">${photo}<strong>${s.name || ""}</strong><br/><span style="color:#9b8f7a;font-size:12px">${s.category || ""}${s.area ? " · " + s.area : ""}</span></div>`);
+      markers.push(m);
+    });
+    if (markers.length) { const g = L.featureGroup(markers); map.fitBounds(g.getBounds().pad(0.2)); }
+    instRef.current = map;
+    setTimeout(() => map.invalidateSize(), 120);
+    return () => { map.remove(); instRef.current = null; };
+  }, [loaded]);
+
+  if (!pts.length) return (
+    <div className="empty-state"><div className="empty-emoji">🗺️</div><div className="empty-title">No mappable spots</div><div className="empty-sub">Saves with a known location show here. Most do once Google finds them.</div></div>
+  );
+
+  return (
+    <div>
+      <div style={{ fontSize: "0.7rem", color: "#9b8f7a", marginBottom: 8 }}>{pts.length} spot{pts.length !== 1 ? "s" : ""} on the map · tap a pin for details</div>
+      {!loaded && <div style={{ height: 380, background: "#f5f0e8", borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center", color: "#9b8f7a", fontSize: "0.82rem" }}>Loading map…</div>}
+      <div ref={mapRef} style={{ height: 380, borderRadius: 14, overflow: "hidden", border: "1.5px solid #ddd8ce", display: loaded ? "block" : "none" }} />
+    </div>
+  );
+}
+
+// Calendar of time-bound saves (events with a date).
+function SpotsCalendar({ saves }) {
+  const [monthOffset, setMonthOffset] = useState(0);
+  const [selDay, setSelDay] = useState(null);
+  const events = saves.filter(s => s.is_event && s.event_start);
+
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const base = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
+  const year = base.getFullYear(), month = base.getMonth();
+  const monthName = base.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+  const firstDow = (new Date(year, month, 1).getDay() + 6) % 7; // Mon = 0
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  const parse = (d) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
+  const eventsOn = (dayDate) => events.filter(e => {
+    const s = parse(e.event_start); const en = e.event_end ? parse(e.event_end) : s;
+    return dayDate >= s && dayDate <= en;
+  });
+  const fmt = (d) => d ? new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "";
+  const gcal = (e) => {
+    const s = (e.event_start || "").replace(/-/g, "");
+    const endD = new Date(e.event_end || e.event_start); endD.setDate(endD.getDate() + 1);
+    const en = endD.toISOString().slice(0, 10).replace(/-/g, "");
+    const p = new URLSearchParams({ action: "TEMPLATE", text: e.name || "Event", dates: `${s}/${en}`, details: (e.comment || "") + (e.source_url ? `\n${e.source_url}` : ""), location: e.address || "" });
+    return `https://calendar.google.com/calendar/render?${p.toString()}`;
+  };
+
+  if (!events.length) return (
+    <div className="empty-state"><div className="empty-emoji">📅</div><div className="empty-title">No dated events yet</div><div className="empty-sub">Saves with a date (pop-ups, shows, exhibitions) appear here.</div></div>
+  );
+
+  const cells = [];
+  for (let i = 0; i < firstDow; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  const upcoming = [...events].filter(e => parse(e.event_end || e.event_start) >= today).sort((a, b) => parse(a.event_start) - parse(b.event_start));
+  const shown = selDay ? eventsOn(new Date(year, month, selDay)) : upcoming;
+
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+        <button onClick={() => { setMonthOffset(monthOffset - 1); setSelDay(null); }} style={{ border: "none", background: "#f5f0e8", borderRadius: 8, width: 32, height: 32, cursor: "pointer", fontSize: "1rem" }}>‹</button>
+        <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1rem", color: "#1c1c1a" }}>{monthName}</div>
+        <button onClick={() => { setMonthOffset(monthOffset + 1); setSelDay(null); }} style={{ border: "none", background: "#f5f0e8", borderRadius: 8, width: 32, height: 32, cursor: "pointer", fontSize: "1rem" }}>›</button>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 3, fontSize: "0.6rem", color: "#9b8f7a", textAlign: "center", marginBottom: 4 }}>
+        {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => <div key={i}>{d}</div>)}
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 3 }}>
+        {cells.map((d, i) => {
+          if (d === null) return <div key={i} />;
+          const dayDate = new Date(year, month, d);
+          const has = eventsOn(dayDate).length;
+          const isToday = dayDate.getTime() === today.getTime();
+          const isSel = selDay === d;
+          return (
+            <div key={i} onClick={() => has && setSelDay(isSel ? null : d)}
+              style={{ aspectRatio: "1", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", borderRadius: 8, fontSize: "0.74rem", cursor: has ? "pointer" : "default",
+                background: isSel ? "#1B998B" : isToday ? "#e0f5f3" : "transparent", color: isSel ? "#fff" : "#1c1c1a", fontWeight: has ? 600 : 400 }}>
+              {d}
+              {has > 0 && <div style={{ width: 5, height: 5, borderRadius: "50%", background: isSel ? "#fff" : "#E84855", marginTop: 2 }} />}
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "#9b8f7a", fontWeight: 500, margin: "16px 0 8px" }}>
+        {selDay ? `Events on ${fmt(new Date(year, month, selDay))}` : "Upcoming"}
+      </div>
+      {shown.length === 0 && <div style={{ fontSize: "0.8rem", color: "#9b8f7a" }}>{selDay ? "Nothing on this day." : "No upcoming events."}</div>}
+      {shown.map(e => (
+        <div key={e.id} style={{ display: "flex", gap: 10, padding: 10, background: "#fff", border: "1px solid #f0ebe2", borderRadius: 12, marginBottom: 8 }}>
+          <div style={{ width: 48, height: 48, borderRadius: 8, overflow: "hidden", flexShrink: 0, background: "#1B998B", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            {e.photo_url ? <img src={e.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span>🎫</span>}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: "0.86rem", fontWeight: 600, color: "#1c1c1a" }}>{e.name}</div>
+            <div style={{ fontSize: "0.72rem", color: "#1B998B", marginTop: 2 }}>
+              📅 {fmt(e.event_start)}{e.event_end && e.event_end !== e.event_start ? ` – ${fmt(e.event_end)}` : ""}{e.event_time ? ` · 🕐 ${e.event_time}` : ""}
+            </div>
+            {e.area && <div style={{ fontSize: "0.68rem", color: "#9b8f7a", marginTop: 2 }}>📍 {e.area}</div>}
+            <div style={{ display: "flex", gap: 12, marginTop: 5 }}>
+              <a href={gcal(e)} target="_blank" rel="noreferrer" style={{ fontSize: "0.66rem", color: "#1B998B", fontWeight: 500 }}>+ Google Calendar</a>
+              {e.source_url && <a href={e.source_url} target="_blank" rel="noreferrer" style={{ fontSize: "0.66rem", color: "#1B998B" }}>View source ↗</a>}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function SavedScreen({ user, onBuildPlan }) {
   const [saves, setSaves] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1723,6 +1872,7 @@ function SavedScreen({ user, onBuildPlan }) {
   const [openFolder, setOpenFolder] = useState(null);
   const [saveFolder, setSaveFolder] = useState(""); // "" = auto by category, "__new__" = create new
   const [newFolder, setNewFolder] = useState("");
+  const [savedView, setSavedView] = useState("folders"); // folders | map | calendar
 
   // Auto-categorisation: map a venue category to its folder.
   const CATEGORY_FOLDER = { restaurant: "Restaurants", cafe: "Cafés", bar: "Bars", nightlife: "Nightlife", market: "Markets", outdoor: "Outdoor", museum: "Attractions", gallery: "Attractions", experience: "Attractions", event: "Events" };
@@ -2271,7 +2421,21 @@ Return a JSON object with this exact structure:
       )}
 
       <div style={{ padding: "0 1.5rem 1rem" }}>
-        {saves.length > 0 && !openFolder && (
+        {saves.length > 0 && (
+          <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+            {[["folders", "🗂 Folders"], ["map", "🗺 Map"], ["calendar", "📅 Calendar"]].map(([id, label]) => (
+              <button key={id} onClick={() => { setSavedView(id); setOpenFolder(null); }}
+                style={{ fontSize: "0.74rem", padding: "6px 14px", borderRadius: 100, cursor: "pointer",
+                  border: savedView === id ? "1.5px solid #1B998B" : "1.5px solid #e8e2d8",
+                  background: savedView === id ? "#e0f5f3" : "#fff", color: savedView === id ? "#1B998B" : "#6b5e4e", fontWeight: savedView === id ? 600 : 400 }}>
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+        {saves.length > 0 && savedView === "map" && <SpotsMap key={"map" + saves.length} saves={saves} />}
+        {saves.length > 0 && savedView === "calendar" && <SpotsCalendar saves={saves} />}
+        {saves.length > 0 && savedView === "folders" && !openFolder && (
           <>
             <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a", margin: "0.5rem 0 0.75rem" }}>Your folders ({saves.length} spot{saves.length !== 1 ? "s" : ""})</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -2295,7 +2459,7 @@ Return a JSON object with this exact structure:
             <button className="btn btn-teal" style={{ marginTop: "1rem" }} onClick={() => onBuildPlan(saves)}>Build plan from all {saves.length} spot{saves.length !== 1 ? "s" : ""} ✦</button>
           </>
         )}
-        {saves.length > 0 && openFolder && (
+        {saves.length > 0 && savedView === "folders" && openFolder && (
           <>
             <button className="btn-ghost" onClick={() => setOpenFolder(null)} style={{ marginBottom: "0.75rem" }}>← All folders</button>
             <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a", margin: "0 0 0.75rem" }}>{openFolder} ({folderSaves.length})</div>
