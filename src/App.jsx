@@ -400,6 +400,7 @@ const styles = `
   @keyframes fadeIn { from{opacity:0} to{opacity:1} }
   @keyframes popIn { from{opacity:0;transform:scale(0.7)} to{opacity:1;transform:scale(1)} }
   @keyframes cardIn { from{opacity:0;transform:translateY(24px) scale(0.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+  @keyframes cardSwap { from{opacity:0.25;transform:scale(0.985)} to{opacity:1;transform:scale(1)} }
 
   .home-hero { padding: 3.5rem 1.5rem 2rem; position: relative; overflow: hidden; min-height: 300px; background: #ffffff; }
   .home-eyebrow { font-size: 0.68rem; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: #9b8f7a; margin-bottom: 0.6rem; position: relative; z-index: 1; }
@@ -1876,7 +1877,7 @@ function SpotsMap({ saves }) {
         )}
 
         {selected && (
-          <div key={selected.id} style={{ position: "absolute", left: 10, right: 10, bottom: 10, zIndex: 500, borderRadius: 16, overflow: "hidden", boxShadow: "0 8px 28px rgba(0,0,0,0.28)", background: "#fff", animation: "cardIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)" }}>
+          <div key={selected.id} style={{ position: "absolute", left: 10, right: 10, bottom: 10, zIndex: 500, borderRadius: 16, overflow: "hidden", boxShadow: "0 8px 28px rgba(0,0,0,0.28)", background: "#fff", animation: "cardSwap 0.2s ease-out" }}>
             <div style={{ position: "relative", height: 175, background: "#e9e4da" }}>
               {cardPhoto && <img src={cardPhoto} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
               <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.3)" }} />
@@ -2670,7 +2671,10 @@ Return a JSON object with this exact structure:
         {saves.length > 0 && savedView === "folders" && openFolder && (
           <>
             <button className="btn-ghost" onClick={() => setOpenFolder(null)} style={{ marginBottom: "0.75rem" }}>← All folders</button>
-            <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a", margin: "0 0 0.75rem" }}>{openFolder} ({folderSaves.length})</div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "0 0 0.75rem" }}>
+              <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a" }}>{openFolder} ({folderSaves.length})</div>
+              <button onClick={() => renameFolder(openFolder)} style={{ fontSize: "0.74rem", padding: "6px 12px", borderRadius: 100, border: "1.5px solid #e8e2d8", background: "#fff", color: "#6b5e4e", fontWeight: 500, cursor: "pointer" }}>✎ Rename</button>
+            </div>
             {folderSaves.map(s => <VenueCard key={s.id} v={s} onRemove={() => removeSave(s.id)} onMove={() => setMovingSpot(s)} />)}
             {folderSaves.length === 0 && <div style={{ fontSize: "0.8rem", color: "#9b8f7a" }}>No spots in this folder yet — pick it as the folder when you save something.</div>}
             {folderSaves.length > 0 && <button className="btn btn-teal" style={{ marginTop: "0.5rem" }} onClick={() => onBuildPlan(folderSaves)}>Build plan from {openFolder} ✦</button>}
