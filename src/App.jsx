@@ -1778,22 +1778,30 @@ function SpotsMap({ saves }) {
     const L = window.L;
     const map = L.map(mapRef.current, { center: [51.505, -0.09], zoom: 11, zoomControl: false });
     const mbToken = import.meta.env.VITE_MAPBOX_TOKEN;
-    if (mbToken) {
-      L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/512/{z}/{x}/{y}@2x?access_token=${mbToken}`, { tileSize: 512, zoomOffset: -1, maxZoom: 20, attribution: "© Mapbox © OpenStreetMap" }).addTo(map);
-    } else {
-      L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", { subdomains: "abcd", attribution: "© OpenStreetMap, © CARTO", maxZoom: 20 }).addTo(map);
-    }
+    const base = mbToken
+      ? L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/512/{z}/{x}/{y}@2x?access_token=${mbToken}`, { tileSize: 512, zoomOffset: -1, maxZoom: 20, attribution: "© Mapbox © OpenStreetMap" })
+      : L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", { subdomains: "abcd", attribution: "© OpenStreetMap, © CARTO", maxZoom: 20 });
+    base.on("tileerror", (e) => console.error("[map] tile failed", e?.tile?.src || e));
+    base.addTo(map);
 
-    const cluster = L.markerClusterGroup({
-      maxClusterRadius: 55, showCoverageOnHover: false, spiderfyOnMaxZoom: true, chunkedLoading: true,
-      iconCreateFunction: (c) => { const n = c.getChildCount(); const sz = n < 10 ? 38 : n < 100 ? 46 : 54; return coinIcon(n, sz); },
-    });
+    let cluster;
+    try {
+      cluster = L.markerClusterGroup({
+        maxClusterRadius: 55, showCoverageOnHover: false, spiderfyOnMaxZoom: true, chunkedLoading: true,
+        iconCreateFunction: (c) => { const n = c.getChildCount(); const sz = n < 10 ? 38 : n < 100 ? 46 : 54; return coinIcon(n, sz); },
+      });
+    } catch (e) { console.error("[map] markercluster unavailable, using plain layer", e); cluster = L.layerGroup(); }
     map.addLayer(cluster);
     clusterRef.current = cluster;
     map.on("click", () => setSelected(null));
     instRef.current = map;
-    setTimeout(() => map.invalidateSize(), 120);
-    return () => { map.remove(); instRef.current = null; clusterRef.current = null; };
+
+    // Grey-map guard: make sure the map measures its container once it's actually visible.
+    map.whenReady(() => map.invalidateSize());
+    const timers = [80, 300, 800].map(d => setTimeout(() => map.invalidateSize(), d));
+    let ro;
+    try { ro = new ResizeObserver(() => map.invalidateSize()); ro.observe(mapRef.current); } catch (e) {}
+    return () => { timers.forEach(clearTimeout); if (ro) ro.disconnect(); map.remove(); instRef.current = null; clusterRef.current = null; };
   }, [loaded]);
 
   // (Re)populate markers when loaded or the category filter changes.
@@ -1808,7 +1816,10 @@ function SpotsMap({ saves }) {
       m.on("click", () => setSelected(s));
       cl.addLayer(m);
     });
-    if (shown.length && instRef.current) { try { instRef.current.fitBounds(cl.getBounds().pad(0.2)); } catch (e) {} }
+    if (shown.length && instRef.current) {
+      try { instRef.current.fitBounds(L.latLngBounds(shown.map(s => [s.lat, s.lng])).pad(0.2), { maxZoom: 15 }); } catch (e) {}
+      setTimeout(() => instRef.current && instRef.current.invalidateSize(), 60);
+    }
   }, [loaded, filter]);
 
   // Card image: prefer a Google Maps photo when the spot has a place id.
