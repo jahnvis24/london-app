@@ -1807,22 +1807,18 @@ function googleMapsUrl(v) {
   return null;
 }
 
-// Collage cover for a list card (1–4 photos arranged like Yonder).
+// Collage cover for a list card — always a fixed 2x2 of equal-size tiles so every
+// list card looks identical. Missing tiles are filled by cycling the photos.
 function ListCover({ items, height = 200 }) {
-  const photos = items.filter(s => s.photo_url).map(s => s.photo_url).slice(0, 4);
+  const photos = items.filter(s => s.photo_url).map(s => s.photo_url);
   const cat = String(items[0]?.category || "").toLowerCase();
-  const Img = ({ src }) => <img src={src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", background: "#e9e4da", minHeight: 0, minWidth: 0 }} />;
-  const grid = (extra) => ({ height, display: "grid", gap: 2, ...extra });
   if (photos.length === 0) return <div style={{ height, background: "#3D5A80", display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: "2rem" }}>{CAT_EMOJI[cat] || "📁"}</span></div>;
-  if (photos.length === 1) return <div style={grid({ gridTemplateColumns: "1fr", gridTemplateRows: "1fr" })}><Img src={photos[0]} /></div>;
-  if (photos.length === 2) return <div style={grid({ gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr" })}>{photos.map((p, i) => <Img key={i} src={p} />)}</div>;
-  if (photos.length === 3) return (
-    <div style={grid({ gridTemplateColumns: "2fr 1fr", gridTemplateRows: "1fr" })}>
-      <Img src={photos[0]} />
-      <div style={{ display: "grid", gridTemplateRows: "1fr 1fr", gap: 2, minHeight: 0 }}><Img src={photos[1]} /><Img src={photos[2]} /></div>
+  const cells = [0, 1, 2, 3].map(i => photos[i % photos.length]);
+  return (
+    <div style={{ height, display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: 2 }}>
+      {cells.map((p, i) => <img key={i} src={p} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", background: "#e9e4da", minHeight: 0, minWidth: 0 }} />)}
     </div>
   );
-  return <div style={grid({ gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr" })}>{photos.map((p, i) => <Img key={i} src={p} />)}</div>;
 }
 
 // The big photo card used on the map (pin tap) AND in the swipe-up list — identical look.
