@@ -2603,7 +2603,7 @@ Return a JSON object with this exact structure:
   }
 
   function createFolder() {
-    const name = (window.prompt("Name your new folder") || "").trim();
+    const name = (window.prompt("Name your new list") || "").trim();
     if (!name) return;
     if (!customFolders.includes(name)) persistFolders([...customFolders, name]);
     setSavedView("folders"); setOpenFolder(null);
@@ -2611,7 +2611,7 @@ Return a JSON object with this exact structure:
 
   async function renameFolder(oldName) {
     setMenuFolder(null);
-    const name = (window.prompt("Rename folder", oldName) || "").trim();
+    const name = (window.prompt("Rename list", oldName) || "").trim();
     if (!name || name === oldName) return;
     const ids = (grouped[oldName] || []).map(s => s.id);
     if (ids.length) {
@@ -2628,7 +2628,7 @@ Return a JSON object with this exact structure:
   async function deleteFolder(name) {
     setMenuFolder(null);
     const items = grouped[name] || [];
-    if (!window.confirm(items.length ? `Delete "${name}" and its ${items.length} spot${items.length !== 1 ? "s" : ""}? This can't be undone.` : `Delete folder "${name}"?`)) return;
+    if (!window.confirm(items.length ? `Delete "${name}" and its ${items.length} spot${items.length !== 1 ? "s" : ""}? This can't be undone.` : `Delete list "${name}"?`)) return;
     if (items.length) {
       const { error: e } = await supabase.from("experiences").delete().in("id", items.map(s => s.id)).eq("user_id", user.id);
       if (e) { setError("Delete failed: " + e.message); return; }
@@ -2694,7 +2694,7 @@ Return a JSON object with this exact structure:
     <div>
       <div className="section-pad" style={{ paddingBottom: "0.5rem" }}>
         <div className="section-title">Saved</div>
-        <p className="section-sub">Capture spots from TikTok, Instagram, screenshots or Maps — organised into folders.</p>
+        <p className="section-sub">Capture spots from TikTok, Instagram, screenshots or Maps — organised into lists.</p>
       </div>
 
       <div style={{ padding: "0 1.5rem 1rem" }}>
@@ -2751,14 +2751,14 @@ Return a JSON object with this exact structure:
           <div style={{ fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#9b8f7a", marginBottom: 8, fontWeight: 500 }}>{preview.length} to review — check, then save</div>
           {preview.map((v, i) => <VenueCard key={i} v={v} draft onRemove={() => removeDraft(i)} />)}
           <div style={{ margin: "10px 0" }}>
-            <div style={{ fontSize: "0.7rem", color: "#6b5e4e", marginBottom: 4 }}>Save to folder</div>
+            <div style={{ fontSize: "0.7rem", color: "#6b5e4e", marginBottom: 4 }}>Save to list</div>
             <select value={saveFolder} onChange={e => setSaveFolder(e.target.value)} className="input-field" style={{ padding: "10px 12px" }}>
               <option value="">Auto — by category</option>
               {existingFolders.map(f => <option key={f} value={f}>{f}</option>)}
-              <option value="__new__">+ Create new folder…</option>
+              <option value="__new__">+ Create new list…</option>
             </select>
             {saveFolder === "__new__" && (
-              <input className="input-field" style={{ marginTop: 6 }} placeholder="New folder name" value={newFolder} onChange={e => setNewFolder(e.target.value)} />
+              <input className="input-field" style={{ marginTop: 6 }} placeholder="New list name" value={newFolder} onChange={e => setNewFolder(e.target.value)} />
             )}
           </div>
           <button className="btn btn-teal" onClick={saveAll} disabled={saving || (saveFolder === "__new__" && !newFolder.trim())} style={{ marginTop: 4 }}>{saving ? "Saving..." : `Save ${preview.length} spot${preview.length !== 1 ? "s" : ""}${saveFolder && saveFolder !== "__new__" ? ` to ${saveFolder}` : ""} ✦`}</button>
@@ -2768,7 +2768,7 @@ Return a JSON object with this exact structure:
       <div style={{ padding: "0 1.5rem 1rem" }}>
         {saves.length > 0 && (
           <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-            {[["folders", "🗂 Folders"], ["map", "🗺 Map"], ["calendar", "📅 Calendar"]].map(([id, label]) => (
+            {[["folders", "🗂 Lists"], ["map", "🗺 Map"], ["calendar", "📅 Calendar"]].map(([id, label]) => (
               <button key={id} onClick={() => { setSavedView(id); setOpenFolder(null); }}
                 style={{ fontSize: "0.74rem", padding: "6px 14px", borderRadius: 100, cursor: "pointer",
                   border: savedView === id ? "1.5px solid #1B998B" : "1.5px solid #e8e2d8",
@@ -2783,8 +2783,8 @@ Return a JSON object with this exact structure:
         {saves.length > 0 && savedView === "folders" && !openFolder && (
           <>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "0.5rem 0 0.75rem" }}>
-              <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a" }}>Your folders ({saves.length} spot{saves.length !== 1 ? "s" : ""})</div>
-              <button onClick={createFolder} style={{ fontSize: "0.74rem", padding: "6px 12px", borderRadius: 100, border: "1.5px solid #1B998B", background: "#fff", color: "#1B998B", fontWeight: 600, cursor: "pointer" }}>+ New folder</button>
+              <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a" }}>Your lists ({saves.length} spot{saves.length !== 1 ? "s" : ""})</div>
+              <button onClick={createFolder} style={{ fontSize: "0.74rem", padding: "6px 12px", borderRadius: 100, border: "1.5px solid #1B998B", background: "#fff", color: "#1B998B", fontWeight: 600, cursor: "pointer" }}>+ New list</button>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               {folderNames.map(f => {
@@ -2818,7 +2818,7 @@ Return a JSON object with this exact structure:
         )}
         {saves.length > 0 && savedView === "folders" && openFolder && (
           <>
-            <button className="btn-ghost" onClick={() => setOpenFolder(null)} style={{ marginBottom: "0.75rem" }}>← All folders</button>
+            <button className="btn-ghost" onClick={() => setOpenFolder(null)} style={{ marginBottom: "0.75rem" }}>← All lists</button>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "0 0 0.75rem" }}>
               <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a" }}>{openFolder} ({folderSaves.length})</div>
               <button onClick={() => renameFolder(openFolder)} style={{ fontSize: "0.74rem", padding: "6px 12px", borderRadius: 100, border: "1.5px solid #e8e2d8", background: "#fff", color: "#6b5e4e", fontWeight: 500, cursor: "pointer" }}>✎ Rename</button>
@@ -2828,11 +2828,11 @@ Return a JSON object with this exact structure:
                 <button onClick={() => removeSave(s.id)} title="Delete" style={{ position: "absolute", top: 8, right: 8, zIndex: 3, width: 28, height: 28, borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.92)", cursor: "pointer", fontSize: "0.95rem", lineHeight: 1 }}>×</button>
                 <BigSpotCard s={s} photo={s.photo_url} />
                 <div style={{ padding: "0 12px 12px", textAlign: "center" }}>
-                  <button onClick={() => setMovingSpot(s)} style={{ border: "1px solid #e8e2d8", background: "#fff", borderRadius: 100, padding: "6px 14px", fontSize: "0.72rem", color: "#6b5e4e", fontWeight: 500, cursor: "pointer" }}>↪ Move to folder</button>
+                  <button onClick={() => setMovingSpot(s)} style={{ border: "1px solid #e8e2d8", background: "#fff", borderRadius: 100, padding: "6px 14px", fontSize: "0.72rem", color: "#6b5e4e", fontWeight: 500, cursor: "pointer" }}>↪ Move to list</button>
                 </div>
               </div>
             ))}
-            {folderSaves.length === 0 && <div style={{ fontSize: "0.8rem", color: "#9b8f7a" }}>No spots in this folder yet — pick it as the folder when you save something.</div>}
+            {folderSaves.length === 0 && <div style={{ fontSize: "0.8rem", color: "#9b8f7a" }}>No spots in this list yet — pick it as the list when you save something.</div>}
             {folderSaves.length > 0 && <button className="btn btn-teal" style={{ marginTop: "0.5rem" }} onClick={() => onBuildPlan(folderSaves)}>Build plan from {openFolder} ✦</button>}
           </>
         )}
@@ -2859,13 +2859,13 @@ Return a JSON object with this exact structure:
       {movingSpot && (
         <div onClick={() => setMovingSpot(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 1000, animation: "fadeIn 0.2s" }}>
           <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: "1.25rem 1.25rem 1.5rem", width: "100%", maxWidth: 420, maxHeight: "70vh", overflowY: "auto", animation: "cardIn 0.25s ease" }}>
-            <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a", marginBottom: 4 }}>Move to folder</div>
+            <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a", marginBottom: 4 }}>Move to list</div>
             <div style={{ fontSize: "0.78rem", color: "#9b8f7a", marginBottom: 12, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{movingSpot.name}</div>
             <button onClick={() => moveSpot(movingSpot, null)} style={{ display: "block", width: "100%", textAlign: "left", padding: "11px 12px", borderRadius: 10, border: "1px solid #e8e2d8", background: "#fff", cursor: "pointer", fontSize: "0.82rem", color: "#1c1c1a", marginBottom: 8 }}>✨ Auto — by category</button>
             {folderNames.map(f => (
               <button key={f} onClick={() => moveSpot(movingSpot, f)} style={{ display: "block", width: "100%", textAlign: "left", padding: "11px 12px", borderRadius: 10, border: "1px solid #e8e2d8", background: "#fff", cursor: "pointer", fontSize: "0.82rem", color: "#1c1c1a", marginBottom: 8 }}>📁 {f}</button>
             ))}
-            <button onClick={() => { const n = (window.prompt("New folder name") || "").trim(); if (n) moveSpot(movingSpot, n); }} style={{ display: "block", width: "100%", textAlign: "left", padding: "11px 12px", borderRadius: 10, border: "1.5px solid #1B998B", background: "#fff", cursor: "pointer", fontSize: "0.82rem", color: "#1B998B", fontWeight: 600, marginBottom: 8 }}>+ New folder…</button>
+            <button onClick={() => { const n = (window.prompt("New list name") || "").trim(); if (n) moveSpot(movingSpot, n); }} style={{ display: "block", width: "100%", textAlign: "left", padding: "11px 12px", borderRadius: 10, border: "1.5px solid #1B998B", background: "#fff", cursor: "pointer", fontSize: "0.82rem", color: "#1B998B", fontWeight: 600, marginBottom: 8 }}>+ New list…</button>
             <button onClick={() => setMovingSpot(null)} style={{ display: "block", width: "100%", textAlign: "center", padding: "10px", borderRadius: 10, border: "none", background: "#f5f0e8", cursor: "pointer", fontSize: "0.8rem", color: "#6b5e4e" }}>Cancel</button>
           </div>
         </div>
