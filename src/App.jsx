@@ -1709,7 +1709,8 @@ function PreferencesScreen({ preferences, setPreferences, user }) {
   );
 }
 
-const CAT_PIN_COLOURS = { restaurant: "#E84855", bar: "#2D1B69", cafe: "#F7B731", market: "#F0A500", experience: "#1B998B", outdoor: "#3D8B37", museum: "#3D5A80", gallery: "#9B59B6", nightlife: "#2D1B69", event: "#1B998B" };
+const CAT_PIN_COLOURS = { restaurant: "#E84855", bar: "#6C4AB6", cafe: "#C57B3C", market: "#F0A500", experience: "#1B998B", outdoor: "#3D8B37", museum: "#3D5A80", gallery: "#9B59B6", nightlife: "#2D1B69", event: "#E8763A" };
+const CAT_PIN_EMOJI = { restaurant: "🍽️", bar: "🍸", cafe: "☕", market: "🛍️", experience: "✨", outdoor: "🌳", museum: "🏛️", gallery: "🎨", nightlife: "🌙", event: "🎫" };
 
 // Map of saved spots that have coordinates. Uses the same CDN Leaflet as MapPicker.
 function SpotsMap({ saves }) {
@@ -1740,13 +1741,25 @@ function SpotsMap({ saves }) {
     if (!loaded || !mapRef.current || instRef.current) return;
     const L = window.L;
     const map = L.map(mapRef.current, { center: [51.505, -0.09], zoom: 11 });
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "© OpenStreetMap", maxZoom: 18 }).addTo(map);
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", { subdomains: "abcd", attribution: "© OpenStreetMap, © CARTO", maxZoom: 20 }).addTo(map);
     const markers = [];
     pts.forEach(s => {
-      const colour = CAT_PIN_COLOURS[String(s.category || "").toLowerCase()] || "#3D5A80";
-      const m = L.circleMarker([s.lat, s.lng], { radius: 9, color: "#fff", weight: 2, fillColor: colour, fillOpacity: 0.95 }).addTo(map);
-      const photo = s.photo_url ? `<img src="${s.photo_url}" style="width:100%;height:80px;object-fit:cover;border-radius:6px;margin-bottom:4px"/>` : "";
-      m.bindPopup(`<div style="min-width:150px">${photo}<strong>${s.name || ""}</strong><br/><span style="color:#9b8f7a;font-size:12px">${s.category || ""}${s.area ? " · " + s.area : ""}</span></div>`);
+      const cat = String(s.category || "").toLowerCase();
+      const colour = CAT_PIN_COLOURS[cat] || "#3D5A80";
+      const emoji = CAT_PIN_EMOJI[cat] || "📍";
+      const icon = L.divIcon({
+        className: "",
+        html: `<div style="position:relative;width:34px;height:42px;filter:drop-shadow(0 3px 3px rgba(0,0,0,0.3))">
+          <div style="position:absolute;top:0;left:0;width:34px;height:34px;background:${colour};border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2.5px solid #fff"></div>
+          <span style="position:absolute;top:6px;left:0;width:34px;text-align:center;font-size:16px;line-height:22px">${emoji}</span>
+        </div>`,
+        iconSize: [34, 42],
+        iconAnchor: [17, 40],
+        popupAnchor: [0, -36],
+      });
+      const m = L.marker([s.lat, s.lng], { icon }).addTo(map);
+      const photo = s.photo_url ? `<img src="${s.photo_url}" style="width:100%;height:92px;object-fit:cover;border-radius:8px;margin-bottom:6px"/>` : "";
+      m.bindPopup(`<div style="min-width:160px">${photo}<strong style="font-size:13px">${s.name || ""}</strong><br/><span style="color:#9b8f7a;font-size:12px">${emoji} ${s.category || ""}${s.area ? " · " + s.area : ""}</span></div>`);
       markers.push(m);
     });
     if (markers.length) { const g = L.featureGroup(markers); map.fitBounds(g.getBounds().pad(0.2)); }
