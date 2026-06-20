@@ -1839,16 +1839,20 @@ function SpotsMap({ saves }) {
     }
   }, [loaded, filter]);
 
-  // Card image: prefer a Google Maps photo when the spot has a place id.
+  // Card image: show the Google Maps photo from the first instance (don't flash
+  // the stored screenshot/TikTok thumbnail first). Falls back to the stored photo
+  // only when there's no place id or the Google lookup fails.
   useEffect(() => {
     if (!selected) { setCardPhoto(null); return; }
-    setCardPhoto(selected.photo_url || null);
     const pid = selected.google_place_id;
-    if (!pid) return;
+    if (!pid) { setCardPhoto(selected.photo_url || null); return; }
     if (photoCacheRef.current[pid]) { setCardPhoto(photoCacheRef.current[pid]); return; }
+    setCardPhoto(null); // neutral placeholder while the Google photo loads — no screenshot flash
     let active = true;
     fetch("/api/saved-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool: "image", place_id: pid }) })
-      .then(r => r.json()).then(j => { if (active && j.found) { photoCacheRef.current[pid] = j.url; setCardPhoto(j.url); } }).catch(() => {});
+      .then(r => r.json())
+      .then(j => { if (!active) return; const url = j.found ? j.url : (selected.photo_url || null); if (j.found) photoCacheRef.current[pid] = j.url; setCardPhoto(url); })
+      .catch(() => { if (active) setCardPhoto(selected.photo_url || null); });
     return () => { active = false; };
   }, [selected]);
 
