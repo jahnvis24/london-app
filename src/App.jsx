@@ -1783,20 +1783,21 @@ function googleMapsUrl(v) {
 }
 
 // Collage cover for a list card (1–4 photos arranged like Yonder).
-function ListCover({ items, height = 150 }) {
+function ListCover({ items, height = 200 }) {
   const photos = items.filter(s => s.photo_url).map(s => s.photo_url).slice(0, 4);
   const cat = String(items[0]?.category || "").toLowerCase();
-  const Img = ({ src }) => <img src={src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", background: "#e9e4da" }} />;
+  const Img = ({ src }) => <img src={src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", background: "#e9e4da", minHeight: 0, minWidth: 0 }} />;
+  const grid = (extra) => ({ height, display: "grid", gap: 2, ...extra });
   if (photos.length === 0) return <div style={{ height, background: "#3D5A80", display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: "2rem" }}>{CAT_EMOJI[cat] || "📁"}</span></div>;
-  if (photos.length === 1) return <div style={{ height }}><Img src={photos[0]} /></div>;
-  if (photos.length === 2) return <div style={{ height, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>{photos.map((p, i) => <Img key={i} src={p} />)}</div>;
+  if (photos.length === 1) return <div style={grid({ gridTemplateColumns: "1fr", gridTemplateRows: "1fr" })}><Img src={photos[0]} /></div>;
+  if (photos.length === 2) return <div style={grid({ gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr" })}>{photos.map((p, i) => <Img key={i} src={p} />)}</div>;
   if (photos.length === 3) return (
-    <div style={{ height, display: "grid", gridTemplateColumns: "2fr 1fr", gap: 2 }}>
+    <div style={grid({ gridTemplateColumns: "2fr 1fr", gridTemplateRows: "1fr" })}>
       <Img src={photos[0]} />
-      <div style={{ display: "grid", gridTemplateRows: "1fr 1fr", gap: 2 }}><Img src={photos[1]} /><Img src={photos[2]} /></div>
+      <div style={{ display: "grid", gridTemplateRows: "1fr 1fr", gap: 2, minHeight: 0 }}><Img src={photos[1]} /><Img src={photos[2]} /></div>
     </div>
   );
-  return <div style={{ height, display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: 2 }}>{photos.map((p, i) => <Img key={i} src={p} />)}</div>;
+  return <div style={grid({ gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr" })}>{photos.map((p, i) => <Img key={i} src={p} />)}</div>;
 }
 
 // The big photo card used on the map (pin tap) AND in the swipe-up list — identical look.
@@ -1807,7 +1808,7 @@ function BigSpotCard({ s, photo }) {
         {photo && <img src={photo} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
         <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.3)" }} />
         <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 18px" }}>
-          <div style={{ color: "rgba(255,255,255,0.8)", fontFamily: "'DM Serif Display', Georgia, serif", fontWeight: 400, fontSize: "1.55rem", textAlign: "center", lineHeight: 1.15, textShadow: "0 2px 14px rgba(0,0,0,0.55)" }}>{s.name}</div>
+          <div style={{ color: "rgba(255,255,255,0.75)", fontFamily: "'DM Serif Display', Georgia, serif", fontWeight: 400, fontSize: "1.55rem", textAlign: "center", lineHeight: 1.15, textShadow: "0 2px 14px rgba(0,0,0,0.55)" }}>{s.name}</div>
         </div>
       </div>
       <div style={{ padding: "10px 12px 12px", textAlign: "center" }}>
@@ -1825,7 +1826,7 @@ function BigSpotCard({ s, photo }) {
 
 // Map of saved spots — Yonder-style: white "coin" markers, clustering, bottom card.
 // listName set => list-detail mode (no category chips; swipe-up shows all places).
-function SpotsMap({ saves, listName, onRemove, onMove }) {
+function SpotsMap({ saves, listName, focusSpot }) {
   const mapRef = useRef(null);
   const instRef = useRef(null);
   const clusterRef = useRef(null);
@@ -1933,6 +1934,13 @@ function SpotsMap({ saves, listName, onRemove, onMove }) {
     return () => { active = false; };
   }, [selected]);
 
+  // Pan/zoom the map to a spot when a list card is tapped, and show its card.
+  useEffect(() => {
+    if (!focusSpot || !instRef.current || !focusSpot.lat) return;
+    try { instRef.current.setView([focusSpot.lat, focusSpot.lng], 15, { animate: true }); } catch (e) {}
+    setSelected(focusSpot);
+  }, [focusSpot]);
+
   if (!pts.length) return (
     <div className="empty-state"><div className="empty-emoji">🗺️</div><div className="empty-title">No mappable spots</div><div className="empty-sub">Saves with a known location show here. Most do once Google finds them.</div></div>
   );
@@ -1941,12 +1949,13 @@ function SpotsMap({ saves, listName, onRemove, onMove }) {
   const capitalise = (s) => s ? String(s).charAt(0).toUpperCase() + String(s).slice(1) : "";
   const filteredPts = filter === "all" ? pts : pts.filter(s => normaliseCategory(s.category) === filter);
   const filterLabel = CAT_LABEL[filter] || capitalise(filter);
+  const mapH = listName ? 300 : 440;
   return (
     <div>
       <div style={{ fontSize: "0.7rem", color: "#9b8f7a", marginBottom: 8 }}>{pts.length} {listName ? "place" : "spot"}{pts.length !== 1 ? "s" : ""} {listName ? `in ${listName}` : "on the map"} · tap a pin for the card</div>
       <div style={{ position: "relative" }}>
-        {!loaded && <div style={{ height: 440, background: "#eef3ee", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", color: "#9b8f7a", fontSize: "0.82rem" }}>Loading map…</div>}
-        <div ref={mapRef} style={{ height: 440, borderRadius: 16, overflow: "hidden", border: "1px solid #e6e0d4", display: loaded ? "block" : "none" }} />
+        {!loaded && <div style={{ height: mapH, background: "#eef3ee", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", color: "#9b8f7a", fontSize: "0.82rem" }}>Loading map…</div>}
+        <div ref={mapRef} style={{ height: mapH, borderRadius: 16, overflow: "hidden", border: "1px solid #e6e0d4", display: loaded ? "block" : "none" }} />
 
         {loaded && !listName && !selected && !sheetOpen && cats.length > 1 && (
           <div style={{ position: "absolute", left: 0, right: 0, bottom: 10, zIndex: 450, display: "flex", gap: 8, padding: "0 10px", overflowX: "auto" }}>
@@ -1959,18 +1968,18 @@ function SpotsMap({ saves, listName, onRemove, onMove }) {
           </div>
         )}
 
-        {loaded && !selected && !sheetOpen && (listName || filter !== "all") && filteredPts.length > 0 && (
+        {loaded && !listName && !selected && !sheetOpen && filter !== "all" && filteredPts.length > 0 && (
           <div
             onClick={() => setSheetOpen(true)}
             onTouchStart={(e) => { e.currentTarget._sy = e.touches[0].clientY; }}
             onTouchEnd={(e) => { const dy = (e.currentTarget._sy || 0) - e.changedTouches[0].clientY; if (dy > 30) setSheetOpen(true); }}
-            style={{ position: "absolute", left: 10, right: 10, bottom: listName ? 10 : 54, zIndex: 460, background: "#fff", borderRadius: 14, boxShadow: "0 4px 16px rgba(0,0,0,0.2)", padding: "12px 14px 10px", textAlign: "center", cursor: "pointer" }}>
+            style={{ position: "absolute", left: 10, right: 10, bottom: 54, zIndex: 460, background: "#fff", borderRadius: 14, boxShadow: "0 4px 16px rgba(0,0,0,0.2)", padding: "12px 14px 10px", textAlign: "center", cursor: "pointer" }}>
             <div style={{ position: "absolute", top: 6, left: "50%", transform: "translateX(-50%)", width: 34, height: 4, borderRadius: 2, background: "#ddd6c8" }} />
-            <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "#1c1c1a" }}>⌃ Swipe up for all {filteredPts.length} {listName ? `place${filteredPts.length !== 1 ? "s" : ""}` : filterLabel}</span>
+            <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "#1c1c1a" }}>⌃ Swipe up for all {filteredPts.length} {filterLabel}</span>
           </div>
         )}
 
-        {loaded && sheetOpen && (listName || filter !== "all") && (
+        {loaded && !listName && sheetOpen && filter !== "all" && (
           <div style={{ position: "absolute", inset: 0, zIndex: 600, background: "#fff", borderRadius: 16, display: "flex", flexDirection: "column", animation: "cardIn 0.25s ease" }}>
             <div
               onTouchStart={(e) => { e.currentTarget._sy = e.touches[0].clientY; }}
@@ -1982,10 +1991,8 @@ function SpotsMap({ saves, listName, onRemove, onMove }) {
             </div>
             <div style={{ overflowY: "auto", padding: "12px 12px 16px", flex: 1 }}>
               {filteredPts.map(s => (
-                <div key={s.id} style={{ position: "relative", borderRadius: 16, overflow: "hidden", boxShadow: "0 2px 10px rgba(0,0,0,0.1)", border: "1px solid #f0ebe2", background: "#fff", marginBottom: 14 }}>
-                  {onRemove && <button onClick={() => onRemove(s.id)} title="Delete" style={{ position: "absolute", top: 8, right: 8, zIndex: 3, width: 28, height: 28, borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.92)", cursor: "pointer", fontSize: "0.95rem", lineHeight: 1 }}>×</button>}
+                <div key={s.id} onClick={() => { setSelected(s); setSheetOpen(false); }} style={{ borderRadius: 16, overflow: "hidden", boxShadow: "0 2px 10px rgba(0,0,0,0.1)", border: "1px solid #f0ebe2", background: "#fff", marginBottom: 14, cursor: "pointer" }}>
                   <BigSpotCard s={s} photo={s.photo_url} />
-                  {onMove && <div style={{ padding: "0 12px 12px", textAlign: "center" }}><button onClick={() => onMove(s)} style={{ border: "1px solid #e8e2d8", background: "#fff", borderRadius: 100, padding: "6px 14px", fontSize: "0.72rem", color: "#6b5e4e", fontWeight: 500, cursor: "pointer" }}>↪ Move to list</button></div>}
                 </div>
               ))}
             </div>
@@ -2112,6 +2119,7 @@ function SavedScreen({ user, onBuildPlan }) {
   const [menuFolder, setMenuFolder] = useState(null);
   const [movingSpot, setMovingSpot] = useState(null);
   const [captureOpen, setCaptureOpen] = useState(false); // collapse the "add a spot" controls by default
+  const [focusSpot, setFocusSpot] = useState(null); // tapping a list card pans the map to it
 
   // Collapse the capture controls whenever the user switches Folders/Map/Calendar.
   useEffect(() => { setCaptureOpen(false); }, [savedView]);
@@ -2714,17 +2722,17 @@ Return a JSON object with this exact structure:
     <div>
       <div className="section-pad" style={{ paddingBottom: "0.5rem" }}>
         <div className="section-title">Saved</div>
-        <p className="section-sub">Capture spots from TikTok, Instagram, screenshots or Maps — organised into lists.</p>
+        {!openFolder && <p className="section-sub">Capture spots from TikTok, Instagram, screenshots or Maps — organised into lists.</p>}
       </div>
 
       <div style={{ padding: "0 1.5rem 1rem" }}>
         {error && <div className="err" style={{ marginBottom: "0.75rem" }}>{error}</div>}
 
-        {!captureOpen && (
+        {!openFolder && !captureOpen && (
           <button onClick={() => setCaptureOpen(true)} className="btn btn-teal" style={{ width: "100%" }}>+ Add or save a new spot</button>
         )}
 
-        {captureOpen && (<>
+        {!openFolder && captureOpen && (<>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
           <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "#1c1c1a" }}>Add a spot</div>
           <button onClick={() => setCaptureOpen(false)} style={{ border: "none", background: "none", color: "#9b8f7a", cursor: "pointer", fontSize: "0.78rem" }}>Hide ✕</button>
@@ -2812,7 +2820,7 @@ Return a JSON object with this exact structure:
                 return (
                   <div key={f} style={{ position: "relative", borderRadius: 16, overflow: "hidden", boxShadow: "0 2px 8px rgba(0,0,0,0.06)", background: "#fff" }}>
                     <div onClick={() => setOpenFolder(f)} style={{ cursor: "pointer" }}>
-                      <ListCover items={items} height={150} />
+                      <ListCover items={items} />
                       <div style={{ padding: "10px 12px" }}>
                         <div style={{ fontSize: "0.84rem", fontWeight: 600, color: "#1c1c1a", paddingRight: 20, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f}</div>
                         <div style={{ fontSize: "0.68rem", color: "#9b8f7a" }}>{items.length} spot{items.length !== 1 ? "s" : ""}</div>
@@ -2834,14 +2842,31 @@ Return a JSON object with this exact structure:
         )}
         {saves.length > 0 && savedView === "folders" && openFolder && (
           <>
-            <button className="btn-ghost" onClick={() => setOpenFolder(null)} style={{ marginBottom: "0.75rem" }}>← All lists</button>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "0 0 0.75rem" }}>
-              <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a" }}>{openFolder} ({folderSaves.length})</div>
-              <button onClick={() => renameFolder(openFolder)} style={{ fontSize: "0.74rem", padding: "6px 12px", borderRadius: 100, border: "1.5px solid #e8e2d8", background: "#fff", color: "#6b5e4e", fontWeight: 500, cursor: "pointer" }}>✎ Rename</button>
+            <button className="btn-ghost" onClick={() => { setOpenFolder(null); setFocusSpot(null); }} style={{ marginBottom: "0.75rem" }}>← All lists</button>
+            {folderSaves.length > 0 && (
+              <div style={{ position: "sticky", top: 0, zIndex: 5, background: "#fff", paddingBottom: 8 }}>
+                <SpotsMap key={"list-" + openFolder} saves={folderSaves} listName={openFolder} focusSpot={focusSpot} />
+              </div>
+            )}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "0.5rem 0 0.75rem" }}>
+              <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a" }}>{openFolder} ({folderSaves.length} place{folderSaves.length !== 1 ? "s" : ""})</div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={() => renameFolder(openFolder)} style={{ fontSize: "0.74rem", padding: "6px 12px", borderRadius: 100, border: "1.5px solid #e8e2d8", background: "#fff", color: "#6b5e4e", fontWeight: 500, cursor: "pointer" }}>✎ Rename</button>
+              </div>
             </div>
             {folderSaves.length === 0 && <div style={{ fontSize: "0.8rem", color: "#9b8f7a" }}>No spots in this list yet — pick it as the list when you save something.</div>}
-            {folderSaves.length > 0 && <SpotsMap key={"list-" + openFolder} saves={folderSaves} listName={openFolder} onRemove={removeSave} onMove={(s) => setMovingSpot(s)} />}
-            {folderSaves.length > 0 && <button className="btn btn-teal" style={{ marginTop: "0.75rem" }} onClick={() => onBuildPlan(folderSaves)}>Build plan from {openFolder} ✦</button>}
+            {folderSaves.map(s => (
+              <div key={s.id} style={{ position: "relative", borderRadius: 16, overflow: "hidden", boxShadow: "0 2px 10px rgba(0,0,0,0.1)", border: "1px solid #f0ebe2", background: "#fff", marginBottom: 14 }}>
+                <button onClick={() => removeSave(s.id)} title="Delete" style={{ position: "absolute", top: 8, right: 8, zIndex: 3, width: 28, height: 28, borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.92)", cursor: "pointer", fontSize: "0.95rem", lineHeight: 1 }}>×</button>
+                <div onClick={() => { setFocusSpot({ ...s, _focus: Date.now() }); window.scrollTo({ top: 0, behavior: "smooth" }); }} style={{ cursor: "pointer" }}>
+                  <BigSpotCard s={s} photo={s.photo_url} />
+                </div>
+                <div style={{ padding: "0 12px 12px", textAlign: "center" }}>
+                  <button onClick={() => setMovingSpot(s)} style={{ border: "1px solid #e8e2d8", background: "#fff", borderRadius: 100, padding: "6px 14px", fontSize: "0.72rem", color: "#6b5e4e", fontWeight: 500, cursor: "pointer" }}>↪ Move to list</button>
+                </div>
+              </div>
+            ))}
+            {folderSaves.length > 0 && <button className="btn btn-teal" style={{ marginTop: "0.25rem" }} onClick={() => onBuildPlan(folderSaves)}>Build plan from {openFolder} ✦</button>}
           </>
         )}
         {saves.length === 0 && preview.length === 0 && (
