@@ -1712,57 +1712,59 @@ function PreferencesScreen({ preferences, setPreferences, user }) {
 const CAT_PIN_COLOURS = { restaurant: "#E84855", bar: "#6C4AB6", cafe: "#C57B3C", market: "#F0A500", experience: "#1B998B", outdoor: "#3D8B37", museum: "#3D5A80", gallery: "#9B59B6", nightlife: "#2D1B69", event: "#E8763A" };
 const CAT_PIN_EMOJI = { restaurant: "🍽️", bar: "🍸", cafe: "☕", market: "🛍️", experience: "✨", outdoor: "🌳", museum: "🏛️", gallery: "🎨", nightlife: "🌙", event: "🎫" };
 
-// Map of saved spots that have coordinates. Uses the same CDN Leaflet as MapPicker.
+// Map of saved spots — Yonder-style: white "coin" markers, clustering, bottom card.
 function SpotsMap({ saves }) {
   const mapRef = useRef(null);
   const instRef = useRef(null);
-  const [loaded, setLoaded] = useState(typeof window !== "undefined" && !!window.L);
+  const [loaded, setLoaded] = useState(false);
+  const [selected, setSelected] = useState(null);
   const pts = saves.filter(s => s.lat && s.lng);
 
   useEffect(() => {
-    if (window.L) { setLoaded(true); return; }
-    if (!document.getElementById("leaflet-css")) {
-      const link = document.createElement("link");
-      link.id = "leaflet-css"; link.rel = "stylesheet";
-      link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
-      document.head.appendChild(link);
-    }
-    let s = document.getElementById("leaflet-js");
-    if (!s) {
-      s = document.createElement("script");
-      s.id = "leaflet-js";
-      s.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+    let cancelled = false;
+    const ensureCss = (id, href) => { if (!document.getElementById(id)) { const l = document.createElement("link"); l.id = id; l.rel = "stylesheet"; l.href = href; document.head.appendChild(l); } };
+    const ensureScript = (id, src) => new Promise((res) => {
+      let s = document.getElementById(id);
+      if (s) { if (s.dataset.loaded) res(); else s.addEventListener("load", () => res()); return; }
+      s = document.createElement("script"); s.id = id; s.src = src;
+      s.addEventListener("load", () => { s.dataset.loaded = "1"; res(); });
       document.head.appendChild(s);
-    }
-    s.addEventListener("load", () => setLoaded(true));
+    });
+    (async () => {
+      ensureCss("leaflet-css", "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css");
+      ensureCss("mcluster-css", "https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css");
+      if (!window.L) await ensureScript("leaflet-js", "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js");
+      if (!window.L.markerClusterGroup) await ensureScript("mcluster-js", "https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js");
+      if (!cancelled) setLoaded(true);
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
     if (!loaded || !mapRef.current || instRef.current) return;
     const L = window.L;
-    const map = L.map(mapRef.current, { center: [51.505, -0.09], zoom: 11 });
+    const map = L.map(mapRef.current, { center: [51.505, -0.09], zoom: 11, zoomControl: false });
     L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", { subdomains: "abcd", attribution: "© OpenStreetMap, © CARTO", maxZoom: 20 }).addTo(map);
-    const markers = [];
-    pts.forEach(s => {
-      const cat = String(s.category || "").toLowerCase();
-      const colour = CAT_PIN_COLOURS[cat] || "#3D5A80";
-      const emoji = CAT_PIN_EMOJI[cat] || "📍";
-      const icon = L.divIcon({
-        className: "",
-        html: `<div style="position:relative;width:34px;height:42px;filter:drop-shadow(0 3px 3px rgba(0,0,0,0.3))">
-          <div style="position:absolute;top:0;left:0;width:34px;height:34px;background:${colour};border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2.5px solid #fff"></div>
-          <span style="position:absolute;top:6px;left:0;width:34px;text-align:center;font-size:16px;line-height:22px">${emoji}</span>
-        </div>`,
-        iconSize: [34, 42],
-        iconAnchor: [17, 40],
-        popupAnchor: [0, -36],
-      });
-      const m = L.marker([s.lat, s.lng], { icon }).addTo(map);
-      const photo = s.photo_url ? `<img src="${s.photo_url}" style="width:100%;height:92px;object-fit:cover;border-radius:8px;margin-bottom:6px"/>` : "";
-      m.bindPopup(`<div style="min-width:160px">${photo}<strong style="font-size:13px">${s.name || ""}</strong><br/><span style="color:#9b8f7a;font-size:12px">${emoji} ${s.category || ""}${s.area ? " · " + s.area : ""}</span></div>`);
-      markers.push(m);
+
+    const coin = (inner, size = 36, fontSize = 17) => L.divIcon({
+      className: "",
+      html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:#fffdf8;border:1px solid #e6e0d4;box-shadow:0 2px 7px rgba(0,0,0,0.22);display:flex;align-items:center;justify-content:center;font-size:${fontSize}px;line-height:1;font-weight:700;color:#1c1c1a">${inner}</div>`,
+      iconSize: [size, size], iconAnchor: [size / 2, size / 2],
     });
-    if (markers.length) { const g = L.featureGroup(markers); map.fitBounds(g.getBounds().pad(0.2)); }
+
+    const cluster = L.markerClusterGroup({
+      maxClusterRadius: 55, showCoverageOnHover: false, spiderfyOnMaxZoom: true, chunkedLoading: true,
+      iconCreateFunction: (c) => { const n = c.getChildCount(); const sz = n < 10 ? 38 : n < 100 ? 46 : 54; return coin(n, sz, 14); },
+    });
+    pts.forEach(s => {
+      const emoji = CAT_PIN_EMOJI[String(s.category || "").toLowerCase()] || "📍";
+      const m = L.marker([s.lat, s.lng], { icon: coin(emoji) });
+      m.on("click", () => setSelected(s));
+      cluster.addLayer(m);
+    });
+    map.addLayer(cluster);
+    if (pts.length) map.fitBounds(cluster.getBounds().pad(0.2));
+    map.on("click", () => setSelected(null));
     instRef.current = map;
     setTimeout(() => map.invalidateSize(), 120);
     return () => { map.remove(); instRef.current = null; };
@@ -1772,11 +1774,31 @@ function SpotsMap({ saves }) {
     <div className="empty-state"><div className="empty-emoji">🗺️</div><div className="empty-title">No mappable spots</div><div className="empty-sub">Saves with a known location show here. Most do once Google finds them.</div></div>
   );
 
+  const selCat = String(selected?.category || "").toLowerCase();
   return (
     <div>
-      <div style={{ fontSize: "0.7rem", color: "#9b8f7a", marginBottom: 8 }}>{pts.length} spot{pts.length !== 1 ? "s" : ""} on the map · tap a pin for details</div>
-      {!loaded && <div style={{ height: 380, background: "#f5f0e8", borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center", color: "#9b8f7a", fontSize: "0.82rem" }}>Loading map…</div>}
-      <div ref={mapRef} style={{ height: 380, borderRadius: 14, overflow: "hidden", border: "1.5px solid #ddd8ce", display: loaded ? "block" : "none" }} />
+      <div style={{ fontSize: "0.7rem", color: "#9b8f7a", marginBottom: 8 }}>{pts.length} spot{pts.length !== 1 ? "s" : ""} on the map · tap a pin for the card</div>
+      <div style={{ position: "relative" }}>
+        {!loaded && <div style={{ height: 440, background: "#eef3ee", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", color: "#9b8f7a", fontSize: "0.82rem" }}>Loading map…</div>}
+        <div ref={mapRef} style={{ height: 440, borderRadius: 16, overflow: "hidden", border: "1px solid #e6e0d4", display: loaded ? "block" : "none" }} />
+        {selected && (
+          <div style={{ position: "absolute", left: 10, right: 10, bottom: 10, zIndex: 500, borderRadius: 16, overflow: "hidden", boxShadow: "0 8px 28px rgba(0,0,0,0.28)", background: "#fff" }}>
+            <div style={{ position: "relative", height: 132, background: CAT_PIN_COLOURS[selCat] || "#3D5A80" }}>
+              {selected.photo_url && <img src={selected.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+              <button onClick={() => setSelected(null)} style={{ position: "absolute", top: 8, right: 8, width: 26, height: 26, borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.92)", cursor: "pointer", fontSize: "0.9rem", lineHeight: 1 }}>×</button>
+              <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, padding: "20px 12px 8px", background: "linear-gradient(transparent, rgba(0,0,0,0.72))" }}>
+                <div style={{ color: "#fff", fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.05rem", lineHeight: 1.15 }}>{selected.name}</div>
+              </div>
+            </div>
+            <div style={{ padding: "8px 12px 10px" }}>
+              <div style={{ fontSize: "0.72rem", color: "#9b8f7a" }}>
+                {(CAT_PIN_EMOJI[selCat] || "📍")} {selected.category}{selected.area ? ` · ${selected.area}` : ""}{selected.google_rating ? ` · ⭐ ${selected.google_rating}` : ""}{selected.price ? ` · ${selected.price}` : ""}
+              </div>
+              {selected.source_url && <a href={selected.source_url} target="_blank" rel="noreferrer" style={{ fontSize: "0.7rem", color: "#1B998B", fontWeight: 500, display: "inline-block", marginTop: 5 }}>View source ↗</a>}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
