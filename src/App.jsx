@@ -399,6 +399,7 @@ const styles = `
   @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
   @keyframes fadeIn { from{opacity:0} to{opacity:1} }
   @keyframes popIn { from{opacity:0;transform:scale(0.7)} to{opacity:1;transform:scale(1)} }
+  @keyframes cardIn { from{opacity:0;transform:translateY(24px) scale(0.97)} to{opacity:1;transform:translateY(0) scale(1)} }
 
   .home-hero { padding: 3.5rem 1.5rem 2rem; position: relative; overflow: hidden; min-height: 300px; background: #ffffff; }
   .home-eyebrow { font-size: 0.68rem; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: #9b8f7a; margin-bottom: 0.6rem; position: relative; z-index: 1; }
@@ -1776,7 +1777,12 @@ function SpotsMap({ saves }) {
     if (!loaded || !mapRef.current || instRef.current) return;
     const L = window.L;
     const map = L.map(mapRef.current, { center: [51.505, -0.09], zoom: 11, zoomControl: false });
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", { subdomains: "abcd", attribution: "© OpenStreetMap, © CARTO", maxZoom: 20 }).addTo(map);
+    const mbToken = import.meta.env.VITE_MAPBOX_TOKEN;
+    if (mbToken) {
+      L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/512/{z}/{x}/{y}@2x?access_token=${mbToken}`, { tileSize: 512, zoomOffset: -1, maxZoom: 20, attribution: "© Mapbox © OpenStreetMap" }).addTo(map);
+    } else {
+      L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", { subdomains: "abcd", attribution: "© OpenStreetMap, © CARTO", maxZoom: 20 }).addTo(map);
+    }
 
     const cluster = L.markerClusterGroup({
       maxClusterRadius: 55, showCoverageOnHover: false, spiderfyOnMaxZoom: true, chunkedLoading: true,
@@ -1843,9 +1849,9 @@ function SpotsMap({ saves }) {
         )}
 
         {selected && (
-          <div style={{ position: "absolute", left: 10, right: 10, bottom: 10, zIndex: 500, borderRadius: 16, overflow: "hidden", boxShadow: "0 8px 28px rgba(0,0,0,0.28)", background: "#fff" }}>
+          <div key={selected.id} style={{ position: "absolute", left: 10, right: 10, bottom: 10, zIndex: 500, borderRadius: 16, overflow: "hidden", boxShadow: "0 8px 28px rgba(0,0,0,0.28)", background: "#fff", animation: "cardIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)" }}>
             <div style={{ position: "relative", height: 175, background: CAT_PIN_COLOURS[selCat] || "#3D5A80" }}>
-              {cardPhoto && <img src={cardPhoto} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+              {cardPhoto && <img key={cardPhoto} src={cardPhoto} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", animation: "fadeIn 0.45s ease" }} />}
               <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.3)" }} />
               <button onClick={() => setSelected(null)} style={{ position: "absolute", top: 8, right: 8, width: 28, height: 28, borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.92)", cursor: "pointer", fontSize: "0.95rem", lineHeight: 1, zIndex: 2 }}>×</button>
               <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 18px" }}>
