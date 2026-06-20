@@ -1877,8 +1877,8 @@ function SpotsMap({ saves }) {
 
         {selected && (
           <div key={selected.id} style={{ position: "absolute", left: 10, right: 10, bottom: 10, zIndex: 500, borderRadius: 16, overflow: "hidden", boxShadow: "0 8px 28px rgba(0,0,0,0.28)", background: "#fff", animation: "cardIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)" }}>
-            <div style={{ position: "relative", height: 175, background: CAT_PIN_COLOURS[selCat] || "#3D5A80" }}>
-              {cardPhoto && <img key={cardPhoto} src={cardPhoto} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", animation: "fadeIn 0.45s ease" }} />}
+            <div style={{ position: "relative", height: 175, background: "#e9e4da" }}>
+              {cardPhoto && <img src={cardPhoto} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
               <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.3)" }} />
               <button onClick={() => setSelected(null)} style={{ position: "absolute", top: 8, right: 8, width: 28, height: 28, borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.92)", cursor: "pointer", fontSize: "0.95rem", lineHeight: 1, zIndex: 2 }}>×</button>
               <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 18px" }}>
