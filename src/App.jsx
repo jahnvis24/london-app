@@ -409,12 +409,12 @@ const styles = `
   .home-sub { font-size: 0.85rem; color: #6b5e4e; line-height: 1.5; position: relative; z-index: 1; max-width: 200px; }
   .home-cta { margin-top: 1.5rem; position: relative; z-index: 1; }
 
-  .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 420px; background: #fff; border-top: 1px solid #e8e2d8; display: flex; z-index: 100; padding-bottom: env(safe-area-inset-bottom); }
+  .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 420px; background: rgba(0,0,0,0.5); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-top: 1px solid rgba(255,255,255,0.12); display: flex; z-index: 100; padding-bottom: env(safe-area-inset-bottom); }
   .nav-tab { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px 4px 8px; border: none; background: none; cursor: pointer; gap: 3px; transition: all 0.15s; }
-  .nav-tab-icon { font-size: 1.3rem; line-height: 1; transition: transform 0.2s; }
-  .nav-tab.active .nav-tab-icon { transform: scale(1.15); }
-  .nav-tab-label { font-family: 'DM Sans', sans-serif; font-size: 0.6rem; font-weight: 500; letter-spacing: 0.04em; color: #b8ac9a; text-transform: uppercase; transition: color 0.15s; }
-  .nav-tab.active .nav-tab-label { color: #1c1c1a; }
+  .nav-tab-icon { font-size: 1.3rem; line-height: 1; transition: transform 0.2s; filter: grayscale(1) brightness(1.7) contrast(0.9); opacity: 0.7; }
+  .nav-tab.active .nav-tab-icon { transform: scale(1.15); opacity: 1; }
+  .nav-tab-label { font-family: 'DM Sans', sans-serif; font-size: 0.6rem; font-weight: 500; letter-spacing: 0.04em; color: rgba(255,255,255,0.55); text-transform: uppercase; transition: color 0.15s; }
+  .nav-tab.active .nav-tab-label { color: #fff; }
   .nav-tab-dot { width: 4px; height: 4px; border-radius: 50%; background: #1B998B; opacity: 0; transition: opacity 0.15s; }
   .nav-tab.active .nav-tab-dot { opacity: 1; }
 
@@ -2842,7 +2842,7 @@ Return a JSON object with this exact structure:
               <SpotsMap key="maptab" saves={saves} focusSpot={focusSpot} onCategory={setMapCat} />
             </div>
             {mapCat && renderSheet(scopeSaves, (
-              <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a", padding: "0 0 12px" }}>{CAT_LABEL[mapCat] || cap(mapCat)} ({scopeSaves.length})</div>
+              <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a", padding: "0 14px 12px" }}>{CAT_LABEL[mapCat] || cap(mapCat)} ({scopeSaves.length})</div>
             ))}
           </>
         )}
@@ -2860,7 +2860,7 @@ Return a JSON object with this exact structure:
                   <div key={f} style={{ position: "relative", borderRadius: 16, overflow: "hidden", boxShadow: "0 2px 8px rgba(0,0,0,0.06)", background: "#fff" }}>
                     <div onClick={() => setOpenFolder(f)} style={{ cursor: "pointer" }}>
                       <ListCover items={items} />
-                      <div style={{ padding: "10px 12px" }}>
+                      <div style={{ padding: "12px 14px" }}>
                         <div style={{ fontSize: "0.84rem", fontWeight: 600, color: "#1c1c1a", paddingRight: 20, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f}</div>
                         <div style={{ fontSize: "0.68rem", color: "#9b8f7a" }}>{items.length} spot{items.length !== 1 ? "s" : ""}</div>
                       </div>
@@ -2889,7 +2889,7 @@ Return a JSON object with this exact structure:
             )}
             {folderSaves.length === 0 && <div style={{ fontSize: "0.8rem", color: "#9b8f7a" }}>No spots in this list yet — pick it as the list when you save something.</div>}
             {folderSaves.length > 0 && renderSheet(folderSaves, (
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0 0 12px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0 14px 12px" }}>
                 <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a" }}>{openFolder} ({folderSaves.length} place{folderSaves.length !== 1 ? "s" : ""})</div>
                 <button onClick={() => renameFolder(openFolder)} style={{ fontSize: "0.74rem", padding: "6px 12px", borderRadius: 100, border: "1.5px solid #e8e2d8", background: "#fff", color: "#6b5e4e", fontWeight: 500, cursor: "pointer" }}>✎ Rename</button>
               </div>
