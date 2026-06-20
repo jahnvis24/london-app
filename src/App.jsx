@@ -2823,7 +2823,15 @@ Return a JSON object with this exact structure:
               <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a" }}>{openFolder} ({folderSaves.length})</div>
               <button onClick={() => renameFolder(openFolder)} style={{ fontSize: "0.74rem", padding: "6px 12px", borderRadius: 100, border: "1.5px solid #e8e2d8", background: "#fff", color: "#6b5e4e", fontWeight: 500, cursor: "pointer" }}>✎ Rename</button>
             </div>
-            {folderSaves.map(s => <VenueCard key={s.id} v={s} onRemove={() => removeSave(s.id)} onMove={() => setMovingSpot(s)} />)}
+            {folderSaves.map(s => (
+              <div key={s.id} style={{ position: "relative", borderRadius: 16, overflow: "hidden", boxShadow: "0 2px 10px rgba(0,0,0,0.1)", border: "1px solid #f0ebe2", background: "#fff", marginBottom: 14 }}>
+                <button onClick={() => removeSave(s.id)} title="Delete" style={{ position: "absolute", top: 8, right: 8, zIndex: 3, width: 28, height: 28, borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.92)", cursor: "pointer", fontSize: "0.95rem", lineHeight: 1 }}>×</button>
+                <BigSpotCard s={s} photo={s.photo_url} />
+                <div style={{ padding: "0 12px 12px", textAlign: "center" }}>
+                  <button onClick={() => setMovingSpot(s)} style={{ border: "1px solid #e8e2d8", background: "#fff", borderRadius: 100, padding: "6px 14px", fontSize: "0.72rem", color: "#6b5e4e", fontWeight: 500, cursor: "pointer" }}>↪ Move to folder</button>
+                </div>
+              </div>
+            ))}
             {folderSaves.length === 0 && <div style={{ fontSize: "0.8rem", color: "#9b8f7a" }}>No spots in this folder yet — pick it as the folder when you save something.</div>}
             {folderSaves.length > 0 && <button className="btn btn-teal" style={{ marginTop: "0.5rem" }} onClick={() => onBuildPlan(folderSaves)}>Build plan from {openFolder} ✦</button>}
           </>
