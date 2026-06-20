@@ -1243,7 +1243,7 @@ Each object must have this exact structure:
   "address": "full address if visible, or null",
   "area": "neighbourhood e.g. Shoreditch, Chelsea, Clapham",
   "zone": "one of: North, Northwest, Northeast, South, Southwest, Southeast, East, West, Central",
-  "category": "one of: restaurant, bar, cafe, market, experience, outdoor, museum, gallery, event, nightlife",
+  "category": "EXACTLY one of: restaurant, bar, cafe, market, experience, outdoor, museum, gallery, event, nightlife (an exhibition = gallery; a pop-up/show/festival/concert = event; a club = nightlife; a pub = bar)",
   "price": "e.g. Free, £10, £20-30, or null if unknown",
   "is_event": true or false,
   "event_start": "YYYY-MM-DD or null",
@@ -1325,7 +1325,7 @@ Each object must have this exact structure:
   "address": "full address if mentioned, or null",
   "area": "neighbourhood e.g. Shoreditch, Chelsea, Clapham",
   "zone": "one of: North, Northwest, Northeast, South, Southwest, Southeast, East, West, Central — infer from area",
-  "category": "one of: restaurant, bar, cafe, market, experience, outdoor, museum, gallery, event, nightlife",
+  "category": "EXACTLY one of: restaurant, bar, cafe, market, experience, outdoor, museum, gallery, event, nightlife (an exhibition = gallery; a pop-up/show/festival/concert = event; a club = nightlife; a pub = bar)",
   "price": "e.g. Free, £10, £20-30, or null if unknown",
   "is_event": false,
   "event_start": null,
@@ -1751,6 +1751,33 @@ function notify(title, body) {
 // Capitalise the first letter (for category labels shown across the app).
 function cap(s) { return s ? String(s).charAt(0).toUpperCase() + String(s).slice(1) : ""; }
 
+// Normalise a parsed category to one of the supported categories.
+const ALLOWED_CATEGORIES = ["restaurant", "bar", "cafe", "market", "experience", "outdoor", "museum", "gallery", "event", "nightlife"];
+const CATEGORY_ALIASES = {
+  exhibition: "gallery", exhibitions: "gallery", art: "gallery", "art gallery": "gallery",
+  popup: "event", "pop-up": "event", "pop up": "event", show: "event", festival: "event", concert: "event", gig: "event", theatre: "event", theater: "event",
+  club: "nightlife", nightclub: "nightlife",
+  pub: "bar", cocktail: "bar", "wine bar": "bar",
+  coffee: "cafe", "coffee shop": "cafe", "café": "cafe", brunch: "cafe", bakery: "cafe",
+  park: "outdoor", garden: "outdoor", walk: "outdoor", nature: "outdoor",
+  shop: "market", shopping: "market", store: "market",
+};
+function normaliseCategory(c) {
+  const k = String(c || "").toLowerCase().trim();
+  if (CATEGORY_ALIASES[k]) return CATEGORY_ALIASES[k];
+  if (ALLOWED_CATEGORIES.includes(k)) return k;
+  return "experience";
+}
+
+// Google Maps link for a venue (prefers the exact place, then coords, then name).
+function googleMapsUrl(v) {
+  if (!v) return null;
+  if (v.google_place_id) return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(v.name || "")}&query_place_id=${v.google_place_id}`;
+  if (v.lat && v.lng) return `https://www.google.com/maps/search/?api=1&query=${v.lat},${v.lng}`;
+  if (v.name) return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(v.name + " London")}`;
+  return null;
+}
+
 // Map of saved spots — Yonder-style: white "coin" markers, clustering, bottom card.
 function SpotsMap({ saves }) {
   const mapRef = useRef(null);
@@ -1897,7 +1924,10 @@ function SpotsMap({ saves }) {
               <div style={{ fontSize: "0.76rem", color: "#6b5e4e" }}>
                 {capitalise(selected.category)}{selected.google_rating ? ` · ⭐ ${selected.google_rating}` : ""}{selected.area ? ` · ${selected.area}` : ""}{selected.price ? ` · ${selected.price}` : ""}
               </div>
-              {selected.source_url && <a href={selected.source_url} target="_blank" rel="noreferrer" style={{ fontSize: "0.7rem", color: "#1B998B", fontWeight: 500, display: "inline-block", marginTop: 6 }}>View source ↗</a>}
+              <div style={{ display: "flex", gap: 14, justifyContent: "center", marginTop: 6 }}>
+                {selected.source_url && (selected.source_type === "tiktok" || selected.source_type === "instagram") && <a href={selected.source_url} target="_blank" rel="noreferrer" style={{ fontSize: "0.7rem", color: "#1B998B", fontWeight: 500 }}>{SOURCE_ICON[selected.source_type] || "🔗"} View source ↗</a>}
+                {googleMapsUrl(selected) && <a href={googleMapsUrl(selected)} target="_blank" rel="noreferrer" style={{ fontSize: "0.7rem", color: "#1B998B", fontWeight: 500 }}>📍 Google Maps</a>}
+              </div>
             </div>
           </div>
         )}
@@ -2093,6 +2123,25 @@ function SavedScreen({ user, onBuildPlan }) {
     return () => { cancelled = true; };
   }, [saves.length]);
 
+  // Normalise any existing saves with an off-list category (e.g. "exhibition" -> "gallery").
+  useEffect(() => {
+    if (!user?.id || !saves.length) return;
+    const fixes = saves.filter(s => normaliseCategory(s.category) !== String(s.category || "").toLowerCase());
+    if (!fixes.length) return;
+    let cancelled = false;
+    (async () => {
+      for (const s of fixes) {
+        if (cancelled) break;
+        const nc = normaliseCategory(s.category);
+        try {
+          await supabase.from("experiences").update({ category: nc }).eq("id", s.id).eq("user_id", user.id);
+          setSaves(prev => prev.map(x => x.id === s.id ? { ...x, category: nc } : x));
+        } catch { /* skip */ }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [saves.length]);
+
   // Check URL params for share target
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -2110,7 +2159,7 @@ function SavedScreen({ user, onBuildPlan }) {
   "name": "venue or event name",
   "address": "full street address if present, else null",
   "area": "neighbourhood e.g. Shoreditch, Chelsea, Clapham",
-  "category": "one of: restaurant, bar, cafe, market, experience, outdoor, museum, gallery, event, nightlife",
+  "category": "EXACTLY one of: restaurant, bar, cafe, market, experience, outdoor, museum, gallery, event, nightlife (an exhibition = gallery; a pop-up/show/festival/concert = event; a club = nightlife; a pub = bar)",
   "price": "e.g. Free, Under £15pp, £15-35pp, or null if unknown",
   "is_event": true if it's a time-bound thing (pop-up, exhibition, show, festival) else false,
   "event_start": "YYYY-MM-DD or null",
@@ -2137,7 +2186,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
       area: found?.derived_area || p.area || null,
       zone: found?.derived_zone || p.zone || null,
       postcode: found?.postcode || p.postcode || null,
-      category: p.category || "experience",
+      category: normaliseCategory(p.category),
       price: found?.price || p.price || null,
       is_event: p.is_event || p.category === "event" || false,
       event_start: p.event_start || null,
@@ -2436,7 +2485,7 @@ Return a JSON object with this exact structure:
 {
   "name": "venue name",
   "area": "neighbourhood e.g. Shoreditch, Chelsea, Clapham",
-  "category": "one of: restaurant, bar, cafe, market, experience, outdoor, museum, gallery, event, nightlife",
+  "category": "EXACTLY one of: restaurant, bar, cafe, market, experience, outdoor, museum, gallery, event, nightlife (an exhibition = gallery; a pop-up/show/festival/concert = event; a club = nightlife; a pub = bar)",
   "price": "e.g. Free, Under 15pp, 15-35pp, or null if unknown",
   "vibe_tags": ["tags from: chill, romantic, chaotic, cultural, fancy, hidden_gems, social, foodie, outdoor, aesthetic, iconic, solo, underground"],
   "comment": "one sentence about this venue"
@@ -2555,7 +2604,7 @@ Return a JSON object with this exact structure:
       : null;
     return (
       <div style={{ display: "flex", gap: 12, padding: 12, background: "#fff", border: "1px solid #f0ebe2", borderRadius: 14, marginBottom: 10 }}>
-        <div style={{ width: 64, height: 64, borderRadius: 10, overflow: "hidden", flexShrink: 0, background: colour, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ width: 64, height: 64, borderRadius: 10, overflow: "hidden", flexShrink: 0, background: (v.photo_url || v._previewImage) ? "#e9e4da" : colour, display: "flex", alignItems: "center", justifyContent: "center" }}>
           {(v.photo_url || v._previewImage)
             ? <img src={v.photo_url || v._previewImage} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
             : <span style={{ fontSize: "1.6rem" }}>{emoji}</span>}
@@ -2577,7 +2626,8 @@ Return a JSON object with this exact structure:
             </div>
           )}
           <div style={{ display: "flex", gap: 10, marginTop: 6, alignItems: "center" }}>
-            {v.source_url && <a href={v.source_url} target="_blank" rel="noreferrer" style={{ fontSize: "0.68rem", color: "#1B998B", fontWeight: 500 }}>{SOURCE_ICON[v.source_type] || "🔗"} View source ↗</a>}
+            {v.source_url && (v.source_type === "tiktok" || v.source_type === "instagram") && <a href={v.source_url} target="_blank" rel="noreferrer" style={{ fontSize: "0.68rem", color: "#1B998B", fontWeight: 500 }}>{SOURCE_ICON[v.source_type] || "🔗"} View source ↗</a>}
+            {googleMapsUrl(v) && <a href={googleMapsUrl(v)} target="_blank" rel="noreferrer" style={{ fontSize: "0.68rem", color: "#1B998B", fontWeight: 500 }}>📍 Maps</a>}
             {onMove && <button onClick={onMove} style={{ border: "none", background: "none", padding: 0, fontSize: "0.68rem", color: "#6b5e4e", fontWeight: 500, cursor: "pointer" }}>↪ Move</button>}
             {draft && !v._google_found && <span style={{ fontSize: "0.6rem", color: "#c98a3a" }}>⚠ not on Google</span>}
           </div>
@@ -2685,7 +2735,7 @@ Return a JSON object with this exact structure:
                 return (
                   <div key={f} style={{ position: "relative", borderRadius: 16, overflow: "hidden", boxShadow: "0 2px 8px rgba(0,0,0,0.06)", background: "#fff" }}>
                     <div onClick={() => setOpenFolder(f)} style={{ cursor: "pointer" }}>
-                      <div style={{ height: 90, background: "#3D5A80", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <div style={{ height: 90, background: cover ? "#e9e4da" : "#3D5A80", display: "flex", alignItems: "center", justifyContent: "center" }}>
                         {cover ? <img src={cover} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontSize: "2rem" }}>{emoji}</span>}
                       </div>
                       <div style={{ padding: "10px 12px" }}>
