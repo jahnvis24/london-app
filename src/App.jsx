@@ -1784,7 +1784,7 @@ function SpotsMap({ saves }) {
   useEffect(() => {
     if (!loaded || !mapRef.current || instRef.current) return;
     const L = window.L;
-    const map = L.map(mapRef.current, { center: [51.505, -0.09], zoom: 11, zoomControl: false });
+    const map = L.map(mapRef.current, { center: [51.505, -0.09], zoom: 11, zoomControl: false, attributionControl: false });
     const mbToken = import.meta.env.VITE_MAPBOX_TOKEN;
     const base = mbToken
       ? L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}@2x?access_token=${mbToken}`, { maxZoom: 20, attribution: "© Mapbox © OpenStreetMap" })
