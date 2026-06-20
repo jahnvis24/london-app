@@ -1711,14 +1711,46 @@ function PreferencesScreen({ preferences, setPreferences, user }) {
 
 const CAT_PIN_COLOURS = { restaurant: "#E84855", bar: "#6C4AB6", cafe: "#C57B3C", market: "#F0A500", experience: "#1B998B", outdoor: "#3D8B37", museum: "#3D5A80", gallery: "#9B59B6", nightlife: "#2D1B69", event: "#E8763A" };
 const CAT_PIN_EMOJI = { restaurant: "🍽️", bar: "🍸", cafe: "☕", market: "🛍️", experience: "✨", outdoor: "🌳", museum: "🏛️", gallery: "🎨", nightlife: "🌙", event: "🎫" };
+const CAT_LABEL = { restaurant: "Restaurants", cafe: "Cafés", bar: "Bars", nightlife: "Nightlife", market: "Markets", outdoor: "Outdoor", museum: "Museums", gallery: "Galleries", experience: "Experiences", event: "Events" };
+
+// Flat black line icons (Lucide-style) for the white coin markers.
+const CAT_ICON_PATHS = {
+  restaurant: '<path d="M3 2v7c0 1.1.9 2 2 2a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Z"/><path d="M21 15v7"/>',
+  cafe: '<path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" x2="6" y1="2" y2="4"/><line x1="10" x2="10" y1="2" y2="4"/><line x1="14" x2="14" y1="2" y2="4"/>',
+  bar: '<path d="M8 22h8"/><path d="M12 11v11"/><path d="m19 3-7 8-7-8Z"/>',
+  nightlife: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
+  market: '<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/>',
+  outdoor: '<path d="M12 3 6 11h4l-5 7h14l-5-7h4Z"/><path d="M12 18v4"/>',
+  museum: '<line x1="3" x2="21" y1="22" y2="22"/><line x1="6" x2="6" y1="18" y2="11"/><line x1="10" x2="10" y1="18" y2="11"/><line x1="14" x2="14" y1="18" y2="11"/><line x1="18" x2="18" y1="18" y2="11"/><polygon points="12 2 20 7 4 7"/>',
+  gallery: '<rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/>',
+  experience: '<path d="M12 2l2.2 6.8L21 11l-6.8 2.2L12 20l-2.2-6.8L3 11l6.8-2.2z"/>',
+  event: '<path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2"/><path d="M13 11v2"/><path d="M13 17v2"/>',
+};
+const ICON_PIN = '<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>';
+function catSvg(cat, size = 18) {
+  const paths = CAT_ICON_PATHS[String(cat || "").toLowerCase()] || ICON_PIN;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="#1c1c1a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`;
+}
+function coinIcon(inner, size = 36) {
+  return window.L.divIcon({
+    className: "",
+    html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:#fffdf8;border:1px solid #e6e0d4;box-shadow:0 2px 7px rgba(0,0,0,0.22);display:flex;align-items:center;justify-content:center;font-weight:700;color:#1c1c1a;font-size:14px">${inner}</div>`,
+    iconSize: [size, size], iconAnchor: [size / 2, size / 2],
+  });
+}
 
 // Map of saved spots — Yonder-style: white "coin" markers, clustering, bottom card.
 function SpotsMap({ saves }) {
   const mapRef = useRef(null);
   const instRef = useRef(null);
+  const clusterRef = useRef(null);
   const [loaded, setLoaded] = useState(false);
   const [selected, setSelected] = useState(null);
+  const [filter, setFilter] = useState("all");
+  const [cardPhoto, setCardPhoto] = useState(null);
+  const photoCacheRef = useRef({});
   const pts = saves.filter(s => s.lat && s.lng);
+  const cats = [...new Set(pts.map(s => String(s.category || "").toLowerCase()).filter(Boolean))].sort();
 
   useEffect(() => {
     let cancelled = false;
@@ -1746,55 +1778,85 @@ function SpotsMap({ saves }) {
     const map = L.map(mapRef.current, { center: [51.505, -0.09], zoom: 11, zoomControl: false });
     L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", { subdomains: "abcd", attribution: "© OpenStreetMap, © CARTO", maxZoom: 20 }).addTo(map);
 
-    const coin = (inner, size = 36, fontSize = 17) => L.divIcon({
-      className: "",
-      html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:#fffdf8;border:1px solid #e6e0d4;box-shadow:0 2px 7px rgba(0,0,0,0.22);display:flex;align-items:center;justify-content:center;font-size:${fontSize}px;line-height:1;font-weight:700;color:#1c1c1a">${inner}</div>`,
-      iconSize: [size, size], iconAnchor: [size / 2, size / 2],
-    });
-
     const cluster = L.markerClusterGroup({
       maxClusterRadius: 55, showCoverageOnHover: false, spiderfyOnMaxZoom: true, chunkedLoading: true,
-      iconCreateFunction: (c) => { const n = c.getChildCount(); const sz = n < 10 ? 38 : n < 100 ? 46 : 54; return coin(n, sz, 14); },
-    });
-    pts.forEach(s => {
-      const emoji = CAT_PIN_EMOJI[String(s.category || "").toLowerCase()] || "📍";
-      const m = L.marker([s.lat, s.lng], { icon: coin(emoji) });
-      m.on("click", () => setSelected(s));
-      cluster.addLayer(m);
+      iconCreateFunction: (c) => { const n = c.getChildCount(); const sz = n < 10 ? 38 : n < 100 ? 46 : 54; return coinIcon(n, sz); },
     });
     map.addLayer(cluster);
-    if (pts.length) map.fitBounds(cluster.getBounds().pad(0.2));
+    clusterRef.current = cluster;
     map.on("click", () => setSelected(null));
     instRef.current = map;
     setTimeout(() => map.invalidateSize(), 120);
-    return () => { map.remove(); instRef.current = null; };
+    return () => { map.remove(); instRef.current = null; clusterRef.current = null; };
   }, [loaded]);
+
+  // (Re)populate markers when loaded or the category filter changes.
+  useEffect(() => {
+    if (!loaded || !clusterRef.current) return;
+    const L = window.L;
+    const cl = clusterRef.current;
+    cl.clearLayers();
+    const shown = filter === "all" ? pts : pts.filter(s => String(s.category || "").toLowerCase() === filter);
+    shown.forEach(s => {
+      const m = L.marker([s.lat, s.lng], { icon: coinIcon(catSvg(s.category)) });
+      m.on("click", () => setSelected(s));
+      cl.addLayer(m);
+    });
+    if (shown.length && instRef.current) { try { instRef.current.fitBounds(cl.getBounds().pad(0.2)); } catch (e) {} }
+  }, [loaded, filter]);
+
+  // Card image: prefer a Google Maps photo when the spot has a place id.
+  useEffect(() => {
+    if (!selected) { setCardPhoto(null); return; }
+    setCardPhoto(selected.photo_url || null);
+    const pid = selected.google_place_id;
+    if (!pid) return;
+    if (photoCacheRef.current[pid]) { setCardPhoto(photoCacheRef.current[pid]); return; }
+    let active = true;
+    fetch("/api/saved-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool: "image", place_id: pid }) })
+      .then(r => r.json()).then(j => { if (active && j.found) { photoCacheRef.current[pid] = j.url; setCardPhoto(j.url); } }).catch(() => {});
+    return () => { active = false; };
+  }, [selected]);
 
   if (!pts.length) return (
     <div className="empty-state"><div className="empty-emoji">🗺️</div><div className="empty-title">No mappable spots</div><div className="empty-sub">Saves with a known location show here. Most do once Google finds them.</div></div>
   );
 
   const selCat = String(selected?.category || "").toLowerCase();
+  const capitalise = (s) => s ? String(s).charAt(0).toUpperCase() + String(s).slice(1) : "";
   return (
     <div>
       <div style={{ fontSize: "0.7rem", color: "#9b8f7a", marginBottom: 8 }}>{pts.length} spot{pts.length !== 1 ? "s" : ""} on the map · tap a pin for the card</div>
       <div style={{ position: "relative" }}>
         {!loaded && <div style={{ height: 440, background: "#eef3ee", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", color: "#9b8f7a", fontSize: "0.82rem" }}>Loading map…</div>}
         <div ref={mapRef} style={{ height: 440, borderRadius: 16, overflow: "hidden", border: "1px solid #e6e0d4", display: loaded ? "block" : "none" }} />
+
+        {loaded && !selected && cats.length > 1 && (
+          <div style={{ position: "absolute", left: 0, right: 0, bottom: 10, zIndex: 450, display: "flex", gap: 8, padding: "0 10px", overflowX: "auto" }}>
+            <button onClick={() => setFilter("all")} style={{ fontSize: "0.72rem", padding: "7px 13px", borderRadius: 100, whiteSpace: "nowrap", cursor: "pointer", border: "none", boxShadow: "0 2px 8px rgba(0,0,0,0.18)", flexShrink: 0, background: filter === "all" ? "#1c1c1a" : "#fff", color: filter === "all" ? "#fff" : "#1c1c1a", fontWeight: filter === "all" ? 600 : 500 }}>All</button>
+            {cats.map(c => (
+              <button key={c} onClick={() => { setFilter(c); setSelected(null); }} style={{ fontSize: "0.72rem", padding: "7px 13px", borderRadius: 100, whiteSpace: "nowrap", cursor: "pointer", border: "none", boxShadow: "0 2px 8px rgba(0,0,0,0.18)", flexShrink: 0, background: filter === c ? "#1c1c1a" : "#fff", color: filter === c ? "#fff" : "#1c1c1a", fontWeight: filter === c ? 600 : 500 }}>
+                {CAT_LABEL[c] || capitalise(c)}
+              </button>
+            ))}
+          </div>
+        )}
+
         {selected && (
           <div style={{ position: "absolute", left: 10, right: 10, bottom: 10, zIndex: 500, borderRadius: 16, overflow: "hidden", boxShadow: "0 8px 28px rgba(0,0,0,0.28)", background: "#fff" }}>
-            <div style={{ position: "relative", height: 132, background: CAT_PIN_COLOURS[selCat] || "#3D5A80" }}>
-              {selected.photo_url && <img src={selected.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
-              <button onClick={() => setSelected(null)} style={{ position: "absolute", top: 8, right: 8, width: 26, height: 26, borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.92)", cursor: "pointer", fontSize: "0.9rem", lineHeight: 1 }}>×</button>
-              <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, padding: "20px 12px 8px", background: "linear-gradient(transparent, rgba(0,0,0,0.72))" }}>
-                <div style={{ color: "#fff", fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.05rem", lineHeight: 1.15 }}>{selected.name}</div>
+            <div style={{ position: "relative", height: 175, background: CAT_PIN_COLOURS[selCat] || "#3D5A80" }}>
+              {cardPhoto && <img src={cardPhoto} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+              <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.3)" }} />
+              <button onClick={() => setSelected(null)} style={{ position: "absolute", top: 8, right: 8, width: 28, height: 28, borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.92)", cursor: "pointer", fontSize: "0.95rem", lineHeight: 1, zIndex: 2 }}>×</button>
+              <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 18px" }}>
+                <div style={{ color: "rgba(255,255,255,0.9)", fontFamily: "'DM Serif Display', Georgia, serif", fontWeight: 400, fontSize: "1.55rem", textAlign: "center", lineHeight: 1.15, textShadow: "0 2px 14px rgba(0,0,0,0.55)" }}>{selected.name}</div>
               </div>
             </div>
-            <div style={{ padding: "8px 12px 10px" }}>
-              <div style={{ fontSize: "0.72rem", color: "#9b8f7a" }}>
-                {(CAT_PIN_EMOJI[selCat] || "📍")} {selected.category}{selected.area ? ` · ${selected.area}` : ""}{selected.google_rating ? ` · ⭐ ${selected.google_rating}` : ""}{selected.price ? ` · ${selected.price}` : ""}
+            <div style={{ padding: "10px 12px 12px", textAlign: "center" }}>
+              <div style={{ fontSize: "0.76rem", color: "#6b5e4e" }}>
+                {capitalise(selected.category)}{selected.google_rating ? ` · ⭐ ${selected.google_rating}` : ""}{selected.area ? ` · ${selected.area}` : ""}{selected.price ? ` · ${selected.price}` : ""}
               </div>
-              {selected.source_url && <a href={selected.source_url} target="_blank" rel="noreferrer" style={{ fontSize: "0.7rem", color: "#1B998B", fontWeight: 500, display: "inline-block", marginTop: 5 }}>View source ↗</a>}
+              {selected.source_url && <a href={selected.source_url} target="_blank" rel="noreferrer" style={{ fontSize: "0.7rem", color: "#1B998B", fontWeight: 500, display: "inline-block", marginTop: 6 }}>View source ↗</a>}
             </div>
           </div>
         )}
