@@ -427,7 +427,7 @@ const styles = `
   .btn:disabled { opacity: 0.25; cursor: not-allowed; }
   .btn:hover:not(:disabled) { opacity: 0.88; }
   .btn:active:not(:disabled) { transform: scale(0.99); }
-  .btn-teal { background: #5c1119; color: #ffffff; }
+  .btn-teal { background: #55630d; color: #ffffff; }
   .btn-outline { width: 100%; padding: 13px; border-radius: 100px; border: 1.5px solid #ddd8ce; background: transparent; color: #4a4438; font-family: 'DM Sans', sans-serif; font-size: 0.85rem; cursor: pointer; margin-top: 0.6rem; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.15s; }
   .btn-outline:hover { border-color: #1c1c1a; color: #1c1c1a; }
   .btn-ghost { background: none; border: none; color: #9b8f7a; font-family: 'DM Sans', sans-serif; font-size: 0.82rem; cursor: pointer; padding: 1rem 1.5rem 0; display: flex; align-items: center; gap: 5px; }
@@ -872,6 +872,16 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
   const [view, setView] = useState("plan");
   const [shareId] = useState(generateId);
   const [copied, setCopied] = useState(false);
+  const [sharing, setSharing] = useState(false);
+
+  // Persist the plan so anyone with the link can view it.
+  async function ensureShared() {
+    setSharing(true);
+    try { await supabase.from("shared_plans").upsert({ id: shareId, plan: result, times, title: result?.title || "London plan" }, { onConflict: "id" }); } catch (e) { console.error("[share]", e); }
+    setSharing(false);
+    return shareId;
+  }
+  const shareLink = `https://london-app.vercel.app/?plan=${shareId}`;
   const [swappingIdx, setSwappingIdx] = useState(null);
   const [alternatives, setAlternatives] = useState([]);
 
@@ -963,7 +973,7 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
           <div className="stops-wrap">
             {(result.stops || []).map((stop, idx) => (
               <div key={idx}>
-                <div className="stop">
+                <div className="stop" style={stop._saved ? { outline: "2px solid #55630d", outlineOffset: -2, borderRadius: 16 } : undefined}>
                   <div className="stop-inner" onClick={() => { setSwappingIdx(null); setAlternatives([]); window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(stop.name + " London")}`, "_blank"); }} style={{ cursor: "pointer" }}>
                     <div className="stop-top">
                       <div className="stop-emoji-wrap">{stop.emoji}</div>
@@ -980,6 +990,7 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
                   </div>
                   <div className="stop-footer">
                     <div className="stop-pills-row">
+                      {stop._saved && <span className="stop-pill" style={{ background: "#eef3d8", color: "#55630d", fontWeight: 700 }}>★ Your saved spot</span>}
                       {stop.price_range && <span className="stop-pill">💰 {stop.price_range}</span>}
                       {stop.google_rating && <span className="stop-pill">⭐ {stop.google_rating}</span>}
                       {stop.area && <span className="stop-pill">📍 {stop.area}</span>}
@@ -1030,7 +1041,7 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
             }}>
               🗺️ Create Google Maps route
             </button>
-            <button className="btn-outline" onClick={() => setView("social")}>👥 Share with friends</button>
+            <button className="btn-outline" onClick={() => { setView("social"); ensureShared(); }}>👥 Share with friends</button>
             <button className="btn-outline" onClick={onRestart}>↺ Plan a different day</button>
           </div>
         </div>
@@ -1041,13 +1052,13 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
           <div className="social-card">
             <div className="social-card-top">
               <div className="social-card-title">Send this to your crew</div>
-              <div className="social-card-sub">Anyone with the link sees your full plan.</div>
+              <div className="social-card-sub">{sharing ? "Preparing your link…" : "Anyone with the link sees your full plan."}</div>
             </div>
             <div style={{ padding: "0.75rem 1rem 1rem", display: "flex", gap: 8 }}>
-              <button className="btn-outline" style={{ marginTop: 0 }} onClick={() => { navigator.clipboard?.writeText(`https://london-app.vercel.app/plan/${shareId}`); setCopied(true); setTimeout(() => setCopied(false), 2000); }}>
+              <button className="btn-outline" style={{ marginTop: 0 }} disabled={sharing} onClick={async () => { await ensureShared(); navigator.clipboard?.writeText(shareLink); setCopied(true); setTimeout(() => setCopied(false), 2000); }}>
                 {copied ? "✓ Copied" : "🔗 Copy link"}
               </button>
-              <button className="btn-outline" style={{ marginTop: 0 }} onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(`Check out this London plan: https://london-app.vercel.app/plan/${shareId}`)}`)}>
+              <button className="btn-outline" style={{ marginTop: 0 }} disabled={sharing} onClick={async () => { await ensureShared(); window.open(`https://wa.me/?text=${encodeURIComponent(`Check out this London plan: ${shareLink}`)}`); }}>
                 💬 WhatsApp
               </button>
             </div>
@@ -2754,8 +2765,9 @@ Return a JSON object with this exact structure:
           <div onClick={() => { setFocusSpot({ ...s, _focus: Date.now() }); window.scrollTo({ top: 0, behavior: "smooth" }); }} style={{ cursor: "pointer" }}>
             <BigSpotCard s={s} photo={s.photo_url} />
           </div>
-          <div style={{ padding: "0 12px 12px", textAlign: "center" }}>
-            <button onClick={() => setMovingSpot(s)} style={{ border: "1px solid #e8e2d8", background: "#fff", borderRadius: 100, padding: "6px 14px", fontSize: "0.72rem", color: "#6b5e4e", fontWeight: 500, cursor: "pointer" }}>↪ Move to list</button>
+          <div style={{ padding: "0 12px 12px", display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+            <button onClick={() => onBuildPlan([s])} style={{ border: "none", background: "#55630d", color: "#fff", borderRadius: 100, padding: "7px 16px", fontSize: "0.72rem", fontWeight: 600, cursor: "pointer" }}>✦ Make a plan based on this</button>
+            <button onClick={() => setMovingSpot(s)} style={{ border: "1px solid #e8e2d8", background: "#fff", borderRadius: 100, padding: "7px 14px", fontSize: "0.72rem", color: "#6b5e4e", fontWeight: 500, cursor: "pointer" }}>↪ Move to list</button>
           </div>
         </div>
       ))}
@@ -3061,6 +3073,7 @@ function RatingPrompt({ plan, user, onDismiss, onSubmit }) {
 export default function App() {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [sharedPlan, setSharedPlan] = useState(null);
   const [activeTab, setActiveTab] = useState("home");
   const [quizStep, setQuizStep] = useState(-1);
   const [ans, setAns] = useState({});
@@ -3186,6 +3199,17 @@ export default function App() {
       price_range: v.price || null,
     })));
 
+    const savedVenues = ans.savedVenues || [];
+    const matchVenue = (name) => {
+      const n = (name || "").toLowerCase();
+      const hit = (v) => v.name && (v.name.toLowerCase().includes(n) || n.includes(v.name.toLowerCase()));
+      return dbVenues.find(hit) || savedVenues.find(hit) || null;
+    };
+    const savedForPrompt = savedVenues.map(v => ({ name: v.name, type: v.category, area: v.zone || v.area || "London", price: v.price, tags: v.vibe_tags, desc: v.comment }));
+    const savedClause = savedVenues.length
+      ? '. IMPORTANT: the following are the USER\'S OWN saved spots — you MUST include at least 1 (ideally 2) of them in the plan, and they take priority over the curated venues. For each stop that is one of these saved spots, add "saved": true to that stop. Saved spots: ' + JSON.stringify(savedForPrompt)
+      : "";
+
     const areaNote = ans.area === "map_pin" ? `near dropped pin (${ans.mapPin?.lat?.toFixed(3)}, ${ans.mapPin?.lng?.toFixed(3)})` : ans.area;
     const travelNote = ans.travel === "walking"
   ? "walking only, all stops must be within 20 min walk of each other"
@@ -3201,9 +3225,9 @@ export default function App() {
       ", travel: " + travelNote +
       ", " + times.start + " to " + times.end +
       ", include: " + ((ans.extras || []).join(", ") || "no extras") +
-      ". Venues (" + stopCount + "): " + venueData +
+      ". Venues (" + stopCount + "): " + venueData + savedClause +
       ". Space stops evenly across the time window. Respond ONLY with valid JSON, no markdown, no backticks: " +
-      '{"title":"punchy name","tagline":"witty sentence","vibe_scores":{"fun":7,"romantic":3,"cultural":6,"chaotic":2},"total_cost_estimate":"35-55pp","stops":[{"time":"18:30","name":"venue name","type":"bar","area":"Shoreditch","emoji":"🍸","hook":"best thing about this place","why_it_fits":"vibe match","booking":"Walk-in fine","cost_estimate":"£15-35pp","travel_to_next":"calculating..."}],"extend_the_night":"late suggestion","local_tip":"insider tip"}';
+      '{"title":"punchy name","tagline":"witty sentence","vibe_scores":{"fun":7,"romantic":3,"cultural":6,"chaotic":2},"total_cost_estimate":"35-55pp","stops":[{"time":"18:30","name":"venue name","type":"bar","area":"Shoreditch","emoji":"🍸","saved":false,"hook":"best thing about this place","why_it_fits":"vibe match","booking":"Walk-in fine","cost_estimate":"£15-35pp","travel_to_next":"calculating..."}],"extend_the_night":"late suggestion","local_tip":"insider tip"}';
 
     try {
       const txt = await callClaude(prompt, 1000);
@@ -3212,13 +3236,12 @@ export default function App() {
       // Enrich stops with DB data (rating, price) and real travel times
       const enrichedStops = await Promise.all((parsed.stops || []).map(async (stop, idx) => {
         // Find this venue in DB to get coordinates and Google data
-        const dbVenue = dbVenues.find(v =>
-          v.name.toLowerCase().includes(stop.name.toLowerCase()) ||
-          stop.name.toLowerCase().includes(v.name.toLowerCase())
-        );
+        const dbVenue = matchVenue(stop.name);
+        const isSaved = stop.saved === true || savedVenues.some(v => v.name && (v.name.toLowerCase().includes(stop.name.toLowerCase()) || stop.name.toLowerCase().includes(v.name.toLowerCase())));
 
         const enriched = {
           ...stop,
+          _saved: isSaved,
           google_rating: dbVenue?.google_rating || null,
           price_range: dbVenue?.price || stop.cost_estimate || null,
           lat: dbVenue?.lat || null,
@@ -3230,10 +3253,7 @@ export default function App() {
         // Get real travel time to next stop
         if (idx < (parsed.stops || []).length - 1) {
           const nextStop = parsed.stops[idx + 1];
-          const nextDbVenue = dbVenues.find(v =>
-            v.name.toLowerCase().includes(nextStop.name.toLowerCase()) ||
-            nextStop.name.toLowerCase().includes(v.name.toLowerCase())
-          );
+          const nextDbVenue = matchVenue(nextStop.name);
 
           if (dbVenue?.lat && dbVenue?.lng && nextDbVenue?.lat && nextDbVenue?.lng) {
             try {
@@ -3301,8 +3321,28 @@ export default function App() {
     { id: "saved", label: "Saved", icon: "📌" },
     { id: "discover", label: "Discover", icon: "🔍" },
     { id: "prefs", label: "For me", icon: "🎯" },
-    ...(isAdmin ? [{ id: "add", label: "Add", icon: "➕" }, { id: "admin", label: "Admin", icon: "⚙️", badge: adminBadge }] : []),
+    ...(isAdmin ? [{ id: "admin", label: "Admin", icon: "⚙️", badge: adminBadge }] : []),
   ];
+
+  useEffect(() => {
+    const pid = new URLSearchParams(window.location.search).get("plan");
+    if (!pid) return;
+    supabase.from("shared_plans").select("plan,times,title").eq("id", pid).single()
+      .then(({ data }) => { if (data?.plan) setSharedPlan(data); })
+      .catch(() => {});
+  }, []);
+
+  if (sharedPlan) return (
+    <>
+      <style>{styles}</style>
+      <div className="app">
+        <div style={{ padding: "1rem 1.5rem 0" }}>
+          <button className="btn-outline" style={{ marginTop: 0 }} onClick={() => { setSharedPlan(null); window.history.replaceState({}, "", "/"); }}>← Close shared plan</button>
+        </div>
+        <ResultScreen result={sharedPlan.plan} times={sharedPlan.times || times} ans={{}} onRestart={() => { setSharedPlan(null); window.history.replaceState({}, "", "/"); }} onNewPlan={() => { setSharedPlan(null); window.history.replaceState({}, "", "/"); }} dbVenues={dbVenues} onUpdateResult={() => {}} />
+      </div>
+    </>
+  );
 
   if (authLoading) return (
     <>
