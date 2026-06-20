@@ -1720,6 +1720,13 @@ function SavedScreen({ user, onBuildPlan }) {
   const [preview, setPreview] = useState([]); // normalized venue drafts awaiting save
   const [saving, setSaving] = useState(false);
   const [successVenue, setSuccessVenue] = useState(null);
+  const [openFolder, setOpenFolder] = useState(null);
+  const [saveFolder, setSaveFolder] = useState(""); // "" = auto by category, "__new__" = create new
+  const [newFolder, setNewFolder] = useState("");
+
+  // Auto-categorisation: map a venue category to its folder.
+  const CATEGORY_FOLDER = { restaurant: "Restaurants", cafe: "Cafés", bar: "Bars", nightlife: "Nightlife", market: "Markets", outdoor: "Outdoor", museum: "Attractions", gallery: "Attractions", experience: "Attractions", event: "Events" };
+  const folderFor = (cat) => CATEGORY_FOLDER[String(cat || "").toLowerCase()] || "Other";
 
   const MEDIA_TYPES = [
     { id: "tiktok", label: "TikTok URL", emoji: "\u{1F3B5}", placeholder: "Paste a TikTok link (or text containing one)..." },
@@ -1828,6 +1835,9 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
       website: found?.website || null,
       opening_hours: found?.opening_hours || null,
       _google_found: !!found,
+      // Real thumbnail to show *before* saving: the screenshot itself, or the TikTok/IG cover.
+      // Google-only sources get their photo filled in by withPreviewPhoto() during parse.
+      _previewImage: extra?._screenshot_b64 ? `data:image/jpeg;base64,${extra._screenshot_b64}` : (extra?._cover_url || null),
       ...extra, // source_type, source_url, tiktok_url, _screenshot_b64, _cover_url
     };
   }
@@ -1986,6 +1996,8 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
         drafts = await parseMaps(textInput, false);
       }
       if (!drafts.length) throw new Error("Nothing found to add. Try a clearer source.");
+      setParseStatus("Fetching photos...");
+      for (const d of drafts) await withPreviewPhoto(d);
       setPreview(prev => [...prev, ...drafts]);
       setTextInput("");
       setParseStatus("");
@@ -2010,6 +2022,17 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
     } catch { return null; }
   }
 
+  // Ensure a draft has a real venue thumbnail before it reaches the preview.
+  // Screenshot/TikTok/IG already have _previewImage; this fills in Google-photo
+  // sources (Maps links, bulk names) by uploading the place photo to Blob now.
+  async function withPreviewPhoto(d) {
+    if (!d._previewImage && d.google_place_id) {
+      const url = await resolvePhoto(d);
+      if (url) { d.photo_url = url; d._previewImage = url; }
+    }
+    return d;
+  }
+
   async function saveAll() {
     if (!preview.length || !user?.id) return;
     setSaving(true); setError(null);
@@ -2018,7 +2041,9 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
       for (let i = 0; i < preview.length; i++) {
         const d = preview[i];
         setParseStatus(`Saving ${i + 1} of ${preview.length}: ${d.name}...`);
-        const photo_url = await resolvePhoto(d);
+        const photo_url = d.photo_url || await resolvePhoto(d);
+        const chosen = saveFolder === "__new__" ? newFolder.trim() : saveFolder.trim();
+        const folder = chosen || folderFor(d.category);
         const row = {
           user_id: user.id,
           name: d.name, address: d.address, area: d.area, zone: d.zone || "Central",
@@ -2031,7 +2056,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
           website: d.website, opening_hours: d.opening_hours,
           tiktok_url: d.tiktok_url || (d.source_type === "tiktok" ? d.source_url : null),
           source_url: d.source_url, source_type: d.source_type,
-          photo_url, status: "pending",
+          photo_url, folder, status: "pending",
         };
         const { data: inserted, error: insertErr } = await supabase.from("experiences").insert(row).select();
         if (insertErr) throw new Error("Save failed: " + insertErr.message);
@@ -2040,6 +2065,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
       }
       setParseStatus("");
       setPreview([]);
+      setSaveFolder(""); setNewFolder("");
       showSuccess(savedCount === 1 ? preview[0].name : `${savedCount} spots`);
       await loadSaves();
     } catch (e) {
@@ -2145,8 +2171,8 @@ Return a JSON object with this exact structure:
     return (
       <div style={{ display: "flex", gap: 12, padding: 12, background: "#fff", border: "1px solid #f0ebe2", borderRadius: 14, marginBottom: 10 }}>
         <div style={{ width: 64, height: 64, borderRadius: 10, overflow: "hidden", flexShrink: 0, background: colour, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          {v.photo_url
-            ? <img src={v.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          {(v.photo_url || v._previewImage)
+            ? <img src={v.photo_url || v._previewImage} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
             : <span style={{ fontSize: "1.6rem" }}>{emoji}</span>}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -2168,18 +2194,22 @@ Return a JSON object with this exact structure:
           <div style={{ display: "flex", gap: 10, marginTop: 6, alignItems: "center" }}>
             {v.source_url && <a href={v.source_url} target="_blank" rel="noreferrer" style={{ fontSize: "0.68rem", color: "#1B998B", fontWeight: 500 }}>{SOURCE_ICON[v.source_type] || "🔗"} View source ↗</a>}
             {draft && !v._google_found && <span style={{ fontSize: "0.6rem", color: "#c98a3a" }}>⚠ not on Google</span>}
-            {!draft && v.status === "pending" && <span style={{ fontSize: "0.6rem", color: "#9b8f7a" }}>· pending review</span>}
           </div>
         </div>
       </div>
     );
   }
 
+  const grouped = saves.reduce((acc, s) => { const f = s.folder || folderFor(s.category); (acc[f] = acc[f] || []).push(s); return acc; }, {});
+  const folderNames = Object.keys(grouped).sort();
+  const existingFolders = folderNames;
+  const folderSaves = openFolder ? (grouped[openFolder] || []) : [];
+
   return (
     <div>
       <div className="section-pad" style={{ paddingBottom: "0.5rem" }}>
         <div className="section-title">Saved</div>
-        <p className="section-sub">Capture spots from anywhere — added to the itinerary database (pending review).</p>
+        <p className="section-sub">Capture spots from TikTok, Instagram, screenshots or Maps — organised into folders.</p>
       </div>
 
       <div style={{ padding: "0 1.5rem 1rem" }}>
@@ -2225,16 +2255,52 @@ Return a JSON object with this exact structure:
         <div style={{ padding: "0 1.5rem 1rem" }}>
           <div style={{ fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#9b8f7a", marginBottom: 8, fontWeight: 500 }}>{preview.length} to review — check, then save</div>
           {preview.map((v, i) => <VenueCard key={i} v={v} draft onRemove={() => removeDraft(i)} />)}
-          <button className="btn btn-teal" onClick={saveAll} disabled={saving} style={{ marginTop: 4 }}>{saving ? "Saving..." : `Save ${preview.length} spot${preview.length !== 1 ? "s" : ""} to collection ✦`}</button>
+          <div style={{ margin: "10px 0" }}>
+            <div style={{ fontSize: "0.7rem", color: "#6b5e4e", marginBottom: 4 }}>Save to folder</div>
+            <select value={saveFolder} onChange={e => setSaveFolder(e.target.value)} className="input-field" style={{ padding: "10px 12px" }}>
+              <option value="">Auto — by category</option>
+              {existingFolders.map(f => <option key={f} value={f}>{f}</option>)}
+              <option value="__new__">+ Create new folder…</option>
+            </select>
+            {saveFolder === "__new__" && (
+              <input className="input-field" style={{ marginTop: 6 }} placeholder="New folder name" value={newFolder} onChange={e => setNewFolder(e.target.value)} />
+            )}
+          </div>
+          <button className="btn btn-teal" onClick={saveAll} disabled={saving || (saveFolder === "__new__" && !newFolder.trim())} style={{ marginTop: 4 }}>{saving ? "Saving..." : `Save ${preview.length} spot${preview.length !== 1 ? "s" : ""}${saveFolder && saveFolder !== "__new__" ? ` to ${saveFolder}` : ""} ✦`}</button>
         </div>
       )}
 
       <div style={{ padding: "0 1.5rem 1rem" }}>
-        {saves.length > 0 && (
+        {saves.length > 0 && !openFolder && (
           <>
-            <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a", margin: "0.5rem 0 0.75rem" }}>Your spots ({saves.length})</div>
-            {saves.map(s => <VenueCard key={s.id} v={s} onRemove={() => removeSave(s.id)} />)}
-            <button className="btn btn-teal" style={{ marginTop: "0.5rem" }} onClick={() => onBuildPlan(saves)}>Build plan from my {saves.length} spot{saves.length !== 1 ? "s" : ""} ✦</button>
+            <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a", margin: "0.5rem 0 0.75rem" }}>Your folders ({saves.length} spot{saves.length !== 1 ? "s" : ""})</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              {folderNames.map(f => {
+                const items = grouped[f];
+                const cover = items.find(s => s.photo_url)?.photo_url;
+                const emoji = CAT_EMOJI[String(items[0]?.category || "").toLowerCase()] || "📁";
+                return (
+                  <div key={f} onClick={() => setOpenFolder(f)} style={{ cursor: "pointer", borderRadius: 16, overflow: "hidden", boxShadow: "0 2px 8px rgba(0,0,0,0.06)", background: "#fff" }}>
+                    <div style={{ height: 90, background: "#3D5A80", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      {cover ? <img src={cover} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontSize: "2rem" }}>{emoji}</span>}
+                    </div>
+                    <div style={{ padding: "10px 12px" }}>
+                      <div style={{ fontSize: "0.84rem", fontWeight: 600, color: "#1c1c1a" }}>{f}</div>
+                      <div style={{ fontSize: "0.68rem", color: "#9b8f7a" }}>{items.length} spot{items.length !== 1 ? "s" : ""}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <button className="btn btn-teal" style={{ marginTop: "1rem" }} onClick={() => onBuildPlan(saves)}>Build plan from all {saves.length} spot{saves.length !== 1 ? "s" : ""} ✦</button>
+          </>
+        )}
+        {saves.length > 0 && openFolder && (
+          <>
+            <button className="btn-ghost" onClick={() => setOpenFolder(null)} style={{ marginBottom: "0.75rem" }}>← All folders</button>
+            <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a", margin: "0 0 0.75rem" }}>{openFolder} ({folderSaves.length})</div>
+            {folderSaves.map(s => <VenueCard key={s.id} v={s} onRemove={() => removeSave(s.id)} />)}
+            {folderSaves.length > 0 && <button className="btn btn-teal" style={{ marginTop: "0.5rem" }} onClick={() => onBuildPlan(folderSaves)}>Build plan from {openFolder} ✦</button>}
           </>
         )}
         {saves.length === 0 && preview.length === 0 && (
