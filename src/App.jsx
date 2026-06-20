@@ -1782,6 +1782,23 @@ function googleMapsUrl(v) {
   return null;
 }
 
+// Collage cover for a list card (1–4 photos arranged like Yonder).
+function ListCover({ items, height = 150 }) {
+  const photos = items.filter(s => s.photo_url).map(s => s.photo_url).slice(0, 4);
+  const cat = String(items[0]?.category || "").toLowerCase();
+  const Img = ({ src }) => <img src={src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", background: "#e9e4da" }} />;
+  if (photos.length === 0) return <div style={{ height, background: "#3D5A80", display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: "2rem" }}>{CAT_EMOJI[cat] || "📁"}</span></div>;
+  if (photos.length === 1) return <div style={{ height }}><Img src={photos[0]} /></div>;
+  if (photos.length === 2) return <div style={{ height, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>{photos.map((p, i) => <Img key={i} src={p} />)}</div>;
+  if (photos.length === 3) return (
+    <div style={{ height, display: "grid", gridTemplateColumns: "2fr 1fr", gap: 2 }}>
+      <Img src={photos[0]} />
+      <div style={{ display: "grid", gridTemplateRows: "1fr 1fr", gap: 2 }}><Img src={photos[1]} /><Img src={photos[2]} /></div>
+    </div>
+  );
+  return <div style={{ height, display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: 2 }}>{photos.map((p, i) => <Img key={i} src={p} />)}</div>;
+}
+
 // The big photo card used on the map (pin tap) AND in the swipe-up list — identical look.
 function BigSpotCard({ s, photo }) {
   return (
@@ -1790,7 +1807,7 @@ function BigSpotCard({ s, photo }) {
         {photo && <img src={photo} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
         <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.3)" }} />
         <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 18px" }}>
-          <div style={{ color: "rgba(255,255,255,0.9)", fontFamily: "'DM Serif Display', Georgia, serif", fontWeight: 400, fontSize: "1.55rem", textAlign: "center", lineHeight: 1.15, textShadow: "0 2px 14px rgba(0,0,0,0.55)" }}>{s.name}</div>
+          <div style={{ color: "rgba(255,255,255,0.8)", fontFamily: "'DM Serif Display', Georgia, serif", fontWeight: 400, fontSize: "1.55rem", textAlign: "center", lineHeight: 1.15, textShadow: "0 2px 14px rgba(0,0,0,0.55)" }}>{s.name}</div>
         </div>
       </div>
       <div style={{ padding: "10px 12px 12px", textAlign: "center" }}>
@@ -1807,7 +1824,8 @@ function BigSpotCard({ s, photo }) {
 }
 
 // Map of saved spots — Yonder-style: white "coin" markers, clustering, bottom card.
-function SpotsMap({ saves }) {
+// listName set => list-detail mode (no category chips; swipe-up shows all places).
+function SpotsMap({ saves, listName, onRemove, onMove }) {
   const mapRef = useRef(null);
   const instRef = useRef(null);
   const clusterRef = useRef(null);
@@ -1925,12 +1943,12 @@ function SpotsMap({ saves }) {
   const filterLabel = CAT_LABEL[filter] || capitalise(filter);
   return (
     <div>
-      <div style={{ fontSize: "0.7rem", color: "#9b8f7a", marginBottom: 8 }}>{pts.length} spot{pts.length !== 1 ? "s" : ""} on the map · tap a pin for the card</div>
+      <div style={{ fontSize: "0.7rem", color: "#9b8f7a", marginBottom: 8 }}>{pts.length} {listName ? "place" : "spot"}{pts.length !== 1 ? "s" : ""} {listName ? `in ${listName}` : "on the map"} · tap a pin for the card</div>
       <div style={{ position: "relative" }}>
         {!loaded && <div style={{ height: 440, background: "#eef3ee", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", color: "#9b8f7a", fontSize: "0.82rem" }}>Loading map…</div>}
         <div ref={mapRef} style={{ height: 440, borderRadius: 16, overflow: "hidden", border: "1px solid #e6e0d4", display: loaded ? "block" : "none" }} />
 
-        {loaded && !selected && !sheetOpen && cats.length > 1 && (
+        {loaded && !listName && !selected && !sheetOpen && cats.length > 1 && (
           <div style={{ position: "absolute", left: 0, right: 0, bottom: 10, zIndex: 450, display: "flex", gap: 8, padding: "0 10px", overflowX: "auto" }}>
             <button onClick={() => { setFilter("all"); setSheetOpen(false); }} style={{ fontSize: "0.72rem", padding: "7px 13px", borderRadius: 100, whiteSpace: "nowrap", cursor: "pointer", border: "none", boxShadow: "0 2px 8px rgba(0,0,0,0.18)", flexShrink: 0, background: filter === "all" ? "#1c1c1a" : "#fff", color: filter === "all" ? "#fff" : "#1c1c1a", fontWeight: filter === "all" ? 600 : 500 }}>All</button>
             {cats.map(c => (
@@ -1941,31 +1959,33 @@ function SpotsMap({ saves }) {
           </div>
         )}
 
-        {loaded && !selected && !sheetOpen && filter !== "all" && filteredPts.length > 0 && (
+        {loaded && !selected && !sheetOpen && (listName || filter !== "all") && filteredPts.length > 0 && (
           <div
             onClick={() => setSheetOpen(true)}
             onTouchStart={(e) => { e.currentTarget._sy = e.touches[0].clientY; }}
             onTouchEnd={(e) => { const dy = (e.currentTarget._sy || 0) - e.changedTouches[0].clientY; if (dy > 30) setSheetOpen(true); }}
-            style={{ position: "absolute", left: 10, right: 10, bottom: 54, zIndex: 460, background: "#fff", borderRadius: 14, boxShadow: "0 4px 16px rgba(0,0,0,0.2)", padding: "12px 14px 10px", textAlign: "center", cursor: "pointer" }}>
+            style={{ position: "absolute", left: 10, right: 10, bottom: listName ? 10 : 54, zIndex: 460, background: "#fff", borderRadius: 14, boxShadow: "0 4px 16px rgba(0,0,0,0.2)", padding: "12px 14px 10px", textAlign: "center", cursor: "pointer" }}>
             <div style={{ position: "absolute", top: 6, left: "50%", transform: "translateX(-50%)", width: 34, height: 4, borderRadius: 2, background: "#ddd6c8" }} />
-            <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "#1c1c1a" }}>⌃ Swipe up for all {filteredPts.length} {filterLabel}</span>
+            <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "#1c1c1a" }}>⌃ Swipe up for all {filteredPts.length} {listName ? `place${filteredPts.length !== 1 ? "s" : ""}` : filterLabel}</span>
           </div>
         )}
 
-        {loaded && sheetOpen && filter !== "all" && (
+        {loaded && sheetOpen && (listName || filter !== "all") && (
           <div style={{ position: "absolute", inset: 0, zIndex: 600, background: "#fff", borderRadius: 16, display: "flex", flexDirection: "column", animation: "cardIn 0.25s ease" }}>
             <div
               onTouchStart={(e) => { e.currentTarget._sy = e.touches[0].clientY; }}
               onTouchEnd={(e) => { const dy = e.changedTouches[0].clientY - (e.currentTarget._sy || 0); if (dy > 40) setSheetOpen(false); }}
               style={{ padding: "12px 14px 10px", borderBottom: "1px solid #f0ebe2", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0, position: "relative" }}>
               <div style={{ position: "absolute", top: 5, left: "50%", transform: "translateX(-50%)", width: 34, height: 4, borderRadius: 2, background: "#ddd6c8" }} />
-              <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1rem", color: "#1c1c1a" }}>{filterLabel} ({filteredPts.length})</div>
+              <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1rem", color: "#1c1c1a" }}>{listName || filterLabel} ({filteredPts.length})</div>
               <button onClick={() => setSheetOpen(false)} style={{ border: "none", background: "#f5f0e8", borderRadius: "50%", width: 28, height: 28, cursor: "pointer", fontSize: "0.95rem", lineHeight: 1 }}>×</button>
             </div>
             <div style={{ overflowY: "auto", padding: "12px 12px 16px", flex: 1 }}>
               {filteredPts.map(s => (
-                <div key={s.id} style={{ borderRadius: 16, overflow: "hidden", boxShadow: "0 2px 10px rgba(0,0,0,0.1)", border: "1px solid #f0ebe2", background: "#fff", marginBottom: 14 }}>
+                <div key={s.id} style={{ position: "relative", borderRadius: 16, overflow: "hidden", boxShadow: "0 2px 10px rgba(0,0,0,0.1)", border: "1px solid #f0ebe2", background: "#fff", marginBottom: 14 }}>
+                  {onRemove && <button onClick={() => onRemove(s.id)} title="Delete" style={{ position: "absolute", top: 8, right: 8, zIndex: 3, width: 28, height: 28, borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.92)", cursor: "pointer", fontSize: "0.95rem", lineHeight: 1 }}>×</button>}
                   <BigSpotCard s={s} photo={s.photo_url} />
+                  {onMove && <div style={{ padding: "0 12px 12px", textAlign: "center" }}><button onClick={() => onMove(s)} style={{ border: "1px solid #e8e2d8", background: "#fff", borderRadius: 100, padding: "6px 14px", fontSize: "0.72rem", color: "#6b5e4e", fontWeight: 500, cursor: "pointer" }}>↪ Move to list</button></div>}
                 </div>
               ))}
             </div>
@@ -2766,7 +2786,7 @@ Return a JSON object with this exact structure:
       )}
 
       <div style={{ padding: "0 1.5rem 1rem" }}>
-        {saves.length > 0 && (
+        {saves.length > 0 && !openFolder && (
           <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
             {[["folders", "🗂 Lists"], ["map", "🗺 Map"], ["calendar", "📅 Calendar"]].map(([id, label]) => (
               <button key={id} onClick={() => { setSavedView(id); setOpenFolder(null); }}
@@ -2789,14 +2809,10 @@ Return a JSON object with this exact structure:
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               {folderNames.map(f => {
                 const items = grouped[f] || [];
-                const cover = items.find(s => s.photo_url)?.photo_url;
-                const emoji = CAT_EMOJI[String(items[0]?.category || "").toLowerCase()] || "📁";
                 return (
                   <div key={f} style={{ position: "relative", borderRadius: 16, overflow: "hidden", boxShadow: "0 2px 8px rgba(0,0,0,0.06)", background: "#fff" }}>
                     <div onClick={() => setOpenFolder(f)} style={{ cursor: "pointer" }}>
-                      <div style={{ height: 90, background: cover ? "#e9e4da" : "#3D5A80", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        {cover ? <img src={cover} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontSize: "2rem" }}>{emoji}</span>}
-                      </div>
+                      <ListCover items={items} height={150} />
                       <div style={{ padding: "10px 12px" }}>
                         <div style={{ fontSize: "0.84rem", fontWeight: 600, color: "#1c1c1a", paddingRight: 20, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f}</div>
                         <div style={{ fontSize: "0.68rem", color: "#9b8f7a" }}>{items.length} spot{items.length !== 1 ? "s" : ""}</div>
@@ -2823,17 +2839,9 @@ Return a JSON object with this exact structure:
               <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a" }}>{openFolder} ({folderSaves.length})</div>
               <button onClick={() => renameFolder(openFolder)} style={{ fontSize: "0.74rem", padding: "6px 12px", borderRadius: 100, border: "1.5px solid #e8e2d8", background: "#fff", color: "#6b5e4e", fontWeight: 500, cursor: "pointer" }}>✎ Rename</button>
             </div>
-            {folderSaves.map(s => (
-              <div key={s.id} style={{ position: "relative", borderRadius: 16, overflow: "hidden", boxShadow: "0 2px 10px rgba(0,0,0,0.1)", border: "1px solid #f0ebe2", background: "#fff", marginBottom: 14 }}>
-                <button onClick={() => removeSave(s.id)} title="Delete" style={{ position: "absolute", top: 8, right: 8, zIndex: 3, width: 28, height: 28, borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.92)", cursor: "pointer", fontSize: "0.95rem", lineHeight: 1 }}>×</button>
-                <BigSpotCard s={s} photo={s.photo_url} />
-                <div style={{ padding: "0 12px 12px", textAlign: "center" }}>
-                  <button onClick={() => setMovingSpot(s)} style={{ border: "1px solid #e8e2d8", background: "#fff", borderRadius: 100, padding: "6px 14px", fontSize: "0.72rem", color: "#6b5e4e", fontWeight: 500, cursor: "pointer" }}>↪ Move to list</button>
-                </div>
-              </div>
-            ))}
             {folderSaves.length === 0 && <div style={{ fontSize: "0.8rem", color: "#9b8f7a" }}>No spots in this list yet — pick it as the list when you save something.</div>}
-            {folderSaves.length > 0 && <button className="btn btn-teal" style={{ marginTop: "0.5rem" }} onClick={() => onBuildPlan(folderSaves)}>Build plan from {openFolder} ✦</button>}
+            {folderSaves.length > 0 && <SpotsMap key={"list-" + openFolder} saves={folderSaves} listName={openFolder} onRemove={removeSave} onMove={(s) => setMovingSpot(s)} />}
+            {folderSaves.length > 0 && <button className="btn btn-teal" style={{ marginTop: "0.75rem" }} onClick={() => onBuildPlan(folderSaves)}>Build plan from {openFolder} ✦</button>}
           </>
         )}
         {saves.length === 0 && preview.length === 0 && (
