@@ -383,8 +383,8 @@ const styles = `
   @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,700&display=swap');
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'DM Sans', -apple-system, sans-serif; background: #ffffff; color: #1c1c1a; min-height: 100vh; overflow-x: hidden; }
-  .app { max-width: 420px; margin: 0 auto; min-height: 100vh; background: #ffffff; padding-bottom: 80px; position: relative; }
+  body { font-family: 'DM Sans', -apple-system, sans-serif; background: #d1d4c7; color: #1c1c1a; min-height: 100vh; overflow-x: hidden; }
+  .app { max-width: 420px; margin: 0 auto; min-height: 100vh; background: #d1d4c7; padding-bottom: 80px; position: relative; }
 
   .shapes-wrap { position: absolute; top: 0; right: -20px; width: 220px; height: 260px; pointer-events: none; z-index: 0; }
   .shape-circle { position: absolute; border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden; animation: spin-cw 14s linear infinite; }
@@ -409,12 +409,12 @@ const styles = `
   .home-sub { font-size: 0.85rem; color: #6b5e4e; line-height: 1.5; position: relative; z-index: 1; max-width: 200px; }
   .home-cta { margin-top: 1.5rem; position: relative; z-index: 1; }
 
-  .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 420px; background: rgba(0,0,0,0.5); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-top: 1px solid rgba(255,255,255,0.12); display: flex; z-index: 100; padding-bottom: env(safe-area-inset-bottom); }
-  .nav-tab { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px 4px 8px; border: none; background: none; cursor: pointer; gap: 3px; transition: all 0.15s; }
-  .nav-tab-icon { font-size: 1.3rem; line-height: 1; transition: transform 0.2s; filter: grayscale(1) brightness(1.7) contrast(0.9); opacity: 0.7; }
-  .nav-tab.active .nav-tab-icon { transform: scale(1.15); opacity: 1; }
-  .nav-tab-label { font-family: 'DM Sans', sans-serif; font-size: 0.6rem; font-weight: 500; letter-spacing: 0.04em; color: rgba(255,255,255,0.55); text-transform: uppercase; transition: color 0.15s; }
-  .nav-tab.active .nav-tab-label { color: #fff; }
+  .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 420px; background: #fff; border-top: 1px solid #e8e2d8; display: flex; z-index: 100; padding-bottom: env(safe-area-inset-bottom); }
+  .nav-tab { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px 4px 8px; border: none; background: none; cursor: pointer; gap: 4px; transition: all 0.15s; }
+  .nav-tab-icon { display: flex; align-items: center; justify-content: center; line-height: 1; transition: transform 0.2s; color: #9b8f7a; }
+  .nav-tab.active .nav-tab-icon { transform: scale(1.1); color: #1c1c1a; }
+  .nav-tab-label { font-family: 'DM Sans', sans-serif; font-size: 0.6rem; font-weight: 500; letter-spacing: 0.04em; color: #b8ac9a; text-transform: uppercase; transition: color 0.15s; }
+  .nav-tab.active .nav-tab-label { color: #1c1c1a; }
   .nav-tab-dot { width: 4px; height: 4px; border-radius: 50%; background: #1B998B; opacity: 0; transition: opacity 0.15s; }
   .nav-tab.active .nav-tab-dot { opacity: 1; }
 
@@ -1754,6 +1754,20 @@ function notify(title, body) {
 }
 // Capitalise the first letter (for category labels shown across the app).
 function cap(s) { return s ? String(s).charAt(0).toUpperCase() + String(s).slice(1) : ""; }
+
+// Simple flat line icons for the bottom nav (inherit colour via currentColor).
+const NAV_ICON_PATHS = {
+  home: '<path d="M12 3l2.2 6.8H21l-5.4 4 2.1 6.7L12 16.4 6.3 20.5l2.1-6.7-5.4-4h6.8z"/>',
+  plans: '<rect x="8" y="3" width="8" height="4" rx="1"/><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><path d="M9 12h6"/><path d="M9 16h6"/>',
+  saved: '<path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>',
+  discover: '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
+  prefs: '<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8z"/>',
+  add: '<path d="M12 5v14M5 12h14"/>',
+  admin: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+};
+function NavIcon({ id }) {
+  return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{ __html: NAV_ICON_PATHS[id] || NAV_ICON_PATHS.saved }} />;
+}
 
 // Normalise a parsed category to one of the supported categories.
 const ALLOWED_CATEGORIES = ["restaurant", "bar", "cafe", "market", "experience", "outdoor", "museum", "gallery", "event", "nightlife"];
@@ -3334,7 +3348,7 @@ export default function App() {
             <button key={tab.id} className={"nav-tab" + (activeTab === tab.id ? " active" : "")}
               onClick={() => { setActiveTab(tab.id); if (tab.id !== "home") { setQuizStep(-1); setViewingPlan(null); } }}>
               <span className="nav-tab-icon" style={{ position: "relative" }}>
-                {tab.icon}
+                <NavIcon id={tab.id} />
                 {tab.badge > 0 && (
                   <span style={{ position: "absolute", top: -4, right: -6, background: "#E84855", color: "#fff", borderRadius: "50%", fontSize: "0.5rem", width: 14, height: 14, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>{tab.badge}</span>
                 )}
