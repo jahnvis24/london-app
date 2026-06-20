@@ -1142,7 +1142,7 @@ function DiscoverScreen({ preferences, dbVenues }) {
           </div>
         )}
         <div className="event-card-body">
-          <div className="event-card-cat" style={{ color: colour }}>{cat}</div>
+          <div className="event-card-cat" style={{ color: colour }}>{cap(cat)}</div>
           <div className="event-card-name">{v.name}</div>
           <div className="event-card-venue">{v.area || v.zone || "London"}</div>
           {v.comment && <div style={{ fontSize: "0.72rem", color: "#6b5e4e", marginTop: 4, lineHeight: 1.4 }}>{v.comment.length > 90 ? v.comment.slice(0, 90) + "..." : v.comment}</div>}
@@ -1619,7 +1619,7 @@ function AdminScreen({ onBadgeUpdate }) {
             <div key={item.id} className="admin-card">
               <div className="admin-card-name">{item.name}</div>
               <div className="admin-card-meta">
-                {item.category} · {item.area} · {item.price || "price unknown"}
+                {cap(item.category)} · {item.area} · {item.price || "price unknown"}
                 {item.google_rating && ` · ⭐ ${item.google_rating}`}
                 {item.is_event && item.event_start && ` · 📅 ${new Date(item.event_start).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`}
               </div>
@@ -1748,6 +1748,8 @@ function ensureNotifyPermission() {
 function notify(title, body) {
   try { if (typeof Notification !== "undefined" && Notification.permission === "granted") new Notification(title, { body, icon: "/favicon.svg" }); } catch (e) {}
 }
+// Capitalise the first letter (for category labels shown across the app).
+function cap(s) { return s ? String(s).charAt(0).toUpperCase() + String(s).slice(1) : ""; }
 
 // Map of saved spots — Yonder-style: white "coin" markers, clustering, bottom card.
 function SpotsMap({ saves }) {
@@ -1839,20 +1841,21 @@ function SpotsMap({ saves }) {
     }
   }, [loaded, filter]);
 
-  // Card image: show the Google Maps photo from the first instance (don't flash
-  // the stored screenshot/TikTok thumbnail first). Falls back to the stored photo
-  // only when there's no place id or the Google lookup fails.
+  // Card image: the stored photo_url is already the Google Maps photo (set at save
+  // time and backfilled below), so show it instantly — no fetch, no placeholder.
+  // Only fetch Google as a last resort if a spot somehow has no stored photo.
   useEffect(() => {
     if (!selected) { setCardPhoto(null); return; }
+    if (selected.photo_url) { setCardPhoto(selected.photo_url); return; }
     const pid = selected.google_place_id;
-    if (!pid) { setCardPhoto(selected.photo_url || null); return; }
+    if (!pid) { setCardPhoto(null); return; }
     if (photoCacheRef.current[pid]) { setCardPhoto(photoCacheRef.current[pid]); return; }
-    setCardPhoto(null); // neutral placeholder while the Google photo loads — no screenshot flash
+    setCardPhoto(null);
     let active = true;
     fetch("/api/saved-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool: "image", place_id: pid }) })
       .then(r => r.json())
-      .then(j => { if (!active) return; const url = j.found ? j.url : (selected.photo_url || null); if (j.found) photoCacheRef.current[pid] = j.url; setCardPhoto(url); })
-      .catch(() => { if (active) setCardPhoto(selected.photo_url || null); });
+      .then(j => { if (active && j.found) { photoCacheRef.current[pid] = j.url; setCardPhoto(j.url); } })
+      .catch(() => {});
     return () => { active = false; };
   }, [selected]);
 
@@ -2063,12 +2066,40 @@ function SavedScreen({ user, onBuildPlan }) {
 
   useEffect(() => { loadSaves(); }, []);
 
+  // One-time backfill: switch existing screenshot/TikTok/IG saves over to the
+  // Google Maps photo so thumbnails + cards are consistent and load instantly.
+  useEffect(() => {
+    if (!user?.id || !saves.length) return;
+    const doneKey = "cl_gphoto_done_" + user.id;
+    let done; try { done = new Set(JSON.parse(localStorage.getItem(doneKey) || "[]")); } catch { done = new Set(); }
+    const todo = saves.filter(s => s.google_place_id && ["screenshot", "tiktok", "instagram"].includes(s.source_type) && !done.has(s.id));
+    if (!todo.length) return;
+    let cancelled = false;
+    (async () => {
+      for (const s of todo) {
+        if (cancelled) break;
+        try {
+          const r = await fetch("/api/saved-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool: "image", place_id: s.google_place_id }) });
+          const j = await r.json();
+          if (j.found && j.url) {
+            await supabase.from("experiences").update({ photo_url: j.url }).eq("id", s.id).eq("user_id", user.id);
+            setSaves(prev => prev.map(x => x.id === s.id ? { ...x, photo_url: j.url } : x));
+          }
+        } catch { /* skip */ }
+        done.add(s.id);
+        try { localStorage.setItem(doneKey, JSON.stringify([...done])); } catch (e) {}
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [saves.length]);
+
   // Check URL params for share target
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const sharedText = params.get("text") || params.get("url") || "";
-    if (sharedText && sharedText.includes("tiktok.com")) {
-      setPasteUrl(sharedText);
+    if (sharedText && /tiktok\.com|instagram\.com/i.test(sharedText)) {
+      setMediaType(sharedText.includes("instagram.com") ? "instagram" : "tiktok");
+      setTextInput(sharedText);
       window.history.replaceState({}, "", "/");
     }
   }, []);
@@ -2300,16 +2331,20 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
   }
 
   async function resolvePhoto(d) {
-    try {
-      let body = null;
-      if (d._screenshot_b64) body = { image_base64: d._screenshot_b64, content_type: "image/jpeg" };
-      else if (d._cover_url) body = { image_url: d._cover_url };
-      else if (d.google_place_id) body = { place_id: d.google_place_id };
-      if (!body) return null;
-      const r = await fetch("/api/saved-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool: "image", ...body }) });
-      const j = await r.json();
-      return j.found ? j.url : null;
-    } catch { return null; }
+    // Prefer the Google Maps photo so the card + thumbnail match; fall back to the
+    // screenshot / TikTok cover only when Google has no photo.
+    const attempts = [];
+    if (d.google_place_id) attempts.push({ place_id: d.google_place_id });
+    if (d._screenshot_b64) attempts.push({ image_base64: d._screenshot_b64, content_type: "image/jpeg" });
+    if (d._cover_url) attempts.push({ image_url: d._cover_url });
+    for (const body of attempts) {
+      try {
+        const r = await fetch("/api/saved-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool: "image", ...body }) });
+        const j = await r.json();
+        if (j.found && j.url) return j.url;
+      } catch { /* try next source */ }
+    }
+    return null;
   }
 
   // Ensure a draft has a real venue thumbnail before it reaches the preview.
@@ -2531,7 +2566,7 @@ Return a JSON object with this exact structure:
             {onRemove && <button onClick={onRemove} style={{ border: "none", background: "none", color: "#b8ac9a", cursor: "pointer", fontSize: "1.1rem", lineHeight: 1, flexShrink: 0 }}>×</button>}
           </div>
           <div style={{ fontSize: "0.72rem", color: "#9b8f7a", marginTop: 2 }}>
-            {emoji} {cat}{v.zone ? ` · ${v.zone}` : ""}{v.area ? ` · ${v.area}` : ""}{v.google_rating ? ` · ⭐ ${v.google_rating}` : ""}{v.price ? ` · ${v.price}` : ""}
+            {emoji} {cap(cat)}{v.zone ? ` · ${v.zone}` : ""}{v.area ? ` · ${v.area}` : ""}{v.google_rating ? ` · ⭐ ${v.google_rating}` : ""}{v.price ? ` · ${v.price}` : ""}
           </div>
           {dateLabel && <div style={{ fontSize: "0.72rem", color: "#1B998B", marginTop: 3 }}>📅 {dateLabel}{v.event_time ? ` · 🕐 ${v.event_time}` : ""}</div>}
           {!dateLabel && v.event_time && <div style={{ fontSize: "0.72rem", color: "#1B998B", marginTop: 3 }}>🕐 {v.event_time}</div>}
