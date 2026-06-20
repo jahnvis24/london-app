@@ -427,7 +427,7 @@ const styles = `
   .btn:disabled { opacity: 0.25; cursor: not-allowed; }
   .btn:hover:not(:disabled) { opacity: 0.88; }
   .btn:active:not(:disabled) { transform: scale(0.99); }
-  .btn-teal { background: #ad2636; color: #ffffff; }
+  .btn-teal { background: #5c1119; color: #ffffff; }
   .btn-outline { width: 100%; padding: 13px; border-radius: 100px; border: 1.5px solid #ddd8ce; background: transparent; color: #4a4438; font-family: 'DM Sans', sans-serif; font-size: 0.85rem; cursor: pointer; margin-top: 0.6rem; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.15s; }
   .btn-outline:hover { border-color: #1c1c1a; color: #1c1c1a; }
   .btn-ghost { background: none; border: none; color: #9b8f7a; font-family: 'DM Sans', sans-serif; font-size: 0.82rem; cursor: pointer; padding: 1rem 1.5rem 0; display: flex; align-items: center; gap: 5px; }
@@ -2840,7 +2840,7 @@ Return a JSON object with this exact structure:
       <div style={{ padding: "0 1.5rem 1rem" }}>
         {saves.length > 0 && !openFolder && (
           <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-            {[["folders", "🗂 Lists"], ["map", "🗺 Map"], ["calendar", "📅 Calendar"]].map(([id, label]) => (
+            {[["folders", "Lists"], ["map", "Map"], ["calendar", "Calendar"]].map(([id, label]) => (
               <button key={id} onClick={() => { setSavedView(id); setOpenFolder(null); }}
                 style={{ fontSize: "0.74rem", padding: "6px 14px", borderRadius: 100, cursor: "pointer",
                   border: savedView === id ? "1.5px solid #1B998B" : "1.5px solid #e8e2d8",
