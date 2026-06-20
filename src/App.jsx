@@ -1782,6 +1782,30 @@ function googleMapsUrl(v) {
   return null;
 }
 
+// The big photo card used on the map (pin tap) AND in the swipe-up list — identical look.
+function BigSpotCard({ s, photo }) {
+  return (
+    <>
+      <div style={{ position: "relative", height: 175, background: "#e9e4da" }}>
+        {photo && <img src={photo} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+        <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.3)" }} />
+        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 18px" }}>
+          <div style={{ color: "rgba(255,255,255,0.9)", fontFamily: "'DM Serif Display', Georgia, serif", fontWeight: 400, fontSize: "1.55rem", textAlign: "center", lineHeight: 1.15, textShadow: "0 2px 14px rgba(0,0,0,0.55)" }}>{s.name}</div>
+        </div>
+      </div>
+      <div style={{ padding: "10px 12px 12px", textAlign: "center" }}>
+        <div style={{ fontSize: "0.76rem", color: "#6b5e4e" }}>
+          {cap(normaliseCategory(s.category))}{s.google_rating ? ` · ⭐ ${s.google_rating}` : ""}{s.area ? ` · ${s.area}` : ""}{s.price ? ` · ${s.price}` : ""}
+        </div>
+        <div style={{ display: "flex", gap: 14, justifyContent: "center", marginTop: 6 }}>
+          {s.source_url && (s.source_type === "tiktok" || s.source_type === "instagram") && <a href={s.source_url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} style={{ fontSize: "0.7rem", color: "#1B998B", fontWeight: 500 }}>{SOURCE_ICON[s.source_type] || "🔗"} View source ↗</a>}
+          {googleMapsUrl(s) && <a href={googleMapsUrl(s)} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} style={{ fontSize: "0.7rem", color: "#1B998B", fontWeight: 500 }}>📍 Google Maps</a>}
+        </div>
+      </div>
+    </>
+  );
+}
+
 // Map of saved spots — Yonder-style: white "coin" markers, clustering, bottom card.
 function SpotsMap({ saves }) {
   const mapRef = useRef(null);
@@ -1938,45 +1962,20 @@ function SpotsMap({ saves }) {
               <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1rem", color: "#1c1c1a" }}>{filterLabel} ({filteredPts.length})</div>
               <button onClick={() => setSheetOpen(false)} style={{ border: "none", background: "#f5f0e8", borderRadius: "50%", width: 28, height: 28, cursor: "pointer", fontSize: "0.95rem", lineHeight: 1 }}>×</button>
             </div>
-            <div style={{ overflowY: "auto", padding: "10px 12px", flex: 1 }}>
-              {filteredPts.map(s => {
-                const cat = normaliseCategory(s.category);
-                return (
-                  <div key={s.id} onClick={() => { setSelected(s); setSheetOpen(false); }} style={{ display: "flex", gap: 12, padding: 10, background: "#fff", border: "1px solid #f0ebe2", borderRadius: 12, marginBottom: 8, cursor: "pointer" }}>
-                    <div style={{ width: 56, height: 56, borderRadius: 10, overflow: "hidden", flexShrink: 0, background: s.photo_url ? "#e9e4da" : (CAT_COLOURS[cat] || "#3D5A80"), display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      {s.photo_url ? <img src={s.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontSize: "1.4rem" }}>{CAT_EMOJI[cat] || "✨"}</span>}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: "0.88rem", fontWeight: 600, color: "#1c1c1a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.name}</div>
-                      <div style={{ fontSize: "0.72rem", color: "#9b8f7a", marginTop: 2 }}>{capitalise(cat)}{s.zone ? ` · ${s.zone}` : ""}{s.area ? ` · ${s.area}` : ""}{s.google_rating ? ` · ⭐ ${s.google_rating}` : ""}</div>
-                      {s.price && <div style={{ fontSize: "0.68rem", color: "#b8ac9a", marginTop: 2 }}>{s.price}</div>}
-                    </div>
-                  </div>
-                );
-              })}
+            <div style={{ overflowY: "auto", padding: "12px 12px 16px", flex: 1 }}>
+              {filteredPts.map(s => (
+                <div key={s.id} style={{ borderRadius: 16, overflow: "hidden", boxShadow: "0 2px 10px rgba(0,0,0,0.1)", border: "1px solid #f0ebe2", background: "#fff", marginBottom: 14 }}>
+                  <BigSpotCard s={s} photo={s.photo_url} />
+                </div>
+              ))}
             </div>
           </div>
         )}
 
         {selected && (
           <div key={selected.id} style={{ position: "absolute", left: 10, right: 10, bottom: 10, zIndex: 500, borderRadius: 16, overflow: "hidden", boxShadow: "0 8px 28px rgba(0,0,0,0.28)", background: "#fff", animation: "cardSwap 0.2s ease-out" }}>
-            <div style={{ position: "relative", height: 175, background: "#e9e4da" }}>
-              {cardPhoto && <img src={cardPhoto} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
-              <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.3)" }} />
-              <button onClick={() => setSelected(null)} style={{ position: "absolute", top: 8, right: 8, width: 28, height: 28, borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.92)", cursor: "pointer", fontSize: "0.95rem", lineHeight: 1, zIndex: 2 }}>×</button>
-              <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 18px" }}>
-                <div style={{ color: "rgba(255,255,255,0.9)", fontFamily: "'DM Serif Display', Georgia, serif", fontWeight: 400, fontSize: "1.55rem", textAlign: "center", lineHeight: 1.15, textShadow: "0 2px 14px rgba(0,0,0,0.55)" }}>{selected.name}</div>
-              </div>
-            </div>
-            <div style={{ padding: "10px 12px 12px", textAlign: "center" }}>
-              <div style={{ fontSize: "0.76rem", color: "#6b5e4e" }}>
-                {capitalise(normaliseCategory(selected.category))}{selected.google_rating ? ` · ⭐ ${selected.google_rating}` : ""}{selected.area ? ` · ${selected.area}` : ""}{selected.price ? ` · ${selected.price}` : ""}
-              </div>
-              <div style={{ display: "flex", gap: 14, justifyContent: "center", marginTop: 6 }}>
-                {selected.source_url && (selected.source_type === "tiktok" || selected.source_type === "instagram") && <a href={selected.source_url} target="_blank" rel="noreferrer" style={{ fontSize: "0.7rem", color: "#1B998B", fontWeight: 500 }}>{SOURCE_ICON[selected.source_type] || "🔗"} View source ↗</a>}
-                {googleMapsUrl(selected) && <a href={googleMapsUrl(selected)} target="_blank" rel="noreferrer" style={{ fontSize: "0.7rem", color: "#1B998B", fontWeight: 500 }}>📍 Google Maps</a>}
-              </div>
-            </div>
+            <button onClick={() => setSelected(null)} style={{ position: "absolute", top: 8, right: 8, width: 28, height: 28, borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.92)", cursor: "pointer", fontSize: "0.95rem", lineHeight: 1, zIndex: 3 }}>×</button>
+            <BigSpotCard s={selected} photo={cardPhoto} />
           </div>
         )}
       </div>
