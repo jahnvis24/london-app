@@ -413,8 +413,8 @@ const styles = `
   .nav-tab { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px 4px 8px; border: none; background: none; cursor: pointer; gap: 4px; transition: all 0.15s; }
   .nav-tab-icon { display: flex; align-items: center; justify-content: center; line-height: 1; transition: transform 0.2s; color: #9b8f7a; }
   .nav-tab.active .nav-tab-icon { transform: scale(1.1); color: #1c1c1a; }
-  .nav-tab-label { font-family: 'DM Sans', sans-serif; font-size: 0.6rem; font-weight: 500; letter-spacing: 0.04em; color: #b8ac9a; text-transform: uppercase; transition: color 0.15s; }
-  .nav-tab.active .nav-tab-label { color: #1c1c1a; }
+  .nav-tab-label { font-family: 'DM Sans', sans-serif; font-size: 0.6rem; font-weight: 500; letter-spacing: 0.04em; color: #1c1c1a; text-transform: uppercase; transition: color 0.15s; }
+  .nav-tab.active .nav-tab-label { color: #1c1c1a; font-weight: 700; }
   .nav-tab-dot { width: 4px; height: 4px; border-radius: 50%; background: #1B998B; opacity: 0; transition: opacity 0.15s; }
   .nav-tab.active .nav-tab-dot { opacity: 1; }
 
