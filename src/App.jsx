@@ -1808,7 +1808,7 @@ function BigSpotCard({ s, photo }) {
         {photo && <img src={photo} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
         <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.3)" }} />
         <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 18px" }}>
-          <div style={{ color: "rgba(255,255,255,0.75)", fontFamily: "'DM Serif Display', Georgia, serif", fontWeight: 400, fontSize: "1.55rem", textAlign: "center", lineHeight: 1.15, textShadow: "0 2px 14px rgba(0,0,0,0.55)" }}>{s.name}</div>
+          <div style={{ color: "rgba(255,255,255,0.8)", fontFamily: "'DM Serif Display', Georgia, serif", fontWeight: 400, fontSize: "1.55rem", textAlign: "center", lineHeight: 1.15, textShadow: "0 2px 14px rgba(0,0,0,0.55)" }}>{s.name}</div>
         </div>
       </div>
       <div style={{ padding: "10px 12px 12px", textAlign: "center" }}>
@@ -2729,26 +2729,23 @@ Return a JSON object with this exact structure:
 
   // Shared "scoped" view: a sticky map of the given spots + the spots listed below
   // (tap a card to pan the map). Used for both an open list and a Map-tab category.
-  const renderSpotCards = (list) => list.map(s => (
-    <div key={s.id} style={{ position: "relative", borderRadius: 16, overflow: "hidden", boxShadow: "0 2px 10px rgba(0,0,0,0.1)", border: "1px solid #f0ebe2", background: "#fff", marginBottom: 14 }}>
-      <button onClick={() => removeSave(s.id)} title="Delete" style={{ position: "absolute", top: 8, right: 8, zIndex: 3, width: 28, height: 28, borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.92)", cursor: "pointer", fontSize: "0.95rem", lineHeight: 1 }}>×</button>
-      <div onClick={() => { setFocusSpot({ ...s, _focus: Date.now() }); window.scrollTo({ top: 0, behavior: "smooth" }); }} style={{ cursor: "pointer" }}>
-        <BigSpotCard s={s} photo={s.photo_url} />
-      </div>
-      <div style={{ padding: "0 12px 12px", textAlign: "center" }}>
-        <button onClick={() => setMovingSpot(s)} style={{ border: "1px solid #e8e2d8", background: "#fff", borderRadius: 100, padding: "6px 14px", fontSize: "0.72rem", color: "#6b5e4e", fontWeight: 500, cursor: "pointer" }}>↪ Move to list</button>
-      </div>
-    </div>
-  ));
-  const renderScoped = (scoped, label, keyId) => (
-    <>
-      {scoped.length > 0 && (
-        <div style={{ position: "sticky", top: 0, zIndex: 5, background: "#fff", paddingBottom: 8 }}>
-          <SpotsMap key={"scoped-" + keyId} saves={scoped} listName={label} focusSpot={focusSpot} />
+  // The places list as a sheet that scrolls UP OVER the (sticky) map behind it.
+  const renderSheet = (list, header) => (!list.length && !header) ? null : (
+    <div style={{ position: "relative", zIndex: 10, background: "#fff", borderRadius: "20px 20px 0 0", marginTop: -22, padding: "8px 0 14px", boxShadow: "0 -6px 18px rgba(0,0,0,0.12)" }}>
+      <div style={{ width: 40, height: 4, borderRadius: 2, background: "#ddd6c8", margin: "2px auto 12px" }} />
+      {header}
+      {list.map(s => (
+        <div key={s.id} style={{ position: "relative", borderRadius: 16, overflow: "hidden", boxShadow: "0 2px 10px rgba(0,0,0,0.08)", border: "1px solid #f0ebe2", background: "#fff", marginBottom: 14 }}>
+          <button onClick={() => removeSave(s.id)} title="Delete" style={{ position: "absolute", top: 8, right: 8, zIndex: 3, width: 28, height: 28, borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.92)", cursor: "pointer", fontSize: "0.95rem", lineHeight: 1 }}>×</button>
+          <div onClick={() => { setFocusSpot({ ...s, _focus: Date.now() }); window.scrollTo({ top: 0, behavior: "smooth" }); }} style={{ cursor: "pointer" }}>
+            <BigSpotCard s={s} photo={s.photo_url} />
+          </div>
+          <div style={{ padding: "0 12px 12px", textAlign: "center" }}>
+            <button onClick={() => setMovingSpot(s)} style={{ border: "1px solid #e8e2d8", background: "#fff", borderRadius: 100, padding: "6px 14px", fontSize: "0.72rem", color: "#6b5e4e", fontWeight: 500, cursor: "pointer" }}>↪ Move to list</button>
+          </div>
         </div>
-      )}
-      {renderSpotCards(scoped)}
-    </>
+      ))}
+    </div>
   );
 
   return (
@@ -2841,15 +2838,12 @@ Return a JSON object with this exact structure:
         )}
         {saves.length > 0 && savedView === "map" && (
           <>
-            <div style={{ position: "sticky", top: 0, zIndex: 5, background: "#fff", paddingBottom: 8 }}>
+            <div style={{ position: "sticky", top: 0, zIndex: 1 }}>
               <SpotsMap key="maptab" saves={saves} focusSpot={focusSpot} onCategory={setMapCat} />
             </div>
-            {mapCat && (
-              <>
-                <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a", margin: "0.5rem 0 0.75rem" }}>{CAT_LABEL[mapCat] || cap(mapCat)} ({scopeSaves.length})</div>
-                {renderSpotCards(scopeSaves)}
-              </>
-            )}
+            {mapCat && renderSheet(scopeSaves, (
+              <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a", padding: "0 0 12px" }}>{CAT_LABEL[mapCat] || cap(mapCat)} ({scopeSaves.length})</div>
+            ))}
           </>
         )}
         {saves.length > 0 && savedView === "calendar" && <SpotsCalendar saves={saves} />}
@@ -2888,12 +2882,18 @@ Return a JSON object with this exact structure:
         {saves.length > 0 && savedView === "folders" && openFolder && (
           <>
             <button className="btn-ghost" onClick={() => { setOpenFolder(null); setFocusSpot(null); }} style={{ marginBottom: "0.75rem" }}>← All lists</button>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "0 0 0.75rem" }}>
-              <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a" }}>{openFolder} ({folderSaves.length} place{folderSaves.length !== 1 ? "s" : ""})</div>
-              <button onClick={() => renameFolder(openFolder)} style={{ fontSize: "0.74rem", padding: "6px 12px", borderRadius: 100, border: "1.5px solid #e8e2d8", background: "#fff", color: "#6b5e4e", fontWeight: 500, cursor: "pointer" }}>✎ Rename</button>
-            </div>
+            {folderSaves.length > 0 && (
+              <div style={{ position: "sticky", top: 0, zIndex: 1 }}>
+                <SpotsMap key={"list-" + openFolder} saves={folderSaves} listName={openFolder} focusSpot={focusSpot} />
+              </div>
+            )}
             {folderSaves.length === 0 && <div style={{ fontSize: "0.8rem", color: "#9b8f7a" }}>No spots in this list yet — pick it as the list when you save something.</div>}
-            {renderScoped(folderSaves, openFolder, "list-" + openFolder)}
+            {folderSaves.length > 0 && renderSheet(folderSaves, (
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0 0 12px" }}>
+                <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a" }}>{openFolder} ({folderSaves.length} place{folderSaves.length !== 1 ? "s" : ""})</div>
+                <button onClick={() => renameFolder(openFolder)} style={{ fontSize: "0.74rem", padding: "6px 12px", borderRadius: 100, border: "1.5px solid #e8e2d8", background: "#fff", color: "#6b5e4e", fontWeight: 500, cursor: "pointer" }}>✎ Rename</button>
+              </div>
+            ))}
             {folderSaves.length > 0 && <button className="btn btn-teal" style={{ marginTop: "0.25rem" }} onClick={() => onBuildPlan(folderSaves)}>Build plan from {openFolder} ✦</button>}
           </>
         )}
