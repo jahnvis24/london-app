@@ -2005,7 +2005,7 @@ function SpotsMap({ saves, listName, focusSpot }) {
           </div>
         )}
 
-        {!listName && selected && (
+        {selected && (
           <div key={selected.id} style={{ position: "absolute", left: 10, right: 10, bottom: 10, zIndex: 500, borderRadius: 16, overflow: "hidden", boxShadow: "0 8px 28px rgba(0,0,0,0.28)", background: "#fff", animation: "cardSwap 0.2s ease-out" }}>
             <button onClick={() => setSelected(null)} style={{ position: "absolute", top: 8, right: 8, width: 28, height: 28, borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.92)", cursor: "pointer", fontSize: "0.95rem", lineHeight: 1, zIndex: 3 }}>×</button>
             <BigSpotCard s={selected} photo={cardPhoto} />
