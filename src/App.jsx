@@ -1779,7 +1779,7 @@ function SpotsMap({ saves }) {
     const map = L.map(mapRef.current, { center: [51.505, -0.09], zoom: 11, zoomControl: false });
     const mbToken = import.meta.env.VITE_MAPBOX_TOKEN;
     const base = mbToken
-      ? L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/512/{z}/{x}/{y}@2x?access_token=${mbToken}`, { tileSize: 512, zoomOffset: -1, maxZoom: 20, attribution: "© Mapbox © OpenStreetMap" })
+      ? L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}@2x?access_token=${mbToken}`, { maxZoom: 20, attribution: "© Mapbox © OpenStreetMap" })
       : L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", { subdomains: "abcd", attribution: "© OpenStreetMap, © CARTO", maxZoom: 20 });
     base.on("tileerror", (e) => console.error("[map] tile failed", e?.tile?.src || e));
     base.addTo(map);
@@ -1987,6 +1987,8 @@ function SavedScreen({ user, onBuildPlan }) {
   const [saveFolder, setSaveFolder] = useState(""); // "" = auto by category, "__new__" = create new
   const [newFolder, setNewFolder] = useState("");
   const [savedView, setSavedView] = useState("folders"); // folders | map | calendar
+  const [customFolders, setCustomFolders] = useState([]); // user-created (possibly empty) folders
+  const [menuFolder, setMenuFolder] = useState(null);
 
   // Auto-categorisation: map a venue category to its folder.
   const CATEGORY_FOLDER = { restaurant: "Restaurants", cafe: "Cafés", bar: "Bars", nightlife: "Nightlife", market: "Markets", outdoor: "Outdoor", museum: "Attractions", gallery: "Attractions", experience: "Attractions", event: "Events" };
@@ -2415,8 +2417,54 @@ Return a JSON object with this exact structure:
   }
 
   async function removeSave(id) {
-    await supabase.from("user_saves").delete().eq("id", id);
+    await supabase.from("experiences").delete().eq("id", id).eq("user_id", user.id);
     setSaves(prev => prev.filter(s => s.id !== id));
+  }
+
+  useEffect(() => {
+    if (!user?.id) return;
+    try { setCustomFolders(JSON.parse(localStorage.getItem("cl_folders_" + user.id) || "[]")); } catch { setCustomFolders([]); }
+  }, []);
+
+  function persistFolders(list) {
+    setCustomFolders(list);
+    try { localStorage.setItem("cl_folders_" + user.id, JSON.stringify(list)); } catch (e) {}
+  }
+
+  function createFolder() {
+    const name = (window.prompt("Name your new folder") || "").trim();
+    if (!name) return;
+    if (!customFolders.includes(name)) persistFolders([...customFolders, name]);
+    setSavedView("folders"); setOpenFolder(null);
+  }
+
+  async function renameFolder(oldName) {
+    setMenuFolder(null);
+    const name = (window.prompt("Rename folder", oldName) || "").trim();
+    if (!name || name === oldName) return;
+    const ids = (grouped[oldName] || []).map(s => s.id);
+    if (ids.length) {
+      const { error: e } = await supabase.from("experiences").update({ folder: name }).in("id", ids);
+      if (e) { setError("Rename failed: " + e.message); return; }
+    }
+    let list = customFolders.filter(f => f !== oldName);
+    if (customFolders.includes(oldName) && !list.includes(name)) list = [...list, name];
+    persistFolders(list);
+    if (openFolder === oldName) setOpenFolder(name);
+    await loadSaves();
+  }
+
+  async function deleteFolder(name) {
+    setMenuFolder(null);
+    const items = grouped[name] || [];
+    if (!window.confirm(items.length ? `Delete "${name}" and its ${items.length} spot${items.length !== 1 ? "s" : ""}? This can't be undone.` : `Delete folder "${name}"?`)) return;
+    if (items.length) {
+      const { error: e } = await supabase.from("experiences").delete().in("id", items.map(s => s.id)).eq("user_id", user.id);
+      if (e) { setError("Delete failed: " + e.message); return; }
+    }
+    persistFolders(customFolders.filter(f => f !== name));
+    if (openFolder === name) setOpenFolder(null);
+    await loadSaves();
   }
 
   if (loading) return <div className="loading"><div className="loading-ring" /><div className="loading-sub">Loading saves...</div></div>;
@@ -2465,7 +2513,7 @@ Return a JSON object with this exact structure:
   }
 
   const grouped = saves.reduce((acc, s) => { const f = s.folder || folderFor(s.category); (acc[f] = acc[f] || []).push(s); return acc; }, {});
-  const folderNames = Object.keys(grouped).sort();
+  const folderNames = [...new Set([...Object.keys(grouped), ...customFolders])].sort();
   const existingFolders = folderNames;
   const folderSaves = openFolder ? (grouped[openFolder] || []) : [];
 
@@ -2551,21 +2599,33 @@ Return a JSON object with this exact structure:
         {saves.length > 0 && savedView === "calendar" && <SpotsCalendar saves={saves} />}
         {saves.length > 0 && savedView === "folders" && !openFolder && (
           <>
-            <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a", margin: "0.5rem 0 0.75rem" }}>Your folders ({saves.length} spot{saves.length !== 1 ? "s" : ""})</div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "0.5rem 0 0.75rem" }}>
+              <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a" }}>Your folders ({saves.length} spot{saves.length !== 1 ? "s" : ""})</div>
+              <button onClick={createFolder} style={{ fontSize: "0.74rem", padding: "6px 12px", borderRadius: 100, border: "1.5px solid #1B998B", background: "#fff", color: "#1B998B", fontWeight: 600, cursor: "pointer" }}>+ New folder</button>
+            </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               {folderNames.map(f => {
-                const items = grouped[f];
+                const items = grouped[f] || [];
                 const cover = items.find(s => s.photo_url)?.photo_url;
                 const emoji = CAT_EMOJI[String(items[0]?.category || "").toLowerCase()] || "📁";
                 return (
-                  <div key={f} onClick={() => setOpenFolder(f)} style={{ cursor: "pointer", borderRadius: 16, overflow: "hidden", boxShadow: "0 2px 8px rgba(0,0,0,0.06)", background: "#fff" }}>
-                    <div style={{ height: 90, background: "#3D5A80", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      {cover ? <img src={cover} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontSize: "2rem" }}>{emoji}</span>}
+                  <div key={f} style={{ position: "relative", borderRadius: 16, overflow: "hidden", boxShadow: "0 2px 8px rgba(0,0,0,0.06)", background: "#fff" }}>
+                    <div onClick={() => setOpenFolder(f)} style={{ cursor: "pointer" }}>
+                      <div style={{ height: 90, background: "#3D5A80", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        {cover ? <img src={cover} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontSize: "2rem" }}>{emoji}</span>}
+                      </div>
+                      <div style={{ padding: "10px 12px" }}>
+                        <div style={{ fontSize: "0.84rem", fontWeight: 600, color: "#1c1c1a", paddingRight: 20, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f}</div>
+                        <div style={{ fontSize: "0.68rem", color: "#9b8f7a" }}>{items.length} spot{items.length !== 1 ? "s" : ""}</div>
+                      </div>
                     </div>
-                    <div style={{ padding: "10px 12px" }}>
-                      <div style={{ fontSize: "0.84rem", fontWeight: 600, color: "#1c1c1a" }}>{f}</div>
-                      <div style={{ fontSize: "0.68rem", color: "#9b8f7a" }}>{items.length} spot{items.length !== 1 ? "s" : ""}</div>
-                    </div>
+                    <button onClick={(e) => { e.stopPropagation(); setMenuFolder(menuFolder === f ? null : f); }} style={{ position: "absolute", top: 6, right: 6, width: 26, height: 26, borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.92)", cursor: "pointer", fontSize: "0.95rem", lineHeight: 1, boxShadow: "0 1px 4px rgba(0,0,0,0.25)" }}>⋯</button>
+                    {menuFolder === f && (
+                      <div style={{ position: "absolute", top: 34, right: 6, background: "#fff", borderRadius: 10, boxShadow: "0 4px 16px rgba(0,0,0,0.18)", overflow: "hidden", zIndex: 10, minWidth: 110 }}>
+                        <button onClick={() => renameFolder(f)} style={{ display: "block", width: "100%", textAlign: "left", padding: "9px 12px", border: "none", background: "#fff", cursor: "pointer", fontSize: "0.78rem", color: "#1c1c1a" }}>Rename</button>
+                        <button onClick={() => deleteFolder(f)} style={{ display: "block", width: "100%", textAlign: "left", padding: "9px 12px", border: "none", borderTop: "1px solid #f0ebe2", background: "#fff", cursor: "pointer", fontSize: "0.78rem", color: "#E84855" }}>Delete</button>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -2578,6 +2638,7 @@ Return a JSON object with this exact structure:
             <button className="btn-ghost" onClick={() => setOpenFolder(null)} style={{ marginBottom: "0.75rem" }}>← All folders</button>
             <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a", margin: "0 0 0.75rem" }}>{openFolder} ({folderSaves.length})</div>
             {folderSaves.map(s => <VenueCard key={s.id} v={s} onRemove={() => removeSave(s.id)} />)}
+            {folderSaves.length === 0 && <div style={{ fontSize: "0.8rem", color: "#9b8f7a" }}>No spots in this folder yet — pick it as the folder when you save something.</div>}
             {folderSaves.length > 0 && <button className="btn btn-teal" style={{ marginTop: "0.5rem" }} onClick={() => onBuildPlan(folderSaves)}>Build plan from {openFolder} ✦</button>}
           </>
         )}
