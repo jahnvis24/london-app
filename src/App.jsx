@@ -1740,6 +1740,14 @@ function coinIcon(inner, size = 36) {
   });
 }
 
+// Cross-tab "done" notifications (show even when the app isn't the active tab).
+function ensureNotifyPermission() {
+  try { if (typeof Notification !== "undefined" && Notification.permission === "default") Notification.requestPermission(); } catch (e) {}
+}
+function notify(title, body) {
+  try { if (typeof Notification !== "undefined" && Notification.permission === "granted") new Notification(title, { body, icon: "/favicon.svg" }); } catch (e) {}
+}
+
 // Map of saved spots — Yonder-style: white "coin" markers, clustering, bottom card.
 function SpotsMap({ saves }) {
   const mapRef = useRef(null);
@@ -1781,7 +1789,15 @@ function SpotsMap({ saves }) {
     const base = mbToken
       ? L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}@2x?access_token=${mbToken}`, { maxZoom: 20, attribution: "© Mapbox © OpenStreetMap" })
       : L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", { subdomains: "abcd", attribution: "© OpenStreetMap, © CARTO", maxZoom: 20 });
-    base.on("tileerror", (e) => console.error("[map] tile failed", e?.tile?.src || e));
+    let fellBack = false;
+    base.on("tileerror", () => {
+      if (mbToken && !fellBack) {
+        fellBack = true;
+        console.warn("[map] Mapbox tiles blocked/failing — falling back to CARTO");
+        try { map.removeLayer(base); } catch (e) {}
+        L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", { subdomains: "abcd", attribution: "© OpenStreetMap, © CARTO", maxZoom: 20 }).addTo(map);
+      }
+    });
     base.addTo(map);
 
     let cluster;
@@ -1989,9 +2005,10 @@ function SavedScreen({ user, onBuildPlan }) {
   const [savedView, setSavedView] = useState("folders"); // folders | map | calendar
   const [customFolders, setCustomFolders] = useState([]); // user-created (possibly empty) folders
   const [menuFolder, setMenuFolder] = useState(null);
+  const [movingSpot, setMovingSpot] = useState(null);
 
   // Auto-categorisation: map a venue category to its folder.
-  const CATEGORY_FOLDER = { restaurant: "Restaurants", cafe: "Cafés", bar: "Bars", nightlife: "Nightlife", market: "Markets", outdoor: "Outdoor", museum: "Attractions", gallery: "Attractions", experience: "Attractions", event: "Events" };
+  const CATEGORY_FOLDER = { restaurant: "Restaurants", cafe: "Cafés", bar: "Bars", nightlife: "Nightlife", market: "Markets", outdoor: "Outdoor", museum: "Museums", gallery: "Galleries", experience: "Experiences", event: "Events" };
   const folderFor = (cat) => CATEGORY_FOLDER[String(cat || "").toLowerCase()] || "Other";
 
   const MEDIA_TYPES = [
@@ -2246,6 +2263,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
 
   async function handleParse(files) {
     if (!user?.id) { setError("You're not signed in — please sign in to save."); return; }
+    ensureNotifyPermission();
     setParsing(true); setError(null);
     try {
       let drafts = [];
@@ -2267,6 +2285,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
       setPreview(prev => [...prev, ...drafts]);
       setTextInput("");
       setParseStatus("");
+      notify("Parsing done ✦", `${drafts.length} spot${drafts.length !== 1 ? "s" : ""} ready to review`);
     } catch (e) {
       console.error("[handleParse]", e);
       setError(e.message || "Couldn't parse that.");
@@ -2301,6 +2320,8 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
 
   async function saveAll() {
     if (!preview.length || !user?.id) return;
+    ensureNotifyPermission();
+    const total = preview.length;
     setSaving(true); setError(null);
     let savedCount = 0;
     try {
@@ -2309,7 +2330,9 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
         setParseStatus(`Saving ${i + 1} of ${preview.length}: ${d.name}...`);
         const photo_url = d.photo_url || await resolvePhoto(d);
         const chosen = saveFolder === "__new__" ? newFolder.trim() : saveFolder.trim();
-        const folder = chosen || folderFor(d.category);
+        // Auto = leave folder null so it always derives from the category tag (and
+        // auto-corrects if the category->folder mapping changes). Explicit pick stores it.
+        const folder = chosen || null;
         const row = {
           user_id: user.id,
           name: d.name, address: d.address, area: d.area, zone: d.zone || "Central",
@@ -2333,6 +2356,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
       setPreview([]);
       setSaveFolder(""); setNewFolder("");
       showSuccess(savedCount === 1 ? preview[0].name : `${savedCount} spots`);
+      notify("Saved to your collection ✨", savedCount === 1 ? `${preview[0].name} added` : `${savedCount} spots added`);
       await loadSaves();
     } catch (e) {
       console.error("[saveAll]", e);
@@ -2417,8 +2441,17 @@ Return a JSON object with this exact structure:
   }
 
   async function removeSave(id) {
+    if (!window.confirm("Are you sure you want to delete this spot? This can't be reversed.")) return;
     await supabase.from("experiences").delete().eq("id", id).eq("user_id", user.id);
     setSaves(prev => prev.filter(s => s.id !== id));
+  }
+
+  async function moveSpot(spot, target) {
+    const { error: e } = await supabase.from("experiences").update({ folder: target }).eq("id", spot.id).eq("user_id", user.id);
+    if (e) { setError("Move failed: " + e.message); return; }
+    if (target && !customFolders.includes(target) && !Object.keys(grouped).includes(target)) persistFolders([...customFolders, target]);
+    setMovingSpot(null);
+    await loadSaves();
   }
 
   useEffect(() => {
@@ -2473,7 +2506,7 @@ Return a JSON object with this exact structure:
   const fmtDate = (d) => { if (!d) return null; try { return new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short" }); } catch { return d; } };
   const current = MEDIA_TYPES.find(m => m.id === mediaType) || MEDIA_TYPES[0];
 
-  function VenueCard({ v, onRemove, draft }) {
+  function VenueCard({ v, onRemove, onMove, draft }) {
     const cat = (v.category || "experience").toLowerCase();
     const colour = CAT_COLOURS[cat] || "#3D5A80";
     const emoji = CAT_EMOJI[cat] || "✨";
@@ -2505,6 +2538,7 @@ Return a JSON object with this exact structure:
           )}
           <div style={{ display: "flex", gap: 10, marginTop: 6, alignItems: "center" }}>
             {v.source_url && <a href={v.source_url} target="_blank" rel="noreferrer" style={{ fontSize: "0.68rem", color: "#1B998B", fontWeight: 500 }}>{SOURCE_ICON[v.source_type] || "🔗"} View source ↗</a>}
+            {onMove && <button onClick={onMove} style={{ border: "none", background: "none", padding: 0, fontSize: "0.68rem", color: "#6b5e4e", fontWeight: 500, cursor: "pointer" }}>↪ Move</button>}
             {draft && !v._google_found && <span style={{ fontSize: "0.6rem", color: "#c98a3a" }}>⚠ not on Google</span>}
           </div>
         </div>
@@ -2637,7 +2671,7 @@ Return a JSON object with this exact structure:
           <>
             <button className="btn-ghost" onClick={() => setOpenFolder(null)} style={{ marginBottom: "0.75rem" }}>← All folders</button>
             <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a", margin: "0 0 0.75rem" }}>{openFolder} ({folderSaves.length})</div>
-            {folderSaves.map(s => <VenueCard key={s.id} v={s} onRemove={() => removeSave(s.id)} />)}
+            {folderSaves.map(s => <VenueCard key={s.id} v={s} onRemove={() => removeSave(s.id)} onMove={() => setMovingSpot(s)} />)}
             {folderSaves.length === 0 && <div style={{ fontSize: "0.8rem", color: "#9b8f7a" }}>No spots in this folder yet — pick it as the folder when you save something.</div>}
             {folderSaves.length > 0 && <button className="btn btn-teal" style={{ marginTop: "0.5rem" }} onClick={() => onBuildPlan(folderSaves)}>Build plan from {openFolder} ✦</button>}
           </>
@@ -2658,6 +2692,21 @@ Return a JSON object with this exact structure:
             <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.1rem", color: "#1c1c1a", marginBottom: 6 }}>Saved!</div>
             <div style={{ fontSize: "0.82rem", color: "#6b5e4e" }}>{successVenue}</div>
             <div style={{ fontSize: "0.72rem", color: "#9b8f7a", marginTop: 4 }}>Added to your collection</div>
+          </div>
+        </div>
+      )}
+
+      {movingSpot && (
+        <div onClick={() => setMovingSpot(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 1000, animation: "fadeIn 0.2s" }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: "1.25rem 1.25rem 1.5rem", width: "100%", maxWidth: 420, maxHeight: "70vh", overflowY: "auto", animation: "cardIn 0.25s ease" }}>
+            <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a", marginBottom: 4 }}>Move to folder</div>
+            <div style={{ fontSize: "0.78rem", color: "#9b8f7a", marginBottom: 12, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{movingSpot.name}</div>
+            <button onClick={() => moveSpot(movingSpot, null)} style={{ display: "block", width: "100%", textAlign: "left", padding: "11px 12px", borderRadius: 10, border: "1px solid #e8e2d8", background: "#fff", cursor: "pointer", fontSize: "0.82rem", color: "#1c1c1a", marginBottom: 8 }}>✨ Auto — by category</button>
+            {folderNames.map(f => (
+              <button key={f} onClick={() => moveSpot(movingSpot, f)} style={{ display: "block", width: "100%", textAlign: "left", padding: "11px 12px", borderRadius: 10, border: "1px solid #e8e2d8", background: "#fff", cursor: "pointer", fontSize: "0.82rem", color: "#1c1c1a", marginBottom: 8 }}>📁 {f}</button>
+            ))}
+            <button onClick={() => { const n = (window.prompt("New folder name") || "").trim(); if (n) moveSpot(movingSpot, n); }} style={{ display: "block", width: "100%", textAlign: "left", padding: "11px 12px", borderRadius: 10, border: "1.5px solid #1B998B", background: "#fff", cursor: "pointer", fontSize: "0.82rem", color: "#1B998B", fontWeight: 600, marginBottom: 8 }}>+ New folder…</button>
+            <button onClick={() => setMovingSpot(null)} style={{ display: "block", width: "100%", textAlign: "center", padding: "10px", borderRadius: 10, border: "none", background: "#f5f0e8", cursor: "pointer", fontSize: "0.8rem", color: "#6b5e4e" }}>Cancel</button>
           </div>
         </div>
       )}
