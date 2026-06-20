@@ -1714,6 +1714,10 @@ function PreferencesScreen({ preferences, setPreferences, user }) {
 const CAT_PIN_COLOURS = { restaurant: "#E84855", bar: "#6C4AB6", cafe: "#C57B3C", market: "#F0A500", experience: "#1B998B", outdoor: "#3D8B37", museum: "#3D5A80", gallery: "#9B59B6", nightlife: "#2D1B69", event: "#E8763A" };
 const CAT_PIN_EMOJI = { restaurant: "🍽️", bar: "🍸", cafe: "☕", market: "🛍️", experience: "✨", outdoor: "🌳", museum: "🏛️", gallery: "🎨", nightlife: "🌙", event: "🎫" };
 const CAT_LABEL = { restaurant: "Restaurants", cafe: "Cafés", bar: "Bars", nightlife: "Nightlife", market: "Markets", outdoor: "Outdoor", museum: "Museums", gallery: "Galleries", experience: "Experiences", event: "Events" };
+// Shared across SavedScreen + SpotsMap (card/list/folder visuals).
+const CAT_EMOJI = { restaurant: "\u{1F37D}️", bar: "\u{1F378}", cafe: "☕", market: "\u{1F6CD}️", experience: "✨", outdoor: "\u{1F33F}", museum: "\u{1F3DB}️", gallery: "\u{1F3A8}", nightlife: "\u{1F319}", event: "\u{1F3AB}" };
+const CAT_COLOURS = { restaurant: "#E84855", bar: "#2D1B69", cafe: "#F7B731", market: "#F0A500", experience: "#1B998B", outdoor: "#3D8B37", museum: "#3D5A80", gallery: "#9B59B6", nightlife: "#2D1B69", event: "#1B998B" };
+const SOURCE_ICON = { tiktok: "\u{1F3B5}", instagram: "\u{1F4F8}", screenshot: "\u{1F5BC}️", maps: "\u{1F4CD}", manual: "\u{1F4DD}" };
 
 // Flat black line icons (Lucide-style) for the white coin markers.
 const CAT_ICON_PATHS = {
@@ -1786,10 +1790,11 @@ function SpotsMap({ saves }) {
   const [loaded, setLoaded] = useState(false);
   const [selected, setSelected] = useState(null);
   const [filter, setFilter] = useState("all");
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [cardPhoto, setCardPhoto] = useState(null);
   const photoCacheRef = useRef({});
   const pts = saves.filter(s => s.lat && s.lng);
-  const cats = [...new Set(pts.map(s => String(s.category || "").toLowerCase()).filter(Boolean))].sort();
+  const cats = [...new Set(pts.map(s => normaliseCategory(s.category)))].sort();
 
   useEffect(() => {
     let cancelled = false;
@@ -1856,9 +1861,9 @@ function SpotsMap({ saves }) {
     const L = window.L;
     const cl = clusterRef.current;
     cl.clearLayers();
-    const shown = filter === "all" ? pts : pts.filter(s => String(s.category || "").toLowerCase() === filter);
+    const shown = filter === "all" ? pts : pts.filter(s => normaliseCategory(s.category) === filter);
     shown.forEach(s => {
-      const m = L.marker([s.lat, s.lng], { icon: coinIcon(catSvg(s.category)) });
+      const m = L.marker([s.lat, s.lng], { icon: coinIcon(catSvg(normaliseCategory(s.category))) });
       m.on("click", () => setSelected(s));
       cl.addLayer(m);
     });
@@ -1890,8 +1895,10 @@ function SpotsMap({ saves }) {
     <div className="empty-state"><div className="empty-emoji">🗺️</div><div className="empty-title">No mappable spots</div><div className="empty-sub">Saves with a known location show here. Most do once Google finds them.</div></div>
   );
 
-  const selCat = String(selected?.category || "").toLowerCase();
+  const selCat = normaliseCategory(selected?.category);
   const capitalise = (s) => s ? String(s).charAt(0).toUpperCase() + String(s).slice(1) : "";
+  const filteredPts = filter === "all" ? pts : pts.filter(s => normaliseCategory(s.category) === filter);
+  const filterLabel = CAT_LABEL[filter] || capitalise(filter);
   return (
     <div>
       <div style={{ fontSize: "0.7rem", color: "#9b8f7a", marginBottom: 8 }}>{pts.length} spot{pts.length !== 1 ? "s" : ""} on the map · tap a pin for the card</div>
@@ -1899,14 +1906,55 @@ function SpotsMap({ saves }) {
         {!loaded && <div style={{ height: 440, background: "#eef3ee", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", color: "#9b8f7a", fontSize: "0.82rem" }}>Loading map…</div>}
         <div ref={mapRef} style={{ height: 440, borderRadius: 16, overflow: "hidden", border: "1px solid #e6e0d4", display: loaded ? "block" : "none" }} />
 
-        {loaded && !selected && cats.length > 1 && (
+        {loaded && !selected && !sheetOpen && cats.length > 1 && (
           <div style={{ position: "absolute", left: 0, right: 0, bottom: 10, zIndex: 450, display: "flex", gap: 8, padding: "0 10px", overflowX: "auto" }}>
-            <button onClick={() => setFilter("all")} style={{ fontSize: "0.72rem", padding: "7px 13px", borderRadius: 100, whiteSpace: "nowrap", cursor: "pointer", border: "none", boxShadow: "0 2px 8px rgba(0,0,0,0.18)", flexShrink: 0, background: filter === "all" ? "#1c1c1a" : "#fff", color: filter === "all" ? "#fff" : "#1c1c1a", fontWeight: filter === "all" ? 600 : 500 }}>All</button>
+            <button onClick={() => { setFilter("all"); setSheetOpen(false); }} style={{ fontSize: "0.72rem", padding: "7px 13px", borderRadius: 100, whiteSpace: "nowrap", cursor: "pointer", border: "none", boxShadow: "0 2px 8px rgba(0,0,0,0.18)", flexShrink: 0, background: filter === "all" ? "#1c1c1a" : "#fff", color: filter === "all" ? "#fff" : "#1c1c1a", fontWeight: filter === "all" ? 600 : 500 }}>All</button>
             {cats.map(c => (
-              <button key={c} onClick={() => { setFilter(c); setSelected(null); }} style={{ fontSize: "0.72rem", padding: "7px 13px", borderRadius: 100, whiteSpace: "nowrap", cursor: "pointer", border: "none", boxShadow: "0 2px 8px rgba(0,0,0,0.18)", flexShrink: 0, background: filter === c ? "#1c1c1a" : "#fff", color: filter === c ? "#fff" : "#1c1c1a", fontWeight: filter === c ? 600 : 500 }}>
+              <button key={c} onClick={() => { setFilter(c); setSelected(null); setSheetOpen(false); }} style={{ fontSize: "0.72rem", padding: "7px 13px", borderRadius: 100, whiteSpace: "nowrap", cursor: "pointer", border: "none", boxShadow: "0 2px 8px rgba(0,0,0,0.18)", flexShrink: 0, background: filter === c ? "#1c1c1a" : "#fff", color: filter === c ? "#fff" : "#1c1c1a", fontWeight: filter === c ? 600 : 500 }}>
                 {CAT_LABEL[c] || capitalise(c)}
               </button>
             ))}
+          </div>
+        )}
+
+        {loaded && !selected && !sheetOpen && filter !== "all" && filteredPts.length > 0 && (
+          <div
+            onClick={() => setSheetOpen(true)}
+            onTouchStart={(e) => { e.currentTarget._sy = e.touches[0].clientY; }}
+            onTouchEnd={(e) => { const dy = (e.currentTarget._sy || 0) - e.changedTouches[0].clientY; if (dy > 30) setSheetOpen(true); }}
+            style={{ position: "absolute", left: 10, right: 10, bottom: 54, zIndex: 460, background: "#fff", borderRadius: 14, boxShadow: "0 4px 16px rgba(0,0,0,0.2)", padding: "12px 14px 10px", textAlign: "center", cursor: "pointer" }}>
+            <div style={{ position: "absolute", top: 6, left: "50%", transform: "translateX(-50%)", width: 34, height: 4, borderRadius: 2, background: "#ddd6c8" }} />
+            <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "#1c1c1a" }}>⌃ Swipe up for all {filteredPts.length} {filterLabel}</span>
+          </div>
+        )}
+
+        {loaded && sheetOpen && filter !== "all" && (
+          <div style={{ position: "absolute", inset: 0, zIndex: 600, background: "#fff", borderRadius: 16, display: "flex", flexDirection: "column", animation: "cardIn 0.25s ease" }}>
+            <div
+              onTouchStart={(e) => { e.currentTarget._sy = e.touches[0].clientY; }}
+              onTouchEnd={(e) => { const dy = e.changedTouches[0].clientY - (e.currentTarget._sy || 0); if (dy > 40) setSheetOpen(false); }}
+              style={{ padding: "12px 14px 10px", borderBottom: "1px solid #f0ebe2", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0, position: "relative" }}>
+              <div style={{ position: "absolute", top: 5, left: "50%", transform: "translateX(-50%)", width: 34, height: 4, borderRadius: 2, background: "#ddd6c8" }} />
+              <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1rem", color: "#1c1c1a" }}>{filterLabel} ({filteredPts.length})</div>
+              <button onClick={() => setSheetOpen(false)} style={{ border: "none", background: "#f5f0e8", borderRadius: "50%", width: 28, height: 28, cursor: "pointer", fontSize: "0.95rem", lineHeight: 1 }}>×</button>
+            </div>
+            <div style={{ overflowY: "auto", padding: "10px 12px", flex: 1 }}>
+              {filteredPts.map(s => {
+                const cat = normaliseCategory(s.category);
+                return (
+                  <div key={s.id} onClick={() => { setSelected(s); setSheetOpen(false); }} style={{ display: "flex", gap: 12, padding: 10, background: "#fff", border: "1px solid #f0ebe2", borderRadius: 12, marginBottom: 8, cursor: "pointer" }}>
+                    <div style={{ width: 56, height: 56, borderRadius: 10, overflow: "hidden", flexShrink: 0, background: s.photo_url ? "#e9e4da" : (CAT_COLOURS[cat] || "#3D5A80"), display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      {s.photo_url ? <img src={s.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontSize: "1.4rem" }}>{CAT_EMOJI[cat] || "✨"}</span>}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: "0.88rem", fontWeight: 600, color: "#1c1c1a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.name}</div>
+                      <div style={{ fontSize: "0.72rem", color: "#9b8f7a", marginTop: 2 }}>{capitalise(cat)}{s.zone ? ` · ${s.zone}` : ""}{s.area ? ` · ${s.area}` : ""}{s.google_rating ? ` · ⭐ ${s.google_rating}` : ""}</div>
+                      {s.price && <div style={{ fontSize: "0.68rem", color: "#b8ac9a", marginTop: 2 }}>{s.price}</div>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 
@@ -1922,7 +1970,7 @@ function SpotsMap({ saves }) {
             </div>
             <div style={{ padding: "10px 12px 12px", textAlign: "center" }}>
               <div style={{ fontSize: "0.76rem", color: "#6b5e4e" }}>
-                {capitalise(selected.category)}{selected.google_rating ? ` · ⭐ ${selected.google_rating}` : ""}{selected.area ? ` · ${selected.area}` : ""}{selected.price ? ` · ${selected.price}` : ""}
+                {capitalise(normaliseCategory(selected.category))}{selected.google_rating ? ` · ⭐ ${selected.google_rating}` : ""}{selected.area ? ` · ${selected.area}` : ""}{selected.price ? ` · ${selected.price}` : ""}
               </div>
               <div style={{ display: "flex", gap: 14, justifyContent: "center", marginTop: 6 }}>
                 {selected.source_url && (selected.source_type === "tiktok" || selected.source_type === "instagram") && <a href={selected.source_url} target="_blank" rel="noreferrer" style={{ fontSize: "0.7rem", color: "#1B998B", fontWeight: 500 }}>{SOURCE_ICON[selected.source_type] || "🔗"} View source ↗</a>}
@@ -2044,6 +2092,10 @@ function SavedScreen({ user, onBuildPlan }) {
   const [customFolders, setCustomFolders] = useState([]); // user-created (possibly empty) folders
   const [menuFolder, setMenuFolder] = useState(null);
   const [movingSpot, setMovingSpot] = useState(null);
+  const [captureOpen, setCaptureOpen] = useState(false); // collapse the "add a spot" controls by default
+
+  // Collapse the capture controls whenever the user switches Folders/Map/Calendar.
+  useEffect(() => { setCaptureOpen(false); }, [savedView]);
 
   // Auto-categorisation: map a venue category to its folder.
   const CATEGORY_FOLDER = { restaurant: "Restaurants", cafe: "Cafés", bar: "Bars", nightlife: "Nightlife", market: "Markets", outdoor: "Outdoor", museum: "Museums", gallery: "Galleries", experience: "Experiences", event: "Events" };
@@ -2082,8 +2134,6 @@ function SavedScreen({ user, onBuildPlan }) {
     setTimeout(() => setSuccessVenue(null), 2200);
   }
 
-  const CAT_EMOJI = { restaurant: "\u{1F37D}️", bar: "\u{1F378}", cafe: "☕", market: "\u{1F6CD}️", experience: "✨", outdoor: "\u{1F33F}", museum: "\u{1F3DB}️", gallery: "\u{1F3A8}", nightlife: "\u{1F319}", event: "\u{1F3AB}" };
-  const CAT_COLOURS = { restaurant: "#E84855", bar: "#2D1B69", cafe: "#F7B731", market: "#F0A500", experience: "#1B998B", outdoor: "#3D8B37", museum: "#3D5A80", gallery: "#9B59B6", nightlife: "#2D1B69", event: "#1B998B" };
 
   async function loadSaves() {
     setLoading(true);
@@ -2443,7 +2493,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
       }
       setParseStatus("");
       setPreview([]);
-      setSaveFolder(""); setNewFolder("");
+      setSaveFolder(""); setNewFolder(""); setCaptureOpen(false);
       showSuccess(savedCount === 1 ? preview[0].name : `${savedCount} spots`);
       notify("Saved to your collection ✨", savedCount === 1 ? `${preview[0].name} added` : `${savedCount} spots added`);
       await loadSaves();
@@ -2651,6 +2701,15 @@ Return a JSON object with this exact structure:
       <div style={{ padding: "0 1.5rem 1rem" }}>
         {error && <div className="err" style={{ marginBottom: "0.75rem" }}>{error}</div>}
 
+        {!captureOpen && (
+          <button onClick={() => setCaptureOpen(true)} className="btn btn-teal" style={{ width: "100%" }}>+ Add or save a new spot</button>
+        )}
+
+        {captureOpen && (<>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+          <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "#1c1c1a" }}>Add a spot</div>
+          <button onClick={() => setCaptureOpen(false)} style={{ border: "none", background: "none", color: "#9b8f7a", cursor: "pointer", fontSize: "0.78rem" }}>Hide ✕</button>
+        </div>
         <div style={{ display: "flex", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
           {MEDIA_TYPES.map(m => (
             <button key={m.id} onClick={() => { setMediaType(m.id); setError(null); }} disabled={parsing || saving}
@@ -2683,6 +2742,7 @@ Return a JSON object with this exact structure:
         )}
 
         {mediaType === "bulk" && <div style={{ fontSize: "0.66rem", color: "#b8ac9a", marginTop: 6 }}>One per line. Google Maps links are resolved; plain place names are looked up on Google. Great for importing a whole list.</div>}
+        </>)}
 
         {(parsing || saving) && parseStatus && <div style={{ fontSize: "0.75rem", color: "#1B998B", marginTop: 8 }}>{parseStatus}</div>}
       </div>
