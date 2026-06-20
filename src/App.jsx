@@ -1826,7 +1826,7 @@ function BigSpotCard({ s, photo }) {
 
 // Map of saved spots — Yonder-style: white "coin" markers, clustering, bottom card.
 // listName set => list-detail mode (no category chips; swipe-up shows all places).
-function SpotsMap({ saves, listName, focusSpot }) {
+function SpotsMap({ saves, listName, focusSpot, onCategory }) {
   const mapRef = useRef(null);
   const instRef = useRef(null);
   const clusterRef = useRef(null);
@@ -1954,7 +1954,7 @@ function SpotsMap({ saves, listName, focusSpot }) {
   const capitalise = (s) => s ? String(s).charAt(0).toUpperCase() + String(s).slice(1) : "";
   const filteredPts = filter === "all" ? pts : pts.filter(s => normaliseCategory(s.category) === filter);
   const filterLabel = CAT_LABEL[filter] || capitalise(filter);
-  const mapH = listName ? 300 : 440;
+  const mapH = (listName || onCategory) ? 320 : 440;
   return (
     <div>
       <div style={{ fontSize: "0.7rem", color: "#9b8f7a", marginBottom: 8 }}>{pts.length} {listName ? "place" : "spot"}{pts.length !== 1 ? "s" : ""} {listName ? `in ${listName}` : "on the map"} · tap a pin for the card</div>
@@ -1965,16 +1965,16 @@ function SpotsMap({ saves, listName, focusSpot }) {
 
         {loaded && !listName && !selected && !sheetOpen && cats.length > 1 && (
           <div style={{ position: "absolute", left: 0, right: 0, bottom: 10, zIndex: 450, display: "flex", gap: 8, padding: "0 10px", overflowX: "auto" }}>
-            <button onClick={() => { setFilter("all"); setSheetOpen(false); }} style={{ fontSize: "0.72rem", padding: "7px 13px", borderRadius: 100, whiteSpace: "nowrap", cursor: "pointer", border: "none", boxShadow: "0 2px 8px rgba(0,0,0,0.18)", flexShrink: 0, background: filter === "all" ? "#1c1c1a" : "#fff", color: filter === "all" ? "#fff" : "#1c1c1a", fontWeight: filter === "all" ? 600 : 500 }}>All</button>
+            <button onClick={() => { setFilter("all"); setSheetOpen(false); setSelected(null); onCategory && onCategory(""); }} style={{ fontSize: "0.72rem", padding: "7px 13px", borderRadius: 100, whiteSpace: "nowrap", cursor: "pointer", border: "none", boxShadow: "0 2px 8px rgba(0,0,0,0.18)", flexShrink: 0, background: filter === "all" ? "#1c1c1a" : "#fff", color: filter === "all" ? "#fff" : "#1c1c1a", fontWeight: filter === "all" ? 600 : 500 }}>All</button>
             {cats.map(c => (
-              <button key={c} onClick={() => { setFilter(c); setSelected(null); setSheetOpen(false); }} style={{ fontSize: "0.72rem", padding: "7px 13px", borderRadius: 100, whiteSpace: "nowrap", cursor: "pointer", border: "none", boxShadow: "0 2px 8px rgba(0,0,0,0.18)", flexShrink: 0, background: filter === c ? "#1c1c1a" : "#fff", color: filter === c ? "#fff" : "#1c1c1a", fontWeight: filter === c ? 600 : 500 }}>
+              <button key={c} onClick={() => { setFilter(c); setSelected(null); setSheetOpen(false); onCategory && onCategory(c); }} style={{ fontSize: "0.72rem", padding: "7px 13px", borderRadius: 100, whiteSpace: "nowrap", cursor: "pointer", border: "none", boxShadow: "0 2px 8px rgba(0,0,0,0.18)", flexShrink: 0, background: filter === c ? "#1c1c1a" : "#fff", color: filter === c ? "#fff" : "#1c1c1a", fontWeight: filter === c ? 600 : 500 }}>
                 {CAT_LABEL[c] || capitalise(c)}
               </button>
             ))}
           </div>
         )}
 
-        {loaded && !listName && !selected && !sheetOpen && filter !== "all" && filteredPts.length > 0 && (
+        {loaded && !listName && !onCategory && !selected && !sheetOpen && filter !== "all" && filteredPts.length > 0 && (
           <div
             onClick={() => setSheetOpen(true)}
             onTouchStart={(e) => { e.currentTarget._sy = e.touches[0].clientY; }}
@@ -1985,7 +1985,7 @@ function SpotsMap({ saves, listName, focusSpot }) {
           </div>
         )}
 
-        {loaded && !listName && sheetOpen && filter !== "all" && (
+        {loaded && !listName && !onCategory && sheetOpen && filter !== "all" && (
           <div style={{ position: "absolute", inset: 0, zIndex: 600, background: "#fff", borderRadius: 16, display: "flex", flexDirection: "column", animation: "cardIn 0.25s ease" }}>
             <div
               onTouchStart={(e) => { e.currentTarget._sy = e.touches[0].clientY; }}
@@ -2729,6 +2729,17 @@ Return a JSON object with this exact structure:
 
   // Shared "scoped" view: a sticky map of the given spots + the spots listed below
   // (tap a card to pan the map). Used for both an open list and a Map-tab category.
+  const renderSpotCards = (list) => list.map(s => (
+    <div key={s.id} style={{ position: "relative", borderRadius: 16, overflow: "hidden", boxShadow: "0 2px 10px rgba(0,0,0,0.1)", border: "1px solid #f0ebe2", background: "#fff", marginBottom: 14 }}>
+      <button onClick={() => removeSave(s.id)} title="Delete" style={{ position: "absolute", top: 8, right: 8, zIndex: 3, width: 28, height: 28, borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.92)", cursor: "pointer", fontSize: "0.95rem", lineHeight: 1 }}>×</button>
+      <div onClick={() => { setFocusSpot({ ...s, _focus: Date.now() }); window.scrollTo({ top: 0, behavior: "smooth" }); }} style={{ cursor: "pointer" }}>
+        <BigSpotCard s={s} photo={s.photo_url} />
+      </div>
+      <div style={{ padding: "0 12px 12px", textAlign: "center" }}>
+        <button onClick={() => setMovingSpot(s)} style={{ border: "1px solid #e8e2d8", background: "#fff", borderRadius: 100, padding: "6px 14px", fontSize: "0.72rem", color: "#6b5e4e", fontWeight: 500, cursor: "pointer" }}>↪ Move to list</button>
+      </div>
+    </div>
+  ));
   const renderScoped = (scoped, label, keyId) => (
     <>
       {scoped.length > 0 && (
@@ -2736,17 +2747,7 @@ Return a JSON object with this exact structure:
           <SpotsMap key={"scoped-" + keyId} saves={scoped} listName={label} focusSpot={focusSpot} />
         </div>
       )}
-      {scoped.map(s => (
-        <div key={s.id} style={{ position: "relative", borderRadius: 16, overflow: "hidden", boxShadow: "0 2px 10px rgba(0,0,0,0.1)", border: "1px solid #f0ebe2", background: "#fff", marginBottom: 14 }}>
-          <button onClick={() => removeSave(s.id)} title="Delete" style={{ position: "absolute", top: 8, right: 8, zIndex: 3, width: 28, height: 28, borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.92)", cursor: "pointer", fontSize: "0.95rem", lineHeight: 1 }}>×</button>
-          <div onClick={() => { setFocusSpot({ ...s, _focus: Date.now() }); window.scrollTo({ top: 0, behavior: "smooth" }); }} style={{ cursor: "pointer" }}>
-            <BigSpotCard s={s} photo={s.photo_url} />
-          </div>
-          <div style={{ padding: "0 12px 12px", textAlign: "center" }}>
-            <button onClick={() => setMovingSpot(s)} style={{ border: "1px solid #e8e2d8", background: "#fff", borderRadius: 100, padding: "6px 14px", fontSize: "0.72rem", color: "#6b5e4e", fontWeight: 500, cursor: "pointer" }}>↪ Move to list</button>
-          </div>
-        </div>
-      ))}
+      {renderSpotCards(scoped)}
     </>
   );
 
@@ -2840,16 +2841,15 @@ Return a JSON object with this exact structure:
         )}
         {saves.length > 0 && savedView === "map" && (
           <>
-            {mapCats.length > 1 && (
-              <div style={{ display: "flex", gap: 8, overflowX: "auto", marginBottom: 10 }}>
-                <button onClick={() => { setMapCat(""); setFocusSpot(null); }} style={{ fontSize: "0.74rem", padding: "6px 13px", borderRadius: 100, whiteSpace: "nowrap", cursor: "pointer", border: "none", flexShrink: 0, background: !mapCat ? "#1c1c1a" : "#fff", color: !mapCat ? "#fff" : "#1c1c1a", fontWeight: !mapCat ? 600 : 500, boxShadow: "0 1px 4px rgba(0,0,0,0.12)" }}>All</button>
-                {mapCats.map(c => (
-                  <button key={c} onClick={() => { setMapCat(c); setFocusSpot(null); }} style={{ fontSize: "0.74rem", padding: "6px 13px", borderRadius: 100, whiteSpace: "nowrap", cursor: "pointer", border: "none", flexShrink: 0, background: mapCat === c ? "#1c1c1a" : "#fff", color: mapCat === c ? "#fff" : "#1c1c1a", fontWeight: mapCat === c ? 600 : 500, boxShadow: "0 1px 4px rgba(0,0,0,0.12)" }}>{CAT_LABEL[c] || cap(c)}</button>
-                ))}
-              </div>
+            <div style={{ position: "sticky", top: 0, zIndex: 5, background: "#fff", paddingBottom: 8 }}>
+              <SpotsMap key="maptab" saves={saves} focusSpot={focusSpot} onCategory={setMapCat} />
+            </div>
+            {mapCat && (
+              <>
+                <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a", margin: "0.5rem 0 0.75rem" }}>{CAT_LABEL[mapCat] || cap(mapCat)} ({scopeSaves.length})</div>
+                {renderSpotCards(scopeSaves)}
+              </>
             )}
-            <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a", margin: "0 0 0.75rem" }}>{mapCat ? (CAT_LABEL[mapCat] || cap(mapCat)) : "All spots"} ({scopeSaves.length})</div>
-            {renderScoped(scopeSaves, mapCat ? (CAT_LABEL[mapCat] || cap(mapCat)) : "All spots", "map-" + mapCat)}
           </>
         )}
         {saves.length > 0 && savedView === "calendar" && <SpotsCalendar saves={saves} />}
