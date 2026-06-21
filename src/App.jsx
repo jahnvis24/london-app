@@ -391,7 +391,7 @@ const styles = `
   .shape-teal { width: 130px; height: 130px; background: #726A4E; top: 0; right: 40px; animation-duration: 16s; }
   .shape-yellow { width: 160px; height: 160px; background: #DD4124; top: 80px; right: -10px; animation-duration: 20s; }
   .shape-cream { width: 80px; height: 80px; background: #F7EFD4; top: 150px; right: 140px; animation-duration: 12s; }
-  .inner-oval { width: 56px; height: 32px; background: #B8A9D9; border-radius: 50%; animation: spin-cw 8s linear infinite; }
+  .inner-oval { width: 56px; height: 32px; background: #DFEF87; border-radius: 50%; animation: spin-cw 8s linear infinite; }
   .inner-starburst { animation: spin-cw 6s linear infinite; }
   .inner-star4 { animation: spin-cw 10s linear infinite; }
   @keyframes spin-cw { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
@@ -598,7 +598,7 @@ function DecorativeShapes() {
       </div>
       <div className="shape-circle shape-cream">
         <svg className="inner-star4" width="40" height="40" viewBox="0 0 40 40">
-          <path fill="#F0A500" d="M20 2 C20 2 22 14 28 20 C22 26 20 38 20 38 C20 38 18 26 12 20 C18 14 20 2 20 2Z M2 20 C2 20 14 22 20 28 C26 22 38 20 38 20 C38 20 26 18 20 12 C14 18 2 20 2 20Z" />
+          <path fill="#9B892F" d="M20 2 C20 2 22 14 28 20 C22 26 20 38 20 38 C20 38 18 26 12 20 C18 14 20 2 20 2Z M2 20 C2 20 14 22 20 28 C26 22 38 20 38 20 C38 20 26 18 20 12 C14 18 2 20 2 20Z" />
         </svg>
       </div>
     </div>
@@ -1118,7 +1118,7 @@ function DiscoverScreen({ preferences, dbVenues }) {
   const [celebFilter, setCelebFilter] = useState("All");
 
   const CATEGORY_EMOJI = { restaurant: "🍽️", bar: "🍸", cafe: "☕", market: "🛍️", experience: "✨", outdoor: "🌿", museum: "🏛️", gallery: "🎨", nightlife: "🌙", event: "🎫" };
-  const CATEGORY_COLOURS = { restaurant: "#E84855", bar: "#2D1B69", cafe: "#DD4124", market: "#F0A500", experience: "#726A4E", outdoor: "#3D8B37", museum: "#3D5A80", gallery: "#9B59B6", nightlife: "#2D1B69", event: "#726A4E" };
+  const CATEGORY_COLOURS = { restaurant: "#DD4124", bar: "#4B342F", cafe: "#DD4124", market: "#9B892F", experience: "#726A4E", outdoor: "#726A4E", museum: "#A1947D", gallery: "#A1947D", nightlife: "#4B342F", event: "#726A4E" };
 
   const today = new Date().toISOString().split("T")[0];
   const events = dbVenues.filter(v => v.is_event && v.event_start && (!v.event_end || v.event_end >= today))
@@ -1139,7 +1139,7 @@ function DiscoverScreen({ preferences, dbVenues }) {
 
   const renderCard = (v, showDate) => {
     const cat = (v.category || "experience").toLowerCase();
-    const colour = CATEGORY_COLOURS[cat] || "#3D5A80";
+    const colour = CATEGORY_COLOURS[cat] || "#A1947D";
     const emoji = CATEGORY_EMOJI[cat] || "✨";
     return (
       <a key={v.id} className="event-card" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(v.name + " London")}`} target="_blank" rel="noreferrer" style={{ cursor: "pointer", textDecoration: "none", color: "inherit", display: "block" }}>
@@ -1722,12 +1722,12 @@ function PreferencesScreen({ preferences, setPreferences, user }) {
   );
 }
 
-const CAT_PIN_COLOURS = { restaurant: "#E84855", bar: "#6C4AB6", cafe: "#C57B3C", market: "#F0A500", experience: "#726A4E", outdoor: "#3D8B37", museum: "#3D5A80", gallery: "#9B59B6", nightlife: "#2D1B69", event: "#E8763A" };
+const CAT_PIN_COLOURS = { restaurant: "#DD4124", bar: "#4B342F", cafe: "#9B892F", market: "#A1947D", experience: "#726A4E", outdoor: "#726A4E", museum: "#A1947D", gallery: "#4B342F", nightlife: "#4B342F", event: "#DD4124" };
 const CAT_PIN_EMOJI = { restaurant: "🍽️", bar: "🍸", cafe: "☕", market: "🛍️", experience: "✨", outdoor: "🌳", museum: "🏛️", gallery: "🎨", nightlife: "🌙", event: "🎫" };
 const CAT_LABEL = { restaurant: "Restaurants", cafe: "Cafés", bar: "Bars", nightlife: "Nightlife", market: "Markets", outdoor: "Outdoor", museum: "Museums", gallery: "Galleries", experience: "Experiences", event: "Events" };
 // Shared across SavedScreen + SpotsMap (card/list/folder visuals).
 const CAT_EMOJI = { restaurant: "\u{1F37D}️", bar: "\u{1F378}", cafe: "☕", market: "\u{1F6CD}️", experience: "✨", outdoor: "\u{1F33F}", museum: "\u{1F3DB}️", gallery: "\u{1F3A8}", nightlife: "\u{1F319}", event: "\u{1F3AB}" };
-const CAT_COLOURS = { restaurant: "#E84855", bar: "#2D1B69", cafe: "#DD4124", market: "#F0A500", experience: "#726A4E", outdoor: "#3D8B37", museum: "#3D5A80", gallery: "#9B59B6", nightlife: "#2D1B69", event: "#726A4E" };
+const CAT_COLOURS = { restaurant: "#DD4124", bar: "#4B342F", cafe: "#9B892F", market: "#A1947D", experience: "#726A4E", outdoor: "#726A4E", museum: "#A1947D", gallery: "#4B342F", nightlife: "#4B342F", event: "#DD4124" };
 const SOURCE_ICON = { tiktok: "\u{1F3B5}", instagram: "\u{1F4F8}", screenshot: "\u{1F5BC}️", maps: "\u{1F4CD}", manual: "\u{1F4DD}" };
 
 // Flat black line icons (Lucide-style) for the white coin markers.
@@ -1812,7 +1812,7 @@ function googleMapsUrl(v) {
 function ListCover({ items, height = 200 }) {
   const photos = items.filter(s => s.photo_url).map(s => s.photo_url);
   const cat = String(items[0]?.category || "").toLowerCase();
-  if (photos.length === 0) return <div style={{ height, background: "#3D5A80", display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: "2rem" }}>{CAT_EMOJI[cat] || "📁"}</span></div>;
+  if (photos.length === 0) return <div style={{ height, background: "#A1947D", display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: "2rem" }}>{CAT_EMOJI[cat] || "📁"}</span></div>;
   const cells = [0, 1, 2, 3].map(i => photos[i % photos.length]);
   return (
     <div style={{ height, display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: 2 }}>
@@ -2096,7 +2096,7 @@ function SpotsCalendar({ saves }) {
               style={{ aspectRatio: "1", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", borderRadius: 8, fontSize: "0.74rem", cursor: has ? "pointer" : "default",
                 background: isSel ? "#726A4E" : isToday ? "#eef3d8" : "transparent", color: isSel ? "#fff" : "#1c1c1a", fontWeight: has ? 600 : 400 }}>
               {d}
-              {has > 0 && <div style={{ width: 5, height: 5, borderRadius: "50%", background: isSel ? "#fff" : "#E84855", marginTop: 2 }} />}
+              {has > 0 && <div style={{ width: 5, height: 5, borderRadius: "50%", background: isSel ? "#fff" : "#DD4124", marginTop: 2 }} />}
             </div>
           );
         })}
@@ -2702,7 +2702,7 @@ Return a JSON object with this exact structure:
 
   function VenueCard({ v, onRemove, onMove, draft }) {
     const cat = (v.category || "experience").toLowerCase();
-    const colour = CAT_COLOURS[cat] || "#3D5A80";
+    const colour = CAT_COLOURS[cat] || "#A1947D";
     const emoji = CAT_EMOJI[cat] || "✨";
     const dateLabel = v.is_event && (v.event_start || v.event_end)
       ? [fmtDate(v.event_start), fmtDate(v.event_end)].filter(Boolean).join(" – ")
@@ -2891,7 +2891,7 @@ Return a JSON object with this exact structure:
                     {menuFolder === f && (
                       <div style={{ position: "absolute", top: 34, right: 6, background: "#fff", borderRadius: 10, boxShadow: "0 4px 16px rgba(0,0,0,0.18)", overflow: "hidden", zIndex: 10, minWidth: 110 }}>
                         <button onClick={() => renameFolder(f)} style={{ display: "block", width: "100%", textAlign: "left", padding: "9px 12px", border: "none", background: "#fff", cursor: "pointer", fontSize: "0.78rem", color: "#1c1c1a" }}>Rename</button>
-                        <button onClick={() => deleteFolder(f)} style={{ display: "block", width: "100%", textAlign: "left", padding: "9px 12px", border: "none", borderTop: "1px solid #f0ebe2", background: "#fff", cursor: "pointer", fontSize: "0.78rem", color: "#E84855" }}>Delete</button>
+                        <button onClick={() => deleteFolder(f)} style={{ display: "block", width: "100%", textAlign: "left", padding: "9px 12px", border: "none", borderTop: "1px solid #f0ebe2", background: "#fff", cursor: "pointer", fontSize: "0.78rem", color: "#DD4124" }}>Delete</button>
                       </div>
                     )}
                   </div>
@@ -3386,7 +3386,7 @@ export default function App() {
               <span className="nav-tab-icon" style={{ position: "relative" }}>
                 <NavIcon id={tab.id} />
                 {tab.badge > 0 && (
-                  <span style={{ position: "absolute", top: -4, right: -6, background: "#E84855", color: "#fff", borderRadius: "50%", fontSize: "0.5rem", width: 14, height: 14, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>{tab.badge}</span>
+                  <span style={{ position: "absolute", top: -4, right: -6, background: "#DD4124", color: "#fff", borderRadius: "50%", fontSize: "0.5rem", width: 14, height: 14, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>{tab.badge}</span>
                 )}
               </span>
               <span className="nav-tab-label">{tab.label}</span>
