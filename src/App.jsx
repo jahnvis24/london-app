@@ -388,8 +388,8 @@ const styles = `
 
   .shapes-wrap { position: absolute; top: 0; right: -20px; width: 220px; height: 260px; pointer-events: none; z-index: 0; }
   .shape-circle { position: absolute; border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden; animation: spin-cw 14s linear infinite; }
-  .shape-teal { width: 130px; height: 130px; background: #55630d; top: 0; right: 40px; animation-duration: 16s; }
-  .shape-yellow { width: 160px; height: 160px; background: #F4C842; top: 80px; right: -10px; animation-duration: 20s; }
+  .shape-teal { width: 130px; height: 130px; background: #726A4E; top: 0; right: 40px; animation-duration: 16s; }
+  .shape-yellow { width: 160px; height: 160px; background: #DD4124; top: 80px; right: -10px; animation-duration: 20s; }
   .shape-cream { width: 80px; height: 80px; background: #F7EFD4; top: 150px; right: 140px; animation-duration: 12s; }
   .inner-oval { width: 56px; height: 32px; background: #B8A9D9; border-radius: 50%; animation: spin-cw 8s linear infinite; }
   .inner-starburst { animation: spin-cw 6s linear infinite; }
@@ -405,7 +405,7 @@ const styles = `
   .home-hero { padding: 3.5rem 1.5rem 2rem; position: relative; overflow: hidden; min-height: 300px; background: #f7f6f2; }
   .home-eyebrow { font-size: 0.68rem; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: #9b8f7a; margin-bottom: 0.6rem; position: relative; z-index: 1; }
   .home-title { font-family: 'DM Serif Display', Georgia, serif; font-size: 3rem; font-weight: 400; line-height: 1.0; letter-spacing: -0.03em; color: #1c1c1a; margin-bottom: 0.75rem; position: relative; z-index: 1; }
-  .home-title em { font-style: italic; color: #55630d; }
+  .home-title em { font-style: italic; color: #726A4E; }
   .home-sub { font-size: 0.85rem; color: #6b5e4e; line-height: 1.5; position: relative; z-index: 1; max-width: 200px; }
   .home-cta { margin-top: 1.5rem; position: relative; z-index: 1; }
 
@@ -415,7 +415,7 @@ const styles = `
   .nav-tab.active .nav-tab-icon { transform: scale(1.1); color: #1c1c1a; }
   .nav-tab-label { font-family: 'DM Sans', sans-serif; font-size: 0.6rem; font-weight: 500; letter-spacing: 0.04em; color: #1c1c1a; text-transform: uppercase; transition: color 0.15s; }
   .nav-tab.active .nav-tab-label { color: #1c1c1a; font-weight: 700; }
-  .nav-tab-dot { width: 4px; height: 4px; border-radius: 50%; background: #55630d; opacity: 0; transition: opacity 0.15s; }
+  .nav-tab-dot { width: 4px; height: 4px; border-radius: 50%; background: #726A4E; opacity: 0; transition: opacity 0.15s; }
   .nav-tab.active .nav-tab-dot { opacity: 1; }
 
   .section-pad { padding: 1.5rem; }
@@ -427,7 +427,7 @@ const styles = `
   .btn:disabled { opacity: 0.25; cursor: not-allowed; }
   .btn:hover:not(:disabled) { opacity: 0.88; }
   .btn:active:not(:disabled) { transform: scale(0.99); }
-  .btn-teal { background: #55630d; color: #ffffff; }
+  .btn-teal { background: #726A4E; color: #ffffff; }
   .btn-outline { width: 100%; padding: 13px; border-radius: 100px; border: 1.5px solid #ddd8ce; background: transparent; color: #4a4438; font-family: 'DM Sans', sans-serif; font-size: 0.85rem; cursor: pointer; margin-top: 0.6rem; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.15s; }
   .btn-outline:hover { border-color: #1c1c1a; color: #1c1c1a; }
   .btn-ghost { background: none; border: none; color: #9b8f7a; font-family: 'DM Sans', sans-serif; font-size: 0.82rem; cursor: pointer; padding: 1rem 1.5rem 0; display: flex; align-items: center; gap: 5px; }
@@ -444,20 +444,20 @@ const styles = `
   .q-title { font-family: 'DM Serif Display', Georgia, serif; font-size: 1.6rem; line-height: 1.2; color: #1c1c1a; margin-bottom: 1.5rem; }
   .progress-label { font-size: 0.68rem; color: #b8ac9a; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 0.5rem; }
   .progress-bg { height: 2px; background: #e8e2d8; border-radius: 2px; overflow: hidden; }
-  .progress-fill { height: 100%; background: #55630d; border-radius: 2px; transition: width 0.4s ease; }
+  .progress-fill { height: 100%; background: #726A4E; border-radius: 2px; transition: width 0.4s ease; }
   .time-row { display: flex; gap: 10px; }
   .time-wrap { flex: 1; }
   .time-wrap label { font-size: 0.68rem; color: #9b8f7a; text-transform: uppercase; letter-spacing: 0.08em; display: block; margin-bottom: 6px; }
   .time-wrap input { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1.5px solid #ddd8ce; background: #fff; color: #1c1c1a; font-family: 'DM Sans', sans-serif; font-size: 0.9rem; }
-  .time-wrap input:focus { outline: none; border-color: #55630d; }
+  .time-wrap input:focus { outline: none; border-color: #726A4E; }
 
   .loading { display: flex; flex-direction: column; align-items: center; padding: 5rem 2rem; text-align: center; }
-  .loading-ring { width: 44px; height: 44px; border: 2.5px solid #e8e2d8; border-top-color: #55630d; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 1.5rem; }
+  .loading-ring { width: 44px; height: 44px; border: 2.5px solid #e8e2d8; border-top-color: #726A4E; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 1.5rem; }
   .loading-title { font-family: 'DM Serif Display', Georgia, serif; font-size: 1.3rem; color: #1c1c1a; margin-bottom: 0.4rem; }
   .loading-sub { font-size: 0.82rem; color: #9b8f7a; }
 
   .result-hero { padding: 2rem 1.5rem 1.5rem; border-bottom: 1px solid #e8e2d8; animation: fadeUp 0.4s ease; }
-  .result-eyebrow { font-size: 0.68rem; font-weight: 500; color: #55630d; text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 0.5rem; }
+  .result-eyebrow { font-size: 0.68rem; font-weight: 500; color: #726A4E; text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 0.5rem; }
   .result-title { font-family: 'DM Serif Display', Georgia, serif; font-size: 1.8rem; line-height: 1.15; color: #1c1c1a; margin-bottom: 0.3rem; }
   .result-tagline { font-size: 0.88rem; color: #6b5e4e; line-height: 1.5; margin-bottom: 0.85rem; font-style: italic; }
   .result-meta { display: flex; gap: 1rem; font-size: 0.78rem; color: #9b8f7a; flex-wrap: wrap; }
@@ -466,7 +466,7 @@ const styles = `
 
   .tab-bar { display: flex; border-bottom: 1px solid #e8e2d8; background: #ffffff; }
   .tab { flex: 1; padding: 0.85rem; border: none; background: none; font-family: 'DM Sans', sans-serif; font-size: 0.8rem; cursor: pointer; color: #9b8f7a; border-bottom: 2px solid transparent; transition: all 0.15s; margin-bottom: -1px; }
-  .tab.active { color: #55630d; border-bottom-color: #55630d; font-weight: 500; }
+  .tab.active { color: #726A4E; border-bottom-color: #726A4E; font-weight: 500; }
 
   .stat-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 1px; background: #e8e2d8; border-bottom: 1px solid #e8e2d8; }
   .stat { background: #ffffff; padding: 1rem; text-align: center; }
@@ -480,7 +480,7 @@ const styles = `
   .stop-emoji-wrap { width: 44px; height: 44px; border-radius: 12px; background: #f5f0e8; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; flex-shrink: 0; }
   .stop-body { flex: 1; min-width: 0; }
   .stop-meta { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
-  .stop-time { font-size: 0.68rem; font-weight: 500; color: #55630d; text-transform: uppercase; letter-spacing: 0.06em; }
+  .stop-time { font-size: 0.68rem; font-weight: 500; color: #726A4E; text-transform: uppercase; letter-spacing: 0.06em; }
   .stop-type { font-size: 0.62rem; color: #b8ac9a; text-transform: uppercase; letter-spacing: 0.06em; }
   .stop-dot { width: 3px; height: 3px; border-radius: 50%; background: #ddd8ce; }
   .stop-name { font-family: 'DM Serif Display', Georgia, serif; font-size: 1.05rem; color: #1c1c1a; margin-bottom: 4px; line-height: 1.2; }
@@ -506,7 +506,7 @@ const styles = `
   .plan-card-date { font-size: 0.68rem; color: #9b8f7a; }
   .plan-card-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 0.5rem; }
   .plan-tag { font-size: 0.66rem; padding: 2px 8px; border-radius: 100px; background: #f5f0e8; color: #6b5e4e; }
-  .plan-tag.teal { background: #eef3d8; color: #55630d; }
+  .plan-tag.teal { background: #eef3d8; color: #726A4E; }
   .empty-state { text-align: center; padding: 3rem 2rem; }
   .empty-emoji { font-size: 3rem; margin-bottom: 1rem; }
   .empty-title { font-family: 'DM Serif Display', Georgia, serif; font-size: 1.2rem; color: #1c1c1a; margin-bottom: 0.5rem; }
@@ -527,9 +527,9 @@ const styles = `
   .event-card-venue { font-size: 0.75rem; color: #9b8f7a; margin-bottom: 6px; }
   .event-card-row { display: flex; align-items: center; justify-content: space-between; }
   .event-card-date { font-size: 0.72rem; color: #6b5e4e; }
-  .event-card-price { font-size: 0.72rem; font-weight: 500; color: #55630d; }
+  .event-card-price { font-size: 0.72rem; font-weight: 500; color: #726A4E; }
   .events-loading { text-align: center; padding: 3rem 1.5rem; color: #9b8f7a; font-size: 0.85rem; }
-  .api-note { background: #f5f0e8; border-radius: 12px; padding: 1rem; margin: 0 1.5rem 1rem; font-size: 0.75rem; color: #6b5e4e; line-height: 1.5; border-left: 3px solid #55630d; }
+  .api-note { background: #f5f0e8; border-radius: 12px; padding: 1rem; margin: 0 1.5rem 1rem; font-size: 0.75rem; color: #6b5e4e; line-height: 1.5; border-left: 3px solid #726A4E; }
 
   .social-wrap { padding: 1.5rem; }
   .social-section-title { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.1em; color: #9b8f7a; margin-bottom: 0.75rem; font-weight: 500; }
@@ -544,19 +544,19 @@ const styles = `
   .feat-title { font-size: 0.84rem; font-weight: 500; color: #1c1c1a; margin-bottom: 2px; }
   .feat-sub { font-size: 0.73rem; color: #9b8f7a; line-height: 1.35; }
   .feat-badge { display: inline-block; font-size: 0.6rem; padding: 2px 7px; border-radius: 100px; margin-top: 4px; background: #f5f0e8; color: #8b7355; }
-  .feat-badge.live { background: #eef3d8; color: #55630d; }
+  .feat-badge.live { background: #eef3d8; color: #726A4E; }
 
   .toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); background: #1c1c1a; color: #ffffff; padding: 10px 20px; border-radius: 100px; font-size: 0.82rem; white-space: nowrap; z-index: 999; pointer-events: none; opacity: 0; transition: opacity 0.2s; font-family: 'DM Sans', sans-serif; }
   .toast.show { opacity: 1; }
   .err { margin: 1rem 1.5rem; padding: 0.9rem 1rem; border-radius: 10px; background: #fdf0ef; border: 1px solid #f5d0cc; color: #c0392b; font-size: 0.82rem; line-height: 1.4; }
-  .success { margin: 1rem 1.5rem; padding: 0.9rem 1rem; border-radius: 10px; background: #eef3d8; border: 1px solid #55630d; color: #55630d; font-size: 0.82rem; line-height: 1.4; }
+  .success { margin: 1rem 1.5rem; padding: 0.9rem 1rem; border-radius: 10px; background: #eef3d8; border: 1px solid #726A4E; color: #726A4E; font-size: 0.82rem; line-height: 1.4; }
 
   /* ── TIKTOK PARSER ── */
   .parser-wrap { padding: 1.5rem; }
   .input-group { margin-bottom: 1rem; }
   .input-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; color: #9b8f7a; display: block; margin-bottom: 6px; font-weight: 500; }
   .input-field { width: 100%; padding: 12px 14px; border-radius: 12px; border: 1.5px solid #ddd8ce; background: #fff; color: #1c1c1a; font-family: 'DM Sans', sans-serif; font-size: 0.9rem; transition: border-color 0.15s; }
-  .input-field:focus { outline: none; border-color: #55630d; }
+  .input-field:focus { outline: none; border-color: #726A4E; }
   .input-field::placeholder { color: #c0b8ad; }
   textarea.input-field { min-height: 100px; resize: vertical; }
   .preview-card { border: 1px solid #e8e2d8; border-radius: 16px; padding: 1.25rem; margin-bottom: 1rem; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.04); animation: fadeUp 0.3s ease; }
@@ -564,14 +564,14 @@ const styles = `
   .preview-field { display: flex; gap: 8px; margin-bottom: 6px; align-items: flex-start; }
   .preview-key { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; color: #9b8f7a; min-width: 80px; padding-top: 2px; font-weight: 500; }
   .preview-val { font-size: 0.82rem; color: #1c1c1a; line-height: 1.4; flex: 1; }
-  .zone-badge { display: inline-block; padding: 2px 10px; border-radius: 100px; font-size: 0.7rem; font-weight: 500; background: #eef3d8; color: #55630d; }
+  .zone-badge { display: inline-block; padding: 2px 10px; border-radius: 100px; font-size: 0.7rem; font-weight: 500; background: #eef3d8; color: #726A4E; }
 
   /* ── ADMIN ── */
   .admin-card { border: 1px solid #e8e2d8; border-radius: 14px; padding: 1rem; margin-bottom: 10px; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.04); animation: fadeUp 0.3s ease; }
   .admin-card-name { font-family: 'DM Serif Display', Georgia, serif; font-size: 1rem; color: #1c1c1a; margin-bottom: 4px; }
   .admin-card-meta { font-size: 0.75rem; color: #9b8f7a; margin-bottom: 8px; }
   .admin-actions { display: flex; gap: 8px; }
-  .btn-approve { flex: 1; padding: 8px; border-radius: 8px; border: none; background: #55630d; color: #fff; font-family: 'DM Sans', sans-serif; font-size: 0.8rem; cursor: pointer; font-weight: 500; }
+  .btn-approve { flex: 1; padding: 8px; border-radius: 8px; border: none; background: #726A4E; color: #fff; font-family: 'DM Sans', sans-serif; font-size: 0.8rem; cursor: pointer; font-weight: 500; }
   .btn-reject { flex: 1; padding: 8px; border-radius: 8px; border: 1.5px solid #ddd8ce; background: transparent; color: #9b8f7a; font-family: 'DM Sans', sans-serif; font-size: 0.8rem; cursor: pointer; }
   .zone-select { width: 100%; padding: 8px 10px; border-radius: 8px; border: 1.5px solid #ddd8ce; background: #fff; color: #1c1c1a; font-family: 'DM Sans', sans-serif; font-size: 0.82rem; margin-bottom: 8px; }
 
@@ -626,7 +626,7 @@ function HomeScreen({ onStart }) {
           ["→", "One perfect plan", "Claude sequences them geographically and temporally. Just follow it."]
         ].map(([icon, title, desc], i) => (
           <div key={i} style={{ display: "flex", gap: "1rem", marginBottom: "1.1rem", alignItems: "flex-start" }}>
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: i === 0 ? "#55630d" : i === 1 ? "#F7B731" : "#1c1c1a", display: "flex", alignItems: "center", justifyContent: "center", color: i === 1 ? "#1c1c1a" : "#fff", fontSize: "1rem", flexShrink: 0, fontWeight: 700 }}>{icon}</div>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: i === 0 ? "#726A4E" : i === 1 ? "#DD4124" : "#1c1c1a", display: "flex", alignItems: "center", justifyContent: "center", color: i === 1 ? "#1c1c1a" : "#fff", fontSize: "1rem", flexShrink: 0, fontWeight: 700 }}>{icon}</div>
             <div>
               <div style={{ fontSize: "0.88rem", fontWeight: 500, color: "#1c1c1a", marginBottom: 2 }}>{title}</div>
               <div style={{ fontSize: "0.78rem", color: "#9b8f7a", lineHeight: 1.45 }}>{desc}</div>
@@ -683,7 +683,7 @@ function MapPicker({ onPin, currentPin, compact }) {
     }).addTo(map);
 
     const pinIcon = L.divIcon({
-      html: '<div style="width:28px;height:28px;background:#55630d;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.3)"></div>',
+      html: '<div style="width:28px;height:28px;background:#726A4E;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.3)"></div>',
       iconSize: [28, 28],
       iconAnchor: [14, 28],
       className: '',
@@ -740,7 +740,7 @@ function MapPicker({ onPin, currentPin, compact }) {
       />
 
       {currentPin && (
-        <div style={{ marginTop: "0.5rem", fontSize: "0.75rem", color: "#55630d", display: "flex", alignItems: "center", gap: 4 }}>
+        <div style={{ marginTop: "0.5rem", fontSize: "0.75rem", color: "#726A4E", display: "flex", alignItems: "center", gap: 4 }}>
           ✓ Pin dropped · {currentPin.lat.toFixed(4)}, {currentPin.lng.toFixed(4)}
         </div>
       )}
@@ -835,7 +835,7 @@ function QuizScreen({ step, ans, times, setTimes, onToggle, onNext, onBack, onGe
                 </div>
               )}
               {ans.area && !q.options.find(o => o.value === ans.area) && (
-                <div style={{ marginTop: "0.5rem", fontSize: "0.75rem", color: "#55630d" }}>✦ Selected: {ans.area}</div>
+                <div style={{ marginTop: "0.5rem", fontSize: "0.75rem", color: "#726A4E" }}>✦ Selected: {ans.area}</div>
               )}
             </div>
           )}
@@ -973,7 +973,7 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
           <div className="stops-wrap">
             {(result.stops || []).map((stop, idx) => (
               <div key={idx}>
-                <div className="stop" style={stop._saved ? { outline: "2px solid #55630d", outlineOffset: -2, borderRadius: 16 } : undefined}>
+                <div className="stop" style={stop._saved ? { outline: "2px solid #726A4E", outlineOffset: -2, borderRadius: 16 } : undefined}>
                   <div className="stop-inner" onClick={() => { setSwappingIdx(null); setAlternatives([]); window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(stop.name + " London")}`, "_blank"); }} style={{ cursor: "pointer" }}>
                     <div className="stop-top">
                       <div className="stop-emoji-wrap">{stop.emoji}</div>
@@ -990,7 +990,7 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
                   </div>
                   <div className="stop-footer">
                     <div className="stop-pills-row">
-                      {stop._saved && <span className="stop-pill" style={{ background: "#eef3d8", color: "#55630d", fontWeight: 700 }}>★ Your saved spot</span>}
+                      {stop._saved && <span className="stop-pill" style={{ background: "#eef3d8", color: "#726A4E", fontWeight: 700 }}>★ Your saved spot</span>}
                       {stop.price_range && <span className="stop-pill">💰 {stop.price_range}</span>}
                       {stop.google_rating && <span className="stop-pill">⭐ {stop.google_rating}</span>}
                       {stop.area && <span className="stop-pill">📍 {stop.area}</span>}
@@ -999,7 +999,7 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
                         <span key={ci} className="stop-pill" style={{ background: "#f3e8ff", color: "#7c3aed" }}>💫 {celeb}'s fav</span>
                       ))}
                     </div>
-                    <button onClick={() => findAlternatives(idx)} style={{ border: "none", background: "none", color: "#55630d", fontSize: "0.72rem", fontWeight: 500, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", padding: "2px 0" }}>↻ Swap</button>
+                    <button onClick={() => findAlternatives(idx)} style={{ border: "none", background: "none", color: "#726A4E", fontSize: "0.72rem", fontWeight: 500, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", padding: "2px 0" }}>↻ Swap</button>
                   </div>
                   {swappingIdx === idx && alternatives.length > 0 && (
                     <div style={{ padding: "0.75rem 1.1rem", borderTop: "1px solid #f0ebe2", background: "#fafaf7" }}>
@@ -1118,7 +1118,7 @@ function DiscoverScreen({ preferences, dbVenues }) {
   const [celebFilter, setCelebFilter] = useState("All");
 
   const CATEGORY_EMOJI = { restaurant: "🍽️", bar: "🍸", cafe: "☕", market: "🛍️", experience: "✨", outdoor: "🌿", museum: "🏛️", gallery: "🎨", nightlife: "🌙", event: "🎫" };
-  const CATEGORY_COLOURS = { restaurant: "#E84855", bar: "#2D1B69", cafe: "#F7B731", market: "#F0A500", experience: "#55630d", outdoor: "#3D8B37", museum: "#3D5A80", gallery: "#9B59B6", nightlife: "#2D1B69", event: "#55630d" };
+  const CATEGORY_COLOURS = { restaurant: "#E84855", bar: "#2D1B69", cafe: "#DD4124", market: "#F0A500", experience: "#726A4E", outdoor: "#3D8B37", museum: "#3D5A80", gallery: "#9B59B6", nightlife: "#2D1B69", event: "#726A4E" };
 
   const today = new Date().toISOString().split("T")[0];
   const events = dbVenues.filter(v => v.is_event && v.event_start && (!v.event_end || v.event_end >= today))
@@ -1482,7 +1482,7 @@ Each object must have this exact structure:
         📷 Upload a screenshot
         <input type="file" accept="image/*" style={{ display: "none" }} onChange={e => { if (e.target.files[0]) parseFromImage(e.target.files[0]); e.target.value = ""; }} disabled={parsing} />
       </label>
-      {parseStatus && <div style={{ fontSize: "0.75rem", color: "#55630d", marginTop: 8, textAlign: "center" }}>{parseStatus}</div>}
+      {parseStatus && <div style={{ fontSize: "0.75rem", color: "#726A4E", marginTop: 8, textAlign: "center" }}>{parseStatus}</div>}
 
       {preview && (
         <div style={{ marginTop: "1.25rem" }}>
@@ -1497,13 +1497,13 @@ Each object must have this exact structure:
           {preview.venues.map((venue, i) => (
             <div key={i} className="preview-card" style={{ marginBottom: "0.75rem" }}>
               {preview.venues.length > 1 && (
-                <div style={{ fontSize: "0.6rem", color: "#55630d", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "0.4rem", fontWeight: 600 }}>
+                <div style={{ fontSize: "0.6rem", color: "#726A4E", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "0.4rem", fontWeight: 600 }}>
                   {i + 1} of {preview.venues.length}
                 </div>
               )}
               <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "0.5rem", gap: 8 }}>
                 <div className="preview-title" style={{ marginBottom: 0 }}>{venue.validated_name || venue.name || "Unknown venue"}</div>
-                <div style={{ fontSize: "0.62rem", padding: "2px 8px", borderRadius: 100, background: venue._google_found ? "#eef3d8" : "#f5f0e8", color: venue._google_found ? "#55630d" : "#9b8f7a", fontWeight: 500, whiteSpace: "nowrap", flexShrink: 0 }}>
+                <div style={{ fontSize: "0.62rem", padding: "2px 8px", borderRadius: 100, background: venue._google_found ? "#eef3d8" : "#f5f0e8", color: venue._google_found ? "#726A4E" : "#9b8f7a", fontWeight: 500, whiteSpace: "nowrap", flexShrink: 0 }}>
                   {venue._google_found ? "✓ Google verified" : "⚠ Not on Google"}
                 </div>
               </div>
@@ -1516,7 +1516,7 @@ Each object must have this exact structure:
                 ["Price", venue.price],
                 ["Rating", venue.google_rating ? `⭐ ${venue.google_rating} (${venue.google_review_count?.toLocaleString()} reviews)` : null],
                 ["Hours", venue.opening_hours ? venue.opening_hours[0] : null],
-                ["Website", venue.website ? <a href={venue.website} target="_blank" rel="noreferrer" style={{ color: "#55630d" }}>Visit ↗</a> : null],
+                ["Website", venue.website ? <a href={venue.website} target="_blank" rel="noreferrer" style={{ color: "#726A4E" }}>Visit ↗</a> : null],
                 ["Is event", venue.is_event ? `Yes — ${venue.event_start || "date TBC"}` : null],
                 ["Vibe tags", venue.vibe_tags?.join(", ")],
                 ["Notes", venue.comment],
@@ -1642,7 +1642,7 @@ function AdminScreen({ onBadgeUpdate }) {
               )}
               {item.tiktok_url && (
                 <div style={{ fontSize: "0.72rem", color: "#9b8f7a", marginBottom: "8px" }}>
-                  <a href={item.tiktok_url} target="_blank" rel="noreferrer" style={{ color: "#55630d" }}>View TikTok ↗</a>
+                  <a href={item.tiktok_url} target="_blank" rel="noreferrer" style={{ color: "#726A4E" }}>View TikTok ↗</a>
                 </div>
               )}
               <div style={{ marginBottom: "8px" }}>
@@ -1722,12 +1722,12 @@ function PreferencesScreen({ preferences, setPreferences, user }) {
   );
 }
 
-const CAT_PIN_COLOURS = { restaurant: "#E84855", bar: "#6C4AB6", cafe: "#C57B3C", market: "#F0A500", experience: "#55630d", outdoor: "#3D8B37", museum: "#3D5A80", gallery: "#9B59B6", nightlife: "#2D1B69", event: "#E8763A" };
+const CAT_PIN_COLOURS = { restaurant: "#E84855", bar: "#6C4AB6", cafe: "#C57B3C", market: "#F0A500", experience: "#726A4E", outdoor: "#3D8B37", museum: "#3D5A80", gallery: "#9B59B6", nightlife: "#2D1B69", event: "#E8763A" };
 const CAT_PIN_EMOJI = { restaurant: "🍽️", bar: "🍸", cafe: "☕", market: "🛍️", experience: "✨", outdoor: "🌳", museum: "🏛️", gallery: "🎨", nightlife: "🌙", event: "🎫" };
 const CAT_LABEL = { restaurant: "Restaurants", cafe: "Cafés", bar: "Bars", nightlife: "Nightlife", market: "Markets", outdoor: "Outdoor", museum: "Museums", gallery: "Galleries", experience: "Experiences", event: "Events" };
 // Shared across SavedScreen + SpotsMap (card/list/folder visuals).
 const CAT_EMOJI = { restaurant: "\u{1F37D}️", bar: "\u{1F378}", cafe: "☕", market: "\u{1F6CD}️", experience: "✨", outdoor: "\u{1F33F}", museum: "\u{1F3DB}️", gallery: "\u{1F3A8}", nightlife: "\u{1F319}", event: "\u{1F3AB}" };
-const CAT_COLOURS = { restaurant: "#E84855", bar: "#2D1B69", cafe: "#F7B731", market: "#F0A500", experience: "#55630d", outdoor: "#3D8B37", museum: "#3D5A80", gallery: "#9B59B6", nightlife: "#2D1B69", event: "#55630d" };
+const CAT_COLOURS = { restaurant: "#E84855", bar: "#2D1B69", cafe: "#DD4124", market: "#F0A500", experience: "#726A4E", outdoor: "#3D8B37", museum: "#3D5A80", gallery: "#9B59B6", nightlife: "#2D1B69", event: "#726A4E" };
 const SOURCE_ICON = { tiktok: "\u{1F3B5}", instagram: "\u{1F4F8}", screenshot: "\u{1F5BC}️", maps: "\u{1F4CD}", manual: "\u{1F4DD}" };
 
 // Flat black line icons (Lucide-style) for the white coin markers.
@@ -1837,8 +1837,8 @@ function BigSpotCard({ s, photo }) {
           {cap(normaliseCategory(s.category))}{s.google_rating ? ` · ⭐ ${s.google_rating}` : ""}{s.area ? ` · ${s.area}` : ""}{s.price ? ` · ${s.price}` : ""}
         </div>
         <div style={{ display: "flex", gap: 14, justifyContent: "center", marginTop: 6 }}>
-          {s.source_url && (s.source_type === "tiktok" || s.source_type === "instagram") && <a href={s.source_url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} style={{ fontSize: "0.7rem", color: "#55630d", fontWeight: 500 }}>{SOURCE_ICON[s.source_type] || "🔗"} View source ↗</a>}
-          {googleMapsUrl(s) && <a href={googleMapsUrl(s)} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} style={{ fontSize: "0.7rem", color: "#55630d", fontWeight: 500 }}>📍 Google Maps</a>}
+          {s.source_url && (s.source_type === "tiktok" || s.source_type === "instagram") && <a href={s.source_url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} style={{ fontSize: "0.7rem", color: "#726A4E", fontWeight: 500 }}>{SOURCE_ICON[s.source_type] || "🔗"} View source ↗</a>}
+          {googleMapsUrl(s) && <a href={googleMapsUrl(s)} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} style={{ fontSize: "0.7rem", color: "#726A4E", fontWeight: 500 }}>📍 Google Maps</a>}
         </div>
       </div>
     </>
@@ -2094,7 +2094,7 @@ function SpotsCalendar({ saves }) {
           return (
             <div key={i} onClick={() => has && setSelDay(isSel ? null : d)}
               style={{ aspectRatio: "1", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", borderRadius: 8, fontSize: "0.74rem", cursor: has ? "pointer" : "default",
-                background: isSel ? "#55630d" : isToday ? "#eef3d8" : "transparent", color: isSel ? "#fff" : "#1c1c1a", fontWeight: has ? 600 : 400 }}>
+                background: isSel ? "#726A4E" : isToday ? "#eef3d8" : "transparent", color: isSel ? "#fff" : "#1c1c1a", fontWeight: has ? 600 : 400 }}>
               {d}
               {has > 0 && <div style={{ width: 5, height: 5, borderRadius: "50%", background: isSel ? "#fff" : "#E84855", marginTop: 2 }} />}
             </div>
@@ -2107,18 +2107,18 @@ function SpotsCalendar({ saves }) {
       {shown.length === 0 && <div style={{ fontSize: "0.8rem", color: "#9b8f7a" }}>{selDay ? "Nothing on this day." : "No upcoming events."}</div>}
       {shown.map(e => (
         <div key={e.id} style={{ display: "flex", gap: 10, padding: 10, background: "#fff", border: "1px solid #f0ebe2", borderRadius: 12, marginBottom: 8 }}>
-          <div style={{ width: 48, height: 48, borderRadius: 8, overflow: "hidden", flexShrink: 0, background: "#55630d", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ width: 48, height: 48, borderRadius: 8, overflow: "hidden", flexShrink: 0, background: "#726A4E", display: "flex", alignItems: "center", justifyContent: "center" }}>
             {e.photo_url ? <img src={e.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span>🎫</span>}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: "0.86rem", fontWeight: 600, color: "#1c1c1a" }}>{e.name}</div>
-            <div style={{ fontSize: "0.72rem", color: "#55630d", marginTop: 2 }}>
+            <div style={{ fontSize: "0.72rem", color: "#726A4E", marginTop: 2 }}>
               📅 {fmt(e.event_start)}{e.event_end && e.event_end !== e.event_start ? ` – ${fmt(e.event_end)}` : ""}{e.event_time ? ` · 🕐 ${e.event_time}` : ""}
             </div>
             {e.area && <div style={{ fontSize: "0.68rem", color: "#9b8f7a", marginTop: 2 }}>📍 {e.area}</div>}
             <div style={{ display: "flex", gap: 12, marginTop: 5 }}>
-              <a href={gcal(e)} target="_blank" rel="noreferrer" style={{ fontSize: "0.66rem", color: "#55630d", fontWeight: 500 }}>+ Google Calendar</a>
-              {e.source_url && <a href={e.source_url} target="_blank" rel="noreferrer" style={{ fontSize: "0.66rem", color: "#55630d" }}>View source ↗</a>}
+              <a href={gcal(e)} target="_blank" rel="noreferrer" style={{ fontSize: "0.66rem", color: "#726A4E", fontWeight: 500 }}>+ Google Calendar</a>
+              {e.source_url && <a href={e.source_url} target="_blank" rel="noreferrer" style={{ fontSize: "0.66rem", color: "#726A4E" }}>View source ↗</a>}
             </div>
           </div>
         </div>
@@ -2722,8 +2722,8 @@ Return a JSON object with this exact structure:
           <div style={{ fontSize: "0.72rem", color: "#9b8f7a", marginTop: 2 }}>
             {emoji} {cap(cat)}{v.zone ? ` · ${v.zone}` : ""}{v.area ? ` · ${v.area}` : ""}{v.google_rating ? ` · ⭐ ${v.google_rating}` : ""}{v.price ? ` · ${v.price}` : ""}
           </div>
-          {dateLabel && <div style={{ fontSize: "0.72rem", color: "#55630d", marginTop: 3 }}>📅 {dateLabel}{v.event_time ? ` · 🕐 ${v.event_time}` : ""}</div>}
-          {!dateLabel && v.event_time && <div style={{ fontSize: "0.72rem", color: "#55630d", marginTop: 3 }}>🕐 {v.event_time}</div>}
+          {dateLabel && <div style={{ fontSize: "0.72rem", color: "#726A4E", marginTop: 3 }}>📅 {dateLabel}{v.event_time ? ` · 🕐 ${v.event_time}` : ""}</div>}
+          {!dateLabel && v.event_time && <div style={{ fontSize: "0.72rem", color: "#726A4E", marginTop: 3 }}>🕐 {v.event_time}</div>}
           {v.address && <div style={{ fontSize: "0.68rem", color: "#b8ac9a", marginTop: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>📍 {v.address}</div>}
           {v.vibe_tags?.length > 0 && (
             <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 5 }}>
@@ -2731,8 +2731,8 @@ Return a JSON object with this exact structure:
             </div>
           )}
           <div style={{ display: "flex", gap: 10, marginTop: 6, alignItems: "center" }}>
-            {v.source_url && (v.source_type === "tiktok" || v.source_type === "instagram") && <a href={v.source_url} target="_blank" rel="noreferrer" style={{ fontSize: "0.68rem", color: "#55630d", fontWeight: 500 }}>{SOURCE_ICON[v.source_type] || "🔗"} View source ↗</a>}
-            {googleMapsUrl(v) && <a href={googleMapsUrl(v)} target="_blank" rel="noreferrer" style={{ fontSize: "0.68rem", color: "#55630d", fontWeight: 500 }}>📍 Maps</a>}
+            {v.source_url && (v.source_type === "tiktok" || v.source_type === "instagram") && <a href={v.source_url} target="_blank" rel="noreferrer" style={{ fontSize: "0.68rem", color: "#726A4E", fontWeight: 500 }}>{SOURCE_ICON[v.source_type] || "🔗"} View source ↗</a>}
+            {googleMapsUrl(v) && <a href={googleMapsUrl(v)} target="_blank" rel="noreferrer" style={{ fontSize: "0.68rem", color: "#726A4E", fontWeight: 500 }}>📍 Maps</a>}
             {onMove && <button onClick={onMove} style={{ border: "none", background: "none", padding: 0, fontSize: "0.68rem", color: "#6b5e4e", fontWeight: 500, cursor: "pointer" }}>↪ Move</button>}
             {draft && !v._google_found && <span style={{ fontSize: "0.6rem", color: "#c98a3a" }}>⚠ not on Google</span>}
           </div>
@@ -2762,7 +2762,7 @@ Return a JSON object with this exact structure:
             <BigSpotCard s={s} photo={s.photo_url} />
           </div>
           <div style={{ padding: "0 12px 12px", display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
-            <button onClick={() => onBuildPlan([s])} style={{ border: "none", background: "#55630d", color: "#fff", borderRadius: 100, padding: "7px 16px", fontSize: "0.72rem", fontWeight: 600, cursor: "pointer" }}>✦ Make a plan based on this</button>
+            <button onClick={() => onBuildPlan([s])} style={{ border: "none", background: "#726A4E", color: "#fff", borderRadius: 100, padding: "7px 16px", fontSize: "0.72rem", fontWeight: 600, cursor: "pointer" }}>✦ Make a plan based on this</button>
             <button onClick={() => setMovingSpot(s)} style={{ border: "1px solid #e8e2d8", background: "#fff", borderRadius: 100, padding: "7px 14px", fontSize: "0.72rem", color: "#6b5e4e", fontWeight: 500, cursor: "pointer" }}>↪ Move to list</button>
           </div>
         </div>
@@ -2793,8 +2793,8 @@ Return a JSON object with this exact structure:
           {MEDIA_TYPES.map(m => (
             <button key={m.id} onClick={() => { setMediaType(m.id); setError(null); }} disabled={parsing || saving}
               style={{ fontSize: "0.74rem", padding: "7px 12px", borderRadius: 100, cursor: "pointer",
-                border: mediaType === m.id ? "1.5px solid #55630d" : "1.5px solid #e8e2d8",
-                background: mediaType === m.id ? "#eef3d8" : "#fff", color: mediaType === m.id ? "#55630d" : "#6b5e4e", fontWeight: mediaType === m.id ? 600 : 400 }}>
+                border: mediaType === m.id ? "1.5px solid #726A4E" : "1.5px solid #e8e2d8",
+                background: mediaType === m.id ? "#eef3d8" : "#fff", color: mediaType === m.id ? "#726A4E" : "#6b5e4e", fontWeight: mediaType === m.id ? 600 : 400 }}>
               {m.emoji} {m.label}
             </button>
           ))}
@@ -2823,7 +2823,7 @@ Return a JSON object with this exact structure:
         {mediaType === "bulk" && <div style={{ fontSize: "0.66rem", color: "#b8ac9a", marginTop: 6 }}>One per line. Google Maps links are resolved; plain place names are looked up on Google. Great for importing a whole list.</div>}
         </>)}
 
-        {(parsing || saving) && parseStatus && <div style={{ fontSize: "0.75rem", color: "#55630d", marginTop: 8 }}>{parseStatus}</div>}
+        {(parsing || saving) && parseStatus && <div style={{ fontSize: "0.75rem", color: "#726A4E", marginTop: 8 }}>{parseStatus}</div>}
       </div>
 
       {preview.length > 0 && (
@@ -2851,8 +2851,8 @@ Return a JSON object with this exact structure:
             {[["folders", "Lists"], ["map", "Map"], ["calendar", "Calendar"]].map(([id, label]) => (
               <button key={id} onClick={() => { setSavedView(id); setOpenFolder(null); }}
                 style={{ fontSize: "0.74rem", padding: "6px 14px", borderRadius: 100, cursor: "pointer",
-                  border: savedView === id ? "1.5px solid #55630d" : "1.5px solid #e8e2d8",
-                  background: savedView === id ? "#eef3d8" : "#fff", color: savedView === id ? "#55630d" : "#6b5e4e", fontWeight: savedView === id ? 600 : 400 }}>
+                  border: savedView === id ? "1.5px solid #726A4E" : "1.5px solid #e8e2d8",
+                  background: savedView === id ? "#eef3d8" : "#fff", color: savedView === id ? "#726A4E" : "#6b5e4e", fontWeight: savedView === id ? 600 : 400 }}>
                 {label}
               </button>
             ))}
@@ -2873,7 +2873,7 @@ Return a JSON object with this exact structure:
           <>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "0.5rem 0 0.75rem" }}>
               <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a" }}>Your lists ({saves.length} spot{saves.length !== 1 ? "s" : ""})</div>
-              <button onClick={createFolder} style={{ fontSize: "0.74rem", padding: "6px 12px", borderRadius: 100, border: "1.5px solid #55630d", background: "#fff", color: "#55630d", fontWeight: 600, cursor: "pointer" }}>+ New list</button>
+              <button onClick={createFolder} style={{ fontSize: "0.74rem", padding: "6px 12px", borderRadius: 100, border: "1.5px solid #726A4E", background: "#fff", color: "#726A4E", fontWeight: 600, cursor: "pointer" }}>+ New list</button>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               {folderNames.map(f => {
@@ -2948,7 +2948,7 @@ Return a JSON object with this exact structure:
             {folderNames.map(f => (
               <button key={f} onClick={() => moveSpot(movingSpot, f)} style={{ display: "block", width: "100%", textAlign: "left", padding: "11px 12px", borderRadius: 10, border: "1px solid #e8e2d8", background: "#fff", cursor: "pointer", fontSize: "0.82rem", color: "#1c1c1a", marginBottom: 8 }}>📁 {f}</button>
             ))}
-            <button onClick={() => { const n = (window.prompt("New list name") || "").trim(); if (n) moveSpot(movingSpot, n); }} style={{ display: "block", width: "100%", textAlign: "left", padding: "11px 12px", borderRadius: 10, border: "1.5px solid #55630d", background: "#fff", cursor: "pointer", fontSize: "0.82rem", color: "#55630d", fontWeight: 600, marginBottom: 8 }}>+ New list…</button>
+            <button onClick={() => { const n = (window.prompt("New list name") || "").trim(); if (n) moveSpot(movingSpot, n); }} style={{ display: "block", width: "100%", textAlign: "left", padding: "11px 12px", borderRadius: 10, border: "1.5px solid #726A4E", background: "#fff", cursor: "pointer", fontSize: "0.82rem", color: "#726A4E", fontWeight: 600, marginBottom: 8 }}>+ New list…</button>
             <button onClick={() => setMovingSpot(null)} style={{ display: "block", width: "100%", textAlign: "center", padding: "10px", borderRadius: 10, border: "none", background: "#f5f0e8", cursor: "pointer", fontSize: "0.8rem", color: "#6b5e4e" }}>Cancel</button>
           </div>
         </div>
@@ -3024,7 +3024,7 @@ function RatingPrompt({ plan, user, onDismiss, onSubmit }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: "1.5rem" }}>
       <div style={{ background: "#fff", borderRadius: 20, maxWidth: 380, width: "100%", maxHeight: "80vh", overflow: "auto", padding: "1.5rem" }}>
-        <div style={{ fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#55630d", fontWeight: 500, marginBottom: "0.5rem" }}>How was it?</div>
+        <div style={{ fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#726A4E", fontWeight: 500, marginBottom: "0.5rem" }}>How was it?</div>
         <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.3rem", color: "#1c1c1a", marginBottom: "0.25rem" }}>{plan.result.title}</div>
         <div style={{ fontSize: "0.78rem", color: "#9b8f7a", marginBottom: "1.25rem" }}>{plan.savedAt}</div>
 
@@ -3032,7 +3032,7 @@ function RatingPrompt({ plan, user, onDismiss, onSubmit }) {
           <div style={{ fontSize: "0.75rem", fontWeight: 500, color: "#4a4438", marginBottom: "0.5rem" }}>Overall rating</div>
           <div style={{ display: "flex", gap: 6 }}>
             {[1,2,3,4,5].map(n => (
-              <button key={n} onClick={() => setOverall(n)} style={{ width: 36, height: 36, borderRadius: "50%", border: "1.5px solid", borderColor: overall >= n ? "#55630d" : "#ddd8ce", background: overall >= n ? "#55630d" : "#fff", color: overall >= n ? "#fff" : "#9b8f7a", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>{n}</button>
+              <button key={n} onClick={() => setOverall(n)} style={{ width: 36, height: 36, borderRadius: "50%", border: "1.5px solid", borderColor: overall >= n ? "#726A4E" : "#ddd8ce", background: overall >= n ? "#726A4E" : "#fff", color: overall >= n ? "#fff" : "#9b8f7a", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>{n}</button>
             ))}
           </div>
         </div>
@@ -3044,7 +3044,7 @@ function RatingPrompt({ plan, user, onDismiss, onSubmit }) {
               <span style={{ fontSize: "0.8rem", color: "#1c1c1a", flex: 1 }}>{stop.emoji} {stop.name}</span>
               <div style={{ display: "flex", gap: 3 }}>
                 {[1,2,3,4,5].map(n => (
-                  <button key={n} onClick={() => rateStop(stop.name, n)} style={{ width: 24, height: 24, borderRadius: "50%", border: "1px solid", borderColor: (stopRatings[stop.name] || 0) >= n ? "#55630d" : "#e8e2d8", background: (stopRatings[stop.name] || 0) >= n ? "#eef3d8" : "#fff", color: (stopRatings[stop.name] || 0) >= n ? "#55630d" : "#b8ac9a", fontSize: "0.6rem", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>{n}</button>
+                  <button key={n} onClick={() => rateStop(stop.name, n)} style={{ width: 24, height: 24, borderRadius: "50%", border: "1px solid", borderColor: (stopRatings[stop.name] || 0) >= n ? "#726A4E" : "#e8e2d8", background: (stopRatings[stop.name] || 0) >= n ? "#eef3d8" : "#fff", color: (stopRatings[stop.name] || 0) >= n ? "#726A4E" : "#b8ac9a", fontSize: "0.6rem", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>{n}</button>
                 ))}
               </div>
             </div>
