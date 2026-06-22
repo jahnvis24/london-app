@@ -13,7 +13,8 @@ export default async function handler(req, res) {
     if (tool === 'image') return await handleImage(req, res);
     if (tool === 'maps') return await handleMaps(req, res);
     if (tool === 'instagram') return await handleInstagram(req, res);
-    return res.status(400).json({ error: 'Unknown tool (expected "image", "maps", or "instagram")' });
+    if (tool === 'photos') return await handlePhotos(req, res);
+    return res.status(400).json({ error: 'Unknown tool (expected "image", "maps", "instagram", or "photos")' });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -88,6 +89,27 @@ async function handleInstagram(req, res) {
   } catch (e) {
     return res.status(200).json({ found: false, message: e.message });
   }
+}
+
+// Returns several directly-loadable Google Places photo URLs for a venue (for the
+// detail-page gallery). Resolves each photo redirect to its googleusercontent URL.
+async function handlePhotos(req, res) {
+  const { place_id } = req.body || {};
+  const apiKey = process.env.GOOGLE_PLACES_KEY;
+  if (!place_id) return res.status(400).json({ error: 'place_id required' });
+  if (!apiKey) return res.status(500).json({ error: 'Google Places key not configured' });
+  const d = await fetch(`https://maps.googleapis.com/maps/api/place/details/json?place_id=${place_id}&fields=photos&key=${apiKey}`);
+  const dj = await d.json();
+  const refs = (dj.result?.photos || []).slice(0, 8).map(p => p.photo_reference).filter(Boolean);
+  const urls = [];
+  for (const ref of refs) {
+    try {
+      const r = await fetch(`https://maps.googleapis.com/maps/api/place/photo?maxwidth=900&photo_reference=${ref}&key=${apiKey}`, { redirect: 'manual' });
+      const loc = r.headers.get('location');
+      if (loc) urls.push(loc);
+    } catch (e) { /* skip */ }
+  }
+  return res.status(200).json({ found: urls.length > 0, urls });
 }
 
 async function handleMaps(req, res) {

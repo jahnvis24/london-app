@@ -383,6 +383,7 @@ const styles = `
   @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,700&display=swap');
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  button { color: #1c1c1a; font-family: inherit; -webkit-tap-highlight-color: transparent; }
   body { font-family: 'DM Sans', -apple-system, sans-serif; background: #f7f6f2; color: #1c1c1a; min-height: 100vh; overflow-x: hidden; }
   .app { max-width: 420px; margin: 0 auto; min-height: 100vh; background: #f7f6f2; padding-bottom: 80px; position: relative; }
 
@@ -751,7 +752,7 @@ function MapPicker({ onPin, currentPin, compact }) {
 }
 
 
-function QuizScreen({ step, ans, times, setTimes, onToggle, onNext, onBack, onGenerate, loading, loadIdx, error }) {
+function QuizScreen({ step, ans, times, setTimes, onToggle, onNext, onBack, onGenerate, loading, loadIdx, error, onExit }) {
   const q = QUESTIONS[step];
   const totalSteps = QUESTIONS.length + 1;
   const progressPct = Math.round(((step + 1) / totalSteps) * 100);
@@ -796,7 +797,7 @@ function QuizScreen({ step, ans, times, setTimes, onToggle, onNext, onBack, onGe
         <div className="progress-bg"><div className="progress-fill" style={{ width: `${progressPct}%` }} /></div>
       </div>
       {error && <div className="err">⚠️ {error}</div>}
-      {step > 0 && <button className="btn-ghost" onClick={onBack}>← Back</button>}
+      <button className="btn-ghost" onClick={step > 0 ? onBack : onExit}>← Back</button>
       {step < QUESTIONS.length ? (
         <div style={{ padding: step > 0 ? "1rem 1.5rem 1.5rem" : "2rem 1.5rem 1.5rem" }}>
           <div className="q-label">{q.label}</div>
@@ -1833,6 +1834,14 @@ function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan, user }) {
   const [myStars, setMyStars] = useState(0);
   const [agg, setAgg] = useState({ avg: null, count: 0 });
   const venueKey = spot.google_place_id || (spot.name || "").toLowerCase().trim();
+  const [photos, setPhotos] = useState(spot.photo_url ? [spot.photo_url] : []);
+  useEffect(() => {
+    if (!spot.google_place_id) return;
+    let active = true;
+    fetch("/api/saved-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool: "photos", place_id: spot.google_place_id }) })
+      .then(r => r.json()).then(j => { if (active && j.found) setPhotos(prev => [...new Set([...prev, ...j.urls])]); }).catch(() => {});
+    return () => { active = false; };
+  }, []);
 
   async function refreshRatings() {
     const { data } = await supabase.from("venue_ratings").select("stars,user_id").eq("venue_key", venueKey);
@@ -1859,11 +1868,14 @@ function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan, user }) {
   };
   return (
     <div style={{ position: "fixed", inset: 0, background: "#f7f6f2", zIndex: 1200, overflowY: "auto", animation: "fadeIn 0.2s" }}>
-      <div style={{ position: "relative", height: 240, background: spot.photo_url ? "#e9e4da" : (CAT_COLOURS[cat] || "#726A4E") }}>
-        {spot.photo_url && <img src={spot.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
-        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 40%, rgba(0,0,0,0.6))" }} />
-        <button onClick={onClose} style={{ position: "absolute", top: 14, left: 14, width: 34, height: 34, borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.92)", cursor: "pointer", fontSize: "1rem" }}>←</button>
-        <div style={{ position: "absolute", left: 16, right: 16, bottom: 14 }}>
+      <div style={{ position: "relative", height: 240, background: photos.length ? "#e9e4da" : (CAT_COLOURS[cat] || "#726A4E") }}>
+        <div style={{ display: "flex", height: "100%", overflowX: "auto", scrollSnapType: "x mandatory" }}>
+          {photos.map((p, i) => <img key={i} src={p} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", flexShrink: 0, scrollSnapAlign: "start" }} />)}
+        </div>
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 40%, rgba(0,0,0,0.6))", pointerEvents: "none" }} />
+        {photos.length > 1 && <div style={{ position: "absolute", top: 14, right: 14, background: "rgba(0,0,0,0.55)", color: "#fff", borderRadius: 100, padding: "3px 10px", fontSize: "0.68rem", fontWeight: 600 }}>📷 {photos.length}</div>}
+        <button onClick={onClose} style={{ position: "absolute", top: 14, left: 14, width: 34, height: 34, borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.92)", cursor: "pointer", fontSize: "1.1rem", color: "#DD4124", fontWeight: 700 }}>←</button>
+        <div style={{ position: "absolute", left: 16, right: 16, bottom: 14, pointerEvents: "none" }}>
           <div style={{ color: "rgba(255,255,255,0.92)", fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.7rem", lineHeight: 1.1, textShadow: "0 2px 14px rgba(0,0,0,0.5)" }}>{spot.name}</div>
         </div>
       </div>
@@ -1881,7 +1893,7 @@ function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan, user }) {
             </div>
           </div>
           <div style={{ marginLeft: "auto", textAlign: "right" }}>
-            <div style={{ fontSize: "0.66rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "#9b8f7a", fontWeight: 600, marginBottom: 2 }}>Community</div>
+            <div style={{ fontSize: "0.66rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "#9b8f7a", fontWeight: 600, marginBottom: 2 }}>Average</div>
             <div style={{ fontSize: "0.9rem", color: "#1c1c1a", fontWeight: 600 }}>{agg.avg ? `★ ${agg.avg.toFixed(1)}` : "—"} <span style={{ fontSize: "0.72rem", color: "#9b8f7a", fontWeight: 400 }}>({agg.count})</span></div>
           </div>
         </div>
@@ -2960,7 +2972,10 @@ Return a JSON object with this exact structure:
               <SpotsMap key="maptab" saves={saves} focusSpot={focusSpot} onCategory={setMapCat} />
             </div>
             {mapCat && renderSheet(scopeSaves, (
-              <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a", padding: "0 14px 12px" }}>{CAT_LABEL[mapCat] || cap(mapCat)} ({scopeSaves.length})</div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0 14px 12px", gap: 8 }}>
+                <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a" }}>{CAT_LABEL[mapCat] || cap(mapCat)} ({scopeSaves.length})</div>
+                {scopeSaves.length > 1 && <button onClick={() => onBuildPlan(scopeSaves)} style={{ border: "none", background: "#726A4E", color: "#fff", borderRadius: 100, padding: "7px 14px", fontSize: "0.72rem", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>{(mapCat === "bar" || mapCat === "nightlife") ? "🍸 Bar crawl" : "Plan from these"} ✦</button>}
+              </div>
             ))}
           </>
         )}
@@ -3637,7 +3652,7 @@ export default function App() {
   if (authLoading) return (
     <>
       <style>{styles}</style>
-      <div className="app"><div className="loading"><div className="loading-ring" /><div className="loading-sub">Loading...</div></div></div>
+      <SparkleLoader label="Curated London" />
     </>
   );
 
@@ -3656,7 +3671,7 @@ export default function App() {
         {ratingPlan && <RatingPrompt plan={ratingPlan} user={user} onDismiss={() => { const reviewed = JSON.parse(localStorage.getItem("cl_reviewed") || "[]"); reviewed.push(ratingPlan.id); localStorage.setItem("cl_reviewed", JSON.stringify(reviewed)); setRatingPlan(null); }} onSubmit={() => { setRatingPlan(null); showToast("Thanks for your review!"); }} />}
 
         {showHome && <HomeScreen onStart={startQuiz} />}
-        {showQuiz && <QuizScreen step={quizStep} ans={ans} times={times} setTimes={setTimes} onToggle={toggle} onNext={nextStep} onBack={prevStep} onGenerate={generate} loading={loading} loadIdx={loadIdx} error={error} />}
+        {showQuiz && <QuizScreen step={quizStep} ans={ans} times={times} setTimes={setTimes} onToggle={toggle} onNext={nextStep} onBack={prevStep} onGenerate={generate} loading={loading} loadIdx={loadIdx} error={error} onExit={() => setQuizStep(-1)} />}
         {showResult && <ResultScreen result={result} times={times} ans={ans} onRestart={resetToHome} onNewPlan={startQuiz} dbVenues={dbVenues} onUpdateResult={setResult} onShare={setShareItem} />}
 
         {activeTab === "plans" && !showViewingPlan && <MyPlansScreen plans={plans} onViewPlan={(plan) => setViewingPlan(plan)} onNewPlan={() => { setActiveTab("home"); startQuiz(); }} />}
