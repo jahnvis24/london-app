@@ -1841,13 +1841,28 @@ function googleMapsUrl(v) {
 // Collage cover for a list card — always a fixed 2x2 of equal-size tiles so every
 // list card looks identical. Missing tiles are filled by cycling the photos.
 function ListCover({ items, height = 200 }) {
-  const photos = items.filter(s => s.photo_url).map(s => s.photo_url);
+  // Use only distinct photos so covers never duplicate the same image; the
+  // layout adapts to how many photos there are.
+  const photos = [...new Set(items.filter(s => s.photo_url).map(s => s.photo_url))];
   const cat = String(items[0]?.category || "").toLowerCase();
+  const img = { width: "100%", height: "100%", objectFit: "cover", display: "block", background: "#e9e4da", minHeight: 0, minWidth: 0 };
   if (photos.length === 0) return <div style={{ height, background: "#A1947D", display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: "2rem" }}>{CAT_EMOJI[cat] || "📁"}</span></div>;
-  const cells = [0, 1, 2, 3].map(i => photos[i % photos.length]);
+  if (photos.length === 1) return <div style={{ height }}><img src={photos[0]} alt="" style={img} /></div>;
+  if (photos.length === 2) return (
+    <div style={{ height, display: "grid", gridTemplateRows: "1fr 1fr", gap: 2 }}>
+      {photos.map((p, i) => <img key={i} src={p} alt="" style={img} />)}
+    </div>
+  );
+  if (photos.length === 3) return (
+    <div style={{ height, display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: 2 }}>
+      <img src={photos[0]} alt="" style={img} />
+      <img src={photos[1]} alt="" style={img} />
+      <img src={photos[2]} alt="" style={{ ...img, gridColumn: "1 / span 2" }} />
+    </div>
+  );
   return (
     <div style={{ height, display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: 2 }}>
-      {cells.map((p, i) => <img key={i} src={p} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", background: "#e9e4da", minHeight: 0, minWidth: 0 }} />)}
+      {photos.slice(0, 4).map((p, i) => <img key={i} src={p} alt="" style={img} />)}
     </div>
   );
 }
@@ -3055,7 +3070,7 @@ Return a JSON object with this exact structure:
                 );
               })}
             </div>
-            <button className="btn btn-teal" style={{ marginTop: "1rem" }} onClick={() => onBuildPlan(saves)}>Build plan from all {saves.length} spot{saves.length !== 1 ? "s" : ""} ✦</button>
+            <button className="btn btn-teal" style={{ marginTop: "1rem" }} onClick={() => onBuildPlan(saves)}>Build a plan from your spots ✦</button>
           </>
         )}
         {saves.length > 0 && savedView === "folders" && openFolder && (
@@ -3569,8 +3584,9 @@ export default function App() {
       '{"title":"punchy name","tagline":"witty sentence","vibe_scores":{"fun":7,"romantic":3,"cultural":6,"chaotic":2},"total_cost_estimate":"35-55pp","stops":[{"time":"18:30","name":"venue name","type":"bar","area":"Shoreditch","emoji":"🍸","saved":false,"hook":"best thing about this place","why_it_fits":"vibe match","booking":"Walk-in fine","cost_estimate":"£15-35pp","travel_to_next":"calculating..."}],"extend_the_night":"late suggestion","local_tip":"insider tip"}';
 
     try {
-      const txt = await callClaude(prompt, 1000);
-      const parsed = JSON.parse(txt);
+      const txt = await callClaude(prompt, 1200);
+      const parsed = safeJsonParse(txt);
+      if (!parsed) throw new Error("Couldn't build the plan from the AI response. Please try again.");
 
       // Enrich stops with DB data (rating, price) and real travel times
       const enrichedStops = await Promise.all((parsed.stops || []).map(async (stop, idx) => {
