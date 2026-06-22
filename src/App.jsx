@@ -350,6 +350,30 @@ async function callClaude(prompt, maxTokens = 1000) {
   return txt.replace(/```json|```/g, "").trim();
 }
 
+// Tolerant JSON parse for model output: strips fences/prose, extracts the JSON
+// array/object, and repairs common issues (trailing commas, single quotes,
+// smart quotes). Returns null instead of throwing so one bad image can't kill a batch.
+function safeJsonParse(text) {
+  if (!text) return null;
+  let t = String(text).replace(/```json|```/g, "").trim();
+  try { return JSON.parse(t); } catch (e) {}
+  const fa = t.indexOf("["), fo = t.indexOf("{");
+  let start = -1, close = "}";
+  if (fa !== -1 && (fo === -1 || fa < fo)) { start = fa; close = "]"; }
+  else if (fo !== -1) { start = fo; close = "}"; }
+  if (start === -1) return null;
+  const end = t.lastIndexOf(close);
+  if (end <= start) return null;
+  let sub = t.slice(start, end + 1);
+  const attempts = [
+    sub,
+    sub.replace(/,\s*([}\]])/g, "$1"),                                   // trailing commas
+    sub.replace(/,\s*([}\]])/g, "$1").replace(/[“”]/g, '"').replace(/[‘’]/g, "'"), // smart quotes
+  ];
+  for (const a of attempts) { try { return JSON.parse(a); } catch (e) {} }
+  return null;
+}
+
 // Downscale + JPEG-compress an image file so the /api/claude payload stays
 // under Vercel's ~4.5MB request limit (large phone screenshots otherwise fail).
 async function fileToDownscaledBase64(file, maxDim = 1280, quality = 0.8) {
@@ -871,7 +895,7 @@ function QuizScreen({ step, ans, times, setTimes, onToggle, onNext, onBack, onGe
   );
 }
 
-function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUpdateResult, onShare }) {
+function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUpdateResult, onShare, onRate }) {
   const [view, setView] = useState("plan");
   const [shareId] = useState(generateId);
   const [copied, setCopied] = useState(false);
@@ -1044,6 +1068,7 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
             }}>
               🗺️ Create Google Maps route
             </button>
+            {onRate && <button className="btn-outline" onClick={onRate}>★ Rate this plan</button>}
             {onShare && <button className="btn-outline" onClick={() => onShare({ kind: "plan", title: result.title || "London plan", payload: { plan: result, times } })}>📨 Send to a friend (in app)</button>}
             <button className="btn-outline" onClick={() => { setView("social"); ensureShared(); }}>🔗 Share via link</button>
             <button className="btn-outline" onClick={onRestart}>↺ Plan a different day</button>
@@ -1271,9 +1296,9 @@ Each object must have this exact structure:
       });
       const data = await resp.json();
       if (data.error) throw new Error(data.error.message || "AI API error");
-      const txt = (data.content?.find(b => b.type === "text")?.text || "").replace(/```json|```/g, "").trim();
-      if (!txt) throw new Error("Couldn't extract venue info from this image.");
-      const parsedRaw = JSON.parse(txt);
+      const txt = (data.content?.find(b => b.type === "text")?.text || "");
+      const parsedRaw = safeJsonParse(txt);
+      if (!parsedRaw) throw new Error("Couldn't extract venue info from this image.");
       const venues = Array.isArray(parsedRaw) ? parsedRaw : [parsedRaw];
 
       setParseStatus("Looking up on Google...");
@@ -1350,7 +1375,8 @@ Each object must have this exact structure:
 }`;
 
       const txt = await callClaude(prompt, 1500);
-      const parsedRaw = JSON.parse(txt);
+      const parsedRaw = safeJsonParse(txt);
+      if (!parsedRaw) throw new Error("Couldn't read the venue details. Try again.");
       const venues = Array.isArray(parsedRaw) ? parsedRaw : [parsedRaw];
 
       // Enrich each venue with Google Places data
@@ -2418,9 +2444,10 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
   // Parse free text (TikTok / Instagram caption / notes) → 1+ drafts.
   async function parseTextToDrafts(text, extra) {
     const caption = text.slice(0, 1200).replace(/[ -]/g, " ");
-    const txt = await callClaude(`You are extracting London venues/events from social-media text.\nText: ${JSON.stringify(caption)}\n\n${EXTRACT_SCHEMA}`, 900);
+    const txt = await callClaude(`You are extracting London venues/events from social-media text.\nText: ${JSON.stringify(caption)}\n\n${EXTRACT_SCHEMA}`, 1200);
     if (!txt) throw new Error("AI returned an empty response. Try again.");
-    const raw = JSON.parse(txt);
+    const raw = safeJsonParse(txt);
+    if (!raw) throw new Error("Couldn't read the venues from that text. Try again or paste cleaner text.");
     const items = Array.isArray(raw) ? raw : [raw];
     const drafts = [];
     for (const p of items) {
@@ -2466,34 +2493,53 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
 
   async function parseScreenshots(files) {
     const drafts = [];
-    let n = 0;
+    let n = 0, failed = 0;
+    // Process each image independently so one unreadable/odd screenshot can't
+    // abort the whole batch (supports 50+ uploads).
     for (const file of files) {
       n++;
       setParseStatus(`Reading image ${n} of ${files.length}...`);
-      const { base64, mediaType } = await fileToDownscaledBase64(file);
-      const resp = await fetch("/api/claude", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-6", max_tokens: 900,
-          messages: [{ role: "user", content: [
-            { type: "image", source: { type: "base64", media_type: mediaType, data: base64 } },
-            { type: "text", text: `This is a screenshot about a London venue, event, or place. ${EXTRACT_SCHEMA}` },
-          ] }],
-        }),
-      });
-      const data = await resp.json();
-      if (data.error) throw new Error(data.error.message || "AI API error");
-      const t = (data.content?.find(b => b.type === "text")?.text || "").replace(/```json|```/g, "").trim();
-      if (!t) continue;
-      const raw = JSON.parse(t);
-      const items = Array.isArray(raw) ? raw : [raw];
-      for (const p of items) {
-        if (!p?.name) continue;
-        setParseStatus(`Looking up "${p.name}" on Google...`);
-        const g = await enrich(p.name, p.area);
-        drafts.push(buildDraft(p, g, { source_type: "screenshot", source_url: null, _screenshot_b64: base64 }));
+      try {
+        const { base64, mediaType } = await fileToDownscaledBase64(file);
+        let data, attempt = 0;
+        // Retry transient API errors (e.g. rate limits with many images).
+        while (attempt < 3) {
+          attempt++;
+          const resp = await fetch("/api/claude", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              model: "claude-sonnet-4-6", max_tokens: 1500,
+              messages: [{ role: "user", content: [
+                { type: "image", source: { type: "base64", media_type: mediaType, data: base64 } },
+                { type: "text", text: `This is a screenshot about a London venue, event, or place. ${EXTRACT_SCHEMA}` },
+              ] }],
+            }),
+          });
+          data = await resp.json();
+          if (resp.status === 429 || (data.error && /rate|overload|529|429/i.test(JSON.stringify(data.error)))) {
+            await new Promise(r => setTimeout(r, 1500 * attempt));
+            continue;
+          }
+          break;
+        }
+        if (data.error) { failed++; continue; }
+        const t = (data.content?.find(b => b.type === "text")?.text || "");
+        const raw = safeJsonParse(t);
+        if (!raw) { failed++; continue; }
+        const items = Array.isArray(raw) ? raw : [raw];
+        for (const p of items) {
+          if (!p?.name) continue;
+          setParseStatus(`Looking up "${p.name}" on Google...`);
+          let g = null;
+          try { g = await enrich(p.name, p.area); } catch (e) { /* keep without Google */ }
+          drafts.push(buildDraft(p, g, { source_type: "screenshot", source_url: null, _screenshot_b64: base64 }));
+        }
+      } catch (e) {
+        console.error("[screenshot]", n, e);
+        failed++;
       }
     }
+    if (failed) setError(prev => `${failed} screenshot${failed !== 1 ? "s" : ""} couldn't be read and ${failed !== 1 ? "were" : "was"} skipped.${prev ? " " + prev : ""}`);
     return drafts;
   }
 
@@ -2581,7 +2627,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
       setPreview(prev => [...prev, ...drafts]);
       setTextInput("");
       setParseStatus("");
-      if (dupCount) setError(`Heads up: ${dupCount} of these ${dupCount === 1 ? "is" : "are"} already in your saves (marked below).`);
+      if (dupCount) setError(prev => `${prev ? prev + " " : ""}Heads up: ${dupCount} of these ${dupCount === 1 ? "is" : "are"} already in your saves (marked below).`);
       notify("Parsing done ✦", `${drafts.length} spot${drafts.length !== 1 ? "s" : ""} ready to review`);
     } catch (e) {
       console.error("[handleParse]", e);
@@ -2972,9 +3018,9 @@ Return a JSON object with this exact structure:
               <SpotsMap key="maptab" saves={saves} focusSpot={focusSpot} onCategory={setMapCat} />
             </div>
             {mapCat && renderSheet(scopeSaves, (
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0 14px 12px", gap: 8 }}>
-                <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a" }}>{CAT_LABEL[mapCat] || cap(mapCat)} ({scopeSaves.length})</div>
-                {scopeSaves.length > 1 && <button onClick={() => onBuildPlan(scopeSaves)} style={{ border: "none", background: "#726A4E", color: "#fff", borderRadius: 100, padding: "7px 14px", fontSize: "0.72rem", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>{(mapCat === "bar" || mapCat === "nightlife") ? "🍸 Bar crawl" : "Plan from these"} ✦</button>}
+              <div style={{ padding: "0 14px 12px" }}>
+                <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a", marginBottom: scopeSaves.length > 1 ? 9 : 0 }}>{CAT_LABEL[mapCat] || cap(mapCat)} ({scopeSaves.length})</div>
+                {scopeSaves.length > 1 && <button onClick={() => onBuildPlan(scopeSaves)} style={{ width: "100%", border: "none", background: "#726A4E", color: "#fff", borderRadius: 100, padding: "10px 14px", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer" }}>{(mapCat === "bar" || mapCat === "nightlife") ? "🍸 Planning a bar crawl? Tap here!" : "✦ Build a plan from these"}</button>}
               </div>
             ))}
           </>
@@ -3409,11 +3455,12 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Check for unrated past plans
+  // Check for unrated past plans — only prompt once a plan is a couple of days old.
   useEffect(() => {
     if (!user || plans.length === 0) return;
     const reviewed = JSON.parse(localStorage.getItem("cl_reviewed") || "[]");
-    const unrated = plans.find(p => p.id && !reviewed.includes(p.id));
+    const TWO_DAYS = 2 * 24 * 60 * 60 * 1000;
+    const unrated = plans.find(p => p.id && !reviewed.includes(p.id) && p.createdAt && (Date.now() - p.createdAt) >= TWO_DAYS);
     if (unrated) setTimeout(() => setRatingPlan(unrated), 1500);
   }, [user, plans]);
 
@@ -3589,7 +3636,7 @@ export default function App() {
       setResult(finalResult);
       setQuizStep(QUESTIONS.length + 1);
       setPlans(prev => {
-        const updated = [{ result: finalResult, ans: { ...ans }, times: { ...times }, savedAt: new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }), id: generateId() }, ...prev];
+        const updated = [{ result: finalResult, ans: { ...ans }, times: { ...times }, savedAt: new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }), createdAt: Date.now(), id: generateId() }, ...prev];
         localStorage.setItem("cl_plans", JSON.stringify(updated.slice(0, 20)));
         return updated;
       });
@@ -3672,18 +3719,18 @@ export default function App() {
 
         {showHome && <HomeScreen onStart={startQuiz} />}
         {showQuiz && <QuizScreen step={quizStep} ans={ans} times={times} setTimes={setTimes} onToggle={toggle} onNext={nextStep} onBack={prevStep} onGenerate={generate} loading={loading} loadIdx={loadIdx} error={error} onExit={() => setQuizStep(-1)} />}
-        {showResult && <ResultScreen result={result} times={times} ans={ans} onRestart={resetToHome} onNewPlan={startQuiz} dbVenues={dbVenues} onUpdateResult={setResult} onShare={setShareItem} />}
+        {showResult && <ResultScreen result={result} times={times} ans={ans} onRestart={resetToHome} onNewPlan={startQuiz} dbVenues={dbVenues} onUpdateResult={setResult} onShare={setShareItem} onRate={() => plans[0] && setRatingPlan(plans[0])} />}
 
         {activeTab === "plans" && !showViewingPlan && <MyPlansScreen plans={plans} onViewPlan={(plan) => setViewingPlan(plan)} onNewPlan={() => { setActiveTab("home"); startQuiz(); }} />}
         {showViewingPlan && (
           <div>
             <button className="btn-ghost" onClick={() => setViewingPlan(null)} style={{ paddingTop: "1.5rem" }}>← My Plans</button>
-            <ResultScreen result={viewingPlan.result} times={viewingPlan.times} ans={viewingPlan.ans} onRestart={() => setViewingPlan(null)} onNewPlan={() => { setViewingPlan(null); setActiveTab("home"); startQuiz(); }} dbVenues={dbVenues} onUpdateResult={(r) => setViewingPlan(p => ({ ...p, result: r }))} onShare={setShareItem} />
+            <ResultScreen result={viewingPlan.result} times={viewingPlan.times} ans={viewingPlan.ans} onRestart={() => setViewingPlan(null)} onNewPlan={() => { setViewingPlan(null); setActiveTab("home"); startQuiz(); }} dbVenues={dbVenues} onUpdateResult={(r) => setViewingPlan(p => ({ ...p, result: r }))} onShare={setShareItem} onRate={() => setRatingPlan(viewingPlan)} />
           </div>
         )}
 
         {activeTab === "discover" && <DiscoverScreen preferences={preferences} dbVenues={dbVenues} />}
-        {activeTab === "people" && <PeopleScreen user={user} onSavePlan={(payload) => { const r = payload?.plan; if (!r) return; setPlans(prev => { const updated = [{ result: r, times: payload?.times || times, ans: {}, savedAt: new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }), id: generateId() }, ...prev]; localStorage.setItem("cl_plans", JSON.stringify(updated.slice(0, 20))); return updated; }); }} />}
+        {activeTab === "people" && <PeopleScreen user={user} onSavePlan={(payload) => { const r = payload?.plan; if (!r) return; setPlans(prev => { const updated = [{ result: r, times: payload?.times || times, ans: {}, savedAt: new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }), createdAt: Date.now(), id: generateId() }, ...prev]; localStorage.setItem("cl_plans", JSON.stringify(updated.slice(0, 20))); return updated; }); }} />}
         {/* Always mounted so an in-progress screenshot parse keeps running + persists when you switch tabs */}
         <div style={{ display: activeTab === "saved" ? "block" : "none" }}>
           <SavedScreen user={user} onShare={setShareItem} onBuildPlan={(saves) => { setAns(prev => ({ ...prev, savedVenues: saves })); setActiveTab("home"); startQuiz(); }} />
