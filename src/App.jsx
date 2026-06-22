@@ -1826,10 +1826,26 @@ function ListCover({ items, height = 200 }) {
 }
 
 // Full detail view for a saved spot: About, Book/Website, Notes, Add to calendar.
-function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan }) {
+function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan, user }) {
   const cat = normaliseCategory(spot.category);
   const [note, setNote] = useState(() => { try { return localStorage.getItem("cl_note_" + spot.id) || ""; } catch { return ""; } });
   const [savedNote, setSavedNote] = useState(false);
+  const [myStars, setMyStars] = useState(0);
+  const [agg, setAgg] = useState({ avg: null, count: 0 });
+  const venueKey = spot.google_place_id || (spot.name || "").toLowerCase().trim();
+
+  async function refreshRatings() {
+    const { data } = await supabase.from("venue_ratings").select("stars,user_id").eq("venue_key", venueKey);
+    if (!data) return;
+    setAgg({ avg: data.length ? data.reduce((a, r) => a + r.stars, 0) / data.length : null, count: data.length });
+    const mine = data.find(r => r.user_id === user?.id);
+    if (mine) setMyStars(mine.stars);
+  }
+  useEffect(() => { refreshRatings(); }, [venueKey]);
+  async function rate(n) {
+    setMyStars(n);
+    try { await supabase.from("venue_ratings").upsert({ user_id: user.id, venue_key: venueKey, venue_name: spot.name, stars: n }, { onConflict: "user_id,venue_key" }); refreshRatings(); } catch (e) {}
+  }
   function saveNote() { try { localStorage.setItem("cl_note_" + spot.id, note); setSavedNote(true); setTimeout(() => setSavedNote(false), 1500); } catch (e) {} }
   const bookUrl = spot.website || googleMapsUrl(spot);
   const gcalUrl = (() => {
@@ -1855,6 +1871,19 @@ function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan }) {
       <div style={{ padding: "1.25rem 1.25rem 6rem" }}>
         <div style={{ fontSize: "0.78rem", color: "#6b5e4e", marginBottom: 14 }}>
           {cap(cat)}{spot.zone ? ` · ${spot.zone}` : ""}{spot.area ? ` · ${spot.area}` : ""}{spot.google_rating ? ` · ⭐ ${spot.google_rating}` : ""}{spot.price ? ` · ${spot.price}` : ""}
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, padding: "10px 12px", background: "#fff", border: "1px solid #f0ebe2", borderRadius: 12 }}>
+          <div>
+            <div style={{ fontSize: "0.66rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "#9b8f7a", fontWeight: 600, marginBottom: 2 }}>Your rating</div>
+            <div style={{ fontSize: "1.3rem", letterSpacing: 2 }}>
+              {[1, 2, 3, 4, 5].map(n => <span key={n} onClick={() => rate(n)} style={{ cursor: "pointer", color: n <= myStars ? "#DD4124" : "#ddd6c8" }}>★</span>)}
+            </div>
+          </div>
+          <div style={{ marginLeft: "auto", textAlign: "right" }}>
+            <div style={{ fontSize: "0.66rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "#9b8f7a", fontWeight: 600, marginBottom: 2 }}>Community</div>
+            <div style={{ fontSize: "0.9rem", color: "#1c1c1a", fontWeight: 600 }}>{agg.avg ? `★ ${agg.avg.toFixed(1)}` : "—"} <span style={{ fontSize: "0.72rem", color: "#9b8f7a", fontWeight: 400 }}>({agg.count})</span></div>
+          </div>
         </div>
 
         <div style={{ fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#9b8f7a", fontWeight: 600, marginBottom: 6 }}>About</div>
@@ -3012,6 +3041,7 @@ Return a JSON object with this exact structure:
       {detailSpot && (
         <SpotDetail
           spot={detailSpot}
+          user={user}
           onClose={() => setDetailSpot(null)}
           onShowOnMap={(s) => { setDetailSpot(null); if (savedView !== "map" && !openFolder) setSavedView("map"); setFocusSpot({ ...s, _focus: Date.now() }); window.scrollTo({ top: 0, behavior: "smooth" }); }}
           onMakePlan={(s) => { setDetailSpot(null); onBuildPlan([s]); }}
