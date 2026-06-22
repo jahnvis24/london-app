@@ -2267,7 +2267,7 @@ function SpotsCalendar({ saves }) {
   );
 }
 
-function SavedScreen({ user, onBuildPlan, onShare }) {
+function SavedScreen({ user, onBuildPlan, onShare, onBarCrawl }) {
   const [saves, setSaves] = useState([]);
   const [loading, setLoading] = useState(true);
   const [mediaType, setMediaType] = useState("tiktok"); // tiktok | instagram | screenshot | maps | mapslist
@@ -3034,8 +3034,10 @@ Return a JSON object with this exact structure:
             </div>
             {mapCat && renderSheet(scopeSaves, (
               <div style={{ padding: "0 14px 12px" }}>
-                <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a", marginBottom: scopeSaves.length > 1 ? 9 : 0 }}>{CAT_LABEL[mapCat] || cap(mapCat)} ({scopeSaves.length})</div>
-                {scopeSaves.length > 1 && <button onClick={() => onBuildPlan(scopeSaves)} style={{ width: "100%", border: "none", background: "#726A4E", color: "#fff", borderRadius: 100, padding: "10px 14px", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer" }}>{(mapCat === "bar" || mapCat === "nightlife") ? "🍸 Planning a bar crawl? Tap here!" : "✦ Build a plan from these"}</button>}
+                <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a", marginBottom: ((mapCat === "bar" || mapCat === "nightlife") || scopeSaves.length > 1) ? 9 : 0 }}>{CAT_LABEL[mapCat] || cap(mapCat)} ({scopeSaves.length})</div>
+                {(mapCat === "bar" || mapCat === "nightlife")
+                  ? <button onClick={() => onBarCrawl(scopeSaves)} style={{ width: "100%", border: "none", background: "#726A4E", color: "#fff", borderRadius: 100, padding: "10px 14px", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer" }}>🍸 Planning a bar crawl? Tap here!</button>
+                  : (scopeSaves.length > 1 && <button onClick={() => onBuildPlan(scopeSaves)} style={{ width: "100%", border: "none", background: "#726A4E", color: "#fff", borderRadius: 100, padding: "10px 14px", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer" }}>✦ Build a plan from these</button>)}
               </div>
             ))}
           </>
@@ -3266,6 +3268,44 @@ function SparkleLoader({ label = "Curating…" }) {
   );
 }
 
+// Dedicated bar-crawl flow. Each answer maps to a value used to build the plan.
+const BAR_CRAWL_QS = [
+  { id: "area", q: "Which part of town?", opts: [["Soho", "central"], ["Shoreditch", "east"], ["Dalston / Hackney", "east"], ["Clapham", "southwest"], ["Peckham", "south"], ["Mayfair / Fitzrovia", "central"], ["Surprise me", "anywhere"]] },
+  { id: "type", q: "Bars or pubs?", opts: [["Cocktail bars", "cocktail"], ["Proper pubs", "pub"], ["A mix of both", "mix"]] },
+  { id: "vibe", q: "What's the atmosphere?", opts: [["Quiet & intimate", "quiet"], ["Music & buzzy", "music"], ["A bit of both (start chill → end lively)", "both"]] },
+  { id: "dress", q: "Dress code?", opts: [["Casual", "casual"], ["Dressy / fancy", "fancy"], ["No preference", "any"]] },
+  { id: "setting", q: "Indoor or outdoor?", opts: [["Mostly indoor", "indoor"], ["Rooftops / terraces", "outdoor"], ["Either", "either"]] },
+  { id: "budget", q: "Budget per drink?", opts: [["£ — cheap & cheerful", "low"], ["££ — mid-range", "mid"], ["£££ — splash out", "high"]] },
+];
+
+function BarCrawlQuiz({ seedCount = 0, onComplete, onCancel }) {
+  const [step, setStep] = useState(0);
+  const [answers, setAnswers] = useState({});
+  const Q = BAR_CRAWL_QS[step];
+  const pick = (val) => {
+    const next = { ...answers, [Q.id]: val };
+    setAnswers(next);
+    if (step < BAR_CRAWL_QS.length - 1) setStep(step + 1);
+    else onComplete(next);
+  };
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "#f7f6f2", zIndex: 1300, display: "flex", flexDirection: "column", padding: "2rem 1.25rem", overflowY: "auto" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 22 }}>
+        <button className="btn-ghost" onClick={() => step === 0 ? onCancel() : setStep(step - 1)}>← Back</button>
+        <div style={{ fontSize: "0.72rem", color: "#9b8f7a", fontWeight: 600 }}>{step + 1} / {BAR_CRAWL_QS.length}</div>
+      </div>
+      <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.7rem", color: "#1c1c1a" }}>🍸 Bar crawl</div>
+      {seedCount > 0 && step === 0 && <div style={{ fontSize: "0.82rem", color: "#726A4E", marginTop: 4, marginBottom: 8 }}>Building around your {seedCount} saved bar{seedCount !== 1 ? "s" : ""}.</div>}
+      <div style={{ fontSize: "1.15rem", fontWeight: 600, color: "#1c1c1a", margin: "20px 0 16px" }}>{Q.q}</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {Q.opts.map(([label, val]) => (
+          <button key={val + label} onClick={() => pick(val)} style={{ textAlign: "left", padding: "15px 16px", borderRadius: 14, border: "1.5px solid #e8e2d8", background: "#fff", fontSize: "0.95rem", color: "#1c1c1a", cursor: "pointer", fontWeight: 500 }}>{label}</button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // Pick a connected person and send them a list/plan.
 function ShareModal({ user, item, onClose, showToast }) {
   const [people, setPeople] = useState([]);
@@ -3427,6 +3467,8 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true);
   const [sharedPlan, setSharedPlan] = useState(null);
   const [shareItem, setShareItem] = useState(null); // { kind, title, payload } -> ShareModal
+  const [barCrawl, setBarCrawl] = useState(null);   // { seed: [...] } -> BarCrawlQuiz
+  const [pendingGen, setPendingGen] = useState(false); // fire generate() after ans/times state commits
   const [activeTab, setActiveTab] = useState("home");
   const [quizStep, setQuizStep] = useState(-1);
   const [ans, setAns] = useState({});
@@ -3478,6 +3520,13 @@ export default function App() {
     const unrated = plans.find(p => p.id && !reviewed.includes(p.id) && p.createdAt && (Date.now() - p.createdAt) >= TWO_DAYS);
     if (unrated) setTimeout(() => setRatingPlan(unrated), 1500);
   }, [user, plans]);
+
+  // Run generate() once new ans/times have committed (used by the bar-crawl flow).
+  useEffect(() => {
+    if (!pendingGen) return;
+    setPendingGen(false);
+    generate();
+  }, [pendingGen]);
 
   // Persist preferences
   useEffect(() => {
@@ -3543,7 +3592,11 @@ export default function App() {
   async function generate() {
     setLoading(true); setError(null);
     const shortlistResult = buildShortlist(ans, dbVenues, venueRatings);
-    const shortlist = shortlistResult.venues || shortlistResult;
+    let shortlist = shortlistResult.venues || shortlistResult;
+    if (ans._barCrawl) {
+      const drink = shortlist.filter(v => /bar|pub|night|wine|cocktail/i.test(v.type || ""));
+      if (drink.length >= 3) shortlist = drink;
+    }
     const chosenZone = shortlistResult.zone || ans.area;
     const venueData = JSON.stringify(shortlist.map(v => ({
       name: v.name, type: v.type, area: v.travelZone + " London",
@@ -3579,7 +3632,7 @@ export default function App() {
       ", travel: " + travelNote +
       ", " + times.start + " to " + times.end +
       ", include: " + ((ans.extras || []).join(", ") || "no extras") +
-      ". Venues (" + stopCount + "): " + venueData + savedClause +
+      ". Venues (" + stopCount + "): " + venueData + savedClause + (ans._barCrawlClause || "") +
       ". Space stops evenly across the time window. Respond ONLY with valid JSON, no markdown, no backticks: " +
       '{"title":"punchy name","tagline":"witty sentence","vibe_scores":{"fun":7,"romantic":3,"cultural":6,"chaotic":2},"total_cost_estimate":"35-55pp","stops":[{"time":"18:30","name":"venue name","type":"bar","area":"Shoreditch","emoji":"🍸","saved":false,"hook":"best thing about this place","why_it_fits":"vibe match","booking":"Walk-in fine","cost_estimate":"£15-35pp","travel_to_next":"calculating..."}],"extend_the_night":"late suggestion","local_tip":"insider tip"}';
 
@@ -3749,7 +3802,7 @@ export default function App() {
         {activeTab === "people" && <PeopleScreen user={user} onSavePlan={(payload) => { const r = payload?.plan; if (!r) return; setPlans(prev => { const updated = [{ result: r, times: payload?.times || times, ans: {}, savedAt: new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }), createdAt: Date.now(), id: generateId() }, ...prev]; localStorage.setItem("cl_plans", JSON.stringify(updated.slice(0, 20))); return updated; }); }} />}
         {/* Always mounted so an in-progress screenshot parse keeps running + persists when you switch tabs */}
         <div style={{ display: activeTab === "saved" ? "block" : "none" }}>
-          <SavedScreen user={user} onShare={setShareItem} onBuildPlan={(saves) => { setAns(prev => ({ ...prev, savedVenues: saves })); setActiveTab("home"); startQuiz(); }} />
+          <SavedScreen user={user} onShare={setShareItem} onBuildPlan={(saves) => { setResult(null); setError(null); setViewingPlan(null); setActiveTab("home"); setAns({ savedVenues: saves }); setQuizStep(0); }} onBarCrawl={(seed) => setBarCrawl({ seed: seed || [] })} />
         </div>
         {activeTab === "add" && <TikTokParserScreen onSuccess={() => showToast("Added! Check Admin to approve.")} />}
         {activeTab === "prefs" && <PreferencesScreen preferences={preferences} setPreferences={setPreferences} user={user} />}
@@ -3771,7 +3824,20 @@ export default function App() {
           ))}
         </nav>
         {shareItem && <ShareModal user={user} item={shareItem} onClose={() => setShareItem(null)} showToast={showToast} />}
-        {loading && <SparkleLoader label="Curating your plan…" />}
+        {barCrawl && <BarCrawlQuiz seedCount={(barCrawl.seed || []).length} onCancel={() => setBarCrawl(null)} onComplete={(a) => {
+          const vibeMap = { quiet: ["chill"], music: ["chaotic", "social"], both: ["social"] };
+          const vibes = [...(vibeMap[a.vibe] || ["social"])];
+          if (a.dress === "fancy") vibes.push("fancy");
+          const typeLabel = a.type === "cocktail" ? "cocktail bars" : a.type === "pub" ? "traditional pubs" : "a mix of cocktail bars and pubs";
+          const atmos = a.vibe === "quiet" ? "quiet, intimate spots" : a.vibe === "music" ? "lively bars with music and a buzz" : "a progression that starts chilled and gets livelier";
+          const dress = a.dress === "fancy" ? "smart / dressy venues" : a.dress === "casual" ? "casual, laid-back venues" : "any dress code";
+          const setting = a.setting === "indoor" ? "mostly indoor" : a.setting === "outdoor" ? "rooftops and terraces where possible" : "indoor or outdoor";
+          const clause = `. THIS IS A BAR CRAWL: every single stop MUST be a bar or pub (no restaurants, cafes, museums or shops). Pick 4-5 drinking venues within a short walk of each other and order them as a natural crawl. Preference: ${typeLabel}. Atmosphere: ${atmos}. Dress: ${dress}. Setting: ${setting}. Set every stop's "type" to "bar" or "pub".`;
+          setAns(prev => ({ ...prev, timeOfDay: "night", vibes, area: a.area, budget: a.budget, groupSize: prev.groupSize || "small_group", energy: "high", travel: "walking", extras: [], savedVenues: barCrawl.seed || [], _barCrawl: true, _barCrawlClause: clause }));
+          setTimes({ start: "18:00", end: "23:30" });
+          setBarCrawl(null); setActiveTab("home"); setQuizStep(QUESTIONS.length); setPendingGen(true);
+        }} />}
+        {loading && <SparkleLoader label={ans._barCrawl ? "Curating your bar crawl…" : "Curating your plan…"} />}
       </div>
     </>
   );
