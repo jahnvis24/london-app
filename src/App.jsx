@@ -401,6 +401,8 @@ const styles = `
   @keyframes popIn { from{opacity:0;transform:scale(0.7)} to{opacity:1;transform:scale(1)} }
   @keyframes cardIn { from{opacity:0;transform:translateY(24px) scale(0.97)} to{opacity:1;transform:translateY(0) scale(1)} }
   @keyframes cardSwap { from{opacity:0.25;transform:scale(0.985)} to{opacity:1;transform:scale(1)} }
+  @keyframes twinkle { 0%,100%{opacity:0.12;transform:scale(0.6) rotate(0deg)} 50%{opacity:1;transform:scale(1.15) rotate(20deg)} }
+  @keyframes loaderPulse { 0%,100%{opacity:0.6} 50%{opacity:1} }
 
   .home-hero { padding: 3.5rem 1.5rem 2rem; position: relative; overflow: hidden; min-height: 300px; background: #f7f6f2; }
   .home-eyebrow { font-size: 0.68rem; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: #9b8f7a; margin-bottom: 0.6rem; position: relative; z-index: 1; }
@@ -2474,9 +2476,16 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
       if (!drafts.length) throw new Error("Nothing found to add. Try a clearer source.");
       setParseStatus("Fetching photos...");
       for (const d of drafts) await withPreviewPhoto(d);
+      // Flag spots already in the user's saves (by Google place id, else name).
+      for (const d of drafts) {
+        const dn = (d.name || "").toLowerCase().trim();
+        d._dup = saves.some(s => (d.google_place_id && s.google_place_id === d.google_place_id) || (s.name || "").toLowerCase().trim() === dn);
+      }
+      const dupCount = drafts.filter(d => d._dup).length;
       setPreview(prev => [...prev, ...drafts]);
       setTextInput("");
       setParseStatus("");
+      if (dupCount) setError(`Heads up: ${dupCount} of these ${dupCount === 1 ? "is" : "are"} already in your saves (marked below).`);
       notify("Parsing done ✦", `${drafts.length} spot${drafts.length !== 1 ? "s" : ""} ready to review`);
     } catch (e) {
       console.error("[handleParse]", e);
@@ -2736,6 +2745,7 @@ Return a JSON object with this exact structure:
             {v.source_url && (v.source_type === "tiktok" || v.source_type === "instagram") && <a href={v.source_url} target="_blank" rel="noreferrer" style={{ fontSize: "0.68rem", color: "#726A4E", fontWeight: 500 }}>{SOURCE_ICON[v.source_type] || "🔗"} View source ↗</a>}
             {googleMapsUrl(v) && <a href={googleMapsUrl(v)} target="_blank" rel="noreferrer" style={{ fontSize: "0.68rem", color: "#726A4E", fontWeight: 500 }}>📍 Maps</a>}
             {onMove && <button onClick={onMove} style={{ border: "none", background: "none", padding: 0, fontSize: "0.68rem", color: "#6b5e4e", fontWeight: 500, cursor: "pointer" }}>↪ Move</button>}
+            {draft && v._dup && <span style={{ fontSize: "0.6rem", color: "#fff", background: "#DD4124", padding: "2px 7px", borderRadius: 100, fontWeight: 600 }}>Already saved</span>}
             {draft && !v._google_found && <span style={{ fontSize: "0.6rem", color: "#c98a3a" }}>⚠ not on Google</span>}
           </div>
         </div>
@@ -3066,6 +3076,22 @@ function RatingPrompt({ plan, user, onDismiss, onSubmit }) {
         </button>
         <button className="btn-outline" onClick={onDismiss} style={{ marginTop: "0.5rem" }}>Skip for now</button>
       </div>
+    </div>
+  );
+}
+
+// Full-screen sparkle loader for slower waits (plan generation, etc.).
+function SparkleLoader({ label = "Curating…" }) {
+  const sparkles = [
+    { top: "20%", left: "18%", s: 22, d: 0 }, { top: "28%", left: "74%", s: 15, d: 0.5 },
+    { top: "46%", left: "38%", s: 28, d: 0.2 }, { top: "60%", left: "78%", s: 18, d: 0.8 },
+    { top: "70%", left: "22%", s: 20, d: 0.4 }, { top: "38%", left: "62%", s: 13, d: 1.0 },
+    { top: "16%", left: "52%", s: 14, d: 0.7 }, { top: "78%", left: "54%", s: 16, d: 0.3 },
+  ];
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "#f7f6f2", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+      {sparkles.map((sp, i) => <span key={i} style={{ position: "absolute", top: sp.top, left: sp.left, fontSize: sp.s, color: "#726A4E", animation: `twinkle 1.5s ease-in-out ${sp.d}s infinite` }}>✦</span>)}
+      <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.3rem", color: "#1c1c1a", textAlign: "center", zIndex: 1, animation: "loaderPulse 1.6s ease-in-out infinite" }}>{label}</div>
     </div>
   );
 }
@@ -3549,7 +3575,10 @@ export default function App() {
 
         {activeTab === "discover" && <DiscoverScreen preferences={preferences} dbVenues={dbVenues} />}
         {activeTab === "people" && <PeopleScreen user={user} onSavePlan={(payload) => { const r = payload?.plan; if (!r) return; setPlans(prev => { const updated = [{ result: r, times: payload?.times || times, ans: {}, savedAt: new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }), id: generateId() }, ...prev]; localStorage.setItem("cl_plans", JSON.stringify(updated.slice(0, 20))); return updated; }); }} />}
-        {activeTab === "saved" && <SavedScreen user={user} onShare={setShareItem} onBuildPlan={(saves) => { setAns(prev => ({ ...prev, savedVenues: saves })); setActiveTab("home"); startQuiz(); }} />}
+        {/* Always mounted so an in-progress screenshot parse keeps running + persists when you switch tabs */}
+        <div style={{ display: activeTab === "saved" ? "block" : "none" }}>
+          <SavedScreen user={user} onShare={setShareItem} onBuildPlan={(saves) => { setAns(prev => ({ ...prev, savedVenues: saves })); setActiveTab("home"); startQuiz(); }} />
+        </div>
         {activeTab === "add" && <TikTokParserScreen onSuccess={() => showToast("Added! Check Admin to approve.")} />}
         {activeTab === "prefs" && <PreferencesScreen preferences={preferences} setPreferences={setPreferences} user={user} />}
         {activeTab === "admin" && <AdminScreen onBadgeUpdate={setAdminBadge} />}
@@ -3570,6 +3599,7 @@ export default function App() {
           ))}
         </nav>
         {shareItem && <ShareModal user={user} item={shareItem} onClose={() => setShareItem(null)} showToast={showToast} />}
+        {loading && <SparkleLoader label="Curating your plan…" />}
       </div>
     </>
   );
