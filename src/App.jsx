@@ -868,7 +868,7 @@ function QuizScreen({ step, ans, times, setTimes, onToggle, onNext, onBack, onGe
   );
 }
 
-function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUpdateResult }) {
+function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUpdateResult, onShare }) {
   const [view, setView] = useState("plan");
   const [shareId] = useState(generateId);
   const [copied, setCopied] = useState(false);
@@ -1041,7 +1041,8 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
             }}>
               🗺️ Create Google Maps route
             </button>
-            <button className="btn-outline" onClick={() => { setView("social"); ensureShared(); }}>👥 Share with friends</button>
+            {onShare && <button className="btn-outline" onClick={() => onShare({ kind: "plan", title: result.title || "London plan", payload: { plan: result, times } })}>📨 Send to a friend (in app)</button>}
+            <button className="btn-outline" onClick={() => { setView("social"); ensureShared(); }}>🔗 Share via link</button>
             <button className="btn-outline" onClick={onRestart}>↺ Plan a different day</button>
           </div>
         </div>
@@ -1774,6 +1775,7 @@ const NAV_ICON_PATHS = {
   discover: '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
   prefs: '<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8z"/>',
   add: '<path d="M12 5v14M5 12h14"/>',
+  people: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
   admin: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
 };
 function NavIcon({ id }) {
@@ -2127,7 +2129,7 @@ function SpotsCalendar({ saves }) {
   );
 }
 
-function SavedScreen({ user, onBuildPlan }) {
+function SavedScreen({ user, onBuildPlan, onShare }) {
   const [saves, setSaves] = useState([]);
   const [loading, setLoading] = useState(true);
   const [mediaType, setMediaType] = useState("tiktok"); // tiktok | instagram | screenshot | maps | mapslist
@@ -2762,8 +2764,8 @@ Return a JSON object with this exact structure:
             <BigSpotCard s={s} photo={s.photo_url} />
           </div>
           <div style={{ padding: "0 12px 12px", display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
-            <button onClick={() => onBuildPlan([s])} style={{ border: "none", background: "#726A4E", color: "#fff", borderRadius: 100, padding: "7px 16px", fontSize: "0.72rem", fontWeight: 600, cursor: "pointer" }}>✦ Make a plan based on this</button>
-            <button onClick={() => setMovingSpot(s)} style={{ border: "1px solid #e8e2d8", background: "#fff", borderRadius: 100, padding: "7px 14px", fontSize: "0.72rem", color: "#6b5e4e", fontWeight: 500, cursor: "pointer" }}>↪ Move to list</button>
+            <button onClick={() => onBuildPlan([s])} style={{ border: "none", background: "rgba(223,239,135,0.5)", color: "#4B342F", borderRadius: 100, padding: "7px 16px", fontSize: "0.72rem", fontWeight: 600, cursor: "pointer" }}>✦ Make a plan based on this</button>
+            <button onClick={() => setMovingSpot(s)} style={{ border: "1px solid #e8e2d8", background: "#fff", borderRadius: 100, padding: "7px 14px", fontSize: "0.72rem", color: "#6b5e4e", fontWeight: 500, cursor: "pointer" }}>Move</button>
           </div>
         </div>
       ))}
@@ -2913,7 +2915,10 @@ Return a JSON object with this exact structure:
             {folderSaves.length > 0 && renderSheet(folderSaves, (
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0 14px 12px" }}>
                 <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a" }}>{openFolder} ({folderSaves.length} place{folderSaves.length !== 1 ? "s" : ""})</div>
-                <button onClick={() => renameFolder(openFolder)} style={{ fontSize: "0.74rem", padding: "6px 12px", borderRadius: 100, border: "1.5px solid #e8e2d8", background: "#fff", color: "#6b5e4e", fontWeight: 500, cursor: "pointer" }}>✎ Rename</button>
+                <div style={{ display: "flex", gap: 8 }}>
+                  {onShare && <button onClick={() => onShare({ kind: "list", title: openFolder, payload: { name: openFolder, spots: folderSaves.map(({ id, user_id, created_at, status, ...rest }) => rest) } })} style={{ fontSize: "0.74rem", padding: "6px 12px", borderRadius: 100, border: "none", background: "#726A4E", color: "#fff", fontWeight: 600, cursor: "pointer" }}>Send</button>}
+                  <button onClick={() => renameFolder(openFolder)} style={{ fontSize: "0.74rem", padding: "6px 12px", borderRadius: 100, border: "1.5px solid #e8e2d8", background: "#fff", color: "#6b5e4e", fontWeight: 500, cursor: "pointer" }}>✎ Rename</button>
+                </div>
               </div>
             ))}
             {folderSaves.length > 0 && <button className="btn btn-teal" style={{ marginTop: "0.25rem" }} onClick={() => onBuildPlan(folderSaves)}>Build plan from {openFolder} ✦</button>}
@@ -3065,11 +3070,167 @@ function RatingPrompt({ plan, user, onDismiss, onSubmit }) {
   );
 }
 
+// Pick a connected person and send them a list/plan.
+function ShareModal({ user, item, onClose, showToast }) {
+  const [people, setPeople] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
+  const nameOf = (p) => p?.name || (p?.email ? p.email.split("@")[0] : null) || "Friend";
+
+  useEffect(() => {
+    (async () => {
+      const { data: cons } = await supabase.from("connections").select("*").or(`user_a.eq.${user.id},user_b.eq.${user.id}`);
+      const ids = (cons || []).map(c => (c.user_a === user.id ? c.user_b : c.user_a));
+      let profs = [];
+      if (ids.length) { const { data } = await supabase.from("profiles").select("id,name,avatar_url,email").in("id", ids); profs = data || []; }
+      setPeople(ids.map(id => profs.find(p => p.id === id) || { id }));
+      setLoading(false);
+    })();
+  }, []);
+
+  async function send(personId) {
+    setSending(true);
+    try {
+      await supabase.from("shares").insert({ from_user: user.id, to_user: personId, kind: item.kind, title: item.title, payload: item.payload });
+      showToast("Sent ✓");
+      onClose();
+    } catch (e) { showToast("Couldn't send: " + e.message); setSending(false); }
+  }
+
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 1100, animation: "fadeIn 0.2s" }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: "1.25rem 1.25rem 1.5rem", width: "100%", maxWidth: 420, maxHeight: "70vh", overflowY: "auto", animation: "cardIn 0.25s ease" }}>
+        <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.1rem", color: "#1c1c1a" }}>Send to a friend</div>
+        <div style={{ fontSize: "0.78rem", color: "#9b8f7a", marginBottom: 12 }}>{item.kind === "plan" ? "Itinerary" : "List"}: {item.title}</div>
+        {loading && <div style={{ fontSize: "0.85rem", color: "#9b8f7a" }}>Loading…</div>}
+        {!loading && people.length === 0 && (
+          <div style={{ fontSize: "0.85rem", color: "#6b5e4e", lineHeight: 1.5 }}>You're not connected with anyone yet. Open the <strong>People</strong> tab → share your invite link, and once a friend opens it you can send them things here.</div>
+        )}
+        {people.map(p => (
+          <button key={p.id} disabled={sending} onClick={() => send(p.id)} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", padding: "10px 12px", borderRadius: 12, border: "1px solid #e8e2d8", background: "#fff", cursor: "pointer", marginBottom: 8 }}>
+            <div style={{ width: 34, height: 34, borderRadius: "50%", background: "#726A4E", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 600, flexShrink: 0, overflow: "hidden" }}>{p.avatar_url ? <img src={p.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : nameOf(p).charAt(0).toUpperCase()}</div>
+            <span style={{ fontSize: "0.88rem", color: "#1c1c1a", fontWeight: 500 }}>{nameOf(p)}</span>
+            <span style={{ marginLeft: "auto", fontSize: "0.78rem", color: "#726A4E", fontWeight: 600 }}>Send →</span>
+          </button>
+        ))}
+        <button onClick={onClose} style={{ display: "block", width: "100%", textAlign: "center", padding: "10px", borderRadius: 10, border: "none", background: "#f5f0e8", cursor: "pointer", fontSize: "0.8rem", color: "#6b5e4e", marginTop: 4 }}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
+// People hub: your invite link, who you're connected with, things shared with you.
+function PeopleScreen({ user, onSavePlan }) {
+  const [connections, setConnections] = useState([]);
+  const [shares, setShares] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [copied, setCopied] = useState(false);
+  const [viewing, setViewing] = useState(null);
+  const [msg, setMsg] = useState("");
+  const inviteLink = `https://london-app.vercel.app/?invite=${user.id}`;
+  const nameOf = (p) => p?.name || (p?.email ? p.email.split("@")[0] : null) || "Friend";
+
+  async function load() {
+    setLoading(true);
+    const { data: cons } = await supabase.from("connections").select("*").or(`user_a.eq.${user.id},user_b.eq.${user.id}`);
+    const otherIds = (cons || []).map(c => (c.user_a === user.id ? c.user_b : c.user_a));
+    const { data: sh } = await supabase.from("shares").select("*").eq("to_user", user.id).order("created_at", { ascending: false });
+    const ids = [...new Set([...otherIds, ...(sh || []).map(s => s.from_user)])];
+    let prof = {};
+    if (ids.length) { const { data } = await supabase.from("profiles").select("id,name,avatar_url,email").in("id", ids); (data || []).forEach(p => { prof[p.id] = p; }); }
+    setConnections(otherIds.map(id => ({ id, ...(prof[id] || {}) })));
+    setShares((sh || []).map(s => ({ ...s, from: prof[s.from_user] || {} })));
+    setLoading(false);
+  }
+  useEffect(() => { load(); }, []);
+
+  async function saveShare(s) {
+    try {
+      if (s.kind === "plan") { onSavePlan(s.payload); setMsg("Saved to My Plans ✓"); }
+      else {
+        const spots = (s.payload?.spots || []).map(v => { const { id, user_id, created_at, ...rest } = v; return { ...rest, user_id: user.id, folder: s.payload.name || "Shared with me", status: "pending" }; });
+        if (spots.length) { const { error } = await supabase.from("experiences").insert(spots); if (error) throw error; }
+        setMsg(`Saved ${spots.length} spot${spots.length !== 1 ? "s" : ""} to "${s.payload.name || "Shared with me"}" ✓`);
+      }
+      await supabase.from("shares").update({ seen: true }).eq("id", s.id);
+      setViewing(null); setTimeout(() => setMsg(""), 2800); load();
+    } catch (e) { setMsg("Couldn't save: " + e.message); }
+  }
+
+  if (loading) return <div className="loading"><div className="loading-ring" /><div className="loading-sub">Loading…</div></div>;
+
+  return (
+    <div>
+      <div className="section-pad" style={{ paddingBottom: "0.5rem" }}>
+        <div className="section-title">People</div>
+        <p className="section-sub">Connect with friends, then send each other lists and itineraries.</p>
+      </div>
+      {msg && <div style={{ margin: "0 1.5rem 0.75rem", background: "#eef3d8", color: "#4B342F", borderRadius: 12, padding: "10px 12px", fontSize: "0.82rem" }}>{msg}</div>}
+
+      <div style={{ padding: "0 1.5rem 1rem" }}>
+        <div style={{ background: "#fff", border: "1px solid #f0ebe2", borderRadius: 16, padding: "1rem" }}>
+          <div style={{ fontWeight: 600, color: "#1c1c1a", marginBottom: 4 }}>Your invite link</div>
+          <div style={{ fontSize: "0.76rem", color: "#9b8f7a", marginBottom: 10 }}>Send this to friends. When they open it, you're connected.</div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button className="btn-outline" style={{ marginTop: 0, flex: 1 }} onClick={() => { navigator.clipboard?.writeText(inviteLink); setCopied(true); setTimeout(() => setCopied(false), 2000); }}>{copied ? "✓ Copied" : "🔗 Copy link"}</button>
+            <button className="btn-outline" style={{ marginTop: 0, flex: 1 }} onClick={() => { if (navigator.share) navigator.share({ title: "Connect on Curated London", url: inviteLink }); else window.open(`https://wa.me/?text=${encodeURIComponent("Connect with me on Curated London: " + inviteLink)}`); }}>📤 Share</button>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ padding: "0 1.5rem 1rem" }}>
+        <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a", margin: "0.25rem 0 0.6rem" }}>Shared with you ({shares.length})</div>
+        {shares.length === 0 && <div style={{ fontSize: "0.82rem", color: "#9b8f7a" }}>Nothing yet. When a friend sends you a list or itinerary, it shows here.</div>}
+        {shares.map(s => (
+          <div key={s.id} onClick={() => setViewing(s)} style={{ display: "flex", alignItems: "center", gap: 12, padding: 12, background: "#fff", border: "1px solid #f0ebe2", borderRadius: 14, marginBottom: 10, cursor: "pointer", opacity: s.seen ? 0.7 : 1 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 10, background: s.kind === "plan" ? "#DD4124" : "#726A4E", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.1rem", flexShrink: 0 }}>{s.kind === "plan" ? "🗺️" : "📋"}</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: "0.88rem", fontWeight: 600, color: "#1c1c1a" }}>{s.title || (s.kind === "plan" ? "An itinerary" : "A list")}</div>
+              <div style={{ fontSize: "0.72rem", color: "#9b8f7a" }}>from {nameOf(s.from)} · {s.kind === "plan" ? "itinerary" : "list"}{s.seen ? " · saved" : ""}</div>
+            </div>
+            {!s.seen && <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#DD4124" }} />}
+          </div>
+        ))}
+      </div>
+
+      <div style={{ padding: "0 1.5rem 1rem" }}>
+        <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a", margin: "0.25rem 0 0.6rem" }}>Connected ({connections.length})</div>
+        {connections.length === 0 && <div style={{ fontSize: "0.82rem", color: "#9b8f7a" }}>No connections yet — share your invite link above.</div>}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+          {connections.map(c => (
+            <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 8, background: "#fff", border: "1px solid #f0ebe2", borderRadius: 100, padding: "6px 12px 6px 6px" }}>
+              <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#726A4E", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 600, fontSize: "0.8rem", overflow: "hidden" }}>{c.avatar_url ? <img src={c.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : nameOf(c).charAt(0).toUpperCase()}</div>
+              <span style={{ fontSize: "0.8rem", color: "#1c1c1a" }}>{nameOf(c)}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {viewing && (
+        <div onClick={() => setViewing(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100, padding: "1.5rem", animation: "fadeIn 0.2s" }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: 18, padding: "1.25rem", width: "100%", maxWidth: 340, maxHeight: "75vh", overflowY: "auto", animation: "popIn 0.25s" }}>
+            <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.1rem", color: "#1c1c1a", marginBottom: 2 }}>{viewing.title}</div>
+            <div style={{ fontSize: "0.74rem", color: "#9b8f7a", marginBottom: 12 }}>from {nameOf(viewing.from)}</div>
+            {viewing.kind === "plan" ? (
+              <div style={{ fontSize: "0.82rem", color: "#6b5e4e" }}>{(viewing.payload?.plan?.stops || []).length} stops · {viewing.payload?.plan?.tagline || ""}</div>
+            ) : (
+              <div style={{ fontSize: "0.82rem", color: "#6b5e4e" }}>{(viewing.payload?.spots || []).length} spots: {(viewing.payload?.spots || []).slice(0, 6).map(s => s.name).join(", ")}{(viewing.payload?.spots || []).length > 6 ? "…" : ""}</div>
+            )}
+            <button className="btn btn-teal" style={{ marginTop: 14 }} onClick={() => saveShare(viewing)}>{viewing.kind === "plan" ? "Save to My Plans" : "Save to my lists"} ✦</button>
+            <button className="btn-outline" onClick={() => setViewing(null)}>Close</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── MAIN APP ─────────────────────────────────────────────────
 export default function App() {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [sharedPlan, setSharedPlan] = useState(null);
+  const [shareItem, setShareItem] = useState(null); // { kind, title, payload } -> ShareModal
   const [activeTab, setActiveTab] = useState("home");
   const [quizStep, setQuizStep] = useState(-1);
   const [ans, setAns] = useState({});
@@ -3316,6 +3477,7 @@ export default function App() {
     { id: "plans", label: "My Plans", icon: "📋" },
     { id: "saved", label: "Saved", icon: "📌" },
     { id: "discover", label: "Discover", icon: "🔍" },
+    { id: "people", label: "People", icon: "👥" },
     { id: "prefs", label: "For me", icon: "🎯" },
     ...(isAdmin ? [{ id: "admin", label: "Admin", icon: "⚙️", badge: adminBadge }] : []),
   ];
@@ -3327,6 +3489,18 @@ export default function App() {
       .then(({ data }) => { if (data?.plan) setSharedPlan(data); })
       .catch(() => {});
   }, []);
+
+  // Invite link: opening someone's ?invite=<id> connects the two of you.
+  useEffect(() => {
+    if (!user?.id) return;
+    const inv = new URLSearchParams(window.location.search).get("invite");
+    if (!inv || inv === user.id) return;
+    (async () => {
+      const [a, b] = [user.id, inv].sort();
+      try { await supabase.from("connections").upsert({ user_a: a, user_b: b }, { onConflict: "user_a,user_b" }); showToast("Connected! See the People tab."); } catch (e) {}
+      window.history.replaceState({}, "", "/");
+    })();
+  }, [user]);
 
   if (sharedPlan) return (
     <>
@@ -3363,18 +3537,19 @@ export default function App() {
 
         {showHome && <HomeScreen onStart={startQuiz} />}
         {showQuiz && <QuizScreen step={quizStep} ans={ans} times={times} setTimes={setTimes} onToggle={toggle} onNext={nextStep} onBack={prevStep} onGenerate={generate} loading={loading} loadIdx={loadIdx} error={error} />}
-        {showResult && <ResultScreen result={result} times={times} ans={ans} onRestart={resetToHome} onNewPlan={startQuiz} dbVenues={dbVenues} onUpdateResult={setResult} />}
+        {showResult && <ResultScreen result={result} times={times} ans={ans} onRestart={resetToHome} onNewPlan={startQuiz} dbVenues={dbVenues} onUpdateResult={setResult} onShare={setShareItem} />}
 
         {activeTab === "plans" && !showViewingPlan && <MyPlansScreen plans={plans} onViewPlan={(plan) => setViewingPlan(plan)} onNewPlan={() => { setActiveTab("home"); startQuiz(); }} />}
         {showViewingPlan && (
           <div>
             <button className="btn-ghost" onClick={() => setViewingPlan(null)} style={{ paddingTop: "1.5rem" }}>← My Plans</button>
-            <ResultScreen result={viewingPlan.result} times={viewingPlan.times} ans={viewingPlan.ans} onRestart={() => setViewingPlan(null)} onNewPlan={() => { setViewingPlan(null); setActiveTab("home"); startQuiz(); }} dbVenues={dbVenues} onUpdateResult={(r) => setViewingPlan(p => ({ ...p, result: r }))} />
+            <ResultScreen result={viewingPlan.result} times={viewingPlan.times} ans={viewingPlan.ans} onRestart={() => setViewingPlan(null)} onNewPlan={() => { setViewingPlan(null); setActiveTab("home"); startQuiz(); }} dbVenues={dbVenues} onUpdateResult={(r) => setViewingPlan(p => ({ ...p, result: r }))} onShare={setShareItem} />
           </div>
         )}
 
         {activeTab === "discover" && <DiscoverScreen preferences={preferences} dbVenues={dbVenues} />}
-        {activeTab === "saved" && <SavedScreen user={user} onBuildPlan={(saves) => { setAns(prev => ({ ...prev, savedVenues: saves })); setActiveTab("home"); startQuiz(); }} />}
+        {activeTab === "people" && <PeopleScreen user={user} onSavePlan={(payload) => { const r = payload?.plan; if (!r) return; setPlans(prev => { const updated = [{ result: r, times: payload?.times || times, ans: {}, savedAt: new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }), id: generateId() }, ...prev]; localStorage.setItem("cl_plans", JSON.stringify(updated.slice(0, 20))); return updated; }); }} />}
+        {activeTab === "saved" && <SavedScreen user={user} onShare={setShareItem} onBuildPlan={(saves) => { setAns(prev => ({ ...prev, savedVenues: saves })); setActiveTab("home"); startQuiz(); }} />}
         {activeTab === "add" && <TikTokParserScreen onSuccess={() => showToast("Added! Check Admin to approve.")} />}
         {activeTab === "prefs" && <PreferencesScreen preferences={preferences} setPreferences={setPreferences} user={user} />}
         {activeTab === "admin" && <AdminScreen onBadgeUpdate={setAdminBadge} />}
@@ -3394,6 +3569,7 @@ export default function App() {
             </button>
           ))}
         </nav>
+        {shareItem && <ShareModal user={user} item={shareItem} onClose={() => setShareItem(null)} showToast={showToast} />}
       </div>
     </>
   );
