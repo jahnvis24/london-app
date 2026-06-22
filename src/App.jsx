@@ -1825,6 +1825,60 @@ function ListCover({ items, height = 200 }) {
   );
 }
 
+// Full detail view for a saved spot: About, Book/Website, Notes, Add to calendar.
+function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan }) {
+  const cat = normaliseCategory(spot.category);
+  const [note, setNote] = useState(() => { try { return localStorage.getItem("cl_note_" + spot.id) || ""; } catch { return ""; } });
+  const [savedNote, setSavedNote] = useState(false);
+  function saveNote() { try { localStorage.setItem("cl_note_" + spot.id, note); setSavedNote(true); setTimeout(() => setSavedNote(false), 1500); } catch (e) {} }
+  const bookUrl = spot.website || googleMapsUrl(spot);
+  const gcalUrl = (() => {
+    const p = new URLSearchParams({ action: "TEMPLATE", text: spot.name || "Visit", details: (spot.comment || "") + (spot.source_url ? `\n${spot.source_url}` : ""), location: spot.address || spot.area || "London" });
+    if (spot.is_event && spot.event_start) { const s = (spot.event_start || "").replace(/-/g, ""); const e = new Date(spot.event_end || spot.event_start); e.setDate(e.getDate() + 1); p.set("dates", `${s}/${e.toISOString().slice(0, 10).replace(/-/g, "")}`); }
+    return `https://calendar.google.com/calendar/render?${p.toString()}`;
+  })();
+  const Action = ({ href, onClick, children, primary }) => {
+    const style = { display: "block", textAlign: "center", padding: "12px", borderRadius: 12, fontSize: "0.85rem", fontWeight: 600, marginBottom: 8, cursor: "pointer", textDecoration: "none", border: primary ? "none" : "1.5px solid #ddd8ce", background: primary ? "#726A4E" : "#fff", color: primary ? "#fff" : "#4a4438" };
+    return href ? <a href={href} target="_blank" rel="noreferrer" style={style}>{children}</a> : <button onClick={onClick} style={{ ...style, width: "100%" }}>{children}</button>;
+  };
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "#f7f6f2", zIndex: 1200, overflowY: "auto", animation: "fadeIn 0.2s" }}>
+      <div style={{ position: "relative", height: 240, background: spot.photo_url ? "#e9e4da" : (CAT_COLOURS[cat] || "#726A4E") }}>
+        {spot.photo_url && <img src={spot.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 40%, rgba(0,0,0,0.6))" }} />
+        <button onClick={onClose} style={{ position: "absolute", top: 14, left: 14, width: 34, height: 34, borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.92)", cursor: "pointer", fontSize: "1rem" }}>←</button>
+        <div style={{ position: "absolute", left: 16, right: 16, bottom: 14 }}>
+          <div style={{ color: "rgba(255,255,255,0.92)", fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.7rem", lineHeight: 1.1, textShadow: "0 2px 14px rgba(0,0,0,0.5)" }}>{spot.name}</div>
+        </div>
+      </div>
+
+      <div style={{ padding: "1.25rem 1.25rem 6rem" }}>
+        <div style={{ fontSize: "0.78rem", color: "#6b5e4e", marginBottom: 14 }}>
+          {cap(cat)}{spot.zone ? ` · ${spot.zone}` : ""}{spot.area ? ` · ${spot.area}` : ""}{spot.google_rating ? ` · ⭐ ${spot.google_rating}` : ""}{spot.price ? ` · ${spot.price}` : ""}
+        </div>
+
+        <div style={{ fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#9b8f7a", fontWeight: 600, marginBottom: 6 }}>About</div>
+        <div style={{ fontSize: "0.9rem", color: "#4a4438", lineHeight: 1.5, marginBottom: 8 }}>{spot.comment || "No description yet."}</div>
+        {spot.address && <div style={{ fontSize: "0.78rem", color: "#9b8f7a", marginBottom: 4 }}>📍 {spot.address}</div>}
+        {spot.is_event && (spot.event_start || spot.event_time) && <div style={{ fontSize: "0.78rem", color: "#726A4E", marginBottom: 4 }}>📅 {spot.event_start ? new Date(spot.event_start).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : ""}{spot.event_time ? ` · ${spot.event_time}` : ""}</div>}
+        {spot.vibe_tags?.length > 0 && <div style={{ display: "flex", flexWrap: "wrap", gap: 5, margin: "8px 0 16px" }}>{spot.vibe_tags.slice(0, 6).map((t, i) => <span key={i} style={{ fontSize: "0.66rem", background: "#f0ebe2", color: "#6b5e4e", padding: "3px 9px", borderRadius: 100 }}>{String(t).replace(/_/g, " ")}</span>)}</div>}
+
+        <div style={{ marginTop: 14 }}>
+          <Action href={bookUrl} primary>{spot.website ? "🔗 Book / Website" : "🔗 Open in Google Maps"}</Action>
+          <Action href={gcalUrl}>📅 Add to calendar</Action>
+          {onShowOnMap && <Action onClick={() => onShowOnMap(spot)}>📍 Show on map</Action>}
+          {onMakePlan && <Action onClick={() => onMakePlan(spot)}>✦ Make a plan based on this</Action>}
+          {spot.source_url && (spot.source_type === "tiktok" || spot.source_type === "instagram") && <Action href={spot.source_url}>{SOURCE_ICON[spot.source_type]} View original ↗</Action>}
+        </div>
+
+        <div style={{ fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#9b8f7a", fontWeight: 600, margin: "18px 0 6px" }}>Notes</div>
+        <textarea value={note} onChange={e => setNote(e.target.value)} placeholder="Add your own notes — who recommended it, what to order, etc." className="input-field" rows={4} style={{ resize: "vertical", width: "100%" }} />
+        <button className="btn btn-teal" style={{ marginTop: 8 }} onClick={saveNote}>{savedNote ? "✓ Saved" : "Save notes"}</button>
+      </div>
+    </div>
+  );
+}
+
 // The big photo card used on the map (pin tap) AND in the swipe-up list — identical look.
 function BigSpotCard({ s, photo }) {
   return (
@@ -2149,6 +2203,7 @@ function SavedScreen({ user, onBuildPlan, onShare }) {
   const [customFolders, setCustomFolders] = useState([]); // user-created (possibly empty) folders
   const [menuFolder, setMenuFolder] = useState(null);
   const [movingSpot, setMovingSpot] = useState(null);
+  const [detailSpot, setDetailSpot] = useState(null);
   const [captureOpen, setCaptureOpen] = useState(false); // collapse the "add a spot" controls by default
   const [focusSpot, setFocusSpot] = useState(null); // tapping a list card pans the map to it
   const [mapCat, setMapCat] = useState(""); // Map tab: "" = all, else a category scope
@@ -2770,7 +2825,7 @@ Return a JSON object with this exact structure:
       {list.map(s => (
         <div key={s.id} style={{ position: "relative", borderRadius: 16, overflow: "hidden", boxShadow: "0 2px 10px rgba(0,0,0,0.08)", border: "1px solid #f0ebe2", background: "#fff", marginBottom: 14 }}>
           <button onClick={() => removeSave(s.id)} title="Delete" style={{ position: "absolute", top: 8, right: 8, zIndex: 3, width: 28, height: 28, borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.92)", cursor: "pointer", fontSize: "0.95rem", lineHeight: 1 }}>×</button>
-          <div onClick={() => { setFocusSpot({ ...s, _focus: Date.now() }); window.scrollTo({ top: 0, behavior: "smooth" }); }} style={{ cursor: "pointer" }}>
+          <div onClick={() => setDetailSpot(s)} style={{ cursor: "pointer" }}>
             <BigSpotCard s={s} photo={s.photo_url} />
           </div>
           <div style={{ padding: "0 12px 12px", display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
@@ -2952,6 +3007,15 @@ Return a JSON object with this exact structure:
             <div style={{ fontSize: "0.72rem", color: "#9b8f7a", marginTop: 4 }}>Added to your collection</div>
           </div>
         </div>
+      )}
+
+      {detailSpot && (
+        <SpotDetail
+          spot={detailSpot}
+          onClose={() => setDetailSpot(null)}
+          onShowOnMap={(s) => { setDetailSpot(null); if (savedView !== "map" && !openFolder) setSavedView("map"); setFocusSpot({ ...s, _focus: Date.now() }); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+          onMakePlan={(s) => { setDetailSpot(null); onBuildPlan([s]); }}
+        />
       )}
 
       {movingSpot && (
