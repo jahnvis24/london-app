@@ -2076,7 +2076,7 @@ function BigSpotCard({ s, photo }) {
 
 // Map of saved spots — Yonder-style: white "coin" markers, clustering, bottom card.
 // listName set => list-detail mode (no category chips; swipe-up shows all places).
-function SpotsMap({ saves, listName, focusSpot, onCategory }) {
+function SpotsMap({ saves, listName, focusSpot, onCategory, peek, peekHeight, onExpand }) {
   const mapRef = useRef(null);
   const instRef = useRef(null);
   const clusterRef = useRef(null);
@@ -2204,7 +2204,19 @@ function SpotsMap({ saves, listName, focusSpot, onCategory }) {
   const capitalise = (s) => s ? String(s).charAt(0).toUpperCase() + String(s).slice(1) : "";
   const filteredPts = filter === "all" ? pts : pts.filter(s => normaliseCategory(s.category) === filter);
   const filterLabel = CAT_LABEL[filter] || capitalise(filter);
-  const mapH = (listName || onCategory) ? 320 : 440;
+  const mapH = peek ? (peekHeight || 150) : (listName || onCategory) ? 320 : 440;
+
+  // Peek mode: a live, non-interactive preview that expands the full map on tap.
+  if (peek) return (
+    <div onClick={onExpand} style={{ position: "relative", cursor: "pointer", marginBottom: 12 }}>
+      {!loaded && <div style={{ height: mapH, background: "#eef3ee", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", color: "#9b8f7a", fontSize: "0.82rem" }}>Loading map…</div>}
+      <div ref={mapRef} style={{ height: mapH, borderRadius: 16, overflow: "hidden", border: "1px solid #e6e0d4", display: loaded ? "block" : "none" }} />
+      <div style={{ position: "absolute", inset: 0, borderRadius: 16, zIndex: 900 }} />
+      <div style={{ position: "absolute", top: 10, left: 10, zIndex: 950, background: "rgba(255,255,255,0.92)", color: "#1c1c1a", borderRadius: 100, padding: "5px 11px", fontSize: "0.72rem", fontWeight: 600 }}>📍 {pts.length} on the map</div>
+      <div style={{ position: "absolute", bottom: 10, right: 10, zIndex: 950, background: "#1c1c1a", color: "#fff", borderRadius: 100, padding: "6px 13px", fontSize: "0.74rem", fontWeight: 600, boxShadow: "0 2px 8px rgba(0,0,0,0.25)" }}>Open map ›</div>
+    </div>
+  );
+
   return (
     <div>
       <div style={{ fontSize: "0.7rem", color: "#9b8f7a", marginBottom: 8 }}>{pts.length} {listName ? "place" : "spot"}{pts.length !== 1 ? "s" : ""} {listName ? `in ${listName}` : "on the map"} · tap a pin for the card</div>
@@ -3181,7 +3193,7 @@ Return a JSON object with this exact structure:
       <div style={{ padding: "0 1.5rem 1rem" }}>
         {saves.length > 0 && !openFolder && (
           <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-            {[["folders", "Lists"], ["map", "Map"], ["calendar", "Calendar"]].map(([id, label]) => (
+            {[["folders", "Lists"], ["calendar", "Calendar"]].map(([id, label]) => (
               <button key={id} onClick={() => { setSavedView(id); setOpenFolder(null); }}
                 style={{ fontSize: "0.74rem", padding: "6px 14px", borderRadius: 100, cursor: "pointer",
                   border: savedView === id ? "1.5px solid #726A4E" : "1.5px solid #e8e2d8",
@@ -3209,6 +3221,9 @@ Return a JSON object with this exact structure:
         {saves.length > 0 && savedView === "calendar" && <SpotsCalendar saves={saves} />}
         {saves.length > 0 && savedView === "folders" && !openFolder && (
           <>
+            {saves.some(s => s.lat && s.lng) && (
+              <SpotsMap key="peek" saves={saves} peek peekHeight={150} onExpand={() => setSavedView("map")} />
+            )}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "0.5rem 0 0.75rem" }}>
               <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a" }}>Your lists ({saves.length} spot{saves.length !== 1 ? "s" : ""})</div>
               <button onClick={createFolder} style={{ fontSize: "0.74rem", padding: "6px 12px", borderRadius: 100, border: "1.5px solid #726A4E", background: "#fff", color: "#726A4E", fontWeight: 600, cursor: "pointer" }}>+ New list</button>
