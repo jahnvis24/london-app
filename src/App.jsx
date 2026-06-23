@@ -896,7 +896,7 @@ function QuizScreen({ step, ans, times, setTimes, onToggle, onNext, onBack, onGe
   );
 }
 
-function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUpdateResult, onShare, onRate }) {
+function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUpdateResult, onShare, onRate, onSchedule, scheduledDate }) {
   const [view, setView] = useState("plan");
   const [shareId] = useState(generateId);
   const [copied, setCopied] = useState(false);
@@ -987,7 +987,7 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
       <div className="tab-bar">
         {["plan", "social"].map((v) => (
           <button key={v} className={`tab ${view === v ? "active" : ""}`} onClick={() => setView(v)}>
-            {v === "plan" ? "The plan" : "Share & social"}
+            {v === "plan" ? "The plan" : "Share & date"}
           </button>
         ))}
       </div>
@@ -1084,15 +1084,38 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
               <div className="social-card-title">Send this to your crew</div>
               <div className="social-card-sub">{sharing ? "Preparing your link…" : "Anyone with the link sees your full plan."}</div>
             </div>
-            <div style={{ padding: "0.75rem 1rem 1rem", display: "flex", gap: 8 }}>
+            <div style={{ padding: "0.75rem 1rem 1rem", display: "flex", gap: 8, flexWrap: "wrap" }}>
               <button className="btn-outline" style={{ marginTop: 0 }} disabled={sharing} onClick={async () => { await ensureShared(); navigator.clipboard?.writeText(shareLink); setCopied(true); setTimeout(() => setCopied(false), 2000); }}>
                 {copied ? "✓ Copied" : "🔗 Copy link"}
               </button>
               <button className="btn-outline" style={{ marginTop: 0 }} disabled={sharing} onClick={async () => { await ensureShared(); window.open(`https://wa.me/?text=${encodeURIComponent(`Check out this London plan: ${shareLink}`)}`); }}>
                 💬 WhatsApp
               </button>
+              {onShare && <button className="btn-outline" style={{ marginTop: 0 }} onClick={() => onShare({ kind: "plan", title: result?.title || "An itinerary", payload: { plan: result, times } })}>👤 A friend</button>}
             </div>
           </div>
+
+          {onSchedule && (
+            <>
+              <div className="social-section-title" style={{ marginTop: 16 }}>Add to your calendar</div>
+              <div className="social-card">
+                <div style={{ padding: "0.9rem 1rem", display: "flex", flexDirection: "column", gap: 10 }}>
+                  <label style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, position: "relative", cursor: "pointer", background: "#726A4E", color: "#fff", borderRadius: 12, padding: "12px 14px", fontSize: "0.88rem", fontWeight: 600 }}>
+                    <span>📅 {scheduledDate ? `Planned for ${new Date(scheduledDate).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "long" })}` : "Pick a date for this plan"}</span>
+                    <span style={{ opacity: 0.85 }}>{scheduledDate ? "Change" : "Choose ›"}</span>
+                    <input type="date" value={scheduledDate || ""} onChange={(e) => e.target.value && onSchedule(e.target.value)} style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer", width: "100%" }} />
+                  </label>
+                  {scheduledDate && (() => {
+                    const d = scheduledDate.replace(/-/g, ""); const endD = new Date(scheduledDate); endD.setDate(endD.getDate() + 1); const en = endD.toISOString().slice(0, 10).replace(/-/g, "");
+                    const details = (result.stops || []).map(s => `${s.time || ""} ${s.name}`).join("\n");
+                    const href = `https://calendar.google.com/calendar/render?${new URLSearchParams({ action: "TEMPLATE", text: result.title || "London plan", dates: `${d}/${en}`, details }).toString()}`;
+                    return <a href={href} target="_blank" rel="noreferrer" style={{ fontSize: "0.8rem", color: "#726A4E", fontWeight: 600, textAlign: "center" }}>+ Also add to Google Calendar (with reminder)</a>;
+                  })()}
+                </div>
+              </div>
+            </>
+          )}
+
           <button className="btn-outline" onClick={() => setView("plan")}>← Back to the plan</button>
         </div>
       )}
@@ -2517,7 +2540,7 @@ function SpotsCalendar({ saves, user, onBuildPlan, onShare }) {
   );
 }
 
-function SavedScreen({ user, onBuildPlan, onShare, onBarCrawl, openSignal }) {
+function SavedScreen({ user, onBuildPlan, onShare, onBarCrawl, openSignal, calendarSignal }) {
   const [saves, setSaves] = useState([]);
   const [loading, setLoading] = useState(true);
   const [mediaType, setMediaType] = useState("tiktok"); // tiktok | instagram | screenshot | maps | mapslist
@@ -2551,6 +2574,13 @@ function SavedScreen({ user, onBuildPlan, onShare, onBarCrawl, openSignal }) {
     if (firstSignal.current) { firstSignal.current = false; return; }
     setOpenFolder(null); setCaptureTab("screenshot"); setError(null); setCaptureOpen(true);
   }, [openSignal]);
+
+  // Jump to the Calendar view when something is added to the calendar elsewhere.
+  const firstCalSignal = useRef(true);
+  useEffect(() => {
+    if (firstCalSignal.current) { firstCalSignal.current = false; return; }
+    setOpenFolder(null); setSavedView("calendar"); window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [calendarSignal]);
 
   // Auto-categorisation: map a venue category to its folder.
   const CATEGORY_FOLDER = { restaurant: "Restaurants", cafe: "Cafés", bar: "Bars", nightlife: "Nightlife", market: "Markets", outdoor: "Outdoor", museum: "Museums", gallery: "Galleries", experience: "Experiences", event: "Events" };
@@ -3479,7 +3509,8 @@ function LoginScreen({ onLogin }) {
     setError(null);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: window.location.origin }
+      // Keep any ?invite / ?blist / ?plan param through the round-trip.
+      options: { redirectTo: window.location.origin + window.location.search }
     });
     if (error) { setError(error.message); setLoading(false); }
   }
@@ -3787,6 +3818,7 @@ function SharedListView({ list, user, onClose }) {
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [picker, setPicker] = useState(null); // null | "saves" | "manual"
+  const [savesFolder, setSavesFolder] = useState(null); // open folder in the "from saves" picker
   const [saves, setSaves] = useState([]);
   const [savesLoaded, setSavesLoaded] = useState(false);
   const [mName, setMName] = useState(""); const [mCat, setMCat] = useState("restaurant"); const [mArea, setMArea] = useState(""); const [mComment, setMComment] = useState("");
@@ -3852,6 +3884,10 @@ function SharedListView({ list, user, onClose }) {
   const onListPlaceIds = new Set(items.map(i => i.google_place_id).filter(Boolean));
   const onListNames = new Set(items.map(i => String(i.name || "").toLowerCase()));
   const availableSaves = saves.filter(s => (s.google_place_id ? !onListPlaceIds.has(s.google_place_id) : !onListNames.has(String(s.name || "").toLowerCase())));
+  const SL_FOLDER_BY_CAT = { restaurant: "Restaurants", cafe: "Cafés", bar: "Bars", nightlife: "Nightlife", market: "Markets", outdoor: "Outdoor", museum: "Museums", gallery: "Galleries", experience: "Experiences", event: "Events" };
+  const slFolderOf = (s) => s.folder || SL_FOLDER_BY_CAT[String(s.category || "").toLowerCase()] || "Other";
+  const availableByFolder = availableSaves.reduce((acc, s) => { const f = slFolderOf(s); (acc[f] = acc[f] || []).push(s); return acc; }, {});
+  const availableFolders = Object.keys(availableByFolder).sort();
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "#f7f6f2", zIndex: 1200, overflowY: "auto", animation: "fadeIn 0.2s" }}>
@@ -3899,12 +3935,23 @@ function SharedListView({ list, user, onClose }) {
       </div>
 
       {picker === "saves" && (
-        <div onClick={() => setPicker(null)} style={slOverlay}>
+        <div onClick={() => { setPicker(null); setSavesFolder(null); }} style={slOverlay}>
           <div onClick={e => e.stopPropagation()} style={slSheet}>
-            <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.1rem", color: "#1c1c1a", marginBottom: 10 }}>Add from your saves</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+              {savesFolder && <button onClick={() => setSavesFolder(null)} style={{ border: "none", background: "none", cursor: "pointer", fontSize: "0.82rem", color: "#726A4E", fontWeight: 600, padding: 0 }}>‹ Lists</button>}
+              <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.1rem", color: "#1c1c1a" }}>{savesFolder || "Add from your saves"}</div>
+            </div>
             {!savesLoaded && <div style={{ fontSize: "0.82rem", color: "#9b8f7a" }}>Loading…</div>}
             {savesLoaded && availableSaves.length === 0 && <div style={{ fontSize: "0.82rem", color: "#9b8f7a", lineHeight: 1.5 }}>Nothing left to add — everything's already on the list, or you haven't saved any spots yet (add some in the Saves tab).</div>}
-            {availableSaves.map(s => (
+            {savesLoaded && !savesFolder && availableFolders.map(f => (
+              <button key={f} onClick={() => setSavesFolder(f)} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", padding: "10px", borderRadius: 12, border: "1px solid #f0ebe2", background: "#fff", cursor: "pointer", marginBottom: 8 }}>
+                <span style={{ fontSize: "1.15rem", width: 30, textAlign: "center" }}>📁</span>
+                <span style={{ flex: 1, fontSize: "0.88rem", fontWeight: 600, color: "#1c1c1a" }}>{f}</span>
+                <span style={{ fontSize: "0.74rem", color: "#9b8f7a" }}>{availableByFolder[f].length}</span>
+                <span style={{ color: "#c9bfae", fontSize: "1.1rem" }}>›</span>
+              </button>
+            ))}
+            {savesFolder && (availableByFolder[savesFolder] || []).map(s => (
               <button key={s.id} disabled={busy} onClick={() => addFromSave(s)} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", padding: "8px 10px", borderRadius: 12, border: "1px solid #f0ebe2", background: "#fff", cursor: "pointer", marginBottom: 8 }}>
                 {s.photo_url ? <img src={s.photo_url} alt="" style={{ width: 38, height: 38, borderRadius: 9, objectFit: "cover", flexShrink: 0 }} /> : <div style={{ width: 38, height: 38, borderRadius: 9, background: "#f5f0e8", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>📍</div>}
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -3914,7 +3961,7 @@ function SharedListView({ list, user, onClose }) {
                 <span style={{ color: "#726A4E", fontWeight: 700, fontSize: "1.1rem", flexShrink: 0 }}>＋</span>
               </button>
             ))}
-            <button onClick={() => setPicker(null)} className="btn-outline">Done</button>
+            <button onClick={() => { setPicker(null); setSavesFolder(null); }} className="btn-outline">Done</button>
           </div>
         </div>
       )}
@@ -4056,6 +4103,7 @@ export default function App() {
   const [pendingGen, setPendingGen] = useState(false); // fire generate() after ans/times state commits
   const [activeTab, setActiveTab] = useState("plans"); // Plans is the landing tab; planning is a CTA there
   const [captureSignal, setCaptureSignal] = useState(0); // bump to pop the global capture sheet on Saves
+  const [calSignal, setCalSignal] = useState(0); // bump to jump Saves to its Calendar view
   const [quizStep, setQuizStep] = useState(-1);
   const [ans, setAns] = useState({});
   const [times, setTimes] = useState({ start: "18:00", end: "23:00" });
@@ -4303,6 +4351,8 @@ export default function App() {
   }
 
   function resetToHome() { setQuizStep(-1); setAns({}); setResult(null); setError(null); setViewingPlan(null); setActiveTab("plans"); }
+  function goToCalendar(msg) { setViewingPlan(null); setActiveTab("saved"); setCalSignal(n => n + 1); if (msg) showToast(msg); }
+  function schedulePlanAt(idx, date) { setPlans(prev => { const u = prev.map((p, i) => i === idx ? { ...p, scheduledDate: date || null } : p); localStorage.setItem("cl_plans", JSON.stringify(u.slice(0, 20))); return u; }); }
 
   const showQuiz = activeTab === "home" && quizStep >= 0 && quizStep <= QUESTIONS.length;
   const showResult = activeTab === "home" && quizStep === QUESTIONS.length + 1 && result;
@@ -4316,22 +4366,40 @@ export default function App() {
     { id: "me", label: "Me", icon: "🙂", badge: isAdmin ? adminBadge : 0 },
   ];
 
+  // Stash link params on first load BEFORE they're lost — Google OAuth redirects back
+  // to the bare origin, dropping ?invite / ?blist / ?plan. We persist them so the
+  // handlers below can still run once the user is signed in.
   useEffect(() => {
-    const pid = new URLSearchParams(window.location.search).get("plan");
+    const p = new URLSearchParams(window.location.search);
+    for (const k of ["invite", "blist", "plan"]) {
+      const v = p.get(k);
+      if (v) { try { localStorage.setItem("cl_pending_" + k, v); } catch (e) {} }
+    }
+  }, []);
+  const takePending = (key) => {
+    const fromUrl = new URLSearchParams(window.location.search).get(key);
+    let v = fromUrl; try { v = fromUrl || localStorage.getItem("cl_pending_" + key); } catch (e) {}
+    return v;
+  };
+  const clearPending = (key) => { try { localStorage.removeItem("cl_pending_" + key); } catch (e) {} };
+
+  useEffect(() => {
+    const pid = takePending("plan");
     if (!pid) return;
     supabase.from("shared_plans").select("plan,times,title").eq("id", pid).single()
-      .then(({ data }) => { if (data?.plan) setSharedPlan(data); })
+      .then(({ data }) => { if (data?.plan) { setSharedPlan(data); clearPending("plan"); } })
       .catch(() => {});
   }, []);
 
   // Invite link: opening someone's ?invite=<id> connects the two of you.
   useEffect(() => {
     if (!user?.id) return;
-    const inv = new URLSearchParams(window.location.search).get("invite");
-    if (!inv || inv === user.id) return;
+    const inv = takePending("invite");
+    if (!inv || inv === user.id) { clearPending("invite"); return; }
     (async () => {
       const [a, b] = [user.id, inv].sort();
       try { await supabase.from("connections").upsert({ user_a: a, user_b: b }, { onConflict: "user_a,user_b" }); showToast("Connected! See the People tab."); } catch (e) {}
+      clearPending("invite");
       window.history.replaceState({}, "", "/");
     })();
   }, [user]);
@@ -4339,7 +4407,7 @@ export default function App() {
   // Bucket-list invite: opening ?blist=<id> joins you to that shared list.
   useEffect(() => {
     if (!user?.id) return;
-    const blist = new URLSearchParams(window.location.search).get("blist");
+    const blist = takePending("blist");
     if (!blist) return;
     (async () => {
       try {
@@ -4347,6 +4415,7 @@ export default function App() {
         showToast("Added to the bucket list! See the People tab.");
         setActiveTab("people");
       } catch (e) {}
+      clearPending("blist");
       window.history.replaceState({}, "", "/");
     })();
   }, [user]);
@@ -4386,20 +4455,20 @@ export default function App() {
 
         {showHome && <HomeScreen onStart={startQuiz} />}
         {showQuiz && <QuizScreen step={quizStep} ans={ans} times={times} setTimes={setTimes} onToggle={toggle} onNext={nextStep} onBack={prevStep} onGenerate={generate} loading={loading} loadIdx={loadIdx} error={error} onExit={() => { setQuizStep(-1); setActiveTab("plans"); }} />}
-        {showResult && <ResultScreen result={result} times={times} ans={ans} onRestart={resetToHome} onNewPlan={startQuiz} dbVenues={dbVenues} onUpdateResult={setResult} onShare={setShareItem} onRate={() => plans[0] && setRatingPlan(plans[0])} />}
+        {showResult && <ResultScreen result={result} times={times} ans={ans} onRestart={resetToHome} onNewPlan={startQuiz} dbVenues={dbVenues} onUpdateResult={setResult} onShare={setShareItem} onRate={() => plans[0] && setRatingPlan(plans[0])} scheduledDate={plans[0]?.scheduledDate} onSchedule={(date) => { if (!plans[0]) return; schedulePlanAt(0, date); goToCalendar("It's on your calendar! 📅"); }} />}
 
         {activeTab === "plans" && !showViewingPlan && <MyPlansScreen plans={plans} dbVenues={dbVenues} onViewPlan={(plan) => setViewingPlan(plan)} onNewPlan={() => { setActiveTab("home"); startQuiz(); }} onSchedule={(i, date) => setPlans(prev => { const u = prev.map((p, idx) => idx === i ? { ...p, scheduledDate: date || null } : p); localStorage.setItem("cl_plans", JSON.stringify(u.slice(0, 20))); return u; })} />}
         {showViewingPlan && (
           <div>
             <button className="btn-ghost" onClick={() => setViewingPlan(null)} style={{ paddingTop: "1.5rem" }}>← My Plans</button>
-            <ResultScreen result={viewingPlan.result} times={viewingPlan.times} ans={viewingPlan.ans} onRestart={() => setViewingPlan(null)} onNewPlan={() => { setViewingPlan(null); setActiveTab("home"); startQuiz(); }} dbVenues={dbVenues} onUpdateResult={(r) => setViewingPlan(p => ({ ...p, result: r }))} onShare={setShareItem} onRate={() => setRatingPlan(viewingPlan)} />
+            <ResultScreen result={viewingPlan.result} times={viewingPlan.times} ans={viewingPlan.ans} onRestart={() => setViewingPlan(null)} onNewPlan={() => { setViewingPlan(null); setActiveTab("home"); startQuiz(); }} dbVenues={dbVenues} onUpdateResult={(r) => setViewingPlan(p => ({ ...p, result: r }))} onShare={setShareItem} onRate={() => setRatingPlan(viewingPlan)} scheduledDate={viewingPlan.scheduledDate} onSchedule={(date) => { setPlans(prev => { const u = prev.map(x => x.id === viewingPlan.id ? { ...x, scheduledDate: date || null } : x); localStorage.setItem("cl_plans", JSON.stringify(u.slice(0, 20))); return u; }); goToCalendar("It's on your calendar! 📅"); }} />
           </div>
         )}
 
         {activeTab === "people" && <PeopleScreen user={user} onSavePlan={(payload) => { const r = payload?.plan; if (!r) return; setPlans(prev => { const updated = [{ result: r, times: payload?.times || times, ans: {}, savedAt: new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }), createdAt: Date.now(), id: generateId() }, ...prev]; localStorage.setItem("cl_plans", JSON.stringify(updated.slice(0, 20))); return updated; }); }} />}
         {/* Always mounted so an in-progress screenshot parse keeps running + persists when you switch tabs */}
         <div style={{ display: activeTab === "saved" ? "block" : "none" }}>
-          <SavedScreen user={user} openSignal={captureSignal} onShare={setShareItem} onBuildPlan={(saves) => { setResult(null); setError(null); setViewingPlan(null); setActiveTab("home"); setAns({ savedVenues: saves }); setQuizStep(0); }} onBarCrawl={(seed) => setBarCrawl({ seed: seed || [] })} />
+          <SavedScreen user={user} openSignal={captureSignal} calendarSignal={calSignal} onShare={setShareItem} onBuildPlan={(saves) => { setResult(null); setError(null); setViewingPlan(null); setActiveTab("home"); setAns({ savedVenues: saves }); setQuizStep(0); }} onBarCrawl={(seed) => setBarCrawl({ seed: seed || [] })} />
         </div>
         {activeTab === "me" && <MeScreen user={user} preferences={preferences} setPreferences={setPreferences} isAdmin={isAdmin} onBadgeUpdate={setAdminBadge} adminBadge={adminBadge} />}
 
