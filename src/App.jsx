@@ -3117,6 +3117,9 @@ Return a JSON object with this exact structure:
                 </div>
               </div>
             ))}
+            {folderSaves.length > 0 && /\b(bar|bars|pub|pubs|drink|drinks|cocktail|cocktails|wine|beer|nightlife|booze|happy ?hour|night out)\b/i.test(openFolder || "") && (
+              <button className="btn btn-teal" style={{ marginTop: "0.25rem" }} onClick={() => onBarCrawl(folderSaves)}>🍸 Planning a bar crawl? Tap here!</button>
+            )}
             {folderSaves.length > 0 && <button className="btn btn-teal" style={{ marginTop: "0.25rem" }} onClick={() => onBuildPlan(folderSaves)}>Build plan from {openFolder} ✦</button>}
           </>
         )}
