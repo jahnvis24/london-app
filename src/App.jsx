@@ -2298,11 +2298,12 @@ const CAL_TYPE = {
   plan:  { colour: "#4B342F", emoji: "🗺️", label: "Plan" },
   blist: { colour: "#726A4E", emoji: "✨", label: "Bucket list" },
 };
-function SpotsCalendar({ saves, user, onBuildPlan }) {
+function SpotsCalendar({ saves, user, onBuildPlan, onShare }) {
   const [monthOffset, setMonthOffset] = useState(0);
   const [selDay, setSelDay] = useState(null);
   const [blistItems, setBlistItems] = useState([]); // bucket-list items with a target date
   const [adding, setAdding] = useState(false);      // "add a saved spot to this day" picker
+  const [pickFolder, setPickFolder] = useState(null); // which folder is open in the add picker
   const [tick, setTick] = useState(0);              // bump to recompute after assigning a date
 
   useEffect(() => {
@@ -2356,7 +2357,42 @@ function SpotsCalendar({ saves, user, onBuildPlan }) {
     const dateStr = dayStr(selDay);
     try { localStorage.setItem("cl_visit_" + s.id, dateStr); } catch (e) {}
     try { if (user?.id) await supabase.from("experiences").update({ visit_date: dateStr }).eq("id", s.id).eq("user_id", user.id); } catch (e) {}
-    setAdding(false); setTick(t => t + 1);
+    setAdding(false); setPickFolder(null); setTick(t => t + 1);
+  }
+
+  // Remove an entry from the calendar (clears its date — doesn't delete the spot/plan/item).
+  async function unschedule(e) {
+    if (e._type === "spot") {
+      try { localStorage.removeItem("cl_visit_" + e.id); } catch (err) {}
+      try { if (user?.id) await supabase.from("experiences").update({ visit_date: null }).eq("id", e.id).eq("user_id", user.id); } catch (err) {}
+    } else if (e._type === "plan") {
+      try { const ps = JSON.parse(localStorage.getItem("cl_plans") || "[]"); const u = ps.map(p => ("plan-" + (p.id || p.scheduledDate)) === e.id ? { ...p, scheduledDate: null } : p); localStorage.setItem("cl_plans", JSON.stringify(u)); } catch (err) {}
+    } else if (e._type === "blist") {
+      const realId = e.id.replace("blist-", "");
+      setBlistItems(prev => prev.filter(b => b.id !== realId));
+      try { await supabase.from("shared_list_items").update({ target_date: null }).eq("id", realId); } catch (err) {}
+    }
+    setTick(t => t + 1);
+  }
+
+  // Best-effort in-app reminder: notifies while the app is open on the day (Google
+  // Calendar handles cross-device reminders — that's the "+ Google Calendar" link).
+  function remind(e) {
+    ensureNotifyPermission();
+    try {
+      const key = "cl_reminders";
+      const r = JSON.parse(localStorage.getItem(key) || "{}");
+      r[e.id] = { date: e.event_start, name: e.name };
+      localStorage.setItem(key, JSON.stringify(r));
+    } catch (err) {}
+    setTick(t => t + 1);
+  }
+  const hasReminder = (id) => { try { return !!JSON.parse(localStorage.getItem("cl_reminders") || "{}")[id]; } catch (e) { return false; } };
+
+  function shareEvent(e) {
+    if (!onShare) return;
+    if (e._type === "plan") { try { const p = JSON.parse(localStorage.getItem("cl_plans") || "[]").find(x => ("plan-" + (x.id || x.scheduledDate)) === e.id); if (p) onShare({ kind: "plan", title: p.result?.title || "An itinerary", payload: { plan: p.result, times: p.times } }); } catch (err) {} }
+    else { onShare({ kind: "list", title: e.name, payload: { name: e.name, spots: [{ name: e.name, category: e.category, area: e.area, address: e.address, photo_url: e.photo_url, google_place_id: e.google_place_id, lat: e.lat, lng: e.lng }] } }); }
   }
 
   const cells = [];
@@ -2365,6 +2401,11 @@ function SpotsCalendar({ saves, user, onBuildPlan }) {
   const upcoming = [...events].filter(e => parse(e.event_end || e.event_start) >= today).sort((a, b) => parse(a.event_start) - parse(b.event_start));
   const shown = selDay ? eventsOn(new Date(year, month, selDay)) : upcoming;
   const undatedSaves = saves.filter(s => !s.is_event && !visitOf(s));
+  // Group the undated saves by folder for the add picker.
+  const FOLDER_BY_CAT = { restaurant: "Restaurants", cafe: "Cafés", bar: "Bars", nightlife: "Nightlife", market: "Markets", outdoor: "Outdoor", museum: "Museums", gallery: "Galleries", experience: "Experiences", event: "Events" };
+  const folderOf = (s) => s.folder || FOLDER_BY_CAT[String(s.category || "").toLowerCase()] || "Other";
+  const undatedByFolder = undatedSaves.reduce((acc, s) => { const f = folderOf(s); (acc[f] = acc[f] || []).push(s); return acc; }, {});
+  const undatedFolders = Object.keys(undatedByFolder).sort();
 
   const dot = (c) => <div key={c} style={{ width: 5, height: 5, borderRadius: "50%", background: c }} />;
 
@@ -2387,16 +2428,23 @@ function SpotsCalendar({ saves, user, onBuildPlan }) {
         {cells.map((d, i) => {
           if (d === null) return <div key={i} />;
           const dayDate = new Date(year, month, d);
-          const types = typesOn(dayDate);
+          const dayEvents = eventsOn(dayDate);
+          const types = [...new Set(dayEvents.map(e => e._type))];
+          const photo = dayEvents.find(e => e.photo_url)?.photo_url;
           const isToday = dayDate.getTime() === today.getTime();
           const isSel = selDay === d;
+          const showImg = photo && !isSel;
           return (
-            <div key={i} onClick={() => { setSelDay(isSel ? null : d); setAdding(false); }}
-              style={{ aspectRatio: "1", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", borderRadius: 8, fontSize: "0.74rem", cursor: "pointer",
-                background: isSel ? "#726A4E" : isToday ? "#eef3d8" : "transparent", color: isSel ? "#fff" : "#1c1c1a", fontWeight: types.length ? 600 : 400 }}>
-              {d}
-              <div style={{ display: "flex", gap: 2, marginTop: 2, height: 5 }}>
-                {isSel ? (types.length ? dot("#fff") : null) : types.slice(0, 3).map(t => dot(CAL_TYPE[t].colour))}
+            <div key={i} onClick={() => { setSelDay(isSel ? null : d); setAdding(false); setPickFolder(null); }}
+              style={{ position: "relative", minHeight: 52, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", borderRadius: 9, fontSize: "0.74rem", cursor: "pointer", overflow: "hidden",
+                background: isSel ? "#726A4E" : showImg ? "#222" : isToday ? "#eef3d8" : "transparent", color: (isSel || showImg) ? "#fff" : "#1c1c1a", fontWeight: types.length ? 700 : 400,
+                outline: isToday && !isSel ? "1.5px solid #cdd89a" : "none" }}>
+              {showImg && <><img src={photo} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} /><div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.34)" }} /></>}
+              <span style={{ position: "relative", textShadow: showImg ? "0 1px 3px rgba(0,0,0,0.85)" : "none" }}>{d}</span>
+              <div style={{ position: "relative", display: "flex", gap: 2, marginTop: 2, height: 5 }}>
+                {isSel ? (types.length ? dot("#fff") : null)
+                  : showImg ? (types.length > 1 ? dot("#fff") : null)
+                  : types.slice(0, 3).map(t => dot(CAL_TYPE[t].colour))}
               </div>
             </div>
           );
@@ -2422,12 +2470,13 @@ function SpotsCalendar({ saves, user, onBuildPlan }) {
                 {e._type === "blist" ? " · bucket list" : ""}
               </div>
               {e.area && <div style={{ fontSize: "0.68rem", color: "#9b8f7a", marginTop: 2 }}>📍 {e.area}</div>}
-              {(e._type === "spot" || e._type === "event") && (
-                <div style={{ display: "flex", gap: 12, marginTop: 5 }}>
-                  <a href={gcal(e)} target="_blank" rel="noreferrer" style={{ fontSize: "0.66rem", color: "#726A4E", fontWeight: 500 }}>+ Google Calendar</a>
-                  {e.source_url && <a href={e.source_url} target="_blank" rel="noreferrer" style={{ fontSize: "0.66rem", color: "#726A4E" }}>View source ↗</a>}
-                </div>
-              )}
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 6, alignItems: "center" }}>
+                <a href={gcal(e)} target="_blank" rel="noreferrer" style={{ fontSize: "0.66rem", color: "#726A4E", fontWeight: 600 }}>+ Google Calendar</a>
+                <button onClick={() => remind(e)} style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "0.66rem", color: hasReminder(e.id) ? "#DD4124" : "#726A4E", fontWeight: 600 }}>{hasReminder(e.id) ? "🔔 Reminder set" : "🔔 Remind me"}</button>
+                {onShare && <button onClick={() => shareEvent(e)} style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "0.66rem", color: "#726A4E", fontWeight: 600 }}>↗ Share</button>}
+                <button onClick={() => unschedule(e)} style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "0.66rem", color: "#b3a892", fontWeight: 600 }}>✕ Remove</button>
+                {e.source_url && <a href={e.source_url} target="_blank" rel="noreferrer" style={{ fontSize: "0.66rem", color: "#9b8f7a" }}>Source ↗</a>}
+              </div>
             </div>
           </div>
         );
@@ -2441,15 +2490,27 @@ function SpotsCalendar({ saves, user, onBuildPlan }) {
       )}
       {selDay && adding && (
         <div style={{ marginTop: 8, background: "#fff", border: "1px solid #f0ebe2", borderRadius: 12, padding: 10 }}>
-          <div style={{ fontSize: "0.74rem", color: "#9b8f7a", marginBottom: 8 }}>Add to {fmtFull(new Date(year, month, selDay))}</div>
-          {undatedSaves.slice(0, 40).map(s => (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            {pickFolder && <button onClick={() => setPickFolder(null)} style={{ border: "none", background: "none", cursor: "pointer", fontSize: "0.78rem", color: "#726A4E", fontWeight: 600, padding: 0 }}>‹ Lists</button>}
+            <div style={{ fontSize: "0.74rem", color: "#9b8f7a" }}>{pickFolder ? `${pickFolder} → ${fmt(dayStr(selDay))}` : `Pick a list · ${fmtFull(new Date(year, month, selDay))}`}</div>
+          </div>
+          {!pickFolder && undatedFolders.length === 0 && <div style={{ fontSize: "0.78rem", color: "#9b8f7a" }}>No undated spots left to add.</div>}
+          {!pickFolder && undatedFolders.map(f => (
+            <button key={f} onClick={() => setPickFolder(f)} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", textAlign: "left", padding: "9px 8px", borderRadius: 10, border: "none", background: "transparent", cursor: "pointer" }}>
+              <span style={{ fontSize: "1.05rem", width: 28, textAlign: "center" }}>📁</span>
+              <span style={{ flex: 1, fontSize: "0.84rem", fontWeight: 600, color: "#1c1c1a" }}>{f}</span>
+              <span style={{ fontSize: "0.72rem", color: "#9b8f7a" }}>{undatedByFolder[f].length}</span>
+              <span style={{ color: "#c9bfae", fontSize: "1.05rem" }}>›</span>
+            </button>
+          ))}
+          {pickFolder && (undatedByFolder[pickFolder] || []).map(s => (
             <button key={s.id} onClick={() => assignSpot(s)} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", textAlign: "left", padding: "7px 8px", borderRadius: 10, border: "none", background: "transparent", cursor: "pointer" }}>
               {s.photo_url ? <img src={s.photo_url} alt="" style={{ width: 32, height: 32, borderRadius: 7, objectFit: "cover", flexShrink: 0 }} /> : <div style={{ width: 32, height: 32, borderRadius: 7, background: "#f5f0e8", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>📍</div>}
               <span style={{ flex: 1, minWidth: 0, fontSize: "0.82rem", fontWeight: 500, color: "#1c1c1a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.name}</span>
               <span style={{ color: "#726A4E", fontWeight: 700 }}>＋</span>
             </button>
           ))}
-          <button onClick={() => setAdding(false)} style={{ width: "100%", border: "none", background: "#f5f0e8", color: "#6b5e4e", borderRadius: 100, padding: "8px", fontSize: "0.76rem", cursor: "pointer", marginTop: 6 }}>Done</button>
+          <button onClick={() => { setAdding(false); setPickFolder(null); }} style={{ width: "100%", border: "none", background: "#f5f0e8", color: "#6b5e4e", borderRadius: 100, padding: "8px", fontSize: "0.76rem", cursor: "pointer", marginTop: 6 }}>Done</button>
         </div>
       )}
     </div>
@@ -3300,7 +3361,7 @@ Return a JSON object with this exact structure:
             ))}
           </>
         )}
-        {saves.length > 0 && savedView === "calendar" && <SpotsCalendar saves={saves} user={user} onBuildPlan={onBuildPlan} />}
+        {saves.length > 0 && savedView === "calendar" && <SpotsCalendar saves={saves} user={user} onBuildPlan={onBuildPlan} onShare={onShare} />}
         {saves.length > 0 && savedView === "folders" && !openFolder && (
           <>
             {saves.some(s => s.lat && s.lng) && (
