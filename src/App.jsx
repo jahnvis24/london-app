@@ -3457,6 +3457,253 @@ function ShareModal({ user, item, onClose, showToast }) {
   );
 }
 
+// Shared styles for the bucket-list UI.
+const slPill = { padding: "7px 12px", borderRadius: 100, border: "1px solid #d8d0c0", background: "#fff", color: "#4a4438", fontSize: "0.78rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" };
+const slInput = { width: "100%", padding: "11px 12px", borderRadius: 10, border: "1.5px solid #e3ddd0", background: "#fff", color: "#1c1c1a", fontFamily: "'DM Sans', sans-serif", fontSize: "0.9rem", boxSizing: "border-box" };
+const slOverlay = { position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 1300, animation: "fadeIn 0.2s" };
+const slSheet = { background: "#fff", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: "1.25rem 1.25rem 1.5rem", width: "100%", maxWidth: 420, maxHeight: "75vh", overflowY: "auto", animation: "cardIn 0.25s ease" };
+
+// Collaborative bucket lists: a list two+ connected friends both add to and tick off.
+// Lists you own or are a member of, each with progress + a creator. Lives in the People tab.
+function SharedListsSection({ user }) {
+  const [lists, setLists] = useState([]);
+  const [counts, setCounts] = useState({}); // listId -> { done, total }
+  const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newEmoji, setNewEmoji] = useState("✨");
+  const [saving, setSaving] = useState(false);
+  const [openList, setOpenList] = useState(null);
+  const EMOJIS = ["✨", "🍸", "🍜", "🎨", "🌳", "☕", "🍝", "🎬", "🏛️", "🌅"];
+
+  async function load() {
+    setLoading(true);
+    // RLS returns only lists you own or are a member of.
+    const { data: ls } = await supabase.from("shared_lists").select("*").order("created_at", { ascending: false });
+    const rows = ls || [];
+    setLists(rows);
+    if (rows.length) {
+      const { data: items } = await supabase.from("shared_list_items").select("list_id,done").in("list_id", rows.map(l => l.id));
+      const c = {};
+      (items || []).forEach(it => { const e = c[it.list_id] || (c[it.list_id] = { done: 0, total: 0 }); e.total++; if (it.done) e.done++; });
+      setCounts(c);
+    } else setCounts({});
+    setLoading(false);
+  }
+  useEffect(() => { load(); }, []);
+
+  async function create() {
+    const name = newName.trim();
+    if (!name) return;
+    setSaving(true);
+    try {
+      const { data, error } = await supabase.from("shared_lists").insert({ name, emoji: newEmoji || "✨", owner: user.id }).select().single();
+      if (error) throw error;
+      // Owner is also a member, so membership-based reads/writes work uniformly.
+      await supabase.from("shared_list_members").insert({ list_id: data.id, user_id: user.id });
+      setNewName(""); setNewEmoji("✨"); setCreating(false);
+      await load();
+      setOpenList(data);
+    } catch (e) { alert("Couldn't create list: " + e.message); }
+    setSaving(false);
+  }
+
+  return (
+    <div style={{ padding: "0 1.5rem 1rem" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "0.25rem 0 0.15rem" }}>
+        <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a" }}>Bucket lists</div>
+        <button onClick={() => setCreating(v => !v)} style={slPill}>+ New list</button>
+      </div>
+      <div style={{ fontSize: "0.76rem", color: "#9b8f7a", marginBottom: 12 }}>Shared lists you and friends add to and tick off together.</div>
+
+      {creating && (
+        <div style={{ background: "#fff", border: "1px solid #f0ebe2", borderRadius: 14, padding: "0.9rem", marginBottom: 12 }}>
+          <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="e.g. London date spots" autoFocus style={slInput} />
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, margin: "10px 0" }}>
+            {EMOJIS.map(em => (
+              <button key={em} onClick={() => setNewEmoji(em)} style={{ width: 34, height: 34, borderRadius: 10, border: newEmoji === em ? "2px solid #726A4E" : "1px solid #e8e2d8", background: "#fff", fontSize: "1.05rem", cursor: "pointer" }}>{em}</button>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button className="btn btn-teal" style={{ marginTop: 0, flex: 1 }} disabled={saving || !newName.trim()} onClick={create}>{saving ? "Creating…" : "Create list"}</button>
+            <button className="btn-outline" style={{ marginTop: 0, width: 90 }} onClick={() => { setCreating(false); setNewName(""); }}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {loading && <div style={{ fontSize: "0.82rem", color: "#9b8f7a" }}>Loading…</div>}
+      {!loading && lists.length === 0 && !creating && <div style={{ fontSize: "0.82rem", color: "#9b8f7a" }}>No bucket lists yet. Create one, then invite a friend to build it together.</div>}
+
+      {lists.map(l => {
+        const c = counts[l.id] || { done: 0, total: 0 };
+        const pct = c.total ? Math.round((c.done / c.total) * 100) : 0;
+        return (
+          <button key={l.id} onClick={() => setOpenList(l)} style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", padding: 12, background: "#fff", border: "1px solid #f0ebe2", borderRadius: 14, marginBottom: 10, cursor: "pointer" }}>
+            <div style={{ width: 42, height: 42, borderRadius: 12, background: "#f5f0e8", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.25rem", flexShrink: 0 }}>{l.emoji || "✨"}</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: "0.9rem", fontWeight: 600, color: "#1c1c1a" }}>{l.name}</div>
+              <div style={{ fontSize: "0.72rem", color: "#9b8f7a", margin: "1px 0 5px" }}>{c.done}/{c.total} done{l.owner !== user.id ? " · shared with you" : ""}</div>
+              <div style={{ height: 5, borderRadius: 100, background: "#efe9df", overflow: "hidden" }}>
+                <div style={{ height: "100%", width: pct + "%", background: "#726A4E", borderRadius: 100 }} />
+              </div>
+            </div>
+            <span style={{ color: "#c9bfae", fontSize: "1.3rem", flexShrink: 0 }}>›</span>
+          </button>
+        );
+      })}
+
+      {openList && <SharedListView list={openList} user={user} onClose={() => { setOpenList(null); load(); }} />}
+    </div>
+  );
+}
+
+// One bucket list: tickable items, add-from-saves + manual add, members, and an invite link.
+function SharedListView({ list, user, onClose }) {
+  const [items, setItems] = useState([]);
+  const [members, setMembers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [picker, setPicker] = useState(null); // null | "saves" | "manual"
+  const [saves, setSaves] = useState([]);
+  const [savesLoaded, setSavesLoaded] = useState(false);
+  const [mName, setMName] = useState(""); const [mCat, setMCat] = useState("restaurant"); const [mArea, setMArea] = useState(""); const [mComment, setMComment] = useState("");
+  const [copied, setCopied] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const inviteLink = `https://london-app.vercel.app/?blist=${list.id}`;
+  const nameOf = (p) => p?.name || (p?.email ? p.email.split("@")[0] : null) || "Friend";
+
+  async function load() {
+    setLoading(true);
+    const { data: its } = await supabase.from("shared_list_items").select("*").eq("list_id", list.id).order("created_at", { ascending: true });
+    setItems(its || []);
+    const { data: mem } = await supabase.from("shared_list_members").select("user_id").eq("list_id", list.id);
+    const ids = (mem || []).map(m => m.user_id);
+    let profs = {};
+    if (ids.length) { const { data } = await supabase.from("profiles").select("id,name,avatar_url,email").in("id", ids); (data || []).forEach(p => { profs[p.id] = p; }); }
+    setMembers(ids.map(id => ({ id, ...(profs[id] || {}) })));
+    setLoading(false);
+  }
+  useEffect(() => { load(); }, []);
+
+  async function toggleDone(it) {
+    const next = !it.done;
+    setItems(prev => prev.map(x => x.id === it.id ? { ...x, done: next, done_by: next ? user.id : null } : x));
+    await supabase.from("shared_list_items").update({ done: next, done_by: next ? user.id : null, done_at: next ? new Date().toISOString() : null }).eq("id", it.id);
+  }
+
+  async function removeItem(it) {
+    setItems(prev => prev.filter(x => x.id !== it.id));
+    await supabase.from("shared_list_items").delete().eq("id", it.id);
+  }
+
+  async function loadSaves() {
+    const { data } = await supabase.from("experiences").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
+    setSaves(data || []); setSavesLoaded(true);
+  }
+  function openSaves() { setPicker("saves"); if (!savesLoaded) loadSaves(); }
+
+  async function addFromSave(s) {
+    setBusy(true);
+    const row = { list_id: list.id, added_by: user.id, name: s.name, category: s.category, address: s.address, area: s.area, comment: s.comment, lat: s.lat, lng: s.lng, google_place_id: s.google_place_id, google_rating: s.google_rating != null ? String(s.google_rating) : null, price: s.price || s.google_price_level || null, website: s.website, photo_url: s.photo_url };
+    const { data, error } = await supabase.from("shared_list_items").insert(row).select().single();
+    if (!error && data) setItems(prev => [...prev, data]);
+    setBusy(false);
+  }
+
+  async function addManual() {
+    const name = mName.trim(); if (!name) return;
+    setBusy(true);
+    const row = { list_id: list.id, added_by: user.id, name, category: mCat, area: mArea.trim() || null, comment: mComment.trim() || null };
+    const { data, error } = await supabase.from("shared_list_items").insert(row).select().single();
+    if (!error && data) { setItems(prev => [...prev, data]); setMName(""); setMArea(""); setMComment(""); setPicker(null); }
+    setBusy(false);
+  }
+
+  const doneCount = items.filter(i => i.done).length;
+  const onListPlaceIds = new Set(items.map(i => i.google_place_id).filter(Boolean));
+  const onListNames = new Set(items.map(i => String(i.name || "").toLowerCase()));
+  const availableSaves = saves.filter(s => (s.google_place_id ? !onListPlaceIds.has(s.google_place_id) : !onListNames.has(String(s.name || "").toLowerCase())));
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "#f7f6f2", zIndex: 1200, overflowY: "auto", animation: "fadeIn 0.2s" }}>
+      <div style={{ maxWidth: 420, margin: "0 auto", padding: "1rem 1.5rem 6rem" }}>
+        <button className="btn-outline" style={{ marginTop: 0, width: "auto", padding: "8px 14px" }} onClick={onClose}>← People</button>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "1rem 0 0.25rem" }}>
+          <div style={{ width: 48, height: 48, borderRadius: 14, background: "#f5f0e8", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", flexShrink: 0 }}>{list.emoji || "✨"}</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.4rem", color: "#1c1c1a", lineHeight: 1.1 }}>{list.name}</div>
+            <div style={{ fontSize: "0.76rem", color: "#9b8f7a", marginTop: 2 }}>{doneCount}/{items.length} ticked off</div>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 6, margin: "0.85rem 0" }}>
+          {members.map(m => (
+            <div key={m.id} title={nameOf(m)} style={{ width: 30, height: 30, borderRadius: "50%", background: "#726A4E", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 600, fontSize: "0.78rem", overflow: "hidden", border: "2px solid #f7f6f2", marginLeft: -6 }}>{m.avatar_url ? <img src={m.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : nameOf(m).charAt(0).toUpperCase()}</div>
+          ))}
+          <button onClick={() => { navigator.clipboard?.writeText(inviteLink); setCopied(true); setTimeout(() => setCopied(false), 2000); }} style={{ ...slPill, marginLeft: 8 }}>{copied ? "✓ Link copied" : "🔗 Invite a friend"}</button>
+        </div>
+
+        <div style={{ display: "flex", gap: 8, margin: "0.25rem 0 1.1rem" }}>
+          <button className="btn btn-teal" style={{ marginTop: 0, flex: 1 }} onClick={openSaves}>＋ From your saves</button>
+          <button className="btn-outline" style={{ marginTop: 0, flex: 1 }} onClick={() => setPicker("manual")}>✎ Add manually</button>
+        </div>
+
+        {loading && <div style={{ fontSize: "0.82rem", color: "#9b8f7a" }}>Loading…</div>}
+        {!loading && items.length === 0 && <div style={{ fontSize: "0.85rem", color: "#9b8f7a", textAlign: "center", padding: "2rem 1rem", lineHeight: 1.5 }}>Nothing here yet. Add places from your saves or type one in — then invite a friend to build it with you.</div>}
+
+        {items.map(it => (
+          <div key={it.id} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: 12, background: "#fff", border: "1px solid #f0ebe2", borderRadius: 14, marginBottom: 8 }}>
+            <button onClick={() => toggleDone(it)} style={{ width: 24, height: 24, borderRadius: "50%", border: it.done ? "none" : "2px solid #cfc6b5", background: it.done ? "#726A4E" : "#fff", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, cursor: "pointer", marginTop: 1, fontSize: "0.8rem" }}>{it.done ? "✓" : ""}</button>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: "0.9rem", fontWeight: 600, color: it.done ? "#9b8f7a" : "#1c1c1a", textDecoration: it.done ? "line-through" : "none" }}>{it.name}</div>
+              {[it.category, it.area].filter(Boolean).length > 0 && <div style={{ fontSize: "0.72rem", color: "#9b8f7a", marginTop: 1 }}>{[it.category, it.area].filter(Boolean).join(" · ")}</div>}
+              {it.comment && <div style={{ fontSize: "0.74rem", color: "#6b5e4e", marginTop: 2 }}>{it.comment}</div>}
+            </div>
+            {(it.added_by === user.id || list.owner === user.id) && <button onClick={() => removeItem(it)} style={{ border: "none", background: "none", color: "#c9bfae", cursor: "pointer", fontSize: "0.95rem", flexShrink: 0, padding: "0 2px" }}>✕</button>}
+          </div>
+        ))}
+      </div>
+
+      {picker === "saves" && (
+        <div onClick={() => setPicker(null)} style={slOverlay}>
+          <div onClick={e => e.stopPropagation()} style={slSheet}>
+            <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.1rem", color: "#1c1c1a", marginBottom: 10 }}>Add from your saves</div>
+            {!savesLoaded && <div style={{ fontSize: "0.82rem", color: "#9b8f7a" }}>Loading…</div>}
+            {savesLoaded && availableSaves.length === 0 && <div style={{ fontSize: "0.82rem", color: "#9b8f7a", lineHeight: 1.5 }}>Nothing left to add — everything's already on the list, or you haven't saved any spots yet (add some in the Saves tab).</div>}
+            {availableSaves.map(s => (
+              <button key={s.id} disabled={busy} onClick={() => addFromSave(s)} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", padding: "8px 10px", borderRadius: 12, border: "1px solid #f0ebe2", background: "#fff", cursor: "pointer", marginBottom: 8 }}>
+                {s.photo_url ? <img src={s.photo_url} alt="" style={{ width: 38, height: 38, borderRadius: 9, objectFit: "cover", flexShrink: 0 }} /> : <div style={{ width: 38, height: 38, borderRadius: 9, background: "#f5f0e8", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>📍</div>}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1c1c1a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.name}</div>
+                  <div style={{ fontSize: "0.72rem", color: "#9b8f7a" }}>{[s.category, s.area].filter(Boolean).join(" · ")}</div>
+                </div>
+                <span style={{ color: "#726A4E", fontWeight: 700, fontSize: "1.1rem", flexShrink: 0 }}>＋</span>
+              </button>
+            ))}
+            <button onClick={() => setPicker(null)} className="btn-outline">Done</button>
+          </div>
+        </div>
+      )}
+
+      {picker === "manual" && (
+        <div onClick={() => setPicker(null)} style={slOverlay}>
+          <div onClick={e => e.stopPropagation()} style={slSheet}>
+            <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.1rem", color: "#1c1c1a", marginBottom: 10 }}>Add a place</div>
+            <input value={mName} onChange={e => setMName(e.target.value)} placeholder="Place name" autoFocus style={slInput} />
+            <select value={mCat} onChange={e => setMCat(e.target.value)} style={{ ...slInput, marginTop: 8 }}>
+              {["restaurant", "cafe", "bar", "nightlife", "market", "outdoor", "museum", "gallery", "experience", "event"].map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <input value={mArea} onChange={e => setMArea(e.target.value)} placeholder="Area (optional)" style={{ ...slInput, marginTop: 8 }} />
+            <input value={mComment} onChange={e => setMComment(e.target.value)} placeholder="Note (optional)" style={{ ...slInput, marginTop: 8 }} />
+            <button className="btn btn-teal" style={{ marginTop: 12 }} disabled={busy || !mName.trim()} onClick={addManual}>{busy ? "Adding…" : "Add to list"}</button>
+            <button onClick={() => setPicker(null)} className="btn-outline">Cancel</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // People hub: your invite link, who you're connected with, things shared with you.
 function PeopleScreen({ user, onSavePlan }) {
   const [connections, setConnections] = useState([]);
@@ -3515,6 +3762,8 @@ function PeopleScreen({ user, onSavePlan }) {
           </div>
         </div>
       </div>
+
+      <SharedListsSection user={user} />
 
       <div style={{ padding: "0 1.5rem 1rem" }}>
         <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a", margin: "0.25rem 0 0.6rem" }}>Shared with you ({shares.length})</div>
@@ -3851,6 +4100,21 @@ export default function App() {
     (async () => {
       const [a, b] = [user.id, inv].sort();
       try { await supabase.from("connections").upsert({ user_a: a, user_b: b }, { onConflict: "user_a,user_b" }); showToast("Connected! See the People tab."); } catch (e) {}
+      window.history.replaceState({}, "", "/");
+    })();
+  }, [user]);
+
+  // Bucket-list invite: opening ?blist=<id> joins you to that shared list.
+  useEffect(() => {
+    if (!user?.id) return;
+    const blist = new URLSearchParams(window.location.search).get("blist");
+    if (!blist) return;
+    (async () => {
+      try {
+        await supabase.from("shared_list_members").upsert({ list_id: blist, user_id: user.id }, { onConflict: "list_id,user_id" });
+        showToast("Added to the bucket list! See the People tab.");
+        setActiveTab("people");
+      } catch (e) {}
       window.history.replaceState({}, "", "/");
     })();
   }, [user]);
