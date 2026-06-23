@@ -1868,13 +1868,21 @@ function ListCover({ items, height = 200 }) {
 }
 
 // Full detail view for a saved spot: About, Book/Website, Notes, Add to calendar.
-function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan, user }) {
+function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan, user, onSpotUpdate }) {
   const cat = normaliseCategory(spot.category);
-  const [note, setNote] = useState(() => { try { return localStorage.getItem("cl_note_" + spot.id) || ""; } catch { return ""; } });
+  const [note, setNote] = useState(() => { if (spot.note != null) return spot.note; try { return localStorage.getItem("cl_note_" + spot.id) || ""; } catch { return ""; } });
   const [savedNote, setSavedNote] = useState(false);
-  const [visitDate, setVisitDate] = useState(() => { try { return localStorage.getItem("cl_visit_" + spot.id) || (spot.is_event && spot.event_start ? String(spot.event_start).slice(0, 10) : ""); } catch (e) { return ""; } });
+  const [visitDate, setVisitDate] = useState(() => { if (spot.visit_date) return String(spot.visit_date).slice(0, 10); try { return localStorage.getItem("cl_visit_" + spot.id) || (spot.is_event && spot.event_start ? String(spot.event_start).slice(0, 10) : ""); } catch (e) { return ""; } });
   const [calSaved, setCalSaved] = useState(false);
-  function addToCalendar() { if (!visitDate) return; try { localStorage.setItem("cl_visit_" + spot.id, visitDate); } catch (e) {} setCalSaved(true); setTimeout(() => setCalSaved(false), 1800); }
+  // Persist to the experiences row (syncs across devices); fall back to
+  // localStorage if the column isn't there yet / the write fails.
+  async function persist(patch, localKey, localVal) {
+    let ok = false;
+    try { const { error } = await supabase.from("experiences").update(patch).eq("id", spot.id); ok = !error; } catch (e) {}
+    if (!ok) { try { localStorage.setItem(localKey, localVal); } catch (e) {} }
+    onSpotUpdate && onSpotUpdate(spot.id, patch);
+  }
+  async function addToCalendar() { if (!visitDate) return; await persist({ visit_date: visitDate }, "cl_visit_" + spot.id, visitDate); setCalSaved(true); setTimeout(() => setCalSaved(false), 1800); }
   const [myStars, setMyStars] = useState(0);
   const [agg, setAgg] = useState({ avg: null, count: 0 });
   const venueKey = spot.google_place_id || (spot.name || "").toLowerCase().trim();
@@ -1899,7 +1907,7 @@ function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan, user }) {
     setMyStars(n);
     try { await supabase.from("venue_ratings").upsert({ user_id: user.id, venue_key: venueKey, venue_name: spot.name, stars: n }, { onConflict: "user_id,venue_key" }); refreshRatings(); } catch (e) {}
   }
-  function saveNote() { try { localStorage.setItem("cl_note_" + spot.id, note); setSavedNote(true); setTimeout(() => setSavedNote(false), 1500); } catch (e) {} }
+  async function saveNote() { await persist({ note }, "cl_note_" + spot.id, note); setSavedNote(true); setTimeout(() => setSavedNote(false), 1500); }
   const bookUrl = spot.website || googleMapsUrl(spot);
   const gcalUrl = (() => {
     const p = new URLSearchParams({ action: "TEMPLATE", text: spot.name || "Visit", details: (spot.comment || "") + (spot.source_url ? `\n${spot.source_url}` : ""), location: spot.address || spot.area || "London" });
@@ -2194,7 +2202,8 @@ function SpotsCalendar({ saves }) {
   // Dated events plus spots the user added to their calendar (planned visits).
   const events = saves.map(s => {
     if (s.is_event && s.event_start) return s;
-    let visit = null; try { visit = localStorage.getItem("cl_visit_" + s.id); } catch (e) {}
+    let visit = s.visit_date || null;
+    if (!visit) { try { visit = localStorage.getItem("cl_visit_" + s.id); } catch (e) {} }
     return visit ? { ...s, event_start: visit, event_end: null, _planned: true } : null;
   }).filter(Boolean);
 
@@ -3135,6 +3144,7 @@ Return a JSON object with this exact structure:
         <SpotDetail
           spot={detailSpot}
           user={user}
+          onSpotUpdate={(id, patch) => setSaves(prev => prev.map(s => s.id === id ? { ...s, ...patch } : s))}
           onClose={() => setDetailSpot(null)}
           onShowOnMap={(s) => { setDetailSpot(null); if (savedView !== "map" && !openFolder) setSavedView("map"); setFocusSpot({ ...s, _focus: Date.now() }); window.scrollTo({ top: 0, behavior: "smooth" }); }}
           onMakePlan={(s) => { setDetailSpot(null); onBuildPlan([s]); }}
