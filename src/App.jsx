@@ -2146,8 +2146,8 @@ function SpotsMap({ saves, listName, focusSpot, onCategory }) {
           <div style={{ position: "absolute", left: 0, right: 0, bottom: 10, zIndex: 450, display: "flex", gap: 8, padding: "0 10px", overflowX: "auto" }}>
             <button onClick={() => { setFilter("all"); setSheetOpen(false); setSelected(null); onCategory && onCategory(""); }} style={{ fontSize: "0.72rem", padding: "7px 13px", borderRadius: 100, whiteSpace: "nowrap", cursor: "pointer", border: "none", boxShadow: "0 2px 8px rgba(0,0,0,0.18)", flexShrink: 0, background: filter === "all" ? "#1c1c1a" : "#fff", color: filter === "all" ? "#fff" : "#1c1c1a", fontWeight: filter === "all" ? 600 : 500 }}>All</button>
             {cats.map(c => (
-              <button key={c} onClick={() => { setFilter(c); setSelected(null); setSheetOpen(false); onCategory && onCategory(c); }} style={{ fontSize: "0.72rem", padding: "7px 13px", borderRadius: 100, whiteSpace: "nowrap", cursor: "pointer", border: "none", boxShadow: "0 2px 8px rgba(0,0,0,0.18)", flexShrink: 0, background: filter === c ? "#1c1c1a" : "#fff", color: filter === c ? "#fff" : "#1c1c1a", fontWeight: filter === c ? 600 : 500 }}>
-                {CAT_LABEL[c] || capitalise(c)}
+              <button key={c} onClick={() => { const off = filter === c; setFilter(off ? "all" : c); setSelected(null); setSheetOpen(false); onCategory && onCategory(off ? "" : c); }} style={{ fontSize: "0.72rem", padding: "7px 13px", borderRadius: 100, whiteSpace: "nowrap", cursor: "pointer", border: "none", boxShadow: "0 2px 8px rgba(0,0,0,0.18)", flexShrink: 0, background: filter === c ? "#1c1c1a" : "#fff", color: filter === c ? "#fff" : "#1c1c1a", fontWeight: filter === c ? 600 : 500 }}>
+                {CAT_LABEL[c] || capitalise(c)}{filter === c ? " ✕" : ""}
               </button>
             ))}
           </div>
