@@ -443,6 +443,8 @@ const styles = `
   .nav-tab-label { font-family: 'DM Sans', sans-serif; font-size: 0.58rem; font-weight: 500; letter-spacing: 0.03em; color: #9b8f7a; text-transform: uppercase; transition: color 0.15s; }
   .nav-tab.active .nav-tab-label { color: #1c1c1a; font-weight: 700; }
   .nav-tab-dot { display: none; }
+  .capture-fab { position: fixed; z-index: 110; bottom: calc(74px + env(safe-area-inset-bottom)); right: max(18px, calc(50% - 210px + 18px)); width: 56px; height: 56px; border-radius: 50%; border: none; background: #1c1c1a; color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 6px 18px rgba(0,0,0,0.28); transition: transform 0.12s, box-shadow 0.12s; }
+  .capture-fab:active { transform: scale(0.92); }
 
   .section-pad { padding: 1.5rem; }
   .section-title { font-family: 'DM Serif Display', Georgia, serif; font-size: 1.4rem; font-weight: 400; color: #1c1c1a; margin-bottom: 0.25rem; }
@@ -2303,7 +2305,7 @@ function SpotsCalendar({ saves }) {
   );
 }
 
-function SavedScreen({ user, onBuildPlan, onShare, onBarCrawl }) {
+function SavedScreen({ user, onBuildPlan, onShare, onBarCrawl, openSignal }) {
   const [saves, setSaves] = useState([]);
   const [loading, setLoading] = useState(true);
   const [mediaType, setMediaType] = useState("tiktok"); // tiktok | instagram | screenshot | maps | mapslist
@@ -2330,6 +2332,13 @@ function SavedScreen({ user, onBuildPlan, onShare, onBarCrawl }) {
 
   // Collapse the capture controls whenever the user switches Folders/Map/Calendar.
   useEffect(() => { setCaptureOpen(false); }, [savedView]);
+
+  // The global capture FAB bumps openSignal — pop the "Save a place" sheet on demand.
+  const firstSignal = useRef(true);
+  useEffect(() => {
+    if (firstSignal.current) { firstSignal.current = false; return; }
+    setOpenFolder(null); setCaptureTab("screenshot"); setError(null); setCaptureOpen(true);
+  }, [openSignal]);
 
   // Auto-categorisation: map a venue category to its folder.
   const CATEGORY_FOLDER = { restaurant: "Restaurants", cafe: "Cafés", bar: "Bars", nightlife: "Nightlife", market: "Markets", outdoor: "Outdoor", museum: "Museums", gallery: "Galleries", experience: "Experiences", event: "Events" };
@@ -3821,6 +3830,7 @@ export default function App() {
   const [barCrawl, setBarCrawl] = useState(null);   // { seed: [...] } -> BarCrawlQuiz
   const [pendingGen, setPendingGen] = useState(false); // fire generate() after ans/times state commits
   const [activeTab, setActiveTab] = useState("home");
+  const [captureSignal, setCaptureSignal] = useState(0); // bump to pop the global capture sheet on Saves
   const [quizStep, setQuizStep] = useState(-1);
   const [ans, setAns] = useState({});
   const [times, setTimes] = useState({ start: "18:00", end: "23:00" });
@@ -4168,10 +4178,17 @@ export default function App() {
         {activeTab === "people" && <PeopleScreen user={user} onSavePlan={(payload) => { const r = payload?.plan; if (!r) return; setPlans(prev => { const updated = [{ result: r, times: payload?.times || times, ans: {}, savedAt: new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }), createdAt: Date.now(), id: generateId() }, ...prev]; localStorage.setItem("cl_plans", JSON.stringify(updated.slice(0, 20))); return updated; }); }} />}
         {/* Always mounted so an in-progress screenshot parse keeps running + persists when you switch tabs */}
         <div style={{ display: activeTab === "saved" ? "block" : "none" }}>
-          <SavedScreen user={user} onShare={setShareItem} onBuildPlan={(saves) => { setResult(null); setError(null); setViewingPlan(null); setActiveTab("home"); setAns({ savedVenues: saves }); setQuizStep(0); }} onBarCrawl={(seed) => setBarCrawl({ seed: seed || [] })} />
+          <SavedScreen user={user} openSignal={captureSignal} onShare={setShareItem} onBuildPlan={(saves) => { setResult(null); setError(null); setViewingPlan(null); setActiveTab("home"); setAns({ savedVenues: saves }); setQuizStep(0); }} onBarCrawl={(seed) => setBarCrawl({ seed: seed || [] })} />
         </div>
         {activeTab === "prefs" && <PreferencesScreen preferences={preferences} setPreferences={setPreferences} user={user} />}
         {activeTab === "admin" && <AdminScreen onBadgeUpdate={setAdminBadge} />}
+
+        {!showQuiz && !showResult && !showViewingPlan && (
+          <button className="capture-fab" aria-label="Save a place"
+            onClick={() => { setActiveTab("saved"); setQuizStep(-1); setViewingPlan(null); setCaptureSignal(n => n + 1); }}>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
+          </button>
+        )}
 
         <nav className="bottom-nav">
           {TABS.map(tab => (
