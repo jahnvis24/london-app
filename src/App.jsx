@@ -4170,7 +4170,6 @@ export default function App() {
         <div style={{ display: activeTab === "saved" ? "block" : "none" }}>
           <SavedScreen user={user} onShare={setShareItem} onBuildPlan={(saves) => { setResult(null); setError(null); setViewingPlan(null); setActiveTab("home"); setAns({ savedVenues: saves }); setQuizStep(0); }} onBarCrawl={(seed) => setBarCrawl({ seed: seed || [] })} />
         </div>
-        {activeTab === "add" && <TikTokParserScreen onSuccess={() => showToast("Added! Check Admin to approve.")} />}
         {activeTab === "prefs" && <PreferencesScreen preferences={preferences} setPreferences={setPreferences} user={user} />}
         {activeTab === "admin" && <AdminScreen onBadgeUpdate={setAdminBadge} />}
 
