@@ -1765,6 +1765,8 @@ function PreferencesScreen({ preferences, setPreferences, user }) {
 const CAT_PIN_COLOURS = { restaurant: "#DD4124", bar: "#4B342F", cafe: "#9B892F", market: "#A1947D", experience: "#726A4E", outdoor: "#726A4E", museum: "#A1947D", gallery: "#4B342F", nightlife: "#4B342F", event: "#DD4124" };
 const CAT_PIN_EMOJI = { restaurant: "🍽️", bar: "🍸", cafe: "☕", market: "🛍️", experience: "✨", outdoor: "🌳", museum: "🏛️", gallery: "🎨", nightlife: "🌙", event: "🎫" };
 const CAT_LABEL = { restaurant: "Restaurants", cafe: "Cafés", bar: "Bars", nightlife: "Nightlife", market: "Markets", outdoor: "Outdoor", museum: "Museums", gallery: "Galleries", experience: "Experiences", event: "Events" };
+// Category chips (with dots) for the manual Save form.
+const MANUAL_CATS = [["restaurant", "Restaurant", "#DD4124"], ["bar", "Bar", "#4B342F"], ["cafe", "Café", "#9B892F"], ["museum", "Museum", "#A1947D"], ["gallery", "Gallery", "#4B342F"], ["market", "Market", "#A1947D"], ["outdoor", "Outdoor", "#726A4E"], ["experience", "Experience", "#726A4E"]];
 // Shared across SavedScreen + SpotsMap (card/list/folder visuals).
 const CAT_EMOJI = { restaurant: "\u{1F37D}️", bar: "\u{1F378}", cafe: "☕", market: "\u{1F6CD}️", experience: "✨", outdoor: "\u{1F33F}", museum: "\u{1F3DB}️", gallery: "\u{1F3A8}", nightlife: "\u{1F319}", event: "\u{1F3AB}" };
 const CAT_COLOURS = { restaurant: "#DD4124", bar: "#4B342F", cafe: "#9B892F", market: "#A1947D", experience: "#726A4E", outdoor: "#726A4E", museum: "#A1947D", gallery: "#4B342F", nightlife: "#4B342F", event: "#DD4124" };
@@ -2321,6 +2323,8 @@ function SavedScreen({ user, onBuildPlan, onShare, onBarCrawl }) {
   const [movingSpot, setMovingSpot] = useState(null);
   const [detailSpot, setDetailSpot] = useState(null);
   const [captureOpen, setCaptureOpen] = useState(false); // collapse the "add a spot" controls by default
+  const [captureTab, setCaptureTab] = useState("screenshot"); // Save modal: screenshot | link | manual
+  const [mName, setMName] = useState(""); const [mCat, setMCat] = useState("restaurant"); const [mNotes, setMNotes] = useState("");
   const [focusSpot, setFocusSpot] = useState(null); // tapping a list card pans the map to it
   const [mapCat, setMapCat] = useState(""); // Map tab: "" = all, else a category scope
 
@@ -2646,21 +2650,24 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
     return drafts;
   }
 
-  async function handleParse(files) {
+  async function handleParse(files, typeArg) {
     if (!user?.id) { setError("You're not signed in — please sign in to save."); return; }
     ensureNotifyPermission();
+    const mt = typeArg || mediaType;
     setParsing(true); setError(null);
     try {
       let drafts = [];
-      if (mediaType === "screenshot") {
+      if (mt === "screenshot") {
         if (!files || !files.length) throw new Error("Pick one or more screenshots.");
         drafts = await parseScreenshots(files);
-      } else if (mediaType === "tiktok") {
+      } else if (mt === "tiktok") {
         drafts = await parseTikTok(textInput);
-      } else if (mediaType === "instagram") {
+      } else if (mt === "instagram") {
         drafts = await parseInstagram(textInput);
-      } else if (mediaType === "bulk") {
+      } else if (mt === "bulk") {
         drafts = await parseBulk(textInput);
+      } else if (mt === "mapslist") {
+        drafts = await parseMaps(textInput, true);
       } else {
         drafts = await parseMaps(textInput, false);
       }
@@ -2676,6 +2683,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
       setPreview(prev => [...prev, ...drafts]);
       setTextInput("");
       setParseStatus("");
+      setCaptureOpen(false); // close the modal; the review list shows on the Saves screen
       if (dupCount) setError(prev => `${prev ? prev + " " : ""}Heads up: ${dupCount} of these ${dupCount === 1 ? "is" : "are"} already in your saves (marked below).`);
       notify("Parsing done ✦", `${drafts.length} spot${drafts.length !== 1 ? "s" : ""} ready to review`);
     } catch (e) {
@@ -2760,6 +2768,32 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
       setParseStatus("");
       if (savedCount) { setPreview(prev => prev.slice(savedCount)); await loadSaves(); }
     }
+    setSaving(false);
+  }
+
+  // Manual tab: enrich a typed name on Google and save it straight away.
+  async function manualSave() {
+    if (!mName.trim() || !user?.id) return;
+    setSaving(true); setError(null); setParseStatus(`Saving ${mName.trim()}...`);
+    try {
+      const g = await enrich(mName.trim(), null);
+      const d = buildDraft({ name: mName.trim(), category: mCat, comment: mNotes.trim() || null }, g, { source_type: "manual", source_url: null });
+      const photo_url = d.photo_url || await resolvePhoto(d);
+      const row = {
+        user_id: user.id, name: d.name, address: d.address, area: d.area, zone: d.zone || "Central",
+        category: d.category, price: d.price, is_event: d.is_event, event_start: d.event_start, event_end: d.event_end, event_time: d.event_time,
+        comment: d.comment, vibe_tags: d.vibe_tags || [], lat: d.lat, lng: d.lng, postcode: d.postcode,
+        google_place_id: d.google_place_id, google_rating: d.google_rating, google_review_count: d.google_review_count, google_price_level: d.google_price_level,
+        website: d.website, opening_hours: d.opening_hours, source_url: null, source_type: "manual",
+        photo_url, folder: null, status: "pending",
+      };
+      const { data: inserted, error } = await supabase.from("experiences").insert(row).select();
+      if (error) throw new Error("Save failed: " + error.message);
+      if (!inserted || !inserted.length) throw new Error("Save didn't persist — check you're signed in and that the migration has been run.");
+      setParseStatus(""); setMName(""); setMNotes(""); setCaptureOpen(false);
+      showSuccess(d.name); notify("Saved to your collection ✨", `${d.name} added`);
+      await loadSaves();
+    } catch (e) { console.error("[manualSave]", e); setError(e.message); setParseStatus(""); }
     setSaving(false);
   }
 
@@ -2983,51 +3017,81 @@ Return a JSON object with this exact structure:
       <div style={{ padding: "0 1.5rem 1rem" }}>
         {error && <div className="err" style={{ marginBottom: "0.75rem" }}>{error}</div>}
 
-        {!openFolder && !captureOpen && (
-          <button onClick={() => setCaptureOpen(true)} className="btn btn-teal" style={{ width: "100%" }}>+ Add or save a new spot</button>
+        {!openFolder && (
+          <button onClick={() => { setCaptureTab("screenshot"); setError(null); setCaptureOpen(true); }} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: "#1c1c1a", color: "#fff", border: "none", borderRadius: 100, padding: "13px 18px", fontSize: "0.92rem", fontWeight: 600, cursor: "pointer" }}>+ Save a place</button>
         )}
 
-        {!openFolder && captureOpen && (<>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-          <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "#1c1c1a" }}>Add a spot</div>
-          <button onClick={() => setCaptureOpen(false)} style={{ border: "none", background: "none", color: "#9b8f7a", cursor: "pointer", fontSize: "0.78rem" }}>Hide ✕</button>
-        </div>
-        <div style={{ display: "flex", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
-          {MEDIA_TYPES.map(m => (
-            <button key={m.id} onClick={() => { setMediaType(m.id); setError(null); }} disabled={parsing || saving}
-              style={{ fontSize: "0.74rem", padding: "7px 12px", borderRadius: 100, cursor: "pointer",
-                border: mediaType === m.id ? "1.5px solid #726A4E" : "1.5px solid #e8e2d8",
-                background: mediaType === m.id ? "#eef3d8" : "#fff", color: mediaType === m.id ? "#726A4E" : "#6b5e4e", fontWeight: mediaType === m.id ? 600 : 400 }}>
-              {m.emoji} {m.label}
-            </button>
-          ))}
-        </div>
-
-        {mediaType === "screenshot" ? (
-          <label style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "14px 16px", border: "1.5px dashed #ddd8ce", borderRadius: 12, fontSize: "0.82rem", color: "#4a4438", cursor: "pointer" }}>
-            📷 Upload screenshot(s) — pick several at once
-            <input type="file" accept="image/*" multiple style={{ display: "none" }} disabled={parsing || saving}
-              onChange={e => { const f = [...e.target.files]; e.target.value = ""; if (f.length) handleParse(f); }} />
-          </label>
-        ) : (mediaType === "instagram" || mediaType === "bulk") ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <textarea className="input-field" rows={mediaType === "bulk" ? 5 : 3} placeholder={current.placeholder} value={textInput}
-              onChange={e => { setTextInput(e.target.value); setError(null); }} style={{ resize: "vertical" }} />
-            <button className="btn btn-teal" onClick={() => handleParse()} disabled={parsing || saving || !textInput.trim()}>{parsing ? "Parsing..." : "Parse ✦"}</button>
-          </div>
-        ) : (
-          <div style={{ display: "flex", gap: 8 }}>
-            <input className="input-field" type="text" placeholder={current.placeholder} value={textInput}
-              onChange={e => { setTextInput(e.target.value); setError(null); }} style={{ flex: 1 }} />
-            <button className="btn btn-teal" onClick={() => handleParse()} disabled={parsing || saving || !textInput.trim()} style={{ width: "auto", padding: "12px 16px", whiteSpace: "nowrap" }}>{parsing ? "..." : "Parse"}</button>
-          </div>
-        )}
-
-        {mediaType === "bulk" && <div style={{ fontSize: "0.66rem", color: "#b8ac9a", marginTop: 6 }}>One per line. Google Maps links are resolved; plain place names are looked up on Google. Great for importing a whole list.</div>}
-        </>)}
-
-        {(parsing || saving) && parseStatus && <div style={{ fontSize: "0.75rem", color: "#726A4E", marginTop: 8 }}>{parseStatus}</div>}
+        {(parsing || saving) && parseStatus && !captureOpen && <div style={{ fontSize: "0.75rem", color: "#726A4E", marginTop: 8 }}>{parseStatus}</div>}
       </div>
+
+      {!openFolder && captureOpen && (
+        <div onClick={() => !parsing && !saving && setCaptureOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.42)", zIndex: 1400, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 420, background: "#fff", borderRadius: "22px 22px 0 0", padding: "22px 20px calc(22px + env(safe-area-inset-bottom))", maxHeight: "92vh", overflowY: "auto" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.5rem", color: "#1c1c1a" }}>Save a place</div>
+              <button onClick={() => setCaptureOpen(false)} style={{ border: "none", background: "none", fontSize: "1.25rem", color: "#9b8f7a", cursor: "pointer", lineHeight: 1 }}>✕</button>
+            </div>
+            <div style={{ fontSize: "0.85rem", color: "#9b8f7a", margin: "4px 0 16px" }}>Drop a screenshot, paste a link, or add it yourself.</div>
+
+            <div style={{ display: "flex", gap: 4, background: "#f0ebe2", borderRadius: 12, padding: 4, marginBottom: 16 }}>
+              {[["screenshot", "📷 Screenshot"], ["link", "🔗 Link"], ["manual", "✎ Manual"]].map(([id, lbl]) => (
+                <button key={id} onClick={() => { setCaptureTab(id); setError(null); }} style={{ flex: 1, padding: "9px 4px", borderRadius: 9, border: "none", cursor: "pointer", fontSize: "0.8rem", fontWeight: 600, background: captureTab === id ? "#fff" : "transparent", color: captureTab === id ? "#1c1c1a" : "#9b8f7a", boxShadow: captureTab === id ? "0 1px 4px rgba(0,0,0,0.1)" : "none" }}>{lbl}</button>
+              ))}
+            </div>
+
+            {captureTab === "screenshot" && (
+              <label style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 7, padding: "34px 16px", border: "1.5px dashed #ddd8ce", borderRadius: 14, cursor: parsing ? "default" : "pointer", textAlign: "center" }}>
+                <span style={{ fontSize: "1.5rem" }}>⬆️</span>
+                <span style={{ fontSize: "0.92rem", color: "#1c1c1a", fontWeight: 500 }}>{parsing ? "Reading…" : "Click to upload a screenshot"}</span>
+                <span style={{ fontSize: "0.76rem", color: "#9b8f7a" }}>PNG or JPG — pick several at once</span>
+                <input type="file" accept="image/*" multiple style={{ display: "none" }} disabled={parsing || saving}
+                  onChange={e => { const f = [...e.target.files]; e.target.value = ""; if (f.length) handleParse(f, "screenshot"); }} />
+              </label>
+            )}
+
+            {captureTab === "link" && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <div style={{ fontSize: "0.8rem", color: "#6b5e4e" }}>Paste a TikTok, Instagram or Google Maps link.</div>
+                <input className="input-field" type="text" placeholder="https://…" value={textInput} onChange={e => { setTextInput(e.target.value); setError(null); }} />
+                <button className="btn btn-teal" disabled={parsing || saving || !textInput.trim()} onClick={() => {
+                  const t = textInput.trim(); let mt = "tiktok";
+                  if (/instagram\.com/i.test(t)) mt = "instagram";
+                  else if (/maps\.app\.goo\.gl|google\.[a-z.]+\/maps|goo\.gl\/maps/i.test(t)) mt = /\/maps\/.*list|@.*data/i.test(t) ? "mapslist" : "maps";
+                  handleParse(undefined, mt);
+                }}>{parsing ? "Parsing…" : "Parse ✦"}</button>
+              </div>
+            )}
+
+            {captureTab === "manual" && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                <div>
+                  <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "#1c1c1a", marginBottom: 6 }}>Place name</div>
+                  <input className="input-field" value={mName} onChange={e => setMName(e.target.value)} placeholder="e.g. Dishoom Shoreditch" />
+                </div>
+                <div>
+                  <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "#1c1c1a", marginBottom: 8 }}>Category</div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                    {MANUAL_CATS.map(([id, lbl, color]) => (
+                      <button key={id} onClick={() => setMCat(id)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 13px", borderRadius: 100, cursor: "pointer", fontSize: "0.8rem", fontWeight: 500, border: mCat === id ? "1.5px solid #1c1c1a" : "1.5px solid #e8e2d8", background: "#fff", color: "#1c1c1a" }}><span style={{ width: 9, height: 9, borderRadius: "50%", background: color }} />{lbl}</button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "#1c1c1a", marginBottom: 6 }}>Notes</div>
+                  <textarea className="input-field" rows={3} value={mNotes} onChange={e => setMNotes(e.target.value)} placeholder="Why did you save this? Best time to go, what to order…" style={{ resize: "vertical" }} />
+                </div>
+                <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 16 }}>
+                  <button onClick={() => setCaptureOpen(false)} style={{ border: "none", background: "none", color: "#6b5e4e", fontSize: "0.88rem", fontWeight: 500, cursor: "pointer" }}>Cancel</button>
+                  <button onClick={manualSave} disabled={saving || !mName.trim()} style={{ border: "none", background: "#1c1c1a", color: "#fff", borderRadius: 100, padding: "11px 22px", fontWeight: 600, fontSize: "0.88rem", cursor: "pointer", opacity: (saving || !mName.trim()) ? 0.5 : 1 }}>{saving ? "Saving…" : "Save it"}</button>
+                </div>
+              </div>
+            )}
+
+            {(parsing || saving) && parseStatus && <div style={{ fontSize: "0.78rem", color: "#726A4E", marginTop: 12 }}>{parseStatus}</div>}
+            {error && <div className="err" style={{ marginTop: 12 }}>{error}</div>}
+          </div>
+        </div>
+      )}
 
       {preview.length > 0 && (
         <div style={{ padding: "0 1.5rem 1rem" }}>
