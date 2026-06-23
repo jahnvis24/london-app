@@ -1154,7 +1154,7 @@ function MyPlansScreen({ plans, onViewPlan, onNewPlan }) {
   );
 }
 
-function DiscoverScreen({ preferences, dbVenues }) {
+function DiscoverScreen({ preferences, dbVenues, onStart }) {
   const [section, setSection] = useState("events");
   const [celebFilter, setCelebFilter] = useState("All");
 
@@ -1232,6 +1232,12 @@ function DiscoverScreen({ preferences, dbVenues }) {
         <div className="section-title">Discover</div>
         <p className="section-sub">What's happening and where the celebs go</p>
       </div>
+
+      {onStart && (
+        <div style={{ padding: "0 1.5rem 0.5rem" }}>
+          <button onClick={onStart} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "#726A4E", color: "#fff", border: "none", borderRadius: 14, padding: "15px", fontSize: "0.95rem", fontWeight: 600, cursor: "pointer", boxShadow: "0 3px 12px rgba(114,106,78,0.28)" }}>✦ Plan my day or night</button>
+        </div>
+      )}
 
       <div className="filter-row">
         <div className={`filter-chip ${section === "events" ? "sel" : ""}`} onClick={() => setSection("events")}>📅 What's On</div>
@@ -3901,7 +3907,7 @@ export default function App() {
   const [shareItem, setShareItem] = useState(null); // { kind, title, payload } -> ShareModal
   const [barCrawl, setBarCrawl] = useState(null);   // { seed: [...] } -> BarCrawlQuiz
   const [pendingGen, setPendingGen] = useState(false); // fire generate() after ans/times state commits
-  const [activeTab, setActiveTab] = useState("home");
+  const [activeTab, setActiveTab] = useState("discover"); // Discover is the landing tab; planning is a CTA, not a tab
   const [captureSignal, setCaptureSignal] = useState(0); // bump to pop the global capture sheet on Saves
   const [quizStep, setQuizStep] = useState(-1);
   const [ans, setAns] = useState({});
@@ -4149,7 +4155,7 @@ export default function App() {
     setLoading(false);
   }
 
-  function resetToHome() { setQuizStep(-1); setAns({}); setResult(null); setError(null); setViewingPlan(null); }
+  function resetToHome() { setQuizStep(-1); setAns({}); setResult(null); setError(null); setViewingPlan(null); setActiveTab("discover"); }
 
   const showQuiz = activeTab === "home" && quizStep >= 0 && quizStep <= QUESTIONS.length;
   const showResult = activeTab === "home" && quizStep === QUESTIONS.length + 1 && result;
@@ -4157,10 +4163,9 @@ export default function App() {
   const showViewingPlan = activeTab === "plans" && viewingPlan;
 
   const TABS = [
-    { id: "home", label: "Plan", icon: "✦" },
-    { id: "plans", label: "Plans", icon: "📋" },
-    { id: "saved", label: "Saves", icon: "📌" },
     { id: "discover", label: "Discover", icon: "🔍" },
+    { id: "saved", label: "Saves", icon: "📌" },
+    { id: "plans", label: "Plans", icon: "📋" },
     { id: "people", label: "People", icon: "👥" },
     { id: "me", label: "Me", icon: "🙂", badge: isAdmin ? adminBadge : 0 },
   ];
@@ -4234,7 +4239,7 @@ export default function App() {
         {ratingPlan && <RatingPrompt plan={ratingPlan} user={user} onDismiss={() => { const reviewed = JSON.parse(localStorage.getItem("cl_reviewed") || "[]"); reviewed.push(ratingPlan.id); localStorage.setItem("cl_reviewed", JSON.stringify(reviewed)); setRatingPlan(null); }} onSubmit={() => { setRatingPlan(null); showToast("Thanks for your review!"); }} />}
 
         {showHome && <HomeScreen onStart={startQuiz} />}
-        {showQuiz && <QuizScreen step={quizStep} ans={ans} times={times} setTimes={setTimes} onToggle={toggle} onNext={nextStep} onBack={prevStep} onGenerate={generate} loading={loading} loadIdx={loadIdx} error={error} onExit={() => setQuizStep(-1)} />}
+        {showQuiz && <QuizScreen step={quizStep} ans={ans} times={times} setTimes={setTimes} onToggle={toggle} onNext={nextStep} onBack={prevStep} onGenerate={generate} loading={loading} loadIdx={loadIdx} error={error} onExit={() => { setQuizStep(-1); setActiveTab("discover"); }} />}
         {showResult && <ResultScreen result={result} times={times} ans={ans} onRestart={resetToHome} onNewPlan={startQuiz} dbVenues={dbVenues} onUpdateResult={setResult} onShare={setShareItem} onRate={() => plans[0] && setRatingPlan(plans[0])} />}
 
         {activeTab === "plans" && !showViewingPlan && <MyPlansScreen plans={plans} onViewPlan={(plan) => setViewingPlan(plan)} onNewPlan={() => { setActiveTab("home"); startQuiz(); }} />}
@@ -4245,7 +4250,7 @@ export default function App() {
           </div>
         )}
 
-        {activeTab === "discover" && <DiscoverScreen preferences={preferences} dbVenues={dbVenues} />}
+        {activeTab === "discover" && <DiscoverScreen preferences={preferences} dbVenues={dbVenues} onStart={startQuiz} />}
         {activeTab === "people" && <PeopleScreen user={user} onSavePlan={(payload) => { const r = payload?.plan; if (!r) return; setPlans(prev => { const updated = [{ result: r, times: payload?.times || times, ans: {}, savedAt: new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }), createdAt: Date.now(), id: generateId() }, ...prev]; localStorage.setItem("cl_plans", JSON.stringify(updated.slice(0, 20))); return updated; }); }} />}
         {/* Always mounted so an in-progress screenshot parse keeps running + persists when you switch tabs */}
         <div style={{ display: activeTab === "saved" ? "block" : "none" }}>
