@@ -1872,6 +1872,9 @@ function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan, user }) {
   const cat = normaliseCategory(spot.category);
   const [note, setNote] = useState(() => { try { return localStorage.getItem("cl_note_" + spot.id) || ""; } catch { return ""; } });
   const [savedNote, setSavedNote] = useState(false);
+  const [visitDate, setVisitDate] = useState(() => { try { return localStorage.getItem("cl_visit_" + spot.id) || (spot.is_event && spot.event_start ? String(spot.event_start).slice(0, 10) : ""); } catch (e) { return ""; } });
+  const [calSaved, setCalSaved] = useState(false);
+  function addToCalendar() { if (!visitDate) return; try { localStorage.setItem("cl_visit_" + spot.id, visitDate); } catch (e) {} setCalSaved(true); setTimeout(() => setCalSaved(false), 1800); }
   const [myStars, setMyStars] = useState(0);
   const [agg, setAgg] = useState({ avg: null, count: 0 });
   const venueKey = spot.google_place_id || (spot.name || "").toLowerCase().trim();
@@ -1947,7 +1950,14 @@ function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan, user }) {
 
         <div style={{ marginTop: 14 }}>
           <Action href={bookUrl} primary>{spot.website ? "🔗 Book / Website" : "🔗 Open in Google Maps"}</Action>
-          <Action href={gcalUrl}>📅 Add to calendar</Action>
+          <div style={{ padding: "12px", background: "#fff", border: "1.5px solid #ddd8ce", borderRadius: 12, marginBottom: 8 }}>
+            <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "#4a4438", marginBottom: 8 }}>📅 Add to your calendar</div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input type="date" value={visitDate} onChange={e => setVisitDate(e.target.value)} className="input-field" style={{ flex: 1 }} />
+              <button onClick={addToCalendar} disabled={!visitDate} style={{ border: "none", background: visitDate ? "#726A4E" : "#cfc8ba", color: "#fff", borderRadius: 10, padding: "0 18px", fontWeight: 600, fontSize: "0.82rem", cursor: visitDate ? "pointer" : "default" }}>{calSaved ? "✓ Added" : "Add"}</button>
+            </div>
+            <div style={{ fontSize: "0.68rem", color: "#9b8f7a", marginTop: 6 }}>Shows in your Saved → Calendar.{" "}<a href={gcalUrl} target="_blank" rel="noreferrer" style={{ color: "#9b8f7a", textDecoration: "underline" }}>Google Calendar ↗</a></div>
+          </div>
           {onShowOnMap && <Action onClick={() => onShowOnMap(spot)}>📍 Show on map</Action>}
           {onMakePlan && <Action onClick={() => onMakePlan(spot)}>✦ Make a plan based on this</Action>}
           {spot.source_url && (spot.source_type === "tiktok" || spot.source_type === "instagram") && <Action href={spot.source_url}>{SOURCE_ICON[spot.source_type]} View original ↗</Action>}
@@ -2181,7 +2191,12 @@ function SpotsMap({ saves, listName, focusSpot, onCategory }) {
 function SpotsCalendar({ saves }) {
   const [monthOffset, setMonthOffset] = useState(0);
   const [selDay, setSelDay] = useState(null);
-  const events = saves.filter(s => s.is_event && s.event_start);
+  // Dated events plus spots the user added to their calendar (planned visits).
+  const events = saves.map(s => {
+    if (s.is_event && s.event_start) return s;
+    let visit = null; try { visit = localStorage.getItem("cl_visit_" + s.id); } catch (e) {}
+    return visit ? { ...s, event_start: visit, event_end: null, _planned: true } : null;
+  }).filter(Boolean);
 
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const base = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
@@ -2205,7 +2220,7 @@ function SpotsCalendar({ saves }) {
   };
 
   if (!events.length) return (
-    <div className="empty-state"><div className="empty-emoji">📅</div><div className="empty-title">No dated events yet</div><div className="empty-sub">Saves with a date (pop-ups, shows, exhibitions) appear here.</div></div>
+    <div className="empty-state"><div className="empty-emoji">📅</div><div className="empty-title">No dates yet</div><div className="empty-sub">Dated events and any spot you "Add to your calendar" appear here.</div></div>
   );
 
   const cells = [];
