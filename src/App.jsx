@@ -1100,7 +1100,7 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
   );
 }
 
-function MyPlansScreen({ plans, onViewPlan, onNewPlan }) {
+function MyPlansScreen({ plans, onViewPlan, onNewPlan, onSchedule }) {
   const Header = (
     <div style={{ padding: "1.75rem 1.5rem 0.75rem", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
       <div>
@@ -1144,7 +1144,12 @@ function MyPlansScreen({ plans, onViewPlan, onNewPlan }) {
                 <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: "0.8rem", color: "#6b5e4e" }}>
                   {CalIcon}{plan.savedAt} · {stops.length} stop{stops.length !== 1 ? "s" : ""}
                 </div>
-                <span style={{ fontSize: "1.15rem", color: "#1c1c1a" }}>→</span>
+                {onSchedule ? (
+                  <label onClick={(e) => e.stopPropagation()} style={{ display: "inline-flex", alignItems: "center", gap: 5, position: "relative", fontSize: "0.76rem", fontWeight: 600, color: plan.scheduledDate ? "#726A4E" : "#9b8f7a", cursor: "pointer" }}>
+                    📅 {plan.scheduledDate ? new Date(plan.scheduledDate).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "Schedule"}
+                    <input type="date" value={plan.scheduledDate || ""} onChange={(e) => onSchedule(i, e.target.value)} onClick={(e) => e.stopPropagation()} style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer", width: "100%" }} />
+                  </label>
+                ) : <span style={{ fontSize: "1.15rem", color: "#1c1c1a" }}>→</span>}
               </div>
             </div>
           );
@@ -2285,16 +2290,42 @@ function SpotsMap({ saves, listName, focusSpot, onCategory, peek, peekHeight, on
 }
 
 // Calendar of time-bound saves (events with a date).
-function SpotsCalendar({ saves }) {
+// Unified "agenda" calendar: dated events + spots (visit_date) + scheduled plans
+// (localStorage) + dated bucket-list items (target_date). Tap any day to see what's
+// on and to add a saved spot or build a plan for it.
+const CAL_TYPE = {
+  event: { colour: "#9B892F", emoji: "🎫", label: "Event" },
+  spot:  { colour: "#DD4124", emoji: "📌", label: "Spot" },
+  plan:  { colour: "#4B342F", emoji: "🗺️", label: "Plan" },
+  blist: { colour: "#726A4E", emoji: "✨", label: "Bucket list" },
+};
+function SpotsCalendar({ saves, user, onBuildPlan }) {
   const [monthOffset, setMonthOffset] = useState(0);
   const [selDay, setSelDay] = useState(null);
-  // Dated events plus spots the user added to their calendar (planned visits).
-  const events = saves.map(s => {
-    if (s.is_event && s.event_start) return s;
-    let visit = s.visit_date || null;
-    if (!visit) { try { visit = localStorage.getItem("cl_visit_" + s.id); } catch (e) {} }
-    return visit ? { ...s, event_start: visit, event_end: null, _planned: true } : null;
+  const [blistItems, setBlistItems] = useState([]); // bucket-list items with a target date
+  const [adding, setAdding] = useState(false);      // "add a saved spot to this day" picker
+  const [tick, setTick] = useState(0);              // bump to recompute after assigning a date
+
+  useEffect(() => {
+    if (!user?.id) return;
+    supabase.from("shared_list_items").select("id,name,category,area,photo_url,target_date").not("target_date", "is", null)
+      .then(({ data }) => setBlistItems(data || [])).catch(() => {});
+  }, [user]);
+
+  const visitOf = (s) => { if (s.visit_date) return s.visit_date; try { return localStorage.getItem("cl_visit_" + s.id) || null; } catch (e) { return null; } };
+
+  // Source 1+2: dated events and spots with a planned visit date.
+  const spotEvents = saves.map(s => {
+    if (s.is_event && s.event_start) return { ...s, _type: "event" };
+    const v = visitOf(s);
+    return v ? { ...s, event_start: v, event_end: null, _type: "spot" } : null;
   }).filter(Boolean);
+  // Source 3: itineraries you've scheduled to a date.
+  let storedPlans = []; try { storedPlans = JSON.parse(localStorage.getItem("cl_plans") || "[]"); } catch (e) {}
+  const planEvents = storedPlans.filter(p => p.scheduledDate).map(p => ({ id: "plan-" + (p.id || p.scheduledDate), name: p.result?.title || "Your plan", event_start: p.scheduledDate, _type: "plan", _stops: (p.result?.stops || []).length, _tagline: p.result?.tagline }));
+  // Source 4: bucket-list items with a target date.
+  const blistEvents = blistItems.map(b => ({ id: "blist-" + b.id, name: b.name, category: b.category, area: b.area, photo_url: b.photo_url, event_start: b.target_date, _type: "blist" }));
+  const events = [...spotEvents, ...planEvents, ...blistEvents];
 
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const base = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
@@ -2302,13 +2333,17 @@ function SpotsCalendar({ saves }) {
   const monthName = base.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
   const firstDow = (new Date(year, month, 1).getDay() + 6) % 7; // Mon = 0
   const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const pad = (n) => String(n).padStart(2, "0");
+  const dayStr = (d) => `${year}-${pad(month + 1)}-${pad(d)}`;
 
   const parse = (d) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
   const eventsOn = (dayDate) => events.filter(e => {
     const s = parse(e.event_start); const en = e.event_end ? parse(e.event_end) : s;
     return dayDate >= s && dayDate <= en;
   });
+  const typesOn = (dayDate) => [...new Set(eventsOn(dayDate).map(e => e._type))];
   const fmt = (d) => d ? new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "";
+  const fmtFull = (d) => d ? new Date(d).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "long" }) : "";
   const gcal = (e) => {
     const s = (e.event_start || "").replace(/-/g, "");
     const endD = new Date(e.event_end || e.event_start); endD.setDate(endD.getDate() + 1);
@@ -2317,18 +2352,30 @@ function SpotsCalendar({ saves }) {
     return `https://calendar.google.com/calendar/render?${p.toString()}`;
   };
 
-  if (!events.length) return (
-    <div className="empty-state"><div className="empty-emoji">📅</div><div className="empty-title">No dates yet</div><div className="empty-sub">Dated events and any spot you "Add to your calendar" appear here.</div></div>
-  );
+  async function assignSpot(s) {
+    if (!selDay) return;
+    const dateStr = dayStr(selDay);
+    try { localStorage.setItem("cl_visit_" + s.id, dateStr); } catch (e) {}
+    try { if (user?.id) await supabase.from("experiences").update({ visit_date: dateStr }).eq("id", s.id).eq("user_id", user.id); } catch (e) {}
+    setAdding(false); setTick(t => t + 1);
+  }
 
   const cells = [];
   for (let i = 0; i < firstDow; i++) cells.push(null);
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
   const upcoming = [...events].filter(e => parse(e.event_end || e.event_start) >= today).sort((a, b) => parse(a.event_start) - parse(b.event_start));
   const shown = selDay ? eventsOn(new Date(year, month, selDay)) : upcoming;
+  const undatedSaves = saves.filter(s => !s.is_event && !visitOf(s));
+
+  const dot = (c) => <div key={c} style={{ width: 5, height: 5, borderRadius: "50%", background: c }} />;
 
   return (
     <div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, margin: "0 0 10px", fontSize: "0.62rem", color: "#9b8f7a" }}>
+        {Object.entries(CAL_TYPE).map(([k, v]) => (
+          <span key={k} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><span style={{ width: 7, height: 7, borderRadius: "50%", background: v.colour }} />{v.label}</span>
+        ))}
+      </div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
         <button onClick={() => { setMonthOffset(monthOffset - 1); setSelDay(null); }} style={{ border: "none", background: "#f5f0e8", borderRadius: 8, width: 32, height: 32, cursor: "pointer", fontSize: "1rem" }}>‹</button>
         <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1rem", color: "#1c1c1a" }}>{monthName}</div>
@@ -2341,41 +2388,71 @@ function SpotsCalendar({ saves }) {
         {cells.map((d, i) => {
           if (d === null) return <div key={i} />;
           const dayDate = new Date(year, month, d);
-          const has = eventsOn(dayDate).length;
+          const types = typesOn(dayDate);
           const isToday = dayDate.getTime() === today.getTime();
           const isSel = selDay === d;
           return (
-            <div key={i} onClick={() => has && setSelDay(isSel ? null : d)}
-              style={{ aspectRatio: "1", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", borderRadius: 8, fontSize: "0.74rem", cursor: has ? "pointer" : "default",
-                background: isSel ? "#726A4E" : isToday ? "#eef3d8" : "transparent", color: isSel ? "#fff" : "#1c1c1a", fontWeight: has ? 600 : 400 }}>
+            <div key={i} onClick={() => { setSelDay(isSel ? null : d); setAdding(false); }}
+              style={{ aspectRatio: "1", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", borderRadius: 8, fontSize: "0.74rem", cursor: "pointer",
+                background: isSel ? "#726A4E" : isToday ? "#eef3d8" : "transparent", color: isSel ? "#fff" : "#1c1c1a", fontWeight: types.length ? 600 : 400 }}>
               {d}
-              {has > 0 && <div style={{ width: 5, height: 5, borderRadius: "50%", background: isSel ? "#fff" : "#DD4124", marginTop: 2 }} />}
+              <div style={{ display: "flex", gap: 2, marginTop: 2, height: 5 }}>
+                {isSel ? (types.length ? dot("#fff") : null) : types.slice(0, 3).map(t => dot(CAL_TYPE[t].colour))}
+              </div>
             </div>
           );
         })}
       </div>
+
       <div style={{ fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "#9b8f7a", fontWeight: 500, margin: "16px 0 8px" }}>
-        {selDay ? `Events on ${fmt(new Date(year, month, selDay))}` : "Upcoming"}
+        {selDay ? fmtFull(new Date(year, month, selDay)) : "Upcoming"}
       </div>
-      {shown.length === 0 && <div style={{ fontSize: "0.8rem", color: "#9b8f7a" }}>{selDay ? "Nothing on this day." : "No upcoming events."}</div>}
-      {shown.map(e => (
-        <div key={e.id} style={{ display: "flex", gap: 10, padding: 10, background: "#fff", border: "1px solid #f0ebe2", borderRadius: 12, marginBottom: 8 }}>
-          <div style={{ width: 48, height: 48, borderRadius: 8, overflow: "hidden", flexShrink: 0, background: "#726A4E", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            {e.photo_url ? <img src={e.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span>🎫</span>}
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: "0.86rem", fontWeight: 600, color: "#1c1c1a" }}>{e.name}</div>
-            <div style={{ fontSize: "0.72rem", color: "#726A4E", marginTop: 2 }}>
-              📅 {fmt(e.event_start)}{e.event_end && e.event_end !== e.event_start ? ` – ${fmt(e.event_end)}` : ""}{e.event_time ? ` · 🕐 ${e.event_time}` : ""}
+      {shown.length === 0 && <div style={{ fontSize: "0.8rem", color: "#9b8f7a" }}>{selDay ? "Nothing planned yet — add a spot or build a plan below." : "No upcoming dates. Tap a day to plan something."}</div>}
+      {shown.map(e => {
+        const meta = CAL_TYPE[e._type] || CAL_TYPE.spot;
+        return (
+          <div key={e.id} style={{ display: "flex", gap: 10, padding: 10, background: "#fff", border: "1px solid #f0ebe2", borderRadius: 12, marginBottom: 8, borderLeft: `3px solid ${meta.colour}` }}>
+            <div style={{ width: 46, height: 46, borderRadius: 8, overflow: "hidden", flexShrink: 0, background: meta.colour, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.1rem" }}>
+              {e.photo_url ? <img src={e.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span>{meta.emoji}</span>}
             </div>
-            {e.area && <div style={{ fontSize: "0.68rem", color: "#9b8f7a", marginTop: 2 }}>📍 {e.area}</div>}
-            <div style={{ display: "flex", gap: 12, marginTop: 5 }}>
-              <a href={gcal(e)} target="_blank" rel="noreferrer" style={{ fontSize: "0.66rem", color: "#726A4E", fontWeight: 500 }}>+ Google Calendar</a>
-              {e.source_url && <a href={e.source_url} target="_blank" rel="noreferrer" style={{ fontSize: "0.66rem", color: "#726A4E" }}>View source ↗</a>}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: "0.86rem", fontWeight: 600, color: "#1c1c1a" }}>{e.name}</div>
+              <div style={{ fontSize: "0.72rem", color: meta.colour, marginTop: 2 }}>
+                📅 {fmt(e.event_start)}{e.event_end && e.event_end !== e.event_start ? ` – ${fmt(e.event_end)}` : ""}{e.event_time ? ` · 🕐 ${e.event_time}` : ""}
+                {e._type === "plan" ? ` · ${e._stops} stop${e._stops !== 1 ? "s" : ""}` : ""}
+                {e._type === "blist" ? " · bucket list" : ""}
+              </div>
+              {e.area && <div style={{ fontSize: "0.68rem", color: "#9b8f7a", marginTop: 2 }}>📍 {e.area}</div>}
+              {(e._type === "spot" || e._type === "event") && (
+                <div style={{ display: "flex", gap: 12, marginTop: 5 }}>
+                  <a href={gcal(e)} target="_blank" rel="noreferrer" style={{ fontSize: "0.66rem", color: "#726A4E", fontWeight: 500 }}>+ Google Calendar</a>
+                  {e.source_url && <a href={e.source_url} target="_blank" rel="noreferrer" style={{ fontSize: "0.66rem", color: "#726A4E" }}>View source ↗</a>}
+                </div>
+              )}
             </div>
           </div>
+        );
+      })}
+
+      {selDay && !adding && (
+        <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+          <button onClick={() => setAdding(true)} disabled={undatedSaves.length === 0} style={{ flex: 1, border: "1.5px solid #726A4E", background: "#fff", color: undatedSaves.length ? "#726A4E" : "#c9bfae", borderRadius: 100, padding: "9px 12px", fontSize: "0.78rem", fontWeight: 600, cursor: undatedSaves.length ? "pointer" : "default" }}>＋ Add a saved spot</button>
+          {onBuildPlan && <button onClick={() => onBuildPlan(eventsOn(new Date(year, month, selDay)).filter(e => e._type === "spot"))} style={{ flex: 1, border: "none", background: "#726A4E", color: "#fff", borderRadius: 100, padding: "9px 12px", fontSize: "0.78rem", fontWeight: 600, cursor: "pointer" }}>✦ Build a plan</button>}
         </div>
-      ))}
+      )}
+      {selDay && adding && (
+        <div style={{ marginTop: 8, background: "#fff", border: "1px solid #f0ebe2", borderRadius: 12, padding: 10 }}>
+          <div style={{ fontSize: "0.74rem", color: "#9b8f7a", marginBottom: 8 }}>Add to {fmtFull(new Date(year, month, selDay))}</div>
+          {undatedSaves.slice(0, 40).map(s => (
+            <button key={s.id} onClick={() => assignSpot(s)} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", textAlign: "left", padding: "7px 8px", borderRadius: 10, border: "none", background: "transparent", cursor: "pointer" }}>
+              {s.photo_url ? <img src={s.photo_url} alt="" style={{ width: 32, height: 32, borderRadius: 7, objectFit: "cover", flexShrink: 0 }} /> : <div style={{ width: 32, height: 32, borderRadius: 7, background: "#f5f0e8", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>📍</div>}
+              <span style={{ flex: 1, minWidth: 0, fontSize: "0.82rem", fontWeight: 500, color: "#1c1c1a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.name}</span>
+              <span style={{ color: "#726A4E", fontWeight: 700 }}>＋</span>
+            </button>
+          ))}
+          <button onClick={() => setAdding(false)} style={{ width: "100%", border: "none", background: "#f5f0e8", color: "#6b5e4e", borderRadius: 100, padding: "8px", fontSize: "0.76rem", cursor: "pointer", marginTop: 6 }}>Done</button>
+        </div>
+      )}
     </div>
   );
 }
@@ -3224,7 +3301,7 @@ Return a JSON object with this exact structure:
             ))}
           </>
         )}
-        {saves.length > 0 && savedView === "calendar" && <SpotsCalendar saves={saves} />}
+        {saves.length > 0 && savedView === "calendar" && <SpotsCalendar saves={saves} user={user} onBuildPlan={onBuildPlan} />}
         {saves.length > 0 && savedView === "folders" && !openFolder && (
           <>
             {saves.some(s => s.lat && s.lng) && (
@@ -3682,6 +3759,12 @@ function SharedListView({ list, user, onClose }) {
     await supabase.from("shared_list_items").delete().eq("id", it.id);
   }
 
+  // Give an item a target date — it then shows on the Saves → Calendar agenda.
+  async function setItemDate(it, date) {
+    setItems(prev => prev.map(x => x.id === it.id ? { ...x, target_date: date || null } : x));
+    await supabase.from("shared_list_items").update({ target_date: date || null }).eq("id", it.id);
+  }
+
   async function loadSaves() {
     const { data } = await supabase.from("experiences").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
     setSaves(data || []); setSavesLoaded(true);
@@ -3745,6 +3828,10 @@ function SharedListView({ list, user, onClose }) {
               <div style={{ fontSize: "0.9rem", fontWeight: 600, color: it.done ? "#9b8f7a" : "#1c1c1a", textDecoration: it.done ? "line-through" : "none" }}>{it.name}</div>
               {[it.category, it.area].filter(Boolean).length > 0 && <div style={{ fontSize: "0.72rem", color: "#9b8f7a", marginTop: 1 }}>{[it.category, it.area].filter(Boolean).join(" · ")}</div>}
               {it.comment && <div style={{ fontSize: "0.74rem", color: "#6b5e4e", marginTop: 2 }}>{it.comment}</div>}
+              <label style={{ display: "inline-flex", alignItems: "center", gap: 4, position: "relative", marginTop: 5, fontSize: "0.7rem", fontWeight: 600, color: it.target_date ? "#726A4E" : "#b3a892", cursor: "pointer" }}>
+                📅 {it.target_date ? new Date(it.target_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "Plan a date"}
+                <input type="date" value={it.target_date || ""} onChange={(e) => setItemDate(it, e.target.value)} style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer", width: "100%" }} />
+              </label>
             </div>
             {(it.added_by === user.id || list.owner === user.id) && <button onClick={() => removeItem(it)} style={{ border: "none", background: "none", color: "#c9bfae", cursor: "pointer", fontSize: "0.95rem", flexShrink: 0, padding: "0 2px" }}>✕</button>}
           </div>
@@ -4242,7 +4329,7 @@ export default function App() {
         {showQuiz && <QuizScreen step={quizStep} ans={ans} times={times} setTimes={setTimes} onToggle={toggle} onNext={nextStep} onBack={prevStep} onGenerate={generate} loading={loading} loadIdx={loadIdx} error={error} onExit={() => { setQuizStep(-1); setActiveTab("discover"); }} />}
         {showResult && <ResultScreen result={result} times={times} ans={ans} onRestart={resetToHome} onNewPlan={startQuiz} dbVenues={dbVenues} onUpdateResult={setResult} onShare={setShareItem} onRate={() => plans[0] && setRatingPlan(plans[0])} />}
 
-        {activeTab === "plans" && !showViewingPlan && <MyPlansScreen plans={plans} onViewPlan={(plan) => setViewingPlan(plan)} onNewPlan={() => { setActiveTab("home"); startQuiz(); }} />}
+        {activeTab === "plans" && !showViewingPlan && <MyPlansScreen plans={plans} onViewPlan={(plan) => setViewingPlan(plan)} onNewPlan={() => { setActiveTab("home"); startQuiz(); }} onSchedule={(i, date) => setPlans(prev => { const u = prev.map((p, idx) => idx === i ? { ...p, scheduledDate: date || null } : p); localStorage.setItem("cl_plans", JSON.stringify(u.slice(0, 20))); return u; })} />}
         {showViewingPlan && (
           <div>
             <button className="btn-ghost" onClick={() => setViewingPlan(null)} style={{ paddingTop: "1.5rem" }}>← My Plans</button>
