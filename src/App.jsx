@@ -437,13 +437,12 @@ const styles = `
   .home-cta { margin-top: 1.5rem; position: relative; z-index: 1; }
 
   .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 420px; background: rgba(247,246,242,0.6); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-top: 1px solid rgba(0,0,0,0.06); display: flex; z-index: 100; padding-bottom: env(safe-area-inset-bottom); }
-  .nav-tab { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px 4px 8px; border: none; background: none; cursor: pointer; gap: 4px; transition: all 0.15s; }
-  .nav-tab-icon { display: flex; align-items: center; justify-content: center; line-height: 1; transition: transform 0.2s; color: #9b8f7a; }
-  .nav-tab.active .nav-tab-icon { transform: scale(1.1); color: #1c1c1a; }
-  .nav-tab-label { font-family: 'DM Sans', sans-serif; font-size: 0.6rem; font-weight: 500; letter-spacing: 0.04em; color: #1c1c1a; text-transform: uppercase; transition: color 0.15s; }
+  .nav-tab { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 9px 2px 7px; border: none; background: none; cursor: pointer; gap: 4px; transition: all 0.15s; }
+  .nav-tab-icon { display: flex; align-items: center; justify-content: center; line-height: 1; transition: all 0.18s; color: #9b8f7a; padding: 5px 13px; border-radius: 100px; }
+  .nav-tab.active .nav-tab-icon { color: #fff; background: #1c1c1a; }
+  .nav-tab-label { font-family: 'DM Sans', sans-serif; font-size: 0.58rem; font-weight: 500; letter-spacing: 0.03em; color: #9b8f7a; text-transform: uppercase; transition: color 0.15s; }
   .nav-tab.active .nav-tab-label { color: #1c1c1a; font-weight: 700; }
-  .nav-tab-dot { width: 4px; height: 4px; border-radius: 50%; background: #726A4E; opacity: 0; transition: opacity 0.15s; }
-  .nav-tab.active .nav-tab-dot { opacity: 1; }
+  .nav-tab-dot { display: none; }
 
   .section-pad { padding: 1.5rem; }
   .section-title { font-family: 'DM Serif Display', Georgia, serif; font-size: 1.4rem; font-weight: 400; color: #1c1c1a; margin-bottom: 0.25rem; }
@@ -1810,9 +1809,9 @@ function cap(s) { return s ? String(s).charAt(0).toUpperCase() + String(s).slice
 // Simple flat line icons for the bottom nav (inherit colour via currentColor).
 const NAV_ICON_PATHS = {
   home: '<path d="M12 3l2.2 6.8H21l-5.4 4 2.1 6.7L12 16.4 6.3 20.5l2.1-6.7-5.4-4h6.8z"/>',
-  plans: '<rect x="8" y="3" width="8" height="4" rx="1"/><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><path d="M9 12h6"/><path d="M9 16h6"/>',
+  plans: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/>',
   saved: '<path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>',
-  discover: '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
+  discover: '<path d="M9 18l-6 3V6l6-3 6 3 6-3v15l-6 3-6-3z"/><path d="M9 3v15M15 6v15"/>',
   prefs: '<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8z"/>',
   add: '<path d="M12 5v14M5 12h14"/>',
   people: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
@@ -3764,9 +3763,9 @@ export default function App() {
 
   const TABS = [
     { id: "home", label: "Plan", icon: "✦" },
-    { id: "plans", label: "My Plans", icon: "📋" },
-    { id: "saved", label: "Saved", icon: "📌" },
-    { id: "discover", label: "Discover", icon: "🔍" },
+    { id: "plans", label: "Plans", icon: "📋" },
+    { id: "saved", label: "Saves", icon: "📌" },
+    { id: "discover", label: "Map", icon: "🔍" },
     { id: "people", label: "People", icon: "👥" },
     { id: "prefs", label: "For me", icon: "🎯" },
     ...(isAdmin ? [{ id: "admin", label: "Admin", icon: "⚙️", badge: adminBadge }] : []),
