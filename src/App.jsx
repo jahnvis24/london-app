@@ -1100,12 +1100,20 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
 }
 
 function MyPlansScreen({ plans, onViewPlan, onNewPlan }) {
+  const Header = (
+    <div style={{ padding: "1.75rem 1.5rem 0.75rem", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+      <div>
+        <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "2rem", color: "#1c1c1a", lineHeight: 1.05 }}>Itineraries</div>
+        <div style={{ fontSize: "0.86rem", color: "#9b8f7a", marginTop: 5 }}>Turn your saved spots into plans you'll actually do.</div>
+      </div>
+      <button onClick={onNewPlan} style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 6, background: "#1c1c1a", color: "#fff", border: "none", borderRadius: 100, padding: "11px 17px", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>+ New plan</button>
+    </div>
+  );
+  const CalIcon = <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>;
+
   if (plans.length === 0) return (
     <div>
-      <div className="section-pad">
-        <div className="section-title">My Plans</div>
-        <p className="section-sub">Your saved London itineraries live here.</p>
-      </div>
+      {Header}
       <div className="empty-state">
         <div className="empty-emoji">🗺️</div>
         <div className="empty-title">No plans yet</div>
@@ -1116,27 +1124,30 @@ function MyPlansScreen({ plans, onViewPlan, onNewPlan }) {
   );
   return (
     <div>
-      <div className="section-pad" style={{ paddingBottom: "0.5rem" }}>
-        <div className="section-title">My Plans</div>
-        <p className="section-sub">{plans.length} saved {plans.length === 1 ? "itinerary" : "itineraries"}</p>
-      </div>
-      <div style={{ padding: "0 1.5rem 1rem" }}>
-        {plans.map((plan, i) => (
-          <div key={i} className="plan-card" onClick={() => onViewPlan(plan)}>
-            <div className="plan-card-top">
-              <div className="plan-card-title">{plan.result.title}</div>
-              <div className="plan-card-date">{plan.savedAt}</div>
+      {Header}
+      <div style={{ padding: "0.75rem 1.5rem 1.5rem", display: "grid", gap: 16 }}>
+        {plans.map((plan, i) => {
+          const stops = plan.result.stops || [];
+          const cover = stops.find(s => s.photo_url)?.photo_url;
+          return (
+            <div key={i} onClick={() => onViewPlan(plan)} style={{ borderRadius: 18, overflow: "hidden", cursor: "pointer", background: "#fff", boxShadow: "0 4px 18px rgba(0,0,0,0.09)" }}>
+              <div style={{ position: "relative", height: 200, background: cover ? "#222" : "linear-gradient(135deg, #4B342F, #9B892F)" }}>
+                {cover && <img src={cover} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />}
+                <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 35%, rgba(0,0,0,0.72))" }} />
+                <div style={{ position: "absolute", left: 18, right: 18, bottom: 16 }}>
+                  <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.6rem", color: "#fff", lineHeight: 1.1, textShadow: "0 2px 12px rgba(0,0,0,0.55)" }}>{plan.result.title}</div>
+                  {plan.result.tagline && <div style={{ fontSize: "0.82rem", color: "rgba(255,255,255,0.88)", marginTop: 5 }}>{plan.result.tagline}</div>}
+                </div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: "0.8rem", color: "#6b5e4e" }}>
+                  {CalIcon}{plan.savedAt} · {stops.length} stop{stops.length !== 1 ? "s" : ""}
+                </div>
+                <span style={{ fontSize: "1.15rem", color: "#1c1c1a" }}>→</span>
+              </div>
             </div>
-            <div style={{ fontSize: "0.78rem", color: "#6b5e4e", fontStyle: "italic", marginBottom: "0.5rem" }}>{plan.result.tagline}</div>
-            <div className="plan-card-meta">
-              <span className="plan-tag teal">{plan.ans.area} London</span>
-              <span className="plan-tag">{plan.ans.timeOfDay}</span>
-              <span className="plan-tag">💰 {plan.result.total_cost_estimate}</span>
-              <span className="plan-tag">{(plan.result.stops || []).length} stops</span>
-            </div>
-          </div>
-        ))}
-        <button className="btn-outline" onClick={onNewPlan}>+ Make a new plan</button>
+          );
+        })}
       </div>
     </div>
   );
