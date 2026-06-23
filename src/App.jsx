@@ -1100,14 +1100,13 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
   );
 }
 
-function MyPlansScreen({ plans, onViewPlan, onNewPlan, onSchedule }) {
+function MyPlansScreen({ plans, onViewPlan, onNewPlan, onSchedule, dbVenues }) {
+  const photoFor = (name) => { if (!name || !dbVenues) return null; const v = dbVenues.find(x => x.name && x.name.toLowerCase() === String(name).toLowerCase()); return v?.photo_url || null; };
   const Header = (
-    <div style={{ padding: "1.75rem 1.5rem 0.75rem", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
-      <div>
-        <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "2rem", color: "#1c1c1a", lineHeight: 1.05 }}>Itineraries</div>
-        <div style={{ fontSize: "0.86rem", color: "#9b8f7a", marginTop: 5 }}>Turn your saved spots into plans you'll actually do.</div>
-      </div>
-      <button onClick={onNewPlan} style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 6, background: "#1c1c1a", color: "#fff", border: "none", borderRadius: 100, padding: "11px 17px", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>+ New plan</button>
+    <div style={{ padding: "1.75rem 1.5rem 0.5rem" }}>
+      <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "2rem", color: "#1c1c1a", lineHeight: 1.05 }}>Itineraries</div>
+      <div style={{ fontSize: "0.86rem", color: "#9b8f7a", marginTop: 5 }}>Turn your saved spots into plans you'll actually do.</div>
+      <button onClick={onNewPlan} style={{ width: "100%", marginTop: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "#726A4E", color: "#fff", border: "none", borderRadius: 14, padding: "15px", fontSize: "0.95rem", fontWeight: 600, cursor: "pointer", boxShadow: "0 3px 12px rgba(114,106,78,0.28)" }}>✦ Plan my day or night</button>
     </div>
   );
   const CalIcon = <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>;
@@ -1129,11 +1128,11 @@ function MyPlansScreen({ plans, onViewPlan, onNewPlan, onSchedule }) {
       <div style={{ padding: "0.75rem 1.5rem 1.5rem", display: "grid", gap: 16 }}>
         {plans.map((plan, i) => {
           const stops = plan.result.stops || [];
-          const cover = stops.find(s => s.photo_url)?.photo_url;
+          const enrichedStops = stops.map(s => ({ ...s, photo_url: s.photo_url || photoFor(s.name) }));
           return (
             <div key={i} onClick={() => onViewPlan(plan)} style={{ borderRadius: 18, overflow: "hidden", cursor: "pointer", background: "#fff", boxShadow: "0 4px 18px rgba(0,0,0,0.09)" }}>
-              <div style={{ position: "relative", height: 200, background: cover ? "#222" : "linear-gradient(135deg, #4B342F, #9B892F)" }}>
-                {cover && <img src={cover} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />}
+              <div style={{ position: "relative", height: 200 }}>
+                <ListCover items={enrichedStops} height={200} />
                 <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 35%, rgba(0,0,0,0.72))" }} />
                 <div style={{ position: "absolute", left: 18, right: 18, bottom: 16 }}>
                   <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.6rem", color: "#fff", lineHeight: 1.1, textShadow: "0 2px 12px rgba(0,0,0,0.55)" }}>{plan.result.title}</div>
@@ -3994,7 +3993,7 @@ export default function App() {
   const [shareItem, setShareItem] = useState(null); // { kind, title, payload } -> ShareModal
   const [barCrawl, setBarCrawl] = useState(null);   // { seed: [...] } -> BarCrawlQuiz
   const [pendingGen, setPendingGen] = useState(false); // fire generate() after ans/times state commits
-  const [activeTab, setActiveTab] = useState("discover"); // Discover is the landing tab; planning is a CTA, not a tab
+  const [activeTab, setActiveTab] = useState("plans"); // Plans is the landing tab; planning is a CTA there
   const [captureSignal, setCaptureSignal] = useState(0); // bump to pop the global capture sheet on Saves
   const [quizStep, setQuizStep] = useState(-1);
   const [ans, setAns] = useState({});
@@ -4242,7 +4241,7 @@ export default function App() {
     setLoading(false);
   }
 
-  function resetToHome() { setQuizStep(-1); setAns({}); setResult(null); setError(null); setViewingPlan(null); setActiveTab("discover"); }
+  function resetToHome() { setQuizStep(-1); setAns({}); setResult(null); setError(null); setViewingPlan(null); setActiveTab("plans"); }
 
   const showQuiz = activeTab === "home" && quizStep >= 0 && quizStep <= QUESTIONS.length;
   const showResult = activeTab === "home" && quizStep === QUESTIONS.length + 1 && result;
@@ -4250,9 +4249,8 @@ export default function App() {
   const showViewingPlan = activeTab === "plans" && viewingPlan;
 
   const TABS = [
-    { id: "discover", label: "Discover", icon: "🔍" },
-    { id: "saved", label: "Saves", icon: "📌" },
     { id: "plans", label: "Plans", icon: "📋" },
+    { id: "saved", label: "Saves", icon: "📌" },
     { id: "people", label: "People", icon: "👥" },
     { id: "me", label: "Me", icon: "🙂", badge: isAdmin ? adminBadge : 0 },
   ];
@@ -4326,10 +4324,10 @@ export default function App() {
         {ratingPlan && <RatingPrompt plan={ratingPlan} user={user} onDismiss={() => { const reviewed = JSON.parse(localStorage.getItem("cl_reviewed") || "[]"); reviewed.push(ratingPlan.id); localStorage.setItem("cl_reviewed", JSON.stringify(reviewed)); setRatingPlan(null); }} onSubmit={() => { setRatingPlan(null); showToast("Thanks for your review!"); }} />}
 
         {showHome && <HomeScreen onStart={startQuiz} />}
-        {showQuiz && <QuizScreen step={quizStep} ans={ans} times={times} setTimes={setTimes} onToggle={toggle} onNext={nextStep} onBack={prevStep} onGenerate={generate} loading={loading} loadIdx={loadIdx} error={error} onExit={() => { setQuizStep(-1); setActiveTab("discover"); }} />}
+        {showQuiz && <QuizScreen step={quizStep} ans={ans} times={times} setTimes={setTimes} onToggle={toggle} onNext={nextStep} onBack={prevStep} onGenerate={generate} loading={loading} loadIdx={loadIdx} error={error} onExit={() => { setQuizStep(-1); setActiveTab("plans"); }} />}
         {showResult && <ResultScreen result={result} times={times} ans={ans} onRestart={resetToHome} onNewPlan={startQuiz} dbVenues={dbVenues} onUpdateResult={setResult} onShare={setShareItem} onRate={() => plans[0] && setRatingPlan(plans[0])} />}
 
-        {activeTab === "plans" && !showViewingPlan && <MyPlansScreen plans={plans} onViewPlan={(plan) => setViewingPlan(plan)} onNewPlan={() => { setActiveTab("home"); startQuiz(); }} onSchedule={(i, date) => setPlans(prev => { const u = prev.map((p, idx) => idx === i ? { ...p, scheduledDate: date || null } : p); localStorage.setItem("cl_plans", JSON.stringify(u.slice(0, 20))); return u; })} />}
+        {activeTab === "plans" && !showViewingPlan && <MyPlansScreen plans={plans} dbVenues={dbVenues} onViewPlan={(plan) => setViewingPlan(plan)} onNewPlan={() => { setActiveTab("home"); startQuiz(); }} onSchedule={(i, date) => setPlans(prev => { const u = prev.map((p, idx) => idx === i ? { ...p, scheduledDate: date || null } : p); localStorage.setItem("cl_plans", JSON.stringify(u.slice(0, 20))); return u; })} />}
         {showViewingPlan && (
           <div>
             <button className="btn-ghost" onClick={() => setViewingPlan(null)} style={{ paddingTop: "1.5rem" }}>← My Plans</button>
@@ -4337,7 +4335,6 @@ export default function App() {
           </div>
         )}
 
-        {activeTab === "discover" && <DiscoverScreen preferences={preferences} dbVenues={dbVenues} onStart={startQuiz} />}
         {activeTab === "people" && <PeopleScreen user={user} onSavePlan={(payload) => { const r = payload?.plan; if (!r) return; setPlans(prev => { const updated = [{ result: r, times: payload?.times || times, ans: {}, savedAt: new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }), createdAt: Date.now(), id: generateId() }, ...prev]; localStorage.setItem("cl_plans", JSON.stringify(updated.slice(0, 20))); return updated; }); }} />}
         {/* Always mounted so an in-progress screenshot parse keeps running + persists when you switch tabs */}
         <div style={{ display: activeTab === "saved" ? "block" : "none" }}>
