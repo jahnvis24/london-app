@@ -1764,6 +1764,62 @@ function PreferencesScreen({ preferences, setPreferences, user }) {
   );
 }
 
+// Profile / settings hub — folds in "For me" (prefs) and Admin so they're off the nav bar.
+function MeScreen({ user, preferences, setPreferences, isAdmin, onBadgeUpdate, adminBadge }) {
+  const [view, setView] = useState(null); // null | "prefs" | "admin"
+  const displayName = user?.user_metadata?.full_name || (user?.email ? user.email.split("@")[0] : "You");
+  const avatar = user?.user_metadata?.avatar_url;
+
+  if (view === "prefs") return (
+    <div>
+      <button className="btn-ghost" onClick={() => setView(null)} style={{ paddingTop: "1.5rem" }}>← Me</button>
+      <PreferencesScreen preferences={preferences} setPreferences={setPreferences} user={user} />
+    </div>
+  );
+  if (view === "admin") return (
+    <div>
+      <button className="btn-ghost" onClick={() => setView(null)} style={{ paddingTop: "1.5rem" }}>← Me</button>
+      <AdminScreen onBadgeUpdate={onBadgeUpdate} />
+    </div>
+  );
+
+  const row = { display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", padding: "14px 16px", background: "#fff", border: "1px solid #f0ebe2", borderRadius: 14, marginBottom: 10, cursor: "pointer" };
+
+  return (
+    <div>
+      <div className="section-pad" style={{ paddingBottom: "0.5rem" }}>
+        <div className="section-title">Me</div>
+      </div>
+      <div style={{ padding: "0 1.5rem 1.25rem", display: "flex", alignItems: "center", gap: 14 }}>
+        <div style={{ width: 56, height: 56, borderRadius: "50%", background: "#726A4E", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: "1.4rem", overflow: "hidden", flexShrink: 0 }}>{avatar ? <img src={avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : displayName.charAt(0).toUpperCase()}</div>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.3rem", color: "#1c1c1a", lineHeight: 1.1 }}>{displayName}</div>
+          {user?.email && <div style={{ fontSize: "0.78rem", color: "#9b8f7a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{user.email}</div>}
+        </div>
+      </div>
+      <div style={{ padding: "0 1.5rem 2rem" }}>
+        <button style={row} onClick={() => setView("prefs")}>
+          <span style={{ fontSize: "1.1rem", width: 24, textAlign: "center" }}>🎯</span>
+          <span style={{ flex: 1 }}><span style={{ display: "block", fontSize: "0.9rem", fontWeight: 600, color: "#1c1c1a" }}>For me</span><span style={{ display: "block", fontSize: "0.74rem", color: "#9b8f7a" }}>Tune your Discover feed</span></span>
+          <span style={{ color: "#c9bfae", fontSize: "1.2rem" }}>›</span>
+        </button>
+        {isAdmin && (
+          <button style={row} onClick={() => setView("admin")}>
+            <span style={{ fontSize: "1.1rem", width: 24, textAlign: "center" }}>⚙️</span>
+            <span style={{ flex: 1 }}><span style={{ display: "block", fontSize: "0.9rem", fontWeight: 600, color: "#1c1c1a" }}>Admin</span><span style={{ display: "block", fontSize: "0.74rem", color: "#9b8f7a" }}>Approve & manage venues</span></span>
+            {adminBadge > 0 && <span style={{ background: "#DD4124", color: "#fff", borderRadius: 100, fontSize: "0.66rem", fontWeight: 700, padding: "2px 7px" }}>{adminBadge}</span>}
+            <span style={{ color: "#c9bfae", fontSize: "1.2rem" }}>›</span>
+          </button>
+        )}
+        <button style={row} onClick={() => supabase.auth.signOut()}>
+          <span style={{ fontSize: "1.1rem", width: 24, textAlign: "center" }}>↪</span>
+          <span style={{ flex: 1, fontSize: "0.9rem", fontWeight: 600, color: "#DD4124" }}>Sign out</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 const CAT_PIN_COLOURS = { restaurant: "#DD4124", bar: "#4B342F", cafe: "#9B892F", market: "#A1947D", experience: "#726A4E", outdoor: "#726A4E", museum: "#A1947D", gallery: "#4B342F", nightlife: "#4B342F", event: "#DD4124" };
 const CAT_PIN_EMOJI = { restaurant: "🍽️", bar: "🍸", cafe: "☕", market: "🛍️", experience: "✨", outdoor: "🌳", museum: "🏛️", gallery: "🎨", nightlife: "🌙", event: "🎫" };
 const CAT_LABEL = { restaurant: "Restaurants", cafe: "Cafés", bar: "Bars", nightlife: "Nightlife", market: "Markets", outdoor: "Outdoor", museum: "Museums", gallery: "Galleries", experience: "Experiences", event: "Events" };
@@ -1819,6 +1875,7 @@ const NAV_ICON_PATHS = {
   prefs: '<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8z"/>',
   add: '<path d="M12 5v14M5 12h14"/>',
   people: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+  me: '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="10" r="3"/><path d="M6.5 18.5a6 6 0 0 1 11 0"/>',
   admin: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
 };
 function NavIcon({ id }) {
@@ -4090,8 +4147,7 @@ export default function App() {
     { id: "saved", label: "Saves", icon: "📌" },
     { id: "discover", label: "Discover", icon: "🔍" },
     { id: "people", label: "People", icon: "👥" },
-    { id: "prefs", label: "For me", icon: "🎯" },
-    ...(isAdmin ? [{ id: "admin", label: "Admin", icon: "⚙️", badge: adminBadge }] : []),
+    { id: "me", label: "Me", icon: "🙂", badge: isAdmin ? adminBadge : 0 },
   ];
 
   useEffect(() => {
@@ -4180,8 +4236,7 @@ export default function App() {
         <div style={{ display: activeTab === "saved" ? "block" : "none" }}>
           <SavedScreen user={user} openSignal={captureSignal} onShare={setShareItem} onBuildPlan={(saves) => { setResult(null); setError(null); setViewingPlan(null); setActiveTab("home"); setAns({ savedVenues: saves }); setQuizStep(0); }} onBarCrawl={(seed) => setBarCrawl({ seed: seed || [] })} />
         </div>
-        {activeTab === "prefs" && <PreferencesScreen preferences={preferences} setPreferences={setPreferences} user={user} />}
-        {activeTab === "admin" && <AdminScreen onBadgeUpdate={setAdminBadge} />}
+        {activeTab === "me" && <MeScreen user={user} preferences={preferences} setPreferences={setPreferences} isAdmin={isAdmin} onBadgeUpdate={setAdminBadge} adminBadge={adminBadge} />}
 
         {!showQuiz && !showResult && !showViewingPlan && (
           <button className="capture-fab" aria-label="Save a place"
