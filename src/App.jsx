@@ -404,7 +404,7 @@ async function fileToDownscaledBase64(file, maxDim = 1280, quality = 0.8) {
 
 // ── STYLES ───────────────────────────────────────────────────
 const styles = `
-  @import url('https://fonts.googleapis.com/css2?family=Aleo:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Aleo:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Sofia&display=swap');
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
   button { color: #1c1c1a; font-family: inherit; -webkit-tap-highlight-color: transparent; }
@@ -3610,7 +3610,7 @@ function RatingPrompt({ plan, user, onDismiss, onSubmit }) {
 }
 
 // Full-screen sparkle loader for slower waits (plan generation, etc.).
-function SparkleLoader({ label = "Curating…" }) {
+function SparkleLoader({ label = "Curating…", brand = false }) {
   const sparkles = [
     { top: "20%", left: "18%", s: 22, d: 0 }, { top: "28%", left: "74%", s: 15, d: 0.5 },
     { top: "46%", left: "38%", s: 28, d: 0.2 }, { top: "60%", left: "78%", s: 18, d: 0.8 },
@@ -3619,8 +3619,10 @@ function SparkleLoader({ label = "Curating…" }) {
   ];
   return (
     <div style={{ position: "fixed", inset: 0, background: "#f7f6f2", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
-      {sparkles.map((sp, i) => <span key={i} style={{ position: "absolute", top: sp.top, left: sp.left, fontSize: sp.s, color: "#726A4E", animation: `twinkle 1.5s ease-in-out ${sp.d}s infinite` }}>✦</span>)}
-      <div style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "1.3rem", color: "#1c1c1a", textAlign: "center", zIndex: 1, animation: "loaderPulse 1.6s ease-in-out infinite" }}>{label}</div>
+      {sparkles.map((sp, i) => <span key={i} style={{ position: "absolute", top: sp.top, left: sp.left, fontSize: brand ? sp.s * 1.5 : sp.s, color: brand ? "#800000" : "#726A4E", animation: `twinkle 1.5s ease-in-out ${sp.d}s infinite` }}>✦</span>)}
+      {brand
+        ? <div style={{ fontFamily: "'Sofia', cursive", fontWeight: 700, fontSize: "4.5rem", lineHeight: 1, color: "#726A4E", textAlign: "center", zIndex: 1, animation: "loaderPulse 1.6s ease-in-out infinite" }}>Curated</div>
+        : <div style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "1.3rem", color: "#1c1c1a", textAlign: "center", zIndex: 1, animation: "loaderPulse 1.6s ease-in-out infinite" }}>{label}</div>}
     </div>
   );
 }
@@ -4469,7 +4471,7 @@ export default function App() {
   if (authLoading) return (
     <>
       <style>{styles}</style>
-      <SparkleLoader label="Curated London" />
+      <SparkleLoader brand />
     </>
   );
 
