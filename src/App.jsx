@@ -1151,11 +1151,11 @@ function MyPlansScreen({ plans, onViewPlan, onNewPlan, onSchedule, dbVenues }) {
       <div style={{ padding: "0.75rem 1.5rem 1.5rem", display: "grid", gap: 16 }}>
         {plans.map((plan, i) => {
           const stops = plan.result.stops || [];
-          const enrichedStops = stops.map(s => ({ ...s, photo_url: s.photo_url || photoFor(s.name) }));
+          const cover = stops.map(s => s.photo_url || photoFor(s.name)).find(Boolean);
           return (
             <div key={i} onClick={() => onViewPlan(plan)} style={{ borderRadius: 18, overflow: "hidden", cursor: "pointer", background: "#fff", boxShadow: "0 4px 18px rgba(0,0,0,0.09)" }}>
-              <div style={{ position: "relative", height: 200 }}>
-                <ListCover items={enrichedStops} height={200} />
+              <div style={{ position: "relative", height: 200, background: cover ? "#222" : "linear-gradient(135deg, #4B342F, #9B892F)" }}>
+                {cover && <img src={cover} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />}
                 <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 35%, rgba(0,0,0,0.72))" }} />
                 <div style={{ position: "absolute", left: 18, right: 18, bottom: 16 }}>
                   <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "1.6rem", color: "#fff", lineHeight: 1.1, textShadow: "0 2px 12px rgba(0,0,0,0.55)" }}>{plan.result.title}</div>
@@ -4418,6 +4418,40 @@ export default function App() {
       clearPending("blist");
       window.history.replaceState({}, "", "/");
     })();
+  }, [user]);
+
+  // Notify when a friend connects with you — instantly via realtime, and on load for
+  // anyone who joined while you were away.
+  useEffect(() => {
+    if (!user?.id) return;
+    ensureNotifyPermission();
+    const SEEN = "cl_seen_connections";
+    const announce = async (otherId) => {
+      if (!otherId || otherId === user.id) return;
+      const { data } = await supabase.from("profiles").select("name,email").eq("id", otherId).single();
+      const nm = data?.name || (data?.email ? data.email.split("@")[0] : null) || "Someone";
+      showToast(`🎉 ${nm} connected with you!`);
+      notify("New connection", `${nm} connected with you on Curated London`);
+      try { const s = new Set(JSON.parse(localStorage.getItem(SEEN) || "[]")); s.add(otherId); localStorage.setItem(SEEN, JSON.stringify([...s])); } catch (e) {}
+    };
+
+    (async () => {
+      const { data: cons } = await supabase.from("connections").select("*").or(`user_a.eq.${user.id},user_b.eq.${user.id}`);
+      const ids = (cons || []).map(c => (c.user_a === user.id ? c.user_b : c.user_a));
+      const hadBaseline = localStorage.getItem(SEEN) !== null;
+      let seen; try { seen = new Set(JSON.parse(localStorage.getItem(SEEN) || "[]")); } catch (e) { seen = new Set(); }
+      if (hadBaseline) { for (const id of ids) if (!seen.has(id)) await announce(id); }
+      localStorage.setItem(SEEN, JSON.stringify(ids));
+    })();
+
+    const channel = supabase.channel("conn-" + user.id)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "connections" }, (payload) => {
+        const c = payload.new; if (!c) return;
+        if (c.user_a !== user.id && c.user_b !== user.id) return;
+        announce(c.user_a === user.id ? c.user_b : c.user_a);
+      })
+      .subscribe();
+    return () => { try { supabase.removeChannel(channel); } catch (e) {} };
   }, [user]);
 
   if (sharedPlan) return (
