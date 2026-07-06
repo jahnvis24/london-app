@@ -2542,7 +2542,69 @@ function SpotsCalendar({ saves, user, onBuildPlan, onShare }) {
   );
 }
 
-function SavedScreen({ user, onBuildPlan, onShare, onBarCrawl, openSignal, calendarSignal }) {
+// First-run import walkthrough: 4 steps over the real screenshot flow.
+const IMPORT_TOUR = [
+  { title: "Add a screenshot", body: "Upload a screenshot of a place you want to remember." },
+  { title: "Save it to a list", body: "Pick a folder — or make a new one — so it's easy to find later." },
+  { title: "Save to your board", body: "This adds the place to your board." },
+  { title: "Here it is", body: "Your saved places live here — tap in anytime." },
+];
+
+// Ref-based spotlight: measures the live target every frame (getBoundingClientRect),
+// dims around it leaving a tap-through hole, waits for a not-yet-mounted target, and
+// fails open (dismisses) if the target never appears within the timeout.
+function TourSpotlight({ targetRef, step, last, onDone, onSkip }) {
+  const [rect, setRect] = useState(null);
+  const skipRef = useRef(onSkip); skipRef.current = onSkip;
+  useEffect(() => {
+    let raf, dead = false, nullSince = null;
+    const tick = () => {
+      const el = targetRef && targetRef.current;
+      const r = el && el.getBoundingClientRect();
+      if (r && (r.width || r.height)) { setRect({ t: r.top, l: r.left, w: r.width, h: r.height }); nullSince = null; }
+      else { setRect(null); if (nullSince == null) nullSince = Date.now(); else if (Date.now() - nullSince > 6000) { skipRef.current(); return; } }
+      if (!dead) raf = requestAnimationFrame(tick);
+    };
+    tick();
+    return () => { dead = true; cancelAnimationFrame(raf); };
+  }, [targetRef]);
+
+  const info = IMPORT_TOUR[step];
+  const dim = "rgba(0,0,0,0.58)";
+  const vh = typeof window !== "undefined" ? window.innerHeight : 800;
+  const P = 8;
+  const hole = rect ? { t: rect.t - P, l: rect.l - P, w: rect.w + P * 2, h: rect.h + P * 2 } : null;
+  const below = hole ? hole.t + hole.h + 160 < vh : true;
+  const tip = (
+    <div style={{ pointerEvents: "auto", background: "#1c1c1a", color: "#fff", borderRadius: 14, padding: "14px 16px", maxWidth: 320, margin: "0 auto", boxShadow: "0 10px 30px rgba(0,0,0,0.45)" }}>
+      <div style={{ fontSize: "0.68rem", color: "#8f8ba3", marginBottom: 4 }}>Step {step + 1} of {IMPORT_TOUR.length}</div>
+      <div style={{ fontWeight: 700, fontSize: "0.95rem", marginBottom: 3 }}>{info.title}</div>
+      <div style={{ fontSize: "0.83rem", lineHeight: 1.45, color: "#d9d7e6" }}>{info.body}</div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10 }}>
+        <button onClick={onSkip} style={{ border: "none", background: "none", color: "#b6b3c9", fontSize: "0.76rem", cursor: "pointer", padding: 0 }}>Skip tour</button>
+        {last && <button onClick={onDone} style={{ border: "none", background: "#726A4E", color: "#fff", borderRadius: 9, padding: "8px 16px", fontWeight: 700, cursor: "pointer", fontSize: "0.8rem" }}>Got it</button>}
+      </div>
+    </div>
+  );
+
+  // Container passes touches through; only the dim rects + tooltip capture, so the hole is live.
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 1500, pointerEvents: "none" }}>
+      {hole ? (<>
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, height: Math.max(0, hole.t), background: dim, pointerEvents: "auto" }} />
+        <div style={{ position: "fixed", top: hole.t + hole.h, left: 0, right: 0, bottom: 0, background: dim, pointerEvents: "auto" }} />
+        <div style={{ position: "fixed", top: hole.t, left: 0, width: Math.max(0, hole.l), height: hole.h, background: dim, pointerEvents: "auto" }} />
+        <div style={{ position: "fixed", top: hole.t, left: hole.l + hole.w, right: 0, height: hole.h, background: dim, pointerEvents: "auto" }} />
+        <div style={{ position: "fixed", top: hole.t, left: hole.l, width: hole.w, height: hole.h, borderRadius: 12, boxShadow: "0 0 0 2px #fff", pointerEvents: "none" }} />
+        <div style={{ position: "fixed", left: 16, right: 16, [below ? "top" : "bottom"]: below ? hole.t + hole.h + 12 : Math.max(12, vh - hole.t + 12) }}>{tip}</div>
+      </>) : (
+        <div style={{ position: "fixed", inset: 0, background: dim, pointerEvents: "auto", display: "flex", alignItems: "flex-end", justifyContent: "center", padding: "0 16px 40px" }}>{tip}</div>
+      )}
+    </div>
+  );
+}
+
+function SavedScreen({ user, onBuildPlan, onShare, onBarCrawl, openSignal, calendarSignal, visible }) {
   const [saves, setSaves] = useState([]);
   const [loading, setLoading] = useState(true);
   const [mediaType, setMediaType] = useState("tiktok"); // tiktok | instagram | screenshot | maps | mapslist
@@ -2563,6 +2625,23 @@ function SavedScreen({ user, onBuildPlan, onShare, onBarCrawl, openSignal, calen
   const [detailSpot, setDetailSpot] = useState(null);
   const [captureOpen, setCaptureOpen] = useState(false); // collapse the "add a spot" controls by default
   const [captureTab, setCaptureTab] = useState("screenshot"); // Save modal: screenshot | link | manual
+
+  // ── First-run import walkthrough ──────────────────────────────
+  const tourBtnRef = useRef(null), tourSelRef = useRef(null), tourSaveRef = useRef(null), tourListRef = useRef(null);
+  const tourSavedRef = useRef(false); // set once a saveAll succeeds, so we only advance on a real save
+  const [tourStep, setTourStep] = useState(() => {
+    try { if (localStorage.getItem("cl_tour_import_done")) return -1; const s = localStorage.getItem("cl_tour_step"); return s != null ? Number(s) : 0; } catch (e) { return -1; }
+  });
+  function endTour() { try { localStorage.setItem("cl_tour_import_done", "1"); localStorage.removeItem("cl_tour_step"); } catch (e) {} setTourStep(-1); }
+  useEffect(() => { try { if (tourStep < 0) localStorage.removeItem("cl_tour_step"); else localStorage.setItem("cl_tour_step", String(tourStep)); } catch (e) {} }, [tourStep]);
+  // Hidden replay hook (no settings entry): run window.__replayImportTour() to re-trigger.
+  useEffect(() => { window.__replayImportTour = () => { try { localStorage.removeItem("cl_tour_import_done"); localStorage.removeItem("cl_tour_step"); } catch (e) {} setTourStep(0); }; }, []);
+  const tourRef = tourStep === 0 ? tourBtnRef : tourStep === 1 ? tourSelRef : tourStep === 2 ? tourSaveRef : tourListRef;
+  // Advance on the REAL action: parse completes (preview appears) → save completes (preview clears).
+  useEffect(() => {
+    if (tourStep === 0 && preview.length > 0) setTourStep(1);
+    else if ((tourStep === 1 || tourStep === 2) && preview.length === 0 && tourSavedRef.current) setTourStep(3);
+  }, [preview.length, tourStep]);
   const [mName, setMName] = useState(""); const [mCat, setMCat] = useState("restaurant"); const [mNotes, setMNotes] = useState("");
   const [focusSpot, setFocusSpot] = useState(null); // tapping a list card pans the map to it
   const [mapCat, setMapCat] = useState(""); // Map tab: "" = all, else a category scope
@@ -3010,6 +3089,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
         savedCount++;
       }
       setParseStatus("");
+      tourSavedRef.current = true; // real save happened → the walkthrough may advance to "view"
       setPreview([]);
       setSaveFolder(""); setNewFolder(""); setCaptureOpen(false);
       showSuccess(savedCount === 1 ? preview[0].name : `${savedCount} spots`);
@@ -3271,11 +3351,15 @@ Return a JSON object with this exact structure:
         {error && <div className="err" style={{ marginBottom: "0.75rem" }}>{error}</div>}
 
         {!openFolder && (
-          <button onClick={() => { setCaptureTab("screenshot"); setError(null); setCaptureOpen(true); }} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: "#1c1c1a", color: "#fff", border: "none", borderRadius: 100, padding: "13px 18px", fontSize: "0.92rem", fontWeight: 600, cursor: "pointer" }}>+ Save a place</button>
+          <button ref={tourBtnRef} onClick={() => { setCaptureTab("screenshot"); setError(null); setCaptureOpen(true); }} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: "#1c1c1a", color: "#fff", border: "none", borderRadius: 100, padding: "13px 18px", fontSize: "0.92rem", fontWeight: 600, cursor: "pointer" }}>+ Save a place</button>
         )}
 
         {(parsing || saving) && parseStatus && !captureOpen && <div style={{ fontSize: "0.75rem", color: "#726A4E", marginTop: 8 }}>{parseStatus}</div>}
       </div>
+
+      {visible && tourStep >= 0 && !captureOpen && !(tourStep === 0 && parsing) && (
+        <TourSpotlight targetRef={tourRef} step={tourStep} last={tourStep === 3} onDone={endTour} onSkip={endTour} />
+      )}
 
       {!openFolder && captureOpen && (
         <div onClick={() => !parsing && !saving && setCaptureOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.42)", zIndex: 1400, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
@@ -3352,7 +3436,7 @@ Return a JSON object with this exact structure:
           {preview.map((v, i) => <VenueCard key={i} v={v} draft onRemove={() => removeDraft(i)} />)}
           <div style={{ margin: "10px 0" }}>
             <div style={{ fontSize: "0.7rem", color: "#6b5e4e", marginBottom: 4 }}>Save to list</div>
-            <select value={saveFolder} onChange={e => setSaveFolder(e.target.value)} className="input-field" style={{ padding: "10px 12px" }}>
+            <select ref={tourSelRef} value={saveFolder} onChange={e => { setSaveFolder(e.target.value); if (tourStep === 1) setTourStep(2); }} className="input-field" style={{ padding: "10px 12px" }}>
               <option value="">Auto — by category</option>
               {existingFolders.map(f => <option key={f} value={f}>{f}</option>)}
               <option value="__new__">+ Create new list…</option>
@@ -3361,13 +3445,13 @@ Return a JSON object with this exact structure:
               <input className="input-field" style={{ marginTop: 6 }} placeholder="New list name" value={newFolder} onChange={e => setNewFolder(e.target.value)} />
             )}
           </div>
-          <button className="btn btn-teal" onClick={saveAll} disabled={saving || (saveFolder === "__new__" && !newFolder.trim())} style={{ marginTop: 4 }}>{saving ? "Saving..." : `Save ${preview.length} spot${preview.length !== 1 ? "s" : ""}${saveFolder && saveFolder !== "__new__" ? ` to ${saveFolder}` : ""} ✦`}</button>
+          <button ref={tourSaveRef} className="btn btn-teal" onClick={saveAll} disabled={saving || (saveFolder === "__new__" && !newFolder.trim())} style={{ marginTop: 4 }}>{saving ? "Saving..." : `Save ${preview.length} spot${preview.length !== 1 ? "s" : ""}${saveFolder && saveFolder !== "__new__" ? ` to ${saveFolder}` : ""} ✦`}</button>
         </div>
       )}
 
       <div style={{ padding: "0 1.5rem 1rem" }}>
         {saves.length > 0 && !openFolder && (
-          <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+          <div ref={tourListRef} style={{ display: "flex", gap: 8, marginBottom: 12 }}>
             {[["folders", "Lists"], ["calendar", "Calendar"]].map(([id, label]) => (
               <button key={id} onClick={() => { setSavedView(id); setOpenFolder(null); }}
                 style={{ fontSize: "0.74rem", padding: "6px 14px", borderRadius: 100, cursor: "pointer",
@@ -4360,7 +4444,6 @@ export default function App() {
   const [captureSignal, setCaptureSignal] = useState(0); // bump to pop the global capture sheet on Saves
   const [onboardDone, setOnboardDone] = useState(false); // set true when first-run onboarding finishes
   const [splashDone, setSplashDone] = useState(() => { try { return !!localStorage.getItem("cl_splash"); } catch (e) { return false; } });
-  const [tour, setTour] = useState(null); // null | "fab" | "capture" — first-run add-a-save walkthrough
   const [showStarter, setShowStarter] = useState(false); // "based on what you liked" banner on the board
   const [calSignal, setCalSignal] = useState(0); // bump to jump Saves to its Calendar view
   const [quizStep, setQuizStep] = useState(-1);
@@ -4743,7 +4826,7 @@ export default function App() {
   if (needsOnboarding) return (
     <>
       <style>{styles}</style>
-      <Onboarding user={user} dbVenues={dbVenues} onDone={(seeded) => { setOnboardDone(true); setActiveTab("saved"); if (seeded) setShowStarter(true); setTour("fab"); }} />
+      <Onboarding user={user} dbVenues={dbVenues} onDone={(seeded) => { setOnboardDone(true); setActiveTab("saved"); if (seeded) setShowStarter(true); }} />
     </>
   );
 
@@ -4776,13 +4859,13 @@ export default function App() {
               <button onClick={() => setShowStarter(false)} style={{ border: "none", background: "none", color: "#9b8f7a", cursor: "pointer", fontSize: "1.1rem", lineHeight: 1 }}>×</button>
             </div>
           )}
-          <SavedScreen user={user} openSignal={captureSignal} calendarSignal={calSignal} onShare={setShareItem} onBuildPlan={(saves) => { setResult(null); setError(null); setViewingPlan(null); setActiveTab("home"); setAns({ savedVenues: saves }); setQuizStep(0); }} onBarCrawl={(seed) => setBarCrawl({ seed: seed || [] })} />
+          <SavedScreen user={user} visible={activeTab === "saved"} openSignal={captureSignal} calendarSignal={calSignal} onShare={setShareItem} onBuildPlan={(saves) => { setResult(null); setError(null); setViewingPlan(null); setActiveTab("home"); setAns({ savedVenues: saves }); setQuizStep(0); }} onBarCrawl={(seed) => setBarCrawl({ seed: seed || [] })} />
         </div>
         {activeTab === "me" && <MeScreen user={user} preferences={preferences} setPreferences={setPreferences} isAdmin={isAdmin} onBadgeUpdate={setAdminBadge} adminBadge={adminBadge} />}
 
         {!showQuiz && !showResult && !showViewingPlan && (
           <button className="capture-fab" aria-label="Save a place"
-            onClick={() => { setActiveTab("saved"); setQuizStep(-1); setViewingPlan(null); setCaptureSignal(n => n + 1); if (tour === "fab") setTour("capture"); }}>
+            onClick={() => { setActiveTab("saved"); setQuizStep(-1); setViewingPlan(null); setCaptureSignal(n => n + 1); }}>
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
           </button>
         )}
@@ -4818,29 +4901,6 @@ export default function App() {
         }} />}
         {loading && <SparkleLoader label={ans._barCrawl ? "Curating your bar crawl…" : "Curating your plan…"} />}
 
-        {/* First-run walkthrough: guide to the + capture button, then the save action. */}
-        {tour === "fab" && activeTab === "saved" && (
-          <div style={{ position: "fixed", inset: 0, zIndex: 106, pointerEvents: "none" }}>
-            <div style={{ position: "absolute", right: 18, bottom: "calc(140px + env(safe-area-inset-bottom))", maxWidth: 232, background: "#1c1c1a", color: "#fff", borderRadius: 14, padding: "12px 14px", fontSize: "0.82rem", lineHeight: 1.45, boxShadow: "0 8px 24px rgba(0,0,0,0.35)", pointerEvents: "auto" }}>
-              <div style={{ fontWeight: 700, marginBottom: 3 }}>Add a place ✦</div>
-              Tap the <strong>＋</strong> to save any spot — from a TikTok/Instagram link or a screenshot.
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
-                <button onClick={() => setTour(null)} style={{ border: "none", background: "none", color: "#b6b3c9", fontSize: "0.74rem", cursor: "pointer", padding: 0 }}>Skip</button>
-                <span style={{ fontSize: "0.7rem", color: "#8f8ba3" }}>Step 1 of 2</span>
-              </div>
-              <div style={{ position: "absolute", right: 26, bottom: -7, width: 15, height: 15, background: "#1c1c1a", transform: "rotate(45deg)" }} />
-            </div>
-          </div>
-        )}
-        {tour === "capture" && (
-          <div style={{ position: "fixed", inset: 0, zIndex: 1450, pointerEvents: "none", display: "flex", alignItems: "flex-start", justifyContent: "center" }}>
-            <div style={{ marginTop: "16vh", maxWidth: 290, background: "#1c1c1a", color: "#fff", borderRadius: 14, padding: "14px 16px", fontSize: "0.85rem", lineHeight: 1.5, boxShadow: "0 8px 28px rgba(0,0,0,0.45)", pointerEvents: "auto", textAlign: "center" }}>
-              <div style={{ fontWeight: 700, marginBottom: 4 }}>Paste, then save ✦</div>
-              Drop a TikTok/Instagram link or a screenshot, then hit <strong>Save</strong> — it'll appear right here on your board.
-              <button onClick={() => setTour(null)} style={{ display: "block", width: "100%", marginTop: 12, background: "#726A4E", color: "#fff", border: "none", borderRadius: 10, padding: "10px", fontWeight: 700, cursor: "pointer", fontFamily: "'Aleo', sans-serif" }}>Got it</button>
-            </div>
-          </div>
-        )}
       </div>
     </>
   );
