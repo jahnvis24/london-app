@@ -3500,6 +3500,18 @@ Return a JSON object with this exact structure:
   );
 }
 
+// Splash / value prop — one screen, one CTA (no carousel: intro carousels tank completion).
+function Splash({ onStart }) {
+  return (
+    <div style={{ minHeight: "100vh", background: "#f7f6f2", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: "2rem", maxWidth: 420, margin: "0 auto" }}>
+      <div style={{ fontFamily: "'Sofia', cursive", fontWeight: 700, fontSize: "3.4rem", color: "#726A4E", marginBottom: 20 }}>Curated</div>
+      <h1 style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "1.95rem", lineHeight: 1.22, color: "#1c1c1a", marginBottom: 14, maxWidth: 320 }}>Everything you saved, finally a plan.</h1>
+      <p style={{ fontSize: "0.95rem", color: "#6b5e4e", lineHeight: 1.55, maxWidth: 300, marginBottom: 38 }}>Pull the places you save on TikTok &amp; Instagram into one board — then turn them into real London plans.</p>
+      <button onClick={onStart} style={{ width: "100%", maxWidth: 300, padding: "15px", borderRadius: 14, border: "none", background: "#726A4E", color: "#fff", fontSize: "0.98rem", fontWeight: 700, fontFamily: "'Aleo', sans-serif", cursor: "pointer", boxShadow: "0 4px 14px rgba(114,106,78,0.3)" }}>Get started</button>
+    </div>
+  );
+}
+
 function LoginScreen({ onLogin }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -3586,40 +3598,75 @@ function LoginScreen({ onLogin }) {
   );
 }
 
-// First-run onboarding: name → interests → taste → visual picks. Shows once per account.
-// The visual step captures revealed preference AND seeds the user's Saves board.
+// First-run onboarding: location → name → interests → taste → this-or-that.
+// The this-or-that captures revealed visual preference AND seeds the Saves board.
+const OB_AXES = [
+  { key: "aesthetic", A: v => (v.vibe_tags || []).includes("aesthetic"), B: v => !(v.vibe_tags || []).includes("aesthetic") && (parseFloat(v.google_rating) || 0) >= 4.5 },
+  { key: "hyped", A: v => (v.vibe_tags || []).includes("iconic") || (v.celebrity_tags || []).length, B: v => (v.vibe_tags || []).includes("hidden_gems") && !(v.vibe_tags || []).includes("iconic") },
+  { key: "lively", A: v => (v.vibe_tags || []).includes("social") || (v.vibe_tags || []).includes("chaotic"), B: v => (v.vibe_tags || []).includes("chill") && !(v.vibe_tags || []).includes("chaotic") && !(v.vibe_tags || []).includes("social") },
+  { key: "polished", A: v => (v.vibe_tags || []).includes("fancy"), B: v => ((v.vibe_tags || []).includes("underground") || (v.vibe_tags || []).includes("chaotic")) && !(v.vibe_tags || []).includes("fancy") },
+  { key: "novel", A: v => v.category === "experience" || (v.vibe_tags || []).includes("underground"), B: v => (v.vibe_tags || []).includes("iconic") || (v.vibe_tags || []).includes("cultural") },
+];
 function Onboarding({ user, dbVenues, onDone }) {
   const [step, setStep] = useState(0);
+  const [geo, setGeo] = useState(null); // "allow" | "london"
   const [name, setName] = useState((user?.user_metadata?.full_name || "").split(" ")[0] || "");
   const [interests, setInterests] = useState([]);
   const [vibe, setVibe] = useState([]);
-  const [picks, setPicks] = useState([]);
+  const [pairs, setPairs] = useState([]);
+  const [axisIdx, setAxisIdx] = useState(0);
+  const [choices, setChoices] = useState({});
   const [liked, setLiked] = useState([]);
   const [saving, setSaving] = useState(false);
 
   const INTERESTS = [["Food & drink", "🍽️"], ["Nightlife & bars", "🍸"], ["Art & culture", "🎨"], ["Live music", "🎵"], ["Outdoors & active", "🌳"], ["Shopping & markets", "🛍️"], ["Coffee & cafés", "☕"], ["Wellness", "🧘"], ["Events & experiences", "🎫"]];
   const VIBES = ["Aesthetic-first — dimly lit, design-led", "Hidden gems over hotspots", "Always trying somewhere new", "Loves a reliable regular", "Great value, not cheap", "Lively & social", "Quiet & low-key", "Late nights", "Early starts"];
 
-  // Pick 8 photogenic venues once the DB has loaded.
+  // Build the 5 this-or-that pairs from real venues once the DB has loaded.
   useEffect(() => {
-    if (picks.length || !(dbVenues || []).length) return;
-    const seen = new Set(); const uniq = [];
-    for (const v of dbVenues) { if (!v.photo_url || !v.name) continue; const k = v.name.toLowerCase(); if (seen.has(k)) continue; seen.add(k); uniq.push(v); }
-    for (let i = uniq.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [uniq[i], uniq[j]] = [uniq[j], uniq[i]]; }
-    setPicks(uniq.slice(0, 8));
+    if (pairs.length || !(dbVenues || []).length) return;
+    const photo = dbVenues.filter(v => v.photo_url && v.name);
+    const used = new Set();
+    const pick = (pred) => { const c = photo.filter(v => !used.has(v.id) && pred(v)); if (!c.length) return null; const v = c[Math.floor(Math.random() * c.length)]; used.add(v.id); return v; };
+    const out = [];
+    for (const ax of OB_AXES) {
+      const a = pick(ax.A) || pick(() => true);
+      const b = pick(ax.B) || pick(() => true);
+      if (a && b) out.push({ key: ax.key, a, b });
+    }
+    setPairs(out);
   }, [dbVenues]);
 
   const toggleInterest = (l) => setInterests(p => p.includes(l) ? p.filter(x => x !== l) : (p.length >= 4 ? p : [...p, l]));
   const toggleVibe = (l) => setVibe(p => p.includes(l) ? p.filter(x => x !== l) : [...p, l]);
-  const toggleLike = (id) => setLiked(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
-  const canNext = step === 0 ? !!name.trim() : step === 1 ? interests.length >= 3 : step === 2 ? vibe.length >= 1 : true;
+  const canNext = step === 1 ? !!name.trim() : step === 2 ? interests.length >= 3 : step === 3 ? vibe.length >= 1 : true;
+
+  function chooseLocation(mode) {
+    setGeo(mode);
+    if (mode === "allow" && typeof navigator !== "undefined" && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        pos => { try { localStorage.setItem("cl_geo", JSON.stringify({ lat: pos.coords.latitude, lng: pos.coords.longitude })); } catch (e) {} },
+        () => { try { localStorage.setItem("cl_geo", "london"); } catch (e) {} }
+      );
+    } else { try { localStorage.setItem("cl_geo", "london"); } catch (e) {} }
+    setStep(1);
+  }
+
+  function chooseAxis(pair, pole, venue) {
+    setChoices(c => ({ ...c, [pair.key]: pole }));
+    const nextLiked = liked.includes(venue.id) ? liked : [...liked, venue.id];
+    setLiked(nextLiked);
+    if (axisIdx < pairs.length - 1) setAxisIdx(axisIdx + 1);
+    else finish(nextLiked);
+  }
+  const skipAxis = () => { if (axisIdx < pairs.length - 1) setAxisIdx(axisIdx + 1); else finish(liked); };
 
   async function finish(likedIds) {
     setSaving(true);
     const clean = name.trim() || "there";
-    try { await supabase.auth.updateUser({ data: { full_name: clean, onboarded: true, interests, vibe } }); } catch (e) {}
+    try { await supabase.auth.updateUser({ data: { full_name: clean, onboarded: true, interests, vibe, taste_axes: choices } }); } catch (e) {}
     try { await supabase.from("profiles").upsert({ id: user.id, name: clean, email: user.email }); } catch (e) {}
-    const likedVenues = picks.filter(v => likedIds.includes(v.id));
+    const likedVenues = dbVenues.filter(v => likedIds.includes(v.id));
     if (likedVenues.length) {
       const FOLDER = { restaurant: "Restaurants", cafe: "Cafés", bar: "Bars", nightlife: "Nightlife", market: "Markets", outdoor: "Outdoor", museum: "Museums", gallery: "Galleries", experience: "Experiences", event: "Events" };
       const rows = likedVenues.map(v => { const { id, user_id, created_at, ...rest } = v; return { ...rest, user_id: user.id, folder: FOLDER[String(v.category || "").toLowerCase()] || "Other", status: "pending" }; });
@@ -3627,30 +3674,39 @@ function Onboarding({ user, dbVenues, onDone }) {
     }
     try { localStorage.setItem("cl_onboarded_" + user.id, "1"); localStorage.setItem("cl_interests", JSON.stringify(interests)); localStorage.setItem("cl_vibe", JSON.stringify(vibe)); } catch (e) {}
     setSaving(false);
-    onDone();
+    onDone(likedVenues.length);
   }
-  const next = () => { if (step < 3) setStep(step + 1); else finish(liked); };
+  const next = () => setStep(step + 1);
   const chip = (sel) => ({ padding: "10px 16px", borderRadius: 100, border: sel ? "1.5px solid #726A4E" : "1.5px solid #e3ddd0", background: sel ? "#726A4E" : "#fff", color: sel ? "#fff" : "#4a4438", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer", fontFamily: "'Aleo', sans-serif" });
   const h = { fontFamily: "'Aleo', Georgia, serif", fontSize: "1.7rem", color: "#1c1c1a", marginBottom: 6 };
   const sub = { fontSize: "0.9rem", color: "#9b8f7a", marginBottom: 20, lineHeight: 1.5 };
+  const showFooter = step >= 1 && step <= 3;
 
   return (
     <div style={{ minHeight: "100vh", background: "#f7f6f2", display: "flex", flexDirection: "column", maxWidth: 420, margin: "0 auto" }}>
       <div style={{ padding: "2.5rem 1.5rem 0.5rem" }}>
         <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
-          {[0, 1, 2, 3].map(i => <div key={i} style={{ flex: 1, height: 4, borderRadius: 4, background: i <= step ? "#726A4E" : "#e3ddd0", transition: "0.3s" }} />)}
+          {[0, 1, 2, 3, 4].map(i => <div key={i} style={{ flex: 1, height: 4, borderRadius: 4, background: i <= step ? "#726A4E" : "#e3ddd0", transition: "0.3s" }} />)}
         </div>
         {step > 0 && <button onClick={() => setStep(step - 1)} style={{ border: "none", background: "none", color: "#9b8f7a", fontSize: "0.85rem", cursor: "pointer", padding: 0 }}>← Back</button>}
       </div>
 
       <div style={{ flex: 1, padding: "0.75rem 1.5rem", overflowY: "auto" }}>
         {step === 0 && (<>
+          <div style={{ fontSize: "2.6rem", marginBottom: 10 }}>📍</div>
+          <div style={h}>Show places near you?</div>
+          <p style={sub}>We use your location to centre the map and surface what's close. You can browse all of London instead.</p>
+          <button onClick={() => chooseLocation("allow")} style={{ width: "100%", padding: "14px", borderRadius: 14, border: "none", background: "#726A4E", color: "#fff", fontSize: "0.95rem", fontWeight: 700, fontFamily: "'Aleo', sans-serif", cursor: "pointer", marginBottom: 10 }}>Allow location</button>
+          <button onClick={() => chooseLocation("london")} style={{ width: "100%", padding: "14px", borderRadius: 14, border: "1.5px solid #e3ddd0", background: "#fff", color: "#4a4438", fontSize: "0.92rem", fontWeight: 600, fontFamily: "'Aleo', sans-serif", cursor: "pointer" }}>Browse London instead</button>
+        </>)}
+
+        {step === 1 && (<>
           <div style={h}>What's your name?</div>
           <p style={sub}>So we can make Curated feel like yours.</p>
           <input value={name} onChange={e => setName(e.target.value)} placeholder="First name" autoFocus onKeyDown={e => e.key === "Enter" && canNext && next()} style={{ width: "100%", padding: "14px 16px", borderRadius: 14, border: "1.5px solid #e3ddd0", background: "#fff", fontSize: "1rem", fontFamily: "'Aleo', sans-serif", color: "#1c1c1a", boxSizing: "border-box" }} />
         </>)}
 
-        {step === 1 && (<>
+        {step === 2 && (<>
           <div style={h}>What are you into?</div>
           <p style={sub}>Pick 3–4. We'll tune your recommendations around these.</p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
@@ -3658,7 +3714,7 @@ function Onboarding({ user, dbVenues, onDone }) {
           </div>
         </>)}
 
-        {step === 2 && (<>
+        {step === 3 && (<>
           <div style={h}>What's your taste?</div>
           <p style={sub}>Pick whatever sounds like you.</p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
@@ -3666,27 +3722,35 @@ function Onboarding({ user, dbVenues, onDone }) {
           </div>
         </>)}
 
-        {step === 3 && (<>
-          <div style={h}>Which would you save?</div>
-          <p style={sub}>Tap the spots you'd actually want to go — we'll start your board with them.</p>
-          {picks.length === 0 ? <div style={{ fontSize: "0.85rem", color: "#9b8f7a" }}>Loading places…</div> : (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              {picks.map(v => { const on = liked.includes(v.id); return (
-                <button key={v.id} onClick={() => toggleLike(v.id)} style={{ position: "relative", border: "none", padding: 0, borderRadius: 16, overflow: "hidden", cursor: "pointer", aspectRatio: "3/4", background: "#e9e4da", outline: on ? "3px solid #726A4E" : "none", outlineOffset: -3 }}>
-                  <img src={v.photo_url} alt={v.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                  <div style={{ position: "absolute", inset: 0, background: on ? "rgba(114,106,78,0.28)" : "linear-gradient(transparent 55%, rgba(0,0,0,0.7))" }} />
-                  <div style={{ position: "absolute", left: 8, right: 8, bottom: 8, textAlign: "left", color: "#fff", fontSize: "0.78rem", fontWeight: 700, textShadow: "0 1px 4px rgba(0,0,0,0.75)" }}>{v.name}</div>
-                  <div style={{ position: "absolute", top: 8, right: 8, width: 28, height: 28, borderRadius: "50%", background: on ? "#726A4E" : "rgba(255,255,255,0.92)", color: on ? "#fff" : "#726A4E", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.95rem", fontWeight: 700 }}>{on ? "♥" : "+"}</div>
-                </button>
-              ); })}
-            </div>
-          )}
-        </>)}
+        {step === 4 && (
+          pairs.length === 0 ? <div style={{ fontSize: "0.85rem", color: "#9b8f7a" }}>Loading places…</div> : (() => {
+            const pair = pairs[axisIdx];
+            return (<>
+              <div style={h}>Which would you save?</div>
+              <p style={sub}>Tap the one you'd rather go to. <span style={{ color: "#c9bfae" }}>({axisIdx + 1} of {pairs.length})</span></p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {[["a", pair.a], ["b", pair.b]].map(([pole, v]) => (
+                  <button key={v.id} onClick={() => chooseAxis(pair, pole, v)} style={{ position: "relative", border: "none", padding: 0, borderRadius: 18, overflow: "hidden", cursor: "pointer", height: 175, background: "#e9e4da" }}>
+                    <img src={v.photo_url} alt={v.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 45%, rgba(0,0,0,0.72))" }} />
+                    <div style={{ position: "absolute", left: 14, right: 14, bottom: 12, textAlign: "left", color: "#fff" }}>
+                      <div style={{ fontSize: "1rem", fontWeight: 700, textShadow: "0 1px 5px rgba(0,0,0,0.8)" }}>{v.name}</div>
+                      <div style={{ fontSize: "0.72rem", opacity: 0.9, textShadow: "0 1px 4px rgba(0,0,0,0.8)" }}>{[cap(v.category || ""), v.area].filter(Boolean).join(" · ")}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+              <button onClick={skipAxis} disabled={saving} style={{ display: "block", width: "100%", textAlign: "center", background: "none", border: "none", color: "#9b8f7a", fontSize: "0.82rem", marginTop: 14, cursor: "pointer" }}>{saving ? "Setting up…" : "No preference →"}</button>
+            </>);
+          })()
+        )}
       </div>
 
-      <div style={{ padding: "0.75rem 1.5rem 1.5rem" }}>
-        <button onClick={next} disabled={!canNext || saving} style={{ width: "100%", padding: "15px", borderRadius: 14, border: "none", background: (canNext && !saving) ? "#726A4E" : "#cfc6b5", color: "#fff", fontSize: "0.95rem", fontWeight: 700, fontFamily: "'Aleo', sans-serif", cursor: (canNext && !saving) ? "pointer" : "default" }}>{saving ? "Setting up…" : step === 3 ? (liked.length ? `Save ${liked.length} & explore ✦` : "Finish & explore ✦") : "Continue"}</button>
-      </div>
+      {showFooter && (
+        <div style={{ padding: "0.75rem 1.5rem 1.5rem" }}>
+          <button onClick={next} disabled={!canNext} style={{ width: "100%", padding: "15px", borderRadius: 14, border: "none", background: canNext ? "#726A4E" : "#cfc6b5", color: "#fff", fontSize: "0.95rem", fontWeight: 700, fontFamily: "'Aleo', sans-serif", cursor: canNext ? "pointer" : "default" }}>Continue</button>
+        </div>
+      )}
     </div>
   );
 }
@@ -4261,6 +4325,9 @@ export default function App() {
   const [activeTab, setActiveTab] = useState("plans"); // Plans is the landing tab; planning is a CTA there
   const [captureSignal, setCaptureSignal] = useState(0); // bump to pop the global capture sheet on Saves
   const [onboardDone, setOnboardDone] = useState(false); // set true when first-run onboarding finishes
+  const [splashDone, setSplashDone] = useState(() => { try { return !!localStorage.getItem("cl_splash"); } catch (e) { return false; } });
+  const [tour, setTour] = useState(null); // null | "fab" | "capture" — first-run add-a-save walkthrough
+  const [showStarter, setShowStarter] = useState(false); // "based on what you liked" banner on the board
   const [calSignal, setCalSignal] = useState(0); // bump to jump Saves to its Calendar view
   const [quizStep, setQuizStep] = useState(-1);
   const [ans, setAns] = useState({});
@@ -4634,7 +4701,7 @@ export default function App() {
   if (!user) return (
     <>
       <style>{styles}</style>
-      <LoginScreen />
+      {splashDone ? <LoginScreen /> : <Splash onStart={() => { try { localStorage.setItem("cl_splash", "1"); } catch (e) {} setSplashDone(true); }} />}
     </>
   );
 
@@ -4642,7 +4709,7 @@ export default function App() {
   if (needsOnboarding) return (
     <>
       <style>{styles}</style>
-      <Onboarding user={user} dbVenues={dbVenues} onDone={() => setOnboardDone(true)} />
+      <Onboarding user={user} dbVenues={dbVenues} onDone={(seeded) => { setOnboardDone(true); setActiveTab("saved"); if (seeded) setShowStarter(true); setTour("fab"); }} />
     </>
   );
 
@@ -4668,13 +4735,20 @@ export default function App() {
         {activeTab === "people" && <PeopleScreen user={user} onSavePlan={(payload) => { const r = payload?.plan; if (!r) return; setPlans(prev => { const updated = [{ result: r, times: payload?.times || times, ans: {}, savedAt: new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }), createdAt: Date.now(), id: generateId() }, ...prev]; localStorage.setItem("cl_plans", JSON.stringify(updated.slice(0, 20))); return updated; }); }} />}
         {/* Always mounted so an in-progress screenshot parse keeps running + persists when you switch tabs */}
         <div style={{ display: activeTab === "saved" ? "block" : "none" }}>
+          {showStarter && (
+            <div style={{ margin: "1rem 1.5rem 0", background: "#eef3d8", border: "1px solid #dfe8be", borderRadius: 14, padding: "12px 14px", display: "flex", gap: 10, alignItems: "flex-start" }}>
+              <span style={{ fontSize: "1.1rem" }}>✦</span>
+              <div style={{ flex: 1, fontSize: "0.82rem", color: "#4B342F", lineHeight: 1.45 }}><strong>Based on what you liked.</strong> Here's your starter board — add more anytime with the + button.</div>
+              <button onClick={() => setShowStarter(false)} style={{ border: "none", background: "none", color: "#9b8f7a", cursor: "pointer", fontSize: "1.1rem", lineHeight: 1 }}>×</button>
+            </div>
+          )}
           <SavedScreen user={user} openSignal={captureSignal} calendarSignal={calSignal} onShare={setShareItem} onBuildPlan={(saves) => { setResult(null); setError(null); setViewingPlan(null); setActiveTab("home"); setAns({ savedVenues: saves }); setQuizStep(0); }} onBarCrawl={(seed) => setBarCrawl({ seed: seed || [] })} />
         </div>
         {activeTab === "me" && <MeScreen user={user} preferences={preferences} setPreferences={setPreferences} isAdmin={isAdmin} onBadgeUpdate={setAdminBadge} adminBadge={adminBadge} />}
 
         {!showQuiz && !showResult && !showViewingPlan && (
           <button className="capture-fab" aria-label="Save a place"
-            onClick={() => { setActiveTab("saved"); setQuizStep(-1); setViewingPlan(null); setCaptureSignal(n => n + 1); }}>
+            onClick={() => { setActiveTab("saved"); setQuizStep(-1); setViewingPlan(null); setCaptureSignal(n => n + 1); if (tour === "fab") setTour("capture"); }}>
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
           </button>
         )}
@@ -4709,6 +4783,30 @@ export default function App() {
           setBarCrawl(null); setActiveTab("home"); setQuizStep(QUESTIONS.length); setPendingGen(true);
         }} />}
         {loading && <SparkleLoader label={ans._barCrawl ? "Curating your bar crawl…" : "Curating your plan…"} />}
+
+        {/* First-run walkthrough: guide to the + capture button, then the save action. */}
+        {tour === "fab" && activeTab === "saved" && (
+          <div style={{ position: "fixed", inset: 0, zIndex: 106, pointerEvents: "none" }}>
+            <div style={{ position: "absolute", right: 18, bottom: "calc(140px + env(safe-area-inset-bottom))", maxWidth: 232, background: "#1c1c1a", color: "#fff", borderRadius: 14, padding: "12px 14px", fontSize: "0.82rem", lineHeight: 1.45, boxShadow: "0 8px 24px rgba(0,0,0,0.35)", pointerEvents: "auto" }}>
+              <div style={{ fontWeight: 700, marginBottom: 3 }}>Add a place ✦</div>
+              Tap the <strong>＋</strong> to save any spot — from a TikTok/Instagram link or a screenshot.
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
+                <button onClick={() => setTour(null)} style={{ border: "none", background: "none", color: "#b6b3c9", fontSize: "0.74rem", cursor: "pointer", padding: 0 }}>Skip</button>
+                <span style={{ fontSize: "0.7rem", color: "#8f8ba3" }}>Step 1 of 2</span>
+              </div>
+              <div style={{ position: "absolute", right: 26, bottom: -7, width: 15, height: 15, background: "#1c1c1a", transform: "rotate(45deg)" }} />
+            </div>
+          </div>
+        )}
+        {tour === "capture" && (
+          <div style={{ position: "fixed", inset: 0, zIndex: 1450, pointerEvents: "none", display: "flex", alignItems: "flex-start", justifyContent: "center" }}>
+            <div style={{ marginTop: "16vh", maxWidth: 290, background: "#1c1c1a", color: "#fff", borderRadius: 14, padding: "14px 16px", fontSize: "0.85rem", lineHeight: 1.5, boxShadow: "0 8px 28px rgba(0,0,0,0.45)", pointerEvents: "auto", textAlign: "center" }}>
+              <div style={{ fontWeight: 700, marginBottom: 4 }}>Paste, then save ✦</div>
+              Drop a TikTok/Instagram link or a screenshot, then hit <strong>Save</strong> — it'll appear right here on your board.
+              <button onClick={() => setTour(null)} style={{ display: "block", width: "100%", marginTop: 12, background: "#726A4E", color: "#fff", border: "none", borderRadius: 10, padding: "10px", fontWeight: 700, cursor: "pointer", fontFamily: "'Aleo', sans-serif" }}>Got it</button>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );
