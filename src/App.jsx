@@ -3504,20 +3504,23 @@ Return a JSON object with this exact structure:
 
 // Splash / value prop — one screen, one CTA (no carousel: intro carousels tank completion).
 function Splash({ onStart }) {
+  const igIcon = <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="2.5" y="2.5" width="19" height="19" rx="5.5" stroke="#fff" strokeWidth="2" /><circle cx="12" cy="12" r="4.4" stroke="#fff" strokeWidth="2" /><circle cx="17.4" cy="6.6" r="1.25" fill="#fff" /></svg>;
+  const ttIcon = <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M16.6 3c.29 2.06 1.55 3.4 3.4 3.62v2.46c-1.28.02-2.46-.4-3.4-1.06v5.66a5.5 5.5 0 1 1-5.5-5.5c.26 0 .52.02.77.06v2.55a2.95 2.95 0 1 0 2.06 2.81V3h2.67Z" /></svg>;
+  const ssIcon = <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#726A4E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="4" /><circle cx="8.5" cy="8.5" r="1.6" /><path d="M21 15.5 16 10.5 5 21.5" /></svg>;
   const SOURCES = [
-    { icon: "📸", label: "Instagram", sub: "Saved reels & posts" },
-    { icon: "🎵", label: "TikTok", sub: "Saved & liked videos" },
-    { icon: "🖼️", label: "Screenshots", sub: "Places in your photos" },
+    { label: "Instagram", sub: "Saved reels & posts", bg: "linear-gradient(135deg,#feda75,#fa7e1e 30%,#d62976 60%,#962fbf 85%,#4f5bd5)", icon: igIcon },
+    { label: "TikTok", sub: "Saved & liked videos", bg: "#010101", icon: ttIcon },
+    { label: "Screenshots", sub: "Places in your photos", bg: "#f0ebe2", icon: ssIcon },
   ];
   return (
     <div style={{ minHeight: "100vh", background: "#f7f6f2", display: "flex", flexDirection: "column", justifyContent: "center", padding: "2rem 1.75rem", maxWidth: 420, margin: "0 auto" }}>
       <div style={{ fontFamily: "'Sofia', cursive", fontWeight: 700, fontSize: "3rem", color: "#726A4E", marginBottom: 16, textAlign: "center" }}>Curated</div>
-      <h1 style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "1.95rem", lineHeight: 1.22, color: "#1c1c1a", marginBottom: 22, textAlign: "center" }}>Everything you save,<br />finally in one place.</h1>
-      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 22 }}>
+      <h1 style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "1.95rem", lineHeight: 1.22, color: "#1c1c1a", marginBottom: 24, textAlign: "center" }}>Everything you save,<br />finally in one place.</h1>
+      <div style={{ display: "flex", flexDirection: "column", gap: 11, marginBottom: 24 }}>
         {SOURCES.map(s => (
-          <div key={s.label} style={{ display: "flex", alignItems: "center", gap: 13, background: "#fff", border: "1px solid #f0ebe2", borderRadius: 16, padding: "13px 15px" }}>
-            <div style={{ width: 44, height: 44, borderRadius: 12, background: "#f5f0e8", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.4rem", flexShrink: 0 }}>{s.icon}</div>
-            <div><div style={{ fontSize: "0.95rem", fontWeight: 700, color: "#1c1c1a" }}>{s.label}</div><div style={{ fontSize: "0.76rem", color: "#9b8f7a" }}>{s.sub}</div></div>
+          <div key={s.label} style={{ display: "flex", alignItems: "center", gap: 14, background: "#fff", border: "1px solid #eee7db", borderRadius: 18, padding: "14px 16px", boxShadow: "0 2px 10px rgba(0,0,0,0.04)" }}>
+            <div style={{ width: 46, height: 46, borderRadius: 13, background: s.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: "0 2px 6px rgba(0,0,0,0.12)" }}>{s.icon}</div>
+            <div><div style={{ fontSize: "0.98rem", fontWeight: 700, color: "#1c1c1a" }}>{s.label}</div><div style={{ fontSize: "0.78rem", color: "#9b8f7a", marginTop: 1 }}>{s.sub}</div></div>
           </div>
         ))}
       </div>
