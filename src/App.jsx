@@ -299,7 +299,7 @@ function buildShortlist(answers, dbVenues = [], venueRatings = {}) {
 }
 
 const QUESTIONS = [
-  { id: "timeOfDay", label: "1 of 8", title: "Day out or night in London?", multi: false, options: [{ value: "day", label: "Day plan", emoji: "☀️" }, { value: "night", label: "Night plan", emoji: "🌙" }, { value: "full", label: "Full day + night", emoji: "🌅" }] },
+  { id: "timeOfDay", label: "1 of 8", title: "Day out or night out?", multi: false, options: [{ value: "day", label: "Day plan", emoji: "☀️" }, { value: "night", label: "Night plan", emoji: "🌙" }, { value: "full", label: "Full day + night", emoji: "🌅" }] },
   { id: "vibes", label: "2 of 8", title: "Pick your vibe", multi: true, options: [{ value: "chill", label: "Chill", emoji: "😌" }, { value: "romantic", label: "Romantic", emoji: "🌹" }, { value: "chaotic", label: "Chaotic fun", emoji: "🌀" }, { value: "cultural", label: "Cultural", emoji: "🏛️" }, { value: "fancy", label: "Fancy", emoji: "🥂" }, { value: "hidden_gems", label: "Hidden gems", emoji: "💎" }, { value: "social", label: "Social", emoji: "🎉" }, { value: "solo", label: "Solo reset", emoji: "🧘" }, { value: "creative", label: "Creative", emoji: "🎨" }, { value: "activity", label: "Activity-based", emoji: "🎯" }, { value: "active", label: "Active", emoji: "🏃" }] },
   { id: "area", label: "3 of 8", title: "Any area preference?", multi: false, options: [{ value: "central", label: "Central", emoji: "🎭" }, { value: "east", label: "East", emoji: "🧱" }, { value: "south", label: "South", emoji: "🌉" }, { value: "west", label: "West", emoji: "🌳" }, { value: "north", label: "North", emoji: "🌲" }, { value: "southwest", label: "Southwest", emoji: "🏡" }, { value: "northwest", label: "Northwest", emoji: "🌿" }, { value: "outskirts", label: "Outskirts", emoji: "🚂" }, { value: "surprise_me", label: "Surprise me", emoji: "🎲" }, { value: "map_pin", label: "Pick on map", emoji: "📍" }] },
   { id: "travel", label: "4 of 8", title: "How do you want to get around?", multi: false, options: [{ value: "walking", label: "Walking only", emoji: "🚶" }, { value: "walk_tube", label: "Walk + tube", emoji: "🚇" }, { value: "max10", label: "Max 10 min each stop", emoji: "⚡" }] },
@@ -328,7 +328,7 @@ const ALL_AREAS = Object.keys({
   "Nunhead": 1, "Brockley": 1, "Forest Hill": 1, "Sydenham": 1,
 });
 
-const LOADS = ["Raiding our London database...", "Matching your vibe to venues...", "Checking geographic flow...", "Building your perfect sequence...", "Final polish..."];
+const LOADS = ["Raiding our database...", "Matching your vibe to venues...", "Checking geographic flow...", "Building your perfect sequence...", "Final polish..."];
 
 const PREF_OPTIONS = ["Restaurants", "Bars", "Hidden gems", "Outdoor", "Culture", "Markets", "Events", "Late night", "Brunch", "Fine dining", "Plant based", "Arts & crafts", "Active"];
 const ADMIN_EMAIL = "jahnvisolanki2412@gmail.com";
@@ -428,6 +428,8 @@ const styles = `
   @keyframes cardSwap { from{opacity:0.25;transform:scale(0.985)} to{opacity:1;transform:scale(1)} }
   @keyframes twinkle { 0%,100%{opacity:0.12;transform:scale(0.6) rotate(0deg)} 50%{opacity:1;transform:scale(1.15) rotate(20deg)} }
   @keyframes loaderPulse { 0%,100%{opacity:0.6} 50%{opacity:1} }
+  @keyframes tapPulse { 0%{transform:scale(1)} 35%{transform:scale(0.95)} 100%{transform:scale(1)} }
+  @keyframes burstIn { 0%{transform:scale(0);opacity:0} 55%{transform:scale(1.2);opacity:1} 100%{transform:scale(1);opacity:1} }
 
   .home-hero { padding: 3.5rem 1.5rem 2rem; position: relative; overflow: hidden; min-height: 300px; background: #f7f6f2; }
   .home-eyebrow { font-size: 0.68rem; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: #9b8f7a; margin-bottom: 0.6rem; position: relative; z-index: 1; }
@@ -638,8 +640,8 @@ function HomeScreen({ onStart }) {
     <div>
       <div className="home-hero">
         <DecorativeShapes />
-        <div className="home-eyebrow">London · {new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}</div>
-        <h1 className="home-title">London,<br /><em>Your Way</em></h1>
+        <div className="home-eyebrow">{new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}</div>
+        <h1 className="home-title">Curated,<br /><em>Your Way</em></h1>
         <p className="home-sub">60+ hand-picked experiences. One perfect plan. Matched to you.</p>
         <div className="home-cta">
           <button className="btn btn-teal" style={{ maxWidth: 200 }} onClick={onStart}>Plan my day or night ✦</button>
@@ -648,7 +650,7 @@ function HomeScreen({ onStart }) {
       <div className="divider" />
       <div className="section-pad">
         <div className="section-title">How it works</div>
-        <p className="section-sub">Answer 7 quick questions. Get one perfectly sequenced London plan.</p>
+        <p className="section-sub">Answer 7 quick questions. Get one perfectly sequenced plan.</p>
         {[["✦", "7 quick questions", "Tell us your vibe, budget, area, and energy level."],
           ["◎", "We match the experience", "Our curated database of 60+ hand-picked spots filters to your exact vibe."],
           ["→", "One perfect plan", "Claude sequences them geographically and temporally. Just follow it."]
@@ -905,7 +907,7 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
   // Persist the plan so anyone with the link can view it.
   async function ensureShared() {
     setSharing(true);
-    try { await supabase.from("shared_plans").upsert({ id: shareId, plan: result, times, title: result?.title || "London plan" }, { onConflict: "id" }); } catch (e) { console.error("[share]", e); }
+    try { await supabase.from("shared_plans").upsert({ id: shareId, plan: result, times, title: result?.title || "Curated plan" }, { onConflict: "id" }); } catch (e) { console.error("[share]", e); }
     setSharing(false);
     return shareId;
   }
@@ -978,7 +980,7 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
         <div className="result-meta">
           <span>💰 {result.total_cost_estimate}</span>
           <span>🕐 {times.start}–{times.end}</span>
-          <span>📍 {(ans.area || "").replace(/_/g, " ")} London</span>
+          <span>📍 {(ans.area || "").replace(/_/g, " ")}</span>
         </div>
         <div className="vibe-pills">
           {Object.entries(result.vibe_scores || {}).map(([k, v]) => <div key={k} className="vibe-pill">{k} {v}/10</div>)}
@@ -1070,7 +1072,7 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
               🗺️ Create Google Maps route
             </button>
             {onRate && <button className="btn-outline" onClick={onRate}>★ Rate this plan</button>}
-            {onShare && <button className="btn-outline" onClick={() => onShare({ kind: "plan", title: result.title || "London plan", payload: { plan: result, times } })}>📨 Send to a friend (in app)</button>}
+            {onShare && <button className="btn-outline" onClick={() => onShare({ kind: "plan", title: result.title || "Curated plan", payload: { plan: result, times } })}>📨 Send to a friend (in app)</button>}
             <button className="btn-outline" onClick={() => { setView("social"); ensureShared(); }}>🔗 Share via link</button>
             <button className="btn-outline" onClick={onRestart}>↺ Plan a different day</button>
           </div>
@@ -1088,7 +1090,7 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
               <button className="btn-outline" style={{ marginTop: 0 }} disabled={sharing} onClick={async () => { await ensureShared(); navigator.clipboard?.writeText(shareLink); setCopied(true); setTimeout(() => setCopied(false), 2000); }}>
                 {copied ? "✓ Copied" : "🔗 Copy link"}
               </button>
-              <button className="btn-outline" style={{ marginTop: 0 }} disabled={sharing} onClick={async () => { await ensureShared(); window.open(`https://wa.me/?text=${encodeURIComponent(`Check out this London plan: ${shareLink}`)}`); }}>
+              <button className="btn-outline" style={{ marginTop: 0 }} disabled={sharing} onClick={async () => { await ensureShared(); window.open(`https://wa.me/?text=${encodeURIComponent(`Check out this Curated plan: ${shareLink}`)}`); }}>
                 💬 WhatsApp
               </button>
               {onShare && <button className="btn-outline" style={{ marginTop: 0 }} onClick={() => onShare({ kind: "plan", title: result?.title || "An itinerary", payload: { plan: result, times } })}>👤 A friend</button>}
@@ -1108,7 +1110,7 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
                   {scheduledDate && (() => {
                     const d = scheduledDate.replace(/-/g, ""); const endD = new Date(scheduledDate); endD.setDate(endD.getDate() + 1); const en = endD.toISOString().slice(0, 10).replace(/-/g, "");
                     const details = (result.stops || []).map(s => `${s.time || ""} ${s.name}`).join("\n");
-                    const href = `https://calendar.google.com/calendar/render?${new URLSearchParams({ action: "TEMPLATE", text: result.title || "London plan", dates: `${d}/${en}`, details }).toString()}`;
+                    const href = `https://calendar.google.com/calendar/render?${new URLSearchParams({ action: "TEMPLATE", text: result.title || "Curated plan", dates: `${d}/${en}`, details }).toString()}`;
                     return <a href={href} target="_blank" rel="noreferrer" style={{ fontSize: "0.8rem", color: "#726A4E", fontWeight: 600, textAlign: "center" }}>+ Also add to Google Calendar (with reminder)</a>;
                   })()}
                 </div>
@@ -1140,7 +1142,7 @@ function MyPlansScreen({ plans, onViewPlan, onNewPlan, onSchedule, dbVenues }) {
       <div className="empty-state">
         <div className="empty-emoji">🗺️</div>
         <div className="empty-title">No plans yet</div>
-        <div className="empty-sub">Generate your first London plan and it'll appear here.</div>
+        <div className="empty-sub">Generate your first plan and it'll appear here.</div>
         <button className="btn btn-teal" style={{ maxWidth: 200, margin: "0 auto" }} onClick={onNewPlan}>Make a plan ✦</button>
       </div>
     </div>
@@ -1223,7 +1225,7 @@ function DiscoverScreen({ preferences, dbVenues, onStart }) {
         <div className="event-card-body">
           <div className="event-card-cat" style={{ color: colour }}>{cap(cat)}</div>
           <div className="event-card-name">{v.name}</div>
-          <div className="event-card-venue">{v.area || v.zone || "London"}</div>
+          <div className="event-card-venue">{v.area || v.zone || ""}</div>
           {v.comment && <div style={{ fontSize: "0.72rem", color: "#6b5e4e", marginTop: 4, lineHeight: 1.4 }}>{v.comment.length > 90 ? v.comment.slice(0, 90) + "..." : v.comment}</div>}
           <div className="event-card-row">
             <div className="event-card-date">
@@ -3502,12 +3504,25 @@ Return a JSON object with this exact structure:
 
 // Splash / value prop — one screen, one CTA (no carousel: intro carousels tank completion).
 function Splash({ onStart }) {
+  const SOURCES = [
+    { icon: "📸", label: "Instagram", sub: "Saved reels & posts" },
+    { icon: "🎵", label: "TikTok", sub: "Saved & liked videos" },
+    { icon: "🖼️", label: "Screenshots", sub: "Places in your photos" },
+  ];
   return (
-    <div style={{ minHeight: "100vh", background: "#f7f6f2", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: "2rem", maxWidth: 420, margin: "0 auto" }}>
-      <div style={{ fontFamily: "'Sofia', cursive", fontWeight: 700, fontSize: "3.4rem", color: "#726A4E", marginBottom: 20 }}>Curated</div>
-      <h1 style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "1.95rem", lineHeight: 1.22, color: "#1c1c1a", marginBottom: 14, maxWidth: 320 }}>Everything you saved, finally a plan.</h1>
-      <p style={{ fontSize: "0.95rem", color: "#6b5e4e", lineHeight: 1.55, maxWidth: 300, marginBottom: 38 }}>Pull the places you save on TikTok &amp; Instagram into one board — then turn them into real London plans.</p>
-      <button onClick={onStart} style={{ width: "100%", maxWidth: 300, padding: "15px", borderRadius: 14, border: "none", background: "#726A4E", color: "#fff", fontSize: "0.98rem", fontWeight: 700, fontFamily: "'Aleo', sans-serif", cursor: "pointer", boxShadow: "0 4px 14px rgba(114,106,78,0.3)" }}>Get started</button>
+    <div style={{ minHeight: "100vh", background: "#f7f6f2", display: "flex", flexDirection: "column", justifyContent: "center", padding: "2rem 1.75rem", maxWidth: 420, margin: "0 auto" }}>
+      <div style={{ fontFamily: "'Sofia', cursive", fontWeight: 700, fontSize: "3rem", color: "#726A4E", marginBottom: 16, textAlign: "center" }}>Curated</div>
+      <h1 style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "1.95rem", lineHeight: 1.22, color: "#1c1c1a", marginBottom: 22, textAlign: "center" }}>Everything you save,<br />finally in one place.</h1>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 22 }}>
+        {SOURCES.map(s => (
+          <div key={s.label} style={{ display: "flex", alignItems: "center", gap: 13, background: "#fff", border: "1px solid #f0ebe2", borderRadius: 16, padding: "13px 15px" }}>
+            <div style={{ width: 44, height: 44, borderRadius: 12, background: "#f5f0e8", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.4rem", flexShrink: 0 }}>{s.icon}</div>
+            <div><div style={{ fontSize: "0.95rem", fontWeight: 700, color: "#1c1c1a" }}>{s.label}</div><div style={{ fontSize: "0.76rem", color: "#9b8f7a" }}>{s.sub}</div></div>
+          </div>
+        ))}
+      </div>
+      <p style={{ fontSize: "0.9rem", color: "#6b5e4e", lineHeight: 1.55, marginBottom: 26, textAlign: "center" }}>Pull the spots you save into one board — then turn them into real plans.</p>
+      <button onClick={onStart} style={{ width: "100%", padding: "15px", borderRadius: 14, border: "none", background: "#726A4E", color: "#fff", fontSize: "0.98rem", fontWeight: 700, fontFamily: "'Aleo', sans-serif", cursor: "pointer", boxShadow: "0 4px 14px rgba(114,106,78,0.3)" }}>Get started</button>
     </div>
   );
 }
@@ -3557,8 +3572,8 @@ function LoginScreen({ onLogin }) {
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#ffffff", padding: "2rem" }}>
       <div style={{ maxWidth: 360, width: "100%", textAlign: "center" }}>
         <div style={{ fontSize: "2.5rem", marginBottom: "0.5rem" }}>✦</div>
-        <h1 style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "2rem", color: "#1c1c1a", marginBottom: "0.5rem" }}>Curated London</h1>
-        <p style={{ fontSize: "0.85rem", color: "#6b5e4e", lineHeight: 1.5, marginBottom: "2rem" }}>Your personal London itinerary generator. Sign in to get started.</p>
+        <h1 style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "2rem", color: "#1c1c1a", marginBottom: "0.5rem" }}>Curated</h1>
+        <p style={{ fontSize: "0.85rem", color: "#6b5e4e", lineHeight: 1.5, marginBottom: "2rem" }}>Save the places you love, then turn them into plans. Sign in to get started.</p>
         {error && <div className="err" style={{ marginBottom: "1rem" }}>{error}</div>}
         <button
           onClick={signInWithGoogle}
@@ -3592,7 +3607,7 @@ function LoginScreen({ onLogin }) {
           </div>
         )}
 
-        <p style={{ fontSize: "0.72rem", color: "#b8ac9a", marginTop: "1.5rem", lineHeight: 1.5 }}>Invite-only beta. You need an invite to access Curated London.</p>
+        <p style={{ fontSize: "0.72rem", color: "#b8ac9a", marginTop: "1.5rem", lineHeight: 1.5 }}>Invite-only beta. You need an invite to access Curated.</p>
       </div>
     </div>
   );
@@ -3618,6 +3633,26 @@ function Onboarding({ user, dbVenues, onDone }) {
   const [choices, setChoices] = useState({});
   const [liked, setLiked] = useState([]);
   const [saving, setSaving] = useState(false);
+  const [tapped, setTapped] = useState(null); // venue id mid tap-animation
+  useEffect(() => { setTapped(null); }, [axisIdx]);
+
+  function playPop() {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = "triangle";
+      o.frequency.setValueAtTime(440, ctx.currentTime);
+      o.frequency.exponentialRampToValueAtTime(760, ctx.currentTime + 0.11);
+      g.gain.setValueAtTime(0.22, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.19);
+      o.connect(g); g.connect(ctx.destination); o.start(); o.stop(ctx.currentTime + 0.2);
+    } catch (e) {}
+  }
+  function tapChoose(pair, pole, v) {
+    if (tapped) return;
+    setTapped(v.id); playPop();
+    setTimeout(() => chooseAxis(pair, pole, v), 300);
+  }
 
   const INTERESTS = [["Food & drink", "🍽️"], ["Nightlife & bars", "🍸"], ["Art & culture", "🎨"], ["Live music", "🎵"], ["Outdoors & active", "🌳"], ["Shopping & markets", "🛍️"], ["Coffee & cafés", "☕"], ["Wellness", "🧘"], ["Events & experiences", "🎫"]];
   const VIBES = ["Aesthetic-first — dimly lit, design-led", "Hidden gems over hotspots", "Always trying somewhere new", "Loves a reliable regular", "Great value, not cheap", "Lively & social", "Quiet & low-key", "Late nights", "Early starts"];
@@ -3695,9 +3730,9 @@ function Onboarding({ user, dbVenues, onDone }) {
         {step === 0 && (<>
           <div style={{ fontSize: "2.6rem", marginBottom: 10 }}>📍</div>
           <div style={h}>Show places near you?</div>
-          <p style={sub}>We use your location to centre the map and surface what's close. You can browse all of London instead.</p>
+          <p style={sub}>We use your location to centre the map and surface what's close. You can just browse everything instead.</p>
           <button onClick={() => chooseLocation("allow")} style={{ width: "100%", padding: "14px", borderRadius: 14, border: "none", background: "#726A4E", color: "#fff", fontSize: "0.95rem", fontWeight: 700, fontFamily: "'Aleo', sans-serif", cursor: "pointer", marginBottom: 10 }}>Allow location</button>
-          <button onClick={() => chooseLocation("london")} style={{ width: "100%", padding: "14px", borderRadius: 14, border: "1.5px solid #e3ddd0", background: "#fff", color: "#4a4438", fontSize: "0.92rem", fontWeight: 600, fontFamily: "'Aleo', sans-serif", cursor: "pointer" }}>Browse London instead</button>
+          <button onClick={() => chooseLocation("london")} style={{ width: "100%", padding: "14px", borderRadius: 14, border: "1.5px solid #e3ddd0", background: "#fff", color: "#4a4438", fontSize: "0.92rem", fontWeight: 600, fontFamily: "'Aleo', sans-serif", cursor: "pointer" }}>Just browse instead</button>
         </>)}
 
         {step === 1 && (<>
@@ -3729,16 +3764,17 @@ function Onboarding({ user, dbVenues, onDone }) {
               <div style={h}>Which would you save?</div>
               <p style={sub}>Tap the one you'd rather go to. <span style={{ color: "#c9bfae" }}>({axisIdx + 1} of {pairs.length})</span></p>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {[["a", pair.a], ["b", pair.b]].map(([pole, v]) => (
-                  <button key={v.id} onClick={() => chooseAxis(pair, pole, v)} style={{ position: "relative", border: "none", padding: 0, borderRadius: 18, overflow: "hidden", cursor: "pointer", height: 175, background: "#e9e4da" }}>
+                {[["a", pair.a], ["b", pair.b]].map(([pole, v]) => { const on = tapped === v.id; return (
+                  <button key={v.id} onClick={() => tapChoose(pair, pole, v)} style={{ position: "relative", border: "none", padding: 0, borderRadius: 18, overflow: "hidden", cursor: "pointer", height: 175, background: "#e9e4da", animation: on ? "tapPulse 0.3s ease" : undefined, outline: on ? "3px solid #726A4E" : "none", outlineOffset: -3, opacity: tapped && !on ? 0.5 : 1, transition: "opacity 0.2s" }}>
                     <img src={v.photo_url} alt={v.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                    <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 45%, rgba(0,0,0,0.72))" }} />
+                    <div style={{ position: "absolute", inset: 0, background: on ? "rgba(114,106,78,0.32)" : "linear-gradient(transparent 45%, rgba(0,0,0,0.72))" }} />
                     <div style={{ position: "absolute", left: 14, right: 14, bottom: 12, textAlign: "left", color: "#fff" }}>
                       <div style={{ fontSize: "1rem", fontWeight: 700, textShadow: "0 1px 5px rgba(0,0,0,0.8)" }}>{v.name}</div>
                       <div style={{ fontSize: "0.72rem", opacity: 0.9, textShadow: "0 1px 4px rgba(0,0,0,0.8)" }}>{[cap(v.category || ""), v.area].filter(Boolean).join(" · ")}</div>
                     </div>
+                    {on && <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}><div style={{ width: 62, height: 62, borderRadius: "50%", background: "#fff", color: "#726A4E", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.9rem", animation: "burstIn 0.3s ease", boxShadow: "0 4px 16px rgba(0,0,0,0.3)" }}>♥</div></div>}
                   </button>
-                ))}
+                ); })}
               </div>
               <button onClick={skipAxis} disabled={saving} style={{ display: "block", width: "100%", textAlign: "center", background: "none", border: "none", color: "#9b8f7a", fontSize: "0.82rem", marginTop: 14, cursor: "pointer" }}>{saving ? "Setting up…" : "No preference →"}</button>
             </>);
@@ -3994,7 +4030,7 @@ function SharedListsSection({ user }) {
 
       {creating && (
         <div style={{ background: "#fff", border: "1px solid #f0ebe2", borderRadius: 14, padding: "0.9rem", marginBottom: 12 }}>
-          <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="e.g. London date spots" autoFocus style={slInput} />
+          <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="e.g. Date spots" autoFocus style={slInput} />
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6, margin: "10px 0" }}>
             {EMOJIS.map(em => (
               <button key={em} onClick={() => setNewEmoji(em)} style={{ width: 34, height: 34, borderRadius: 10, border: newEmoji === em ? "2px solid #726A4E" : "1px solid #e8e2d8", background: "#fff", fontSize: "1.05rem", cursor: "pointer" }}>{em}</button>
@@ -4260,7 +4296,7 @@ function PeopleScreen({ user, onSavePlan }) {
           <div style={{ fontSize: "0.76rem", color: "#9b8f7a", marginBottom: 10 }}>Send this to friends. When they open it, you're connected.</div>
           <div style={{ display: "flex", gap: 8 }}>
             <button className="btn-outline" style={{ marginTop: 0, flex: 1 }} onClick={() => { navigator.clipboard?.writeText(inviteLink); setCopied(true); setTimeout(() => setCopied(false), 2000); }}>{copied ? "✓ Copied" : "🔗 Copy link"}</button>
-            <button className="btn-outline" style={{ marginTop: 0, flex: 1 }} onClick={() => { if (navigator.share) navigator.share({ title: "Connect on Curated London", url: inviteLink }); else window.open(`https://wa.me/?text=${encodeURIComponent("Connect with me on Curated London: " + inviteLink)}`); }}>📤 Share</button>
+            <button className="btn-outline" style={{ marginTop: 0, flex: 1 }} onClick={() => { if (navigator.share) navigator.share({ title: "Connect on Curated", url: inviteLink }); else window.open(`https://wa.me/?text=${encodeURIComponent("Connect with me on Curated: " + inviteLink)}`); }}>📤 Share</button>
           </div>
         </div>
       </div>
@@ -4656,7 +4692,7 @@ export default function App() {
       const { data } = await supabase.from("profiles").select("name,email").eq("id", otherId).single();
       const nm = data?.name || (data?.email ? data.email.split("@")[0] : null) || "Someone";
       showToast(`🎉 ${nm} connected with you!`);
-      notify("New connection", `${nm} connected with you on Curated London`);
+      notify("New connection", `${nm} connected with you on Curated`);
       try { const s = new Set(JSON.parse(localStorage.getItem(SEEN) || "[]")); s.add(otherId); localStorage.setItem(SEEN, JSON.stringify([...s])); } catch (e) {}
     };
 
