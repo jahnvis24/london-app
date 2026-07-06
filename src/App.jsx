@@ -3586,6 +3586,111 @@ function LoginScreen({ onLogin }) {
   );
 }
 
+// First-run onboarding: name → interests → taste → visual picks. Shows once per account.
+// The visual step captures revealed preference AND seeds the user's Saves board.
+function Onboarding({ user, dbVenues, onDone }) {
+  const [step, setStep] = useState(0);
+  const [name, setName] = useState((user?.user_metadata?.full_name || "").split(" ")[0] || "");
+  const [interests, setInterests] = useState([]);
+  const [vibe, setVibe] = useState([]);
+  const [picks, setPicks] = useState([]);
+  const [liked, setLiked] = useState([]);
+  const [saving, setSaving] = useState(false);
+
+  const INTERESTS = [["Food & drink", "🍽️"], ["Nightlife & bars", "🍸"], ["Art & culture", "🎨"], ["Live music", "🎵"], ["Outdoors & active", "🌳"], ["Shopping & markets", "🛍️"], ["Coffee & cafés", "☕"], ["Wellness", "🧘"], ["Events & experiences", "🎫"]];
+  const VIBES = ["Aesthetic-first — dimly lit, design-led", "Hidden gems over hotspots", "Always trying somewhere new", "Loves a reliable regular", "Great value, not cheap", "Lively & social", "Quiet & low-key", "Late nights", "Early starts"];
+
+  // Pick 8 photogenic venues once the DB has loaded.
+  useEffect(() => {
+    if (picks.length || !(dbVenues || []).length) return;
+    const seen = new Set(); const uniq = [];
+    for (const v of dbVenues) { if (!v.photo_url || !v.name) continue; const k = v.name.toLowerCase(); if (seen.has(k)) continue; seen.add(k); uniq.push(v); }
+    for (let i = uniq.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [uniq[i], uniq[j]] = [uniq[j], uniq[i]]; }
+    setPicks(uniq.slice(0, 8));
+  }, [dbVenues]);
+
+  const toggleInterest = (l) => setInterests(p => p.includes(l) ? p.filter(x => x !== l) : (p.length >= 4 ? p : [...p, l]));
+  const toggleVibe = (l) => setVibe(p => p.includes(l) ? p.filter(x => x !== l) : [...p, l]);
+  const toggleLike = (id) => setLiked(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
+  const canNext = step === 0 ? !!name.trim() : step === 1 ? interests.length >= 3 : step === 2 ? vibe.length >= 1 : true;
+
+  async function finish(likedIds) {
+    setSaving(true);
+    const clean = name.trim() || "there";
+    try { await supabase.auth.updateUser({ data: { full_name: clean, onboarded: true, interests, vibe } }); } catch (e) {}
+    try { await supabase.from("profiles").upsert({ id: user.id, name: clean, email: user.email }); } catch (e) {}
+    const likedVenues = picks.filter(v => likedIds.includes(v.id));
+    if (likedVenues.length) {
+      const FOLDER = { restaurant: "Restaurants", cafe: "Cafés", bar: "Bars", nightlife: "Nightlife", market: "Markets", outdoor: "Outdoor", museum: "Museums", gallery: "Galleries", experience: "Experiences", event: "Events" };
+      const rows = likedVenues.map(v => { const { id, user_id, created_at, ...rest } = v; return { ...rest, user_id: user.id, folder: FOLDER[String(v.category || "").toLowerCase()] || "Other", status: "pending" }; });
+      try { await supabase.from("experiences").insert(rows); } catch (e) {}
+    }
+    try { localStorage.setItem("cl_onboarded_" + user.id, "1"); localStorage.setItem("cl_interests", JSON.stringify(interests)); localStorage.setItem("cl_vibe", JSON.stringify(vibe)); } catch (e) {}
+    setSaving(false);
+    onDone();
+  }
+  const next = () => { if (step < 3) setStep(step + 1); else finish(liked); };
+  const chip = (sel) => ({ padding: "10px 16px", borderRadius: 100, border: sel ? "1.5px solid #726A4E" : "1.5px solid #e3ddd0", background: sel ? "#726A4E" : "#fff", color: sel ? "#fff" : "#4a4438", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer", fontFamily: "'Aleo', sans-serif" });
+  const h = { fontFamily: "'Aleo', Georgia, serif", fontSize: "1.7rem", color: "#1c1c1a", marginBottom: 6 };
+  const sub = { fontSize: "0.9rem", color: "#9b8f7a", marginBottom: 20, lineHeight: 1.5 };
+
+  return (
+    <div style={{ minHeight: "100vh", background: "#f7f6f2", display: "flex", flexDirection: "column", maxWidth: 420, margin: "0 auto" }}>
+      <div style={{ padding: "2.5rem 1.5rem 0.5rem" }}>
+        <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
+          {[0, 1, 2, 3].map(i => <div key={i} style={{ flex: 1, height: 4, borderRadius: 4, background: i <= step ? "#726A4E" : "#e3ddd0", transition: "0.3s" }} />)}
+        </div>
+        {step > 0 && <button onClick={() => setStep(step - 1)} style={{ border: "none", background: "none", color: "#9b8f7a", fontSize: "0.85rem", cursor: "pointer", padding: 0 }}>← Back</button>}
+      </div>
+
+      <div style={{ flex: 1, padding: "0.75rem 1.5rem", overflowY: "auto" }}>
+        {step === 0 && (<>
+          <div style={h}>What's your name?</div>
+          <p style={sub}>So we can make Curated feel like yours.</p>
+          <input value={name} onChange={e => setName(e.target.value)} placeholder="First name" autoFocus onKeyDown={e => e.key === "Enter" && canNext && next()} style={{ width: "100%", padding: "14px 16px", borderRadius: 14, border: "1.5px solid #e3ddd0", background: "#fff", fontSize: "1rem", fontFamily: "'Aleo', sans-serif", color: "#1c1c1a", boxSizing: "border-box" }} />
+        </>)}
+
+        {step === 1 && (<>
+          <div style={h}>What are you into?</div>
+          <p style={sub}>Pick 3–4. We'll tune your recommendations around these.</p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+            {INTERESTS.map(([l, e]) => <button key={l} onClick={() => toggleInterest(l)} style={chip(interests.includes(l))}>{e} {l}</button>)}
+          </div>
+        </>)}
+
+        {step === 2 && (<>
+          <div style={h}>What's your taste?</div>
+          <p style={sub}>Pick whatever sounds like you.</p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+            {VIBES.map(l => <button key={l} onClick={() => toggleVibe(l)} style={chip(vibe.includes(l))}>{l}</button>)}
+          </div>
+        </>)}
+
+        {step === 3 && (<>
+          <div style={h}>Which would you save?</div>
+          <p style={sub}>Tap the spots you'd actually want to go — we'll start your board with them.</p>
+          {picks.length === 0 ? <div style={{ fontSize: "0.85rem", color: "#9b8f7a" }}>Loading places…</div> : (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              {picks.map(v => { const on = liked.includes(v.id); return (
+                <button key={v.id} onClick={() => toggleLike(v.id)} style={{ position: "relative", border: "none", padding: 0, borderRadius: 16, overflow: "hidden", cursor: "pointer", aspectRatio: "3/4", background: "#e9e4da", outline: on ? "3px solid #726A4E" : "none", outlineOffset: -3 }}>
+                  <img src={v.photo_url} alt={v.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  <div style={{ position: "absolute", inset: 0, background: on ? "rgba(114,106,78,0.28)" : "linear-gradient(transparent 55%, rgba(0,0,0,0.7))" }} />
+                  <div style={{ position: "absolute", left: 8, right: 8, bottom: 8, textAlign: "left", color: "#fff", fontSize: "0.78rem", fontWeight: 700, textShadow: "0 1px 4px rgba(0,0,0,0.75)" }}>{v.name}</div>
+                  <div style={{ position: "absolute", top: 8, right: 8, width: 28, height: 28, borderRadius: "50%", background: on ? "#726A4E" : "rgba(255,255,255,0.92)", color: on ? "#fff" : "#726A4E", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.95rem", fontWeight: 700 }}>{on ? "♥" : "+"}</div>
+                </button>
+              ); })}
+            </div>
+          )}
+        </>)}
+      </div>
+
+      <div style={{ padding: "0.75rem 1.5rem 1.5rem" }}>
+        <button onClick={next} disabled={!canNext || saving} style={{ width: "100%", padding: "15px", borderRadius: 14, border: "none", background: (canNext && !saving) ? "#726A4E" : "#cfc6b5", color: "#fff", fontSize: "0.95rem", fontWeight: 700, fontFamily: "'Aleo', sans-serif", cursor: (canNext && !saving) ? "pointer" : "default" }}>{saving ? "Setting up…" : step === 3 ? (liked.length ? `Save ${liked.length} & explore ✦` : "Finish & explore ✦") : "Continue"}</button>
+      </div>
+    </div>
+  );
+}
+
 function RatingPrompt({ plan, user, onDismiss, onSubmit }) {
   const [overall, setOverall] = useState(0);
   const [stopRatings, setStopRatings] = useState({});
@@ -4155,6 +4260,7 @@ export default function App() {
   const [pendingGen, setPendingGen] = useState(false); // fire generate() after ans/times state commits
   const [activeTab, setActiveTab] = useState("plans"); // Plans is the landing tab; planning is a CTA there
   const [captureSignal, setCaptureSignal] = useState(0); // bump to pop the global capture sheet on Saves
+  const [onboardDone, setOnboardDone] = useState(false); // set true when first-run onboarding finishes
   const [calSignal, setCalSignal] = useState(0); // bump to jump Saves to its Calendar view
   const [quizStep, setQuizStep] = useState(-1);
   const [ans, setAns] = useState({});
@@ -4529,6 +4635,14 @@ export default function App() {
     <>
       <style>{styles}</style>
       <LoginScreen />
+    </>
+  );
+
+  const needsOnboarding = user && !onboardDone && !user.user_metadata?.onboarded && !localStorage.getItem("cl_onboarded_" + user.id);
+  if (needsOnboarding) return (
+    <>
+      <style>{styles}</style>
+      <Onboarding user={user} dbVenues={dbVenues} onDone={() => setOnboardDone(true)} />
     </>
   );
 
