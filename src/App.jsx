@@ -1131,7 +1131,7 @@ function MyPlansScreen({ plans, onViewPlan, onNewPlan, onSchedule, dbVenues }) {
     <div style={{ padding: "1.75rem 1.5rem 0.5rem" }}>
       <div style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "2rem", color: "#1c1c1a", lineHeight: 1.05 }}>Itineraries</div>
       <div style={{ fontSize: "0.86rem", color: "#9b8f7a", marginTop: 5 }}>Turn your saved spots into plans you'll actually do.</div>
-      <button onClick={onNewPlan} style={{ width: "100%", marginTop: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "#726A4E", color: "#fff", border: "none", borderRadius: 14, padding: "15px", fontSize: "0.95rem", fontWeight: 600, cursor: "pointer", boxShadow: "0 3px 12px rgba(114,106,78,0.28)" }}>✦ Plan my day or night</button>
+      <button data-tour="plan-cta" onClick={onNewPlan} style={{ width: "100%", marginTop: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "#726A4E", color: "#fff", border: "none", borderRadius: 14, padding: "15px", fontSize: "0.95rem", fontWeight: 600, cursor: "pointer", boxShadow: "0 3px 12px rgba(114,106,78,0.28)" }}>✦ Plan my day or night</button>
     </div>
   );
   const CalIcon = <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>;
@@ -1819,7 +1819,7 @@ function PreferencesScreen({ preferences, setPreferences, user }) {
 }
 
 // Profile / settings hub — folds in "For me" (prefs) and Admin so they're off the nav bar.
-function MeScreen({ user, preferences, setPreferences, isAdmin, onBadgeUpdate, adminBadge }) {
+function MeScreen({ user, preferences, setPreferences, isAdmin, onBadgeUpdate, adminBadge, onStartTour }) {
   const [view, setView] = useState(null); // null | "prefs" | "admin"
   const displayName = user?.user_metadata?.full_name || (user?.email ? user.email.split("@")[0] : "You");
   const avatar = user?.user_metadata?.avatar_url;
@@ -1852,6 +1852,13 @@ function MeScreen({ user, preferences, setPreferences, isAdmin, onBadgeUpdate, a
         </div>
       </div>
       <div style={{ padding: "0 1.5rem 2rem" }}>
+        {onStartTour && (
+          <button style={row} onClick={onStartTour}>
+            <span style={{ fontSize: "1.1rem", width: 24, textAlign: "center" }}>🧭</span>
+            <span style={{ flex: 1 }}><span style={{ display: "block", fontSize: "0.9rem", fontWeight: 600, color: "#1c1c1a" }}>Take a tour</span><span style={{ display: "block", fontSize: "0.74rem", color: "#9b8f7a" }}>A quick walkthrough of everything the app does</span></span>
+            <span style={{ color: "#c9bfae", fontSize: "1.2rem" }}>›</span>
+          </button>
+        )}
         <button style={row} onClick={() => setView("prefs")}>
           <span style={{ fontSize: "1.1rem", width: 24, textAlign: "center" }}>🎯</span>
           <span style={{ flex: 1 }}><span style={{ display: "block", fontSize: "0.9rem", fontWeight: 600, color: "#1c1c1a" }}>For me</span><span style={{ display: "block", fontSize: "0.74rem", color: "#9b8f7a" }}>Tune your Discover feed</span></span>
@@ -3506,11 +3513,11 @@ Return a JSON object with this exact structure:
               <div style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a" }}>Your lists ({saves.length} spot{saves.length !== 1 ? "s" : ""})</div>
               <button onClick={createFolder} style={{ fontSize: "0.74rem", padding: "6px 12px", borderRadius: 100, border: "1.5px solid #726A4E", background: "#fff", color: "#726A4E", fontWeight: 600, cursor: "pointer" }}>+ New list</button>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              {folderNames.map(f => {
+            <div data-tour="saves-lists" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              {folderNames.map((f, fi) => {
                 const items = grouped[f] || [];
                 return (
-                  <div key={f} style={{ position: "relative", borderRadius: 16, overflow: "hidden", boxShadow: "0 2px 8px rgba(0,0,0,0.06)", background: "#fff" }}>
+                  <div key={f} data-tour={fi === 0 ? "saves-list-card" : undefined} style={{ position: "relative", borderRadius: 16, overflow: "hidden", boxShadow: "0 2px 8px rgba(0,0,0,0.06)", background: "#fff" }}>
                     <div onClick={() => setOpenFolder(f)} style={{ cursor: "pointer" }}>
                       <ListCover items={items} />
                       <div style={{ padding: "12px 14px" }}>
@@ -3529,7 +3536,7 @@ Return a JSON object with this exact structure:
                 );
               })}
             </div>
-            <button className="btn btn-teal" style={{ marginTop: "1rem" }} onClick={() => onBuildPlan(saves)}>Build a plan from your spots ✦</button>
+            <button data-tour="saves-build" className="btn btn-teal" style={{ marginTop: "1rem" }} onClick={() => onBuildPlan(saves)}>Build a plan from your spots ✦</button>
           </>
         )}
         {saves.length > 0 && savedView === "folders" && openFolder && (
@@ -4392,7 +4399,7 @@ function PeopleScreen({ user, onSavePlan }) {
       {msg && <div style={{ margin: "0 1.5rem 0.75rem", background: "#eef3d8", color: "#4B342F", borderRadius: 12, padding: "10px 12px", fontSize: "0.82rem" }}>{msg}</div>}
 
       <div style={{ padding: "0 1.5rem 1rem" }}>
-        <div style={{ background: "#fff", border: "1px solid #f0ebe2", borderRadius: 16, padding: "1rem" }}>
+        <div data-tour="invite" style={{ background: "#fff", border: "1px solid #f0ebe2", borderRadius: 16, padding: "1rem" }}>
           <div style={{ fontWeight: 600, color: "#1c1c1a", marginBottom: 4 }}>Your invite link</div>
           <div style={{ fontSize: "0.76rem", color: "#9b8f7a", marginBottom: 10 }}>Send this to friends. When they open it, you're connected.</div>
           <div style={{ display: "flex", gap: 8 }}>
@@ -4402,7 +4409,7 @@ function PeopleScreen({ user, onSavePlan }) {
         </div>
       </div>
 
-      <SharedListsSection user={user} />
+      <div data-tour="shared-lists"><SharedListsSection user={user} /></div>
 
       <div style={{ padding: "0 1.5rem 1rem" }}>
         <div style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a", margin: "0.25rem 0 0.6rem" }}>Shared with you ({shares.length})</div>
@@ -4451,6 +4458,68 @@ function PeopleScreen({ user, onSavePlan }) {
   );
 }
 
+// ── GUIDED PRODUCT TOUR ───────────────────────────────────────
+// Whole-app walkthrough: auto-navigates between tabs and spotlights the key
+// control on each, driven by Back / Next. Launched from Me → "Take a tour".
+// Targets are found by [data-tour] selector; a missing target degrades to a
+// centred card (never traps the user).
+const PRODUCT_TOUR = [
+  { tab: "saved", selector: "[data-tour='saves-lists']", title: "Your saves live here", body: "Everything you capture — screenshots, TikTok, Instagram, or added by hand — lands on your board, grouped into lists." },
+  { tab: "saved", selector: "[data-tour='saves-list-card']", title: "Tap in to any spot", body: "Open a list, then tap a spot to see its star rating, photos, full description and a link straight to booking." },
+  { tab: "saved", selector: "[data-tour='saves-build']", title: "Turn saves into a plan", body: "Any spot — or a whole list — can become a full day or night itinerary. We route it for you." },
+  { tab: "plans", selector: "[data-tour='plan-cta']", title: "Plan a day or night", body: "Or start fresh here. Answer a few quick questions and we'll build the itinerary from scratch." },
+  { tab: "people", selector: "[data-tour='invite']", title: "Add your friends", body: "Share your invite link. Once a friend joins you're connected — and can see each other's saves." },
+  { tab: "people", selector: "[data-tour='shared-lists']", title: "Plan together", body: "Build a shared bucket list with a friend and send spots back and forth — plan your next outing as a team." },
+];
+
+function AppProductTour({ steps, step, onNext, onBack, onDone, onSkip }) {
+  const s = steps[step];
+  const last = step === steps.length - 1;
+  const [rect, setRect] = useState(null);
+  const scrolledFor = useRef(-1);
+  useEffect(() => {
+    let raf, dead = false;
+    const tick = () => {
+      const el = document.querySelector(s.selector);
+      const r = el && el.getBoundingClientRect();
+      if (r && (r.width || r.height)) {
+        if (scrolledFor.current !== step) {
+          if (r.top < 90 || r.bottom > window.innerHeight - 200) el.scrollIntoView({ block: "center", behavior: "smooth" });
+          scrolledFor.current = step;
+        }
+        setRect({ t: r.top, l: r.left, w: r.width, h: r.height });
+      } else { setRect(null); }
+      if (!dead) raf = requestAnimationFrame(tick);
+    };
+    tick();
+    return () => { dead = true; cancelAnimationFrame(raf); };
+  }, [s.selector, step]);
+
+  const pad = 6;
+  const hole = rect && { position: "fixed", top: rect.t - pad, left: rect.l - pad, width: rect.w + pad * 2, height: rect.h + pad * 2, borderRadius: 14, boxShadow: "0 0 0 9999px rgba(20,18,14,0.66)", border: "2px solid #DFEF87", pointerEvents: "none", zIndex: 3001, transition: "top 0.25s ease, left 0.25s ease, width 0.25s ease, height 0.25s ease" };
+  const below = !rect || (rect.t + rect.h / 2) < window.innerHeight * 0.52;
+  const tip = { position: "fixed", left: 12, right: 12, maxWidth: 400, margin: "0 auto", background: "#fff", borderRadius: 18, padding: "16px 16px 14px", boxShadow: "0 12px 40px rgba(0,0,0,0.3)", zIndex: 3002, pointerEvents: "auto", ...(rect ? (below ? { top: Math.min(rect.t + rect.h + pad + 12, window.innerHeight - 230) } : { bottom: window.innerHeight - rect.t + pad + 12 }) : { top: "42%" }) };
+  const btn = { border: "none", borderRadius: 100, padding: "9px 18px", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer" };
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 3000 }}>
+      <div style={{ position: "fixed", inset: 0, background: rect ? "transparent" : "rgba(20,18,14,0.66)", pointerEvents: "auto" }} />
+      {rect && <div style={hole} />}
+      <div style={tip}>
+        <div style={{ fontSize: "0.66rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#9b8f7a", fontWeight: 700, marginBottom: 5 }}>Step {step + 1} of {steps.length}</div>
+        <div style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "1.15rem", color: "#1c1c1a", marginBottom: 5 }}>{s.title}</div>
+        <div style={{ fontSize: "0.86rem", color: "#4a4438", lineHeight: 1.5, marginBottom: 14 }}>{s.body}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <button onClick={onSkip} style={{ ...btn, background: "transparent", color: "#9b8f7a", padding: "9px 4px" }}>Skip</button>
+          <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+            {step > 0 && <button onClick={onBack} style={{ ...btn, background: "#f0ebe2", color: "#4a4438" }}>Back</button>}
+            <button onClick={last ? onDone : onNext} style={{ ...btn, background: "#726A4E", color: "#fff" }}>{last ? "Done" : "Next"}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── MAIN APP ─────────────────────────────────────────────────
 export default function App() {
   const [user, setUser] = useState(null);
@@ -4460,6 +4529,7 @@ export default function App() {
   const [barCrawl, setBarCrawl] = useState(null);   // { seed: [...] } -> BarCrawlQuiz
   const [pendingGen, setPendingGen] = useState(false); // fire generate() after ans/times state commits
   const [activeTab, setActiveTab] = useState("plans"); // Plans is the landing tab; planning is a CTA there
+  const [tourStep, setTourStep] = useState(-1); // -1 = off; guided product tour (Me → "Take a tour")
   const [captureSignal, setCaptureSignal] = useState(0); // bump to pop the global capture sheet on Saves
   const [onboardDone, setOnboardDone] = useState(false); // set true when first-run onboarding finishes
   const [splashDone, setSplashDone] = useState(() => { try { return !!localStorage.getItem("cl_splash"); } catch (e) { return false; } });
@@ -4485,6 +4555,16 @@ export default function App() {
   });
   const timerRef = useRef(null);
   const isAdmin = user?.email === ADMIN_EMAIL;
+
+  // Guided product tour: each step drives which tab is shown. Also expose a
+  // console hook so the tour can be replayed for testing/support.
+  useEffect(() => {
+    if (tourStep < 0 || tourStep >= PRODUCT_TOUR.length) return;
+    const t = PRODUCT_TOUR[tourStep].tab;
+    setActiveTab(t);
+    if (t !== "home") { setQuizStep(-1); setViewingPlan(null); }
+  }, [tourStep]);
+  useEffect(() => { window.__startTour = () => setTourStep(0); }, []);
 
   // Auth listener + login tracking
   useEffect(() => {
@@ -4880,7 +4960,7 @@ export default function App() {
           )}
           <SavedScreen user={user} visible={activeTab === "saved"} openSignal={captureSignal} calendarSignal={calSignal} onShare={setShareItem} onBuildPlan={(saves) => { setResult(null); setError(null); setViewingPlan(null); setActiveTab("home"); setAns({ savedVenues: saves }); setQuizStep(0); }} onBarCrawl={(seed) => setBarCrawl({ seed: seed || [] })} />
         </div>
-        {activeTab === "me" && <MeScreen user={user} preferences={preferences} setPreferences={setPreferences} isAdmin={isAdmin} onBadgeUpdate={setAdminBadge} adminBadge={adminBadge} />}
+        {activeTab === "me" && <MeScreen user={user} preferences={preferences} setPreferences={setPreferences} isAdmin={isAdmin} onBadgeUpdate={setAdminBadge} adminBadge={adminBadge} onStartTour={() => setTourStep(0)} />}
 
         {!showQuiz && !showResult && !showViewingPlan && (
           <button className="capture-fab" aria-label="Save a place"
@@ -4920,6 +5000,16 @@ export default function App() {
         }} />}
         {loading && <SparkleLoader label={ans._barCrawl ? "Curating your bar crawl…" : "Curating your plan…"} />}
 
+        {tourStep >= 0 && (
+          <AppProductTour
+            steps={PRODUCT_TOUR}
+            step={tourStep}
+            onNext={() => setTourStep(s => Math.min(s + 1, PRODUCT_TOUR.length - 1))}
+            onBack={() => setTourStep(s => Math.max(0, s - 1))}
+            onDone={() => setTourStep(-1)}
+            onSkip={() => setTourStep(-1)}
+          />
+        )}
       </div>
     </>
   );
