@@ -1665,6 +1665,18 @@ function AdminScreen({ onBadgeUpdate }) {
     await load();
   }
 
+  const [bulkBusy, setBulkBusy] = useState(false);
+  async function approveAll() {
+    if (pending.length === 0) return;
+    if (!window.confirm(`Approve all ${pending.length} pending item${pending.length !== 1 ? "s" : ""}?`)) return;
+    setBulkBusy(true);
+    // Apply any per-card zone/event edits the admin already made, then flip the rest to approved.
+    for (const id of Object.keys(zoneEdits)) { if (pending.some(p => p.id === id)) await approve(id).catch(() => {}); }
+    await supabase.from("experiences").update({ status: "approved" }).eq("status", "pending");
+    setBulkBusy(false);
+    await load();
+  }
+
   if (loading) return <div className="loading"><div className="loading-ring" /><div className="loading-sub">Loading pending items...</div></div>;
 
   return (
@@ -1675,9 +1687,16 @@ function AdminScreen({ onBadgeUpdate }) {
       </div>
 
       <div style={{ padding: "0 1.5rem 1rem" }}>
-        <button className="btn-outline" style={{ marginTop: 0, marginBottom: "1rem" }} onClick={() => setShowUsers(!showUsers)}>
-          {showUsers ? "Hide" : "Show"} users ({users.length})
-        </button>
+        <div style={{ display: "flex", gap: 8, marginBottom: "1rem" }}>
+          <button className="btn-outline" style={{ marginTop: 0, marginBottom: 0, flex: 1 }} onClick={() => setShowUsers(!showUsers)}>
+            {showUsers ? "Hide" : "Show"} users ({users.length})
+          </button>
+          {pending.length > 0 && (
+            <button className="btn-approve" style={{ flex: 1 }} disabled={bulkBusy} onClick={approveAll}>
+              {bulkBusy ? "Approving…" : `✓ Approve all (${pending.length})`}
+            </button>
+          )}
+        </div>
         {showUsers && users.length > 0 && (
           <div style={{ marginBottom: "1rem" }}>
             {users.map(u => (
