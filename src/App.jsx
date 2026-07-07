@@ -2069,7 +2069,7 @@ function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan, user, onSpotUpdate
           {cap(cat)}{spot.zone ? ` · ${spot.zone}` : ""}{spot.area ? ` · ${spot.area}` : ""}{spot.google_rating ? ` · ⭐ ${spot.google_rating}` : ""}{spot.price ? ` · ${spot.price}` : ""}
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, padding: "10px 12px", background: "#fff", border: "1px solid #f0ebe2", borderRadius: 12 }}>
+        <div data-tour="spot-rating" style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, padding: "10px 12px", background: "#fff", border: "1px solid #f0ebe2", borderRadius: 12 }}>
           <div>
             <div style={{ fontSize: "0.66rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "#9b8f7a", fontWeight: 600, marginBottom: 2 }}>Your rating</div>
             <div style={{ fontSize: "1.3rem", letterSpacing: 2 }}>
@@ -2089,7 +2089,7 @@ function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan, user, onSpotUpdate
         {spot.vibe_tags?.length > 0 && <div style={{ display: "flex", flexWrap: "wrap", gap: 5, margin: "8px 0 16px" }}>{spot.vibe_tags.slice(0, 6).map((t, i) => <span key={i} style={{ fontSize: "0.66rem", background: "#f0ebe2", color: "#6b5e4e", padding: "3px 9px", borderRadius: 100 }}>{String(t).replace(/_/g, " ")}</span>)}</div>}
 
         <div style={{ marginTop: 14 }}>
-          <Action href={bookUrl} primary>{spot.website ? "🔗 Book / Website" : "🔗 Open in Google Maps"}</Action>
+          <div data-tour="spot-book"><Action href={bookUrl} primary>{spot.website ? "🔗 Book / Website" : "🔗 Open in Google Maps"}</Action></div>
           <div style={{ padding: "12px", background: "#fff", border: "1.5px solid #ddd8ce", borderRadius: 12, marginBottom: 8 }}>
             <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "#4a4438", marginBottom: 8 }}>📅 Add to your calendar</div>
             <div style={{ display: "flex", gap: 8 }}>
@@ -2630,7 +2630,7 @@ function TourSpotlight({ targetRef, step, last, onDone, onSkip }) {
   );
 }
 
-function SavedScreen({ user, onBuildPlan, onShare, onBarCrawl, openSignal, calendarSignal, visible }) {
+function SavedScreen({ user, onBuildPlan, onShare, onBarCrawl, openSignal, calendarSignal, visible, tourWantsSpot }) {
   const [saves, setSaves] = useState([]);
   const [loading, setLoading] = useState(true);
   const [mediaType, setMediaType] = useState("tiktok"); // tiktok | instagram | screenshot | maps | mapslist
@@ -2649,6 +2649,18 @@ function SavedScreen({ user, onBuildPlan, onShare, onBarCrawl, openSignal, calen
   const [menuFolder, setMenuFolder] = useState(null);
   const [movingSpot, setMovingSpot] = useState(null);
   const [detailSpot, setDetailSpot] = useState(null);
+  // Product tour: when it reaches the "inside a spot" steps, open a real saved
+  // spot's detail sheet so its rating / photos / book button can be spotlighted;
+  // close it again when those steps end. Keyed only on tourWantsSpot so normal
+  // detail opens/closes are never disturbed.
+  useEffect(() => {
+    if (tourWantsSpot) {
+      const first = saves[0];
+      if (first) { setOpenFolder(null); setSavedView("folders"); setDetailSpot(first); }
+    } else {
+      setDetailSpot(null);
+    }
+  }, [tourWantsSpot]);
   const [captureOpen, setCaptureOpen] = useState(false); // collapse the "add a spot" controls by default
   const [captureTab, setCaptureTab] = useState("screenshot"); // Save modal: screenshot | link | manual
 
@@ -4463,9 +4475,12 @@ function PeopleScreen({ user, onSavePlan }) {
 // control on each, driven by Back / Next. Launched from Me → "Take a tour".
 // Targets are found by [data-tour] selector; a missing target degrades to a
 // centred card (never traps the user).
+// Steps 1 & 2 open a real saved spot's detail sheet (driven via tourWantsSpot on
+// SavedScreen) so the rating / photos / book button are spotlighted in situ.
 const PRODUCT_TOUR = [
   { tab: "saved", selector: "[data-tour='saves-lists']", title: "Your saves live here", body: "Everything you capture — screenshots, TikTok, Instagram, or added by hand — lands on your board, grouped into lists." },
-  { tab: "saved", selector: "[data-tour='saves-list-card']", title: "Tap in to any spot", body: "Open a list, then tap a spot to see its star rating, photos, full description and a link straight to booking." },
+  { tab: "saved", selector: "[data-tour='spot-rating']", title: "Inside a spot", body: "Every saved place opens like this — swipe the photos up top, rate it and see the average, and read the full description below." },
+  { tab: "saved", selector: "[data-tour='spot-book']", title: "Book it in a tap", body: "Go straight to booking or the venue's website — and add it to your calendar right here." },
   { tab: "saved", selector: "[data-tour='saves-build']", title: "Turn saves into a plan", body: "Any spot — or a whole list — can become a full day or night itinerary. We route it for you." },
   { tab: "plans", selector: "[data-tour='plan-cta']", title: "Plan a day or night", body: "Or start fresh here. Answer a few quick questions and we'll build the itinerary from scratch." },
   { tab: "people", selector: "[data-tour='invite']", title: "Add your friends", body: "Share your invite link. Once a friend joins you're connected — and can see each other's saves." },
@@ -4958,7 +4973,7 @@ export default function App() {
               <button onClick={() => setShowStarter(false)} style={{ border: "none", background: "none", color: "#9b8f7a", cursor: "pointer", fontSize: "1.1rem", lineHeight: 1 }}>×</button>
             </div>
           )}
-          <SavedScreen user={user} visible={activeTab === "saved"} openSignal={captureSignal} calendarSignal={calSignal} onShare={setShareItem} onBuildPlan={(saves) => { setResult(null); setError(null); setViewingPlan(null); setActiveTab("home"); setAns({ savedVenues: saves }); setQuizStep(0); }} onBarCrawl={(seed) => setBarCrawl({ seed: seed || [] })} />
+          <SavedScreen user={user} visible={activeTab === "saved"} tourWantsSpot={tourStep === 1 || tourStep === 2} openSignal={captureSignal} calendarSignal={calSignal} onShare={setShareItem} onBuildPlan={(saves) => { setResult(null); setError(null); setViewingPlan(null); setActiveTab("home"); setAns({ savedVenues: saves }); setQuizStep(0); }} onBarCrawl={(seed) => setBarCrawl({ seed: seed || [] })} />
         </div>
         {activeTab === "me" && <MeScreen user={user} preferences={preferences} setPreferences={setPreferences} isAdmin={isAdmin} onBadgeUpdate={setAdminBadge} adminBadge={adminBadge} onStartTour={() => setTourStep(0)} />}
 
