@@ -1819,7 +1819,7 @@ function PreferencesScreen({ preferences, setPreferences, user }) {
 }
 
 // Profile / settings hub — folds in "For me" (prefs) and Admin so they're off the nav bar.
-function MeScreen({ user, preferences, setPreferences, isAdmin, onBadgeUpdate, adminBadge, onStartTour }) {
+function MeScreen({ user, preferences, setPreferences, isAdmin, onBadgeUpdate, adminBadge, onStartTour, onStartImportTour }) {
   const [view, setView] = useState(null); // null | "prefs" | "admin"
   const displayName = user?.user_metadata?.full_name || (user?.email ? user.email.split("@")[0] : "You");
   const avatar = user?.user_metadata?.avatar_url;
@@ -1856,6 +1856,13 @@ function MeScreen({ user, preferences, setPreferences, isAdmin, onBadgeUpdate, a
           <button style={row} onClick={onStartTour}>
             <span style={{ fontSize: "1.1rem", width: 24, textAlign: "center" }}>🧭</span>
             <span style={{ flex: 1 }}><span style={{ display: "block", fontSize: "0.9rem", fontWeight: 600, color: "#1c1c1a" }}>Take a tour</span><span style={{ display: "block", fontSize: "0.74rem", color: "#9b8f7a" }}>A quick walkthrough of everything the app does</span></span>
+            <span style={{ color: "#c9bfae", fontSize: "1.2rem" }}>›</span>
+          </button>
+        )}
+        {onStartImportTour && (
+          <button style={row} onClick={onStartImportTour}>
+            <span style={{ fontSize: "1.1rem", width: 24, textAlign: "center" }}>✋</span>
+            <span style={{ flex: 1 }}><span style={{ display: "block", fontSize: "0.9rem", fontWeight: 600, color: "#1c1c1a" }}>Try it yourself</span><span style={{ display: "block", fontSize: "0.74rem", color: "#9b8f7a" }}>Add your first save, hands-on — learn by doing</span></span>
             <span style={{ color: "#c9bfae", fontSize: "1.2rem" }}>›</span>
           </button>
         )}
@@ -2630,7 +2637,7 @@ function TourSpotlight({ targetRef, step, last, onDone, onSkip }) {
   );
 }
 
-function SavedScreen({ user, onBuildPlan, onShare, onBarCrawl, openSignal, calendarSignal, visible, tourWantsSpot }) {
+function SavedScreen({ user, onBuildPlan, onShare, onBarCrawl, openSignal, calendarSignal, visible, tourWantsSpot, replayImportSignal }) {
   const [saves, setSaves] = useState([]);
   const [loading, setLoading] = useState(true);
   const [mediaType, setMediaType] = useState("tiktok"); // tiktok | instagram | screenshot | maps | mapslist
@@ -2674,6 +2681,13 @@ function SavedScreen({ user, onBuildPlan, onShare, onBarCrawl, openSignal, calen
   useEffect(() => { try { if (tourStep < 0) localStorage.removeItem("cl_tour_step"); else localStorage.setItem("cl_tour_step", String(tourStep)); } catch (e) {} }, [tourStep]);
   // Hidden replay hook (no settings entry): run window.__replayImportTour() to re-trigger.
   useEffect(() => { window.__replayImportTour = () => { try { localStorage.removeItem("cl_tour_import_done"); localStorage.removeItem("cl_tour_step"); } catch (e) {} setTourStep(0); }; }, []);
+  // Launch the hands-on walkthrough on demand (Me → "Try it yourself"): reset the
+  // capture UI to its opening state and start at step 0.
+  useEffect(() => {
+    if (!replayImportSignal) return;
+    try { localStorage.removeItem("cl_tour_import_done"); localStorage.removeItem("cl_tour_step"); } catch (e) {}
+    setCaptureOpen(false); setOpenFolder(null); setSavedView("folders"); setDetailSpot(null); setTourStep(0);
+  }, [replayImportSignal]);
   const tourRef = tourStep === 0 ? tourBtnRef : tourStep === 1 ? tourSelRef : tourStep === 2 ? tourSaveRef : tourListRef;
   // Advance on the REAL action: parse completes (preview appears) → save completes (preview clears).
   useEffect(() => {
@@ -4545,6 +4559,7 @@ export default function App() {
   const [pendingGen, setPendingGen] = useState(false); // fire generate() after ans/times state commits
   const [activeTab, setActiveTab] = useState("plans"); // Plans is the landing tab; planning is a CTA there
   const [tourStep, setTourStep] = useState(-1); // -1 = off; guided product tour (Me → "Take a tour")
+  const [importSignal, setImportSignal] = useState(0); // bump to launch the hands-on "add a save" walkthrough
   const [captureSignal, setCaptureSignal] = useState(0); // bump to pop the global capture sheet on Saves
   const [onboardDone, setOnboardDone] = useState(false); // set true when first-run onboarding finishes
   const [splashDone, setSplashDone] = useState(() => { try { return !!localStorage.getItem("cl_splash"); } catch (e) { return false; } });
@@ -4973,9 +4988,9 @@ export default function App() {
               <button onClick={() => setShowStarter(false)} style={{ border: "none", background: "none", color: "#9b8f7a", cursor: "pointer", fontSize: "1.1rem", lineHeight: 1 }}>×</button>
             </div>
           )}
-          <SavedScreen user={user} visible={activeTab === "saved"} tourWantsSpot={tourStep === 1 || tourStep === 2} openSignal={captureSignal} calendarSignal={calSignal} onShare={setShareItem} onBuildPlan={(saves) => { setResult(null); setError(null); setViewingPlan(null); setActiveTab("home"); setAns({ savedVenues: saves }); setQuizStep(0); }} onBarCrawl={(seed) => setBarCrawl({ seed: seed || [] })} />
+          <SavedScreen user={user} visible={activeTab === "saved"} tourWantsSpot={tourStep === 1 || tourStep === 2} replayImportSignal={importSignal} openSignal={captureSignal} calendarSignal={calSignal} onShare={setShareItem} onBuildPlan={(saves) => { setResult(null); setError(null); setViewingPlan(null); setActiveTab("home"); setAns({ savedVenues: saves }); setQuizStep(0); }} onBarCrawl={(seed) => setBarCrawl({ seed: seed || [] })} />
         </div>
-        {activeTab === "me" && <MeScreen user={user} preferences={preferences} setPreferences={setPreferences} isAdmin={isAdmin} onBadgeUpdate={setAdminBadge} adminBadge={adminBadge} onStartTour={() => setTourStep(0)} />}
+        {activeTab === "me" && <MeScreen user={user} preferences={preferences} setPreferences={setPreferences} isAdmin={isAdmin} onBadgeUpdate={setAdminBadge} adminBadge={adminBadge} onStartTour={() => setTourStep(0)} onStartImportTour={() => { setTourStep(-1); setActiveTab("saved"); setImportSignal(n => n + 1); }} />}
 
         {!showQuiz && !showResult && !showViewingPlan && (
           <button className="capture-fab" aria-label="Save a place"
