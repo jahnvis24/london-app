@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
+import qrcode from "qrcode-generator";
 
 // ── SUPABASE ─────────────────────────────────────────────────
 const supabase = createClient(
@@ -4384,8 +4385,48 @@ function PeopleScreen({ user, onSavePlan }) {
   const [copied, setCopied] = useState(false);
   const [viewing, setViewing] = useState(null);
   const [msg, setMsg] = useState("");
+  const [myCode, setMyCode] = useState("");
+  const [codeCopied, setCodeCopied] = useState(false);
+  const [codeInput, setCodeInput] = useState("");
+  const [connecting, setConnecting] = useState(false);
   const inviteLink = `https://london-app.vercel.app/?invite=${user.id}`;
   const nameOf = (p) => p?.name || (p?.email ? p.email.split("@")[0] : null) || "Friend";
+
+  // QR of the invite link — a friend scans it with their phone camera, the link
+  // opens, and the existing ?invite handler connects the two of you.
+  const qrHtml = (() => { try { const qr = qrcode(0, "M"); qr.addData(inviteLink); qr.make(); return qr.createSvgTag({ cellSize: 4, margin: 1, scalable: true }); } catch (e) { return ""; } })();
+
+  // Short, typeable code (no ambiguous characters). Stored on the profile so a
+  // friend can type it to connect without scanning.
+  async function ensureCode() {
+    try {
+      const { data } = await supabase.from("profiles").select("friend_code").eq("id", user.id).single();
+      if (data?.friend_code) { setMyCode(data.friend_code); return; }
+      const AL = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+      for (let i = 0; i < 6; i++) {
+        let c = ""; for (let n = 0; n < 6; n++) c += AL[Math.floor(Math.random() * AL.length)];
+        const { error } = await supabase.from("profiles").update({ friend_code: c }).eq("id", user.id);
+        if (!error) { setMyCode(c); return; } // retry on the rare unique-index clash
+      }
+    } catch (e) {}
+  }
+
+  async function connectByCode() {
+    const code = codeInput.trim().toUpperCase();
+    if (code.length < 4) { setMsg("Enter your friend's code."); return; }
+    if (code === myCode) { setMsg("That's your own code!"); return; }
+    setConnecting(true); setMsg("");
+    try {
+      const { data } = await supabase.from("profiles").select("id,name").eq("friend_code", code).maybeSingle();
+      if (!data?.id) { setMsg("No one found with that code — double-check it."); setConnecting(false); return; }
+      const [a, b] = [user.id, data.id].sort();
+      const { error } = await supabase.from("connections").upsert({ user_a: a, user_b: b }, { onConflict: "user_a,user_b" });
+      if (error) throw error;
+      setMsg(`Connected with ${data.name || "your friend"}! 🎉`); setCodeInput("");
+      await load();
+    } catch (e) { setMsg("Couldn't connect: " + e.message); }
+    setConnecting(false);
+  }
 
   async function load() {
     setLoading(true);
@@ -4399,7 +4440,7 @@ function PeopleScreen({ user, onSavePlan }) {
     setShares((sh || []).map(s => ({ ...s, from: prof[s.from_user] || {} })));
     setLoading(false);
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); ensureCode(); }, []);
 
   async function saveShare(s) {
     try {
@@ -4431,6 +4472,27 @@ function PeopleScreen({ user, onSavePlan }) {
           <div style={{ display: "flex", gap: 8 }}>
             <button className="btn-outline" style={{ marginTop: 0, flex: 1 }} onClick={() => { navigator.clipboard?.writeText(inviteLink); setCopied(true); setTimeout(() => setCopied(false), 2000); }}>{copied ? "✓ Copied" : "🔗 Copy link"}</button>
             <button className="btn-outline" style={{ marginTop: 0, flex: 1 }} onClick={() => { if (navigator.share) navigator.share({ title: "Connect on Curated", url: inviteLink }); else window.open(`https://wa.me/?text=${encodeURIComponent("Connect with me on Curated: " + inviteLink)}`); }}>📤 Share</button>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ padding: "0 1.5rem 1rem" }}>
+        <div style={{ background: "#fff", border: "1px solid #f0ebe2", borderRadius: 16, padding: "1rem" }}>
+          <div style={{ fontWeight: 600, color: "#1c1c1a", marginBottom: 2 }}>Both got the app? Connect in person</div>
+          <div style={{ fontSize: "0.76rem", color: "#9b8f7a", marginBottom: 12 }}>Have your friend scan this with their phone camera — or type your code into their app.</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            <div style={{ width: 120, height: 120, flexShrink: 0, background: "#fff", borderRadius: 10, padding: 6, border: "1px solid #f0ebe2" }} dangerouslySetInnerHTML={{ __html: qrHtml.replace("<svg ", "<svg style=\"width:100%;height:100%;display:block\" ") }} />
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: "0.66rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#9b8f7a", fontWeight: 700, marginBottom: 4 }}>Your code</div>
+              <div style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "1.7rem", letterSpacing: "0.18em", color: "#1c1c1a", lineHeight: 1 }}>{myCode || "····"}</div>
+              <button className="btn-outline" style={{ marginTop: 10, padding: "6px 12px", fontSize: "0.74rem" }} disabled={!myCode} onClick={() => { navigator.clipboard?.writeText(myCode); setCodeCopied(true); setTimeout(() => setCodeCopied(false), 2000); }}>{codeCopied ? "✓ Copied" : "Copy code"}</button>
+            </div>
+          </div>
+          <div style={{ height: 1, background: "#f0ebe2", margin: "14px 0" }} />
+          <div style={{ fontSize: "0.76rem", color: "#6b5e4e", marginBottom: 8 }}>Have a friend's code? Enter it to connect:</div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <input value={codeInput} onChange={e => setCodeInput(e.target.value.toUpperCase())} placeholder="e.g. K7P2QX" maxLength={6} className="input-field" style={{ flex: 1, textTransform: "uppercase", letterSpacing: "0.12em", fontWeight: 600 }} />
+            <button onClick={connectByCode} disabled={connecting || codeInput.trim().length < 4} style={{ border: "none", background: codeInput.trim().length >= 4 ? "#726A4E" : "#cfc8ba", color: "#fff", borderRadius: 10, padding: "0 18px", fontWeight: 600, fontSize: "0.82rem", cursor: codeInput.trim().length >= 4 ? "pointer" : "default" }}>{connecting ? "…" : "Connect"}</button>
           </div>
         </div>
       </div>
