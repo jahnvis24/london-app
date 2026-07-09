@@ -2577,7 +2577,7 @@ function SpotsCalendar({ saves, user, onBuildPlan, onShare }) {
 
 // First-run import walkthrough: 4 steps over the real screenshot flow.
 const IMPORT_TOUR = [
-  { title: "Add a screenshot", body: "Upload a screenshot of a place you want to remember." },
+  { title: "Add a place", body: "Add a screenshot, paste a TikTok or Instagram link, or type a place in by hand. No screenshot? Tap “Try an example”." },
   { title: "Save it to a list", body: "Pick a folder — or make a new one — so it's easy to find later." },
   { title: "Save to your board", body: "This adds the place to your board." },
   { title: "Here it is", body: "Your saved places live here — tap in anytime." },
@@ -2637,7 +2637,7 @@ function TourSpotlight({ targetRef, step, last, onDone, onSkip }) {
   );
 }
 
-function SavedScreen({ user, onBuildPlan, onShare, onBarCrawl, openSignal, calendarSignal, visible, tourWantsSpot, replayImportSignal }) {
+function SavedScreen({ user, onBuildPlan, onShare, onBarCrawl, openSignal, calendarSignal, visible, tourWantsSpot, replayImportSignal, dbVenues }) {
   const [saves, setSaves] = useState([]);
   const [loading, setLoading] = useState(true);
   const [mediaType, setMediaType] = useState("tiktok"); // tiktok | instagram | screenshot | maps | mapslist
@@ -3078,6 +3078,28 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
     setParsing(false);
   }
 
+  // "No screenshot? Try an example": drop a real sample venue into the review
+  // list so someone with nothing to upload can still complete the save flow
+  // (pick a list → Save) and see how it works. Uses a venue with a real photo.
+  function addExample() {
+    const pool = (dbVenues || []).filter(v => v.photo_url && v.name);
+    const pick = pool.length ? pool[Math.floor(Math.random() * pool.length)] : null;
+    const ex = pick ? {
+      name: pick.name, category: pick.category, area: pick.area, price: pick.price,
+      comment: pick.comment || pick.desc || "An example place — swap in your own screenshots anytime.",
+      vibe_tags: pick.vibe_tags || [], google_place_id: pick.google_place_id, google_rating: pick.google_rating,
+      website: pick.website, lat: pick.lat, lng: pick.lng, address: pick.address,
+      photo_url: pick.photo_url, _previewImage: pick.photo_url, source_type: "screenshot", _example: true,
+    } : {
+      name: "Dishoom Shoreditch", category: "restaurant", area: "Shoreditch", price: "££",
+      comment: "Bombay-style café — legendary black daal. (An example place.)",
+      vibe_tags: ["aesthetic", "iconic", "social"], source_type: "screenshot", _example: true,
+    };
+    ex._dup = saves.some(s => (s.name || "").toLowerCase().trim() === ex.name.toLowerCase().trim());
+    setPreview(prev => [...prev, ex]);
+    setCaptureOpen(false);
+  }
+
   async function resolvePhoto(d) {
     // Prefer the Google Maps photo so the card + thumbnail match; fall back to the
     // screenshot / TikTok cover only when Google has no photo.
@@ -3429,13 +3451,16 @@ Return a JSON object with this exact structure:
             </div>
 
             {captureTab === "screenshot" && (
-              <label style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 7, padding: "34px 16px", border: "1.5px dashed #ddd8ce", borderRadius: 14, cursor: parsing ? "default" : "pointer", textAlign: "center" }}>
-                <span style={{ fontSize: "1.5rem" }}>⬆️</span>
-                <span style={{ fontSize: "0.92rem", color: "#1c1c1a", fontWeight: 500 }}>{parsing ? "Reading…" : "Click to upload a screenshot"}</span>
-                <span style={{ fontSize: "0.76rem", color: "#9b8f7a" }}>PNG or JPG — pick several at once</span>
-                <input type="file" accept="image/*" multiple style={{ display: "none" }} disabled={parsing || saving}
-                  onChange={e => { const f = [...e.target.files]; e.target.value = ""; if (f.length) handleParse(f, "screenshot"); }} />
-              </label>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <label style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 7, padding: "34px 16px", border: "1.5px dashed #ddd8ce", borderRadius: 14, cursor: parsing ? "default" : "pointer", textAlign: "center" }}>
+                  <span style={{ fontSize: "1.5rem" }}>⬆️</span>
+                  <span style={{ fontSize: "0.92rem", color: "#1c1c1a", fontWeight: 500 }}>{parsing ? "Reading…" : "Click to upload a screenshot"}</span>
+                  <span style={{ fontSize: "0.76rem", color: "#9b8f7a" }}>PNG or JPG — pick several at once</span>
+                  <input type="file" accept="image/*" multiple style={{ display: "none" }} disabled={parsing || saving}
+                    onChange={e => { const f = [...e.target.files]; e.target.value = ""; if (f.length) handleParse(f, "screenshot"); }} />
+                </label>
+                <button onClick={addExample} disabled={parsing || saving} style={{ border: "none", background: "none", color: "#726A4E", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer", padding: "2px" }}>No screenshot handy? Try an example →</button>
+              </div>
             )}
 
             {captureTab === "link" && (
@@ -4415,15 +4440,25 @@ function PeopleScreen({ user, onSavePlan }) {
   const nameOf = (p) => p?.name || (p?.email ? p.email.split("@")[0] : null) || "Friend";
 
   // A short, memorable 4-letter word stored on the profile, so a friend can type
-  // it to connect. Generated once, then reused.
+  // it to connect. Generated once, then reused. Only sets myCode when the write
+  // is CONFIRMED persisted (via .select()) — a locally-shown-but-unsaved word
+  // would look connectable but wouldn't resolve for the friend.
   async function ensureCode() {
     try {
-      const { data } = await supabase.from("profiles").select("friend_code").eq("id", user.id).single();
-      if (data?.friend_code) { setMyCode(data.friend_code); return; }
-      for (let i = 0; i < 8; i++) {
-        const c = FRIEND_WORDS[Math.floor(Math.random() * FRIEND_WORDS.length)];
-        const { error } = await supabase.from("profiles").update({ friend_code: c }).eq("id", user.id);
-        if (!error) { setMyCode(c); return; } // retry with another word on the rare clash
+      const { data: mine } = await supabase.from("profiles").select("friend_code").eq("id", user.id).maybeSingle();
+      if (mine?.friend_code) { setMyCode(mine.friend_code); return; }
+      // Words already taken by other users (RLS allows reading all profiles), so
+      // we pick an unused one up front and let the unique index be the backstop.
+      const { data: rows } = await supabase.from("profiles").select("friend_code").not("friend_code", "is", null);
+      const used = new Set((rows || []).map(r => r.friend_code));
+      const pool = FRIEND_WORDS.filter(w => !used.has(w));
+      const candidates = pool.length ? pool : FRIEND_WORDS;
+      for (let i = 0; i < Math.min(candidates.length, 12); i++) {
+        const c = candidates[Math.floor(Math.random() * candidates.length)];
+        const { data: up, error } = await supabase.from("profiles").update({ friend_code: c }).eq("id", user.id).is("friend_code", null).select("friend_code");
+        if (!error && up && up.length) { setMyCode(up[0].friend_code); return; } // confirmed persisted
+        const { data: re } = await supabase.from("profiles").select("friend_code").eq("id", user.id).maybeSingle();
+        if (re?.friend_code) { setMyCode(re.friend_code); return; } // set concurrently / already claimed
       }
     } catch (e) {}
   }
@@ -5064,7 +5099,7 @@ export default function App() {
               <button onClick={() => setShowStarter(false)} style={{ border: "none", background: "none", color: "#9b8f7a", cursor: "pointer", fontSize: "1.1rem", lineHeight: 1 }}>×</button>
             </div>
           )}
-          <SavedScreen user={user} visible={activeTab === "saved"} tourWantsSpot={tourStep === 1 || tourStep === 2} replayImportSignal={importSignal} openSignal={captureSignal} calendarSignal={calSignal} onShare={setShareItem} onBuildPlan={(saves) => { setResult(null); setError(null); setViewingPlan(null); setActiveTab("home"); setAns({ savedVenues: saves }); setQuizStep(0); }} onBarCrawl={(seed) => setBarCrawl({ seed: seed || [] })} />
+          <SavedScreen user={user} visible={activeTab === "saved"} tourWantsSpot={tourStep === 1 || tourStep === 2} replayImportSignal={importSignal} dbVenues={dbVenues} openSignal={captureSignal} calendarSignal={calSignal} onShare={setShareItem} onBuildPlan={(saves) => { setResult(null); setError(null); setViewingPlan(null); setActiveTab("home"); setAns({ savedVenues: saves }); setQuizStep(0); }} onBarCrawl={(seed) => setBarCrawl({ seed: seed || [] })} />
         </div>
         {activeTab === "me" && <MeScreen user={user} preferences={preferences} setPreferences={setPreferences} isAdmin={isAdmin} onBadgeUpdate={setAdminBadge} adminBadge={adminBadge} onStartTour={() => setTourStep(0)} onStartImportTour={() => { setTourStep(-1); setActiveTab("saved"); setImportSignal(n => n + 1); }} />}
 
