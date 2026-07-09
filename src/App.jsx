@@ -4472,7 +4472,9 @@ function PeopleScreen({ user, onSavePlan }) {
       const { data } = await supabase.from("profiles").select("id,name").eq("friend_code", code).maybeSingle();
       if (!data?.id) { setMsg("No one found with that code — double-check it."); setConnecting(false); return; }
       const [a, b] = [user.id, data.id].sort();
-      const { error } = await supabase.from("connections").upsert({ user_a: a, user_b: b }, { onConflict: "user_a,user_b" });
+      // ignoreDuplicates → "ON CONFLICT DO NOTHING", so re-connecting an existing
+      // pair never triggers an UPDATE (which the connections table has no policy for).
+      const { error } = await supabase.from("connections").upsert({ user_a: a, user_b: b }, { onConflict: "user_a,user_b", ignoreDuplicates: true });
       if (error) throw error;
       setMsg(`Connected with ${data.name || "your friend"}! 🎉`); setCodeInput("");
       await load();
@@ -4980,7 +4982,7 @@ export default function App() {
     if (!inv || inv === user.id) { clearPending("invite"); return; }
     (async () => {
       const [a, b] = [user.id, inv].sort();
-      try { await supabase.from("connections").upsert({ user_a: a, user_b: b }, { onConflict: "user_a,user_b" }); showToast("Connected! See the People tab."); } catch (e) {}
+      try { await supabase.from("connections").upsert({ user_a: a, user_b: b }, { onConflict: "user_a,user_b", ignoreDuplicates: true }); showToast("Connected! See the People tab."); } catch (e) {}
       clearPending("invite");
       window.history.replaceState({}, "", "/");
     })();
