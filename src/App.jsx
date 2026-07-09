@@ -4472,8 +4472,58 @@ function SharedListView({ list, user, onClose }) {
 // Friendly, unambiguous 4-letter words used as connect codes — easy to say and type.
 const FRIEND_WORDS = ["BEAR","WOLF","DEER","FROG","DUCK","SWAN","CROW","DOVE","HAWK","MOTH","CRAB","SEAL","GOAT","LAMB","PONY","MULE","FAWN","FISH","TOAD","NEWT","HARE","MOLE","LYNX","ORCA","PUMA","WREN","LARK","LION","BASS","CLAM","RAIN","SNOW","WIND","STAR","MOON","DUSK","DAWN","TIDE","WAVE","LAKE","POND","HILL","PEAK","CAVE","ROCK","SAND","DUNE","REEF","FERN","MOSS","REED","VINE","LEAF","SEED","TREE","BARK","ROOT","PINE","PALM","MINT","LIME","PEAR","PLUM","KALE","BEAN","RICE","CAKE","TART","CORN","OKRA","SAGE","DILL","BLUE","TEAL","GOLD","RUBY","JADE","ROSE","PINK","OPAL","ONYX","BOAT","SHIP","KITE","BELL","DRUM","HARP","LAMP","DOOR","BOOK","NOTE","COIN","RING","BEAD","LENS","FLAG","FIRE","GLOW","MIST","HAZE","GATE","PATH","NEST","WING"];
 
+// A friend's board, read-only: see everywhere they've saved and copy any spot to
+// your own saves. Opened by tapping a connection in the People tab.
+function FriendProfile({ user, friend, onClose }) {
+  const nameOf = (p) => p?.name || (p?.email ? p.email.split("@")[0] : null) || "Friend";
+  const [saves, setSaves] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [savedIds, setSavedIds] = useState(new Set());
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from("experiences").select("*").eq("user_id", friend.id).order("created_at", { ascending: false });
+      setSaves(data || []); setLoading(false);
+    })();
+  }, []);
+  async function saveToMine(s) {
+    setBusy(true);
+    const { id, user_id, created_at, status, folder, ...rest } = s;
+    const { error } = await supabase.from("experiences").insert({ ...rest, user_id: user.id, folder: null, status: "pending" });
+    if (!error) setSavedIds(prev => new Set(prev).add(s.id));
+    setBusy(false);
+  }
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "#fbfaf8", zIndex: 1200, overflowY: "auto", animation: "fadeIn 0.2s" }}>
+      <div style={{ maxWidth: 420, margin: "0 auto", padding: "1rem 1.5rem 6rem" }}>
+        <button className="btn-outline" style={{ marginTop: 0, width: "auto", padding: "8px 14px" }} onClick={onClose}>← People</button>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "1rem 0 1.25rem" }}>
+          <div style={{ width: 52, height: 52, borderRadius: "50%", background: "#726A4E", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: "1.3rem", overflow: "hidden", flexShrink: 0 }}>{friend.avatar_url ? <img src={friend.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : nameOf(friend).charAt(0).toUpperCase()}</div>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "1.4rem", color: "#1c1c1a", lineHeight: 1.1 }}>{nameOf(friend)}</div>
+            <div style={{ fontSize: "0.78rem", color: "#9b8f7a", marginTop: 2 }}>{loading ? "Loading…" : `${saves.length} saved place${saves.length !== 1 ? "s" : ""}`}</div>
+          </div>
+        </div>
+        {!loading && saves.length === 0 && <div style={{ fontSize: "0.85rem", color: "#9b8f7a", textAlign: "center", padding: "2rem 1rem", lineHeight: 1.5 }}>{nameOf(friend)} hasn't saved anything yet.</div>}
+        {saves.map(s => (
+          <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 11, padding: 10, background: "#fff", border: "1px solid #f0ebe2", borderRadius: 14, marginBottom: 8 }}>
+            {s.photo_url ? <img src={s.photo_url} alt="" style={{ width: 46, height: 46, borderRadius: 10, objectFit: "cover", flexShrink: 0 }} /> : <div style={{ width: 46, height: 46, borderRadius: 10, background: "#f5f0e8", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{CAT_EMOJI[String(s.category || "").toLowerCase()] || "📍"}</div>}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: "0.88rem", fontWeight: 600, color: "#1c1c1a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.name}</div>
+              <div style={{ fontSize: "0.72rem", color: "#9b8f7a" }}>{[s.category, s.area].filter(Boolean).join(" · ")}{s.google_rating ? ` · ⭐ ${s.google_rating}` : ""}</div>
+            </div>
+            {savedIds.has(s.id)
+              ? <span style={{ fontSize: "0.76rem", color: "#726A4E", fontWeight: 600, flexShrink: 0 }}>✓ Saved</span>
+              : <button disabled={busy} onClick={() => saveToMine(s)} style={{ border: "1.5px solid #726A4E", background: "#fff", color: "#726A4E", borderRadius: 100, padding: "6px 13px", fontSize: "0.74rem", fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>＋ Save</button>}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // People hub: your invite link, who you're connected with, things shared with you.
-function PeopleScreen({ user, onSavePlan }) {
+function PeopleScreen({ user, onSavePlan, onShareSaved }) {
   const [connections, setConnections] = useState([]);
   const [shares, setShares] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -4484,6 +4534,7 @@ function PeopleScreen({ user, onSavePlan }) {
   const [codeCopied, setCodeCopied] = useState(false);
   const [codeInput, setCodeInput] = useState("");
   const [connecting, setConnecting] = useState(false);
+  const [viewFriend, setViewFriend] = useState(null); // open a friend's board
   const inviteLink = `https://london-app.vercel.app/?invite=${user.id}`;
   const nameOf = (p) => p?.name || (p?.email ? p.email.split("@")[0] : null) || "Friend";
 
@@ -4553,6 +4604,7 @@ function PeopleScreen({ user, onSavePlan }) {
         setMsg(`Saved ${spots.length} spot${spots.length !== 1 ? "s" : ""} to "${s.payload.name || "Shared with me"}" ✓`);
       }
       await supabase.from("shares").update({ seen: true }).eq("id", s.id);
+      onShareSaved && onShareSaved();
       setViewing(null); setTimeout(() => setMsg(""), 2800); load();
     } catch (e) { setMsg("Couldn't save: " + e.message); }
   }
@@ -4616,15 +4668,19 @@ function PeopleScreen({ user, onSavePlan }) {
       <div style={{ padding: "0 1.5rem 1rem" }}>
         <div style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a", margin: "0.25rem 0 0.6rem" }}>Connected ({connections.length})</div>
         {connections.length === 0 && <div style={{ fontSize: "0.82rem", color: "#9b8f7a" }}>No connections yet — share your invite link above.</div>}
+        {connections.length > 0 && <div style={{ fontSize: "0.72rem", color: "#b3a892", marginBottom: 8 }}>Tap a friend to see their saves.</div>}
         <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
           {connections.map(c => (
-            <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 8, background: "#fff", border: "1px solid #f0ebe2", borderRadius: 100, padding: "6px 12px 6px 6px" }}>
+            <button key={c.id} onClick={() => setViewFriend(c)} style={{ display: "flex", alignItems: "center", gap: 8, background: "#fff", border: "1px solid #f0ebe2", borderRadius: 100, padding: "6px 12px 6px 6px", cursor: "pointer" }}>
               <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#726A4E", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 600, fontSize: "0.8rem", overflow: "hidden" }}>{c.avatar_url ? <img src={c.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : nameOf(c).charAt(0).toUpperCase()}</div>
               <span style={{ fontSize: "0.8rem", color: "#1c1c1a" }}>{nameOf(c)}</span>
-            </div>
+              <span style={{ color: "#c9bfae", fontSize: "1rem" }}>›</span>
+            </button>
           ))}
         </div>
       </div>
+
+      {viewFriend && <FriendProfile user={user} friend={viewFriend} onClose={() => setViewFriend(null)} />}
 
       {viewing && (
         <div onClick={() => setViewing(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100, padding: "1.5rem", animation: "fadeIn 0.2s" }}>
@@ -4721,6 +4777,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState("plans"); // Plans is the landing tab; planning is a CTA there
   const [tourStep, setTourStep] = useState(-1); // -1 = off; guided product tour (Me → "Take a tour")
   const [importSignal, setImportSignal] = useState(0); // bump to launch the hands-on "add a save" walkthrough
+  const [peopleBadge, setPeopleBadge] = useState(0); // unsaved shares sent to you → People tab badge
   const [captureSignal, setCaptureSignal] = useState(0); // bump to pop the global capture sheet on Saves
   const [onboardDone, setOnboardDone] = useState(false); // set true when first-run onboarding finishes
   const [splashDone, setSplashDone] = useState(() => { try { return !!localStorage.getItem("cl_splash"); } catch (e) { return false; } });
@@ -4756,6 +4813,26 @@ export default function App() {
     if (t !== "home") { setQuizStep(-1); setViewingPlan(null); }
   }, [tourStep]);
   useEffect(() => { window.__startTour = () => setTourStep(0); }, []);
+
+  // Notifications: badge the People tab when a friend sends you a spot list or
+  // itinerary you haven't saved yet, and toast in real time when a new one lands.
+  useEffect(() => {
+    if (!user?.id) { setPeopleBadge(0); return; }
+    let active = true;
+    (async () => {
+      const { count } = await supabase.from("shares").select("id", { count: "exact", head: true }).eq("to_user", user.id).eq("seen", false);
+      if (active) setPeopleBadge(count || 0);
+    })();
+    const ch = supabase.channel("shares-" + user.id)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "shares", filter: `to_user=eq.${user.id}` }, (payload) => {
+        setPeopleBadge(n => n + 1);
+        const k = payload.new?.kind === "plan" ? "an itinerary" : "a list";
+        showToast(`A friend sent you ${k} — check People`);
+        notify("New from a friend ✦", `You've been sent ${k}`);
+      })
+      .subscribe();
+    return () => { active = false; supabase.removeChannel(ch); };
+  }, [user]);
 
   // Auth listener + login tracking
   useEffect(() => {
@@ -4994,7 +5071,7 @@ export default function App() {
   const TABS = [
     { id: "plans", label: "Plans", icon: "📋" },
     { id: "saved", label: "Saves", icon: "📌" },
-    { id: "people", label: "People", icon: "👥" },
+    { id: "people", label: "People", icon: "👥", badge: peopleBadge },
     { id: "me", label: "Me", icon: "🙂", badge: isAdmin ? adminBadge : 0 },
   ];
 
@@ -5139,7 +5216,7 @@ export default function App() {
           </div>
         )}
 
-        {activeTab === "people" && <PeopleScreen user={user} onSavePlan={(payload) => { const r = payload?.plan; if (!r) return; setPlans(prev => { const updated = [{ result: r, times: payload?.times || times, ans: {}, savedAt: new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }), createdAt: Date.now(), id: generateId() }, ...prev]; localStorage.setItem("cl_plans", JSON.stringify(updated.slice(0, 20))); return updated; }); }} />}
+        {activeTab === "people" && <PeopleScreen user={user} onShareSaved={() => setPeopleBadge(n => Math.max(0, n - 1))} onSavePlan={(payload) => { const r = payload?.plan; if (!r) return; setPlans(prev => { const updated = [{ result: r, times: payload?.times || times, ans: {}, savedAt: new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }), createdAt: Date.now(), id: generateId() }, ...prev]; localStorage.setItem("cl_plans", JSON.stringify(updated.slice(0, 20))); return updated; }); }} />}
         {/* Always mounted so an in-progress screenshot parse keeps running + persists when you switch tabs */}
         <div style={{ display: activeTab === "saved" ? "block" : "none" }}>
           {showStarter && (
