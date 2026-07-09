@@ -2820,6 +2820,15 @@ function SavedScreen({ user, onBuildPlan, onShare, onBarCrawl, openSignal, calen
 
   useEffect(() => { loadSaves(); }, []);
 
+  // Re-fetch whenever the Saves tab is re-opened, so spots saved elsewhere (a
+  // friend's board, a shared list, an accepted share) show up without a full
+  // app reload. Skips the initial mount, which the effect above already covers.
+  const didMountSaves = useRef(false);
+  useEffect(() => {
+    if (!didMountSaves.current) { didMountSaves.current = true; return; }
+    if (visible) loadSaves();
+  }, [visible]);
+
   // One-time backfill: switch existing screenshot/TikTok/IG saves over to the
   // Google Maps photo so thumbnails + cards are consistent and load instantly.
   useEffect(() => {
@@ -4600,21 +4609,40 @@ function FriendProfile({ user, friend, onClose }) {
   const [saves, setSaves] = useState([]);
   const [loading, setLoading] = useState(true);
   const [savedIds, setSavedIds] = useState(new Set());
+  const [myKeys, setMyKeys] = useState(new Set());   // spots already on YOUR board (so we don't offer duplicates)
+  const [myFolders, setMyFolders] = useState([]);    // your existing folder names, for the "save to…" picker
   const [openFolder, setOpenFolder] = useState(null);
   const [detailSpot, setDetailSpot] = useState(null);
+  const [savePick, setSavePick] = useState(null);    // a spot awaiting a "which list?" choice
+  const [newFolder, setNewFolder] = useState("");
+  const [friendCount, setFriendCount] = useState(0);
   const [busy, setBusy] = useState(false);
+  const keyOf = (s) => s.google_place_id || String(s.name || "").toLowerCase().trim();
+  const isSaved = (s) => savedIds.has(s.id) || myKeys.has(keyOf(s));
   useEffect(() => {
     (async () => {
       const { data } = await supabase.from("experiences").select("*").eq("user_id", friend.id).order("created_at", { ascending: false });
       setSaves(data || []); setLoading(false);
+      // Learn what's already on your own board (across app reloads) so a spot you've
+      // already saved shows "✓ Saved" — not another "Save" button that double-adds.
+      const { data: mine } = await supabase.from("experiences").select("name,google_place_id,folder").eq("user_id", user.id);
+      setMyKeys(new Set((mine || []).map(m => m.google_place_id || String(m.name || "").toLowerCase().trim())));
+      setMyFolders([...new Set((mine || []).map(m => m.folder).filter(Boolean))].sort());
+      // How many people this friend is connected to (Instagram-style "friends" count).
+      const { count } = await supabase.from("connections").select("*", { count: "exact", head: true }).or(`user_a.eq.${friend.id},user_b.eq.${friend.id}`);
+      setFriendCount(count || 0);
     })();
   }, []);
-  async function saveToMine(s) {
+  async function saveToMine(s, folder) {
     setBusy(true);
-    const { id, user_id, created_at, status, folder, ...rest } = s;
-    const { error } = await supabase.from("experiences").insert({ ...rest, user_id: user.id, folder: null, status: "pending" });
-    if (!error) setSavedIds(prev => new Set(prev).add(s.id));
-    setBusy(false);
+    const { id, user_id, created_at, status, folder: _f, ...rest } = s;
+    const { error } = await supabase.from("experiences").insert({ ...rest, user_id: user.id, folder: folder || null, status: "pending" });
+    if (!error) {
+      setSavedIds(prev => new Set(prev).add(s.id));
+      setMyKeys(prev => new Set(prev).add(keyOf(s)));
+      if (folder) setMyFolders(prev => prev.includes(folder) ? prev : [...prev, folder].sort());
+    } else { alert("Couldn't save it: " + error.message); }
+    setBusy(false); setSavePick(null); setNewFolder("");
   }
   const FCAT = { restaurant: "Restaurants", cafe: "Cafés", bar: "Bars", nightlife: "Nightlife", market: "Markets", outdoor: "Outdoor", museum: "Museums", gallery: "Galleries", experience: "Experiences", event: "Events" };
   const folderOf = (s) => s.folder || FCAT[String(s.category || "").toLowerCase()] || "Other";
@@ -4635,6 +4663,7 @@ function FriendProfile({ user, friend, onClose }) {
           <div style={{ display: "flex", gap: 30, marginTop: 12 }}>
             {stat(saves.length, "Saves")}
             {stat(folderNames.length, "Lists")}
+            {stat(friendCount, "Friends")}
           </div>
         </div>
 
@@ -4667,9 +4696,9 @@ function FriendProfile({ user, friend, onClose }) {
                   <BigSpotCard s={s} photo={s.photo_url} />
                 </div>
                 <div style={{ padding: "0 12px 12px", display: "flex", justifyContent: "center" }}>
-                  {savedIds.has(s.id)
-                    ? <span style={{ fontSize: "0.74rem", color: "#726A4E", fontWeight: 600, padding: "7px 16px" }}>✓ Saved to your board</span>
-                    : <button disabled={busy} onClick={() => saveToMine(s)} style={{ border: "1.5px solid #726A4E", background: "#fff", color: "#726A4E", borderRadius: 100, padding: "7px 18px", fontSize: "0.74rem", fontWeight: 600, cursor: "pointer" }}>＋ Save to my board</button>}
+                  {isSaved(s)
+                    ? <span style={{ fontSize: "0.74rem", color: "#726A4E", fontWeight: 600, padding: "7px 16px" }}>✓ On your board</span>
+                    : <button disabled={busy} onClick={() => setSavePick(s)} style={{ border: "1.5px solid #726A4E", background: "#fff", color: "#726A4E", borderRadius: 100, padding: "7px 18px", fontSize: "0.74rem", fontWeight: 600, cursor: "pointer" }}>＋ Save to my board</button>}
                 </div>
               </div>
             ))}
@@ -4683,9 +4712,34 @@ function FriendProfile({ user, friend, onClose }) {
           user={user}
           readOnly
           onClose={() => setDetailSpot(null)}
-          onSaveToBoard={savedIds.has(detailSpot.id) ? null : () => saveToMine(detailSpot)}
-          savedToBoard={savedIds.has(detailSpot.id)}
+          onSaveToBoard={isSaved(detailSpot) ? null : () => setSavePick(detailSpot)}
+          savedToBoard={isSaved(detailSpot)}
         />
+      )}
+
+      {/* "Save to which list?" — pick an existing list, make a new one, or auto-sort by category */}
+      {savePick && (
+        <div onClick={() => { setSavePick(null); setNewFolder(""); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 1400, animation: "fadeIn 0.2s" }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: "1.25rem 1.25rem 1.75rem", width: "100%", maxWidth: 420, maxHeight: "72vh", overflowY: "auto", animation: "cardIn 0.25s ease" }}>
+            <div style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "1.15rem", color: "#1c1c1a", marginBottom: 3 }}>Save to which list?</div>
+            <div style={{ fontSize: "0.76rem", color: "#9b8f7a", marginBottom: 14, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{savePick.name}</div>
+            <button disabled={busy} onClick={() => saveToMine(savePick, null)} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", padding: "11px 12px", borderRadius: 12, border: "1px solid #f0ebe2", background: "#fbfaf8", cursor: "pointer", marginBottom: 8 }}>
+              <span style={{ fontSize: "1.1rem", width: 26, textAlign: "center" }}>✨</span>
+              <span style={{ flex: 1, fontWeight: 600, fontSize: "0.88rem", color: "#1c1c1a" }}>Auto — sort by category</span>
+            </button>
+            {myFolders.map(f => (
+              <button key={f} disabled={busy} onClick={() => saveToMine(savePick, f)} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", padding: "11px 12px", borderRadius: 12, border: "1px solid #f0ebe2", background: "#fff", cursor: "pointer", marginBottom: 8 }}>
+                <span style={{ fontSize: "1.1rem", width: 26, textAlign: "center" }}>📁</span>
+                <span style={{ flex: 1, fontWeight: 600, fontSize: "0.88rem", color: "#1c1c1a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f}</span>
+              </button>
+            ))}
+            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+              <input value={newFolder} onChange={e => setNewFolder(e.target.value)} placeholder="New list name…" style={{ flex: 1, padding: "11px 12px", borderRadius: 12, border: "1px solid #e8e2d8", fontSize: "0.88rem", fontFamily: "inherit" }} />
+              <button disabled={busy || !newFolder.trim()} onClick={() => saveToMine(savePick, newFolder.trim())} style={{ border: "none", background: newFolder.trim() ? "#726A4E" : "#cfc8ba", color: "#fff", borderRadius: 12, padding: "0 20px", fontWeight: 600, fontSize: "0.85rem", cursor: newFolder.trim() ? "pointer" : "default" }}>Add</button>
+            </div>
+            <button onClick={() => { setSavePick(null); setNewFolder(""); }} className="btn-outline">Cancel</button>
+          </div>
+        </div>
       )}
     </div>
   );
