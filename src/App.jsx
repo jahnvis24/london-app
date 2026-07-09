@@ -3781,15 +3781,25 @@ function Onboarding({ user, dbVenues, onDone }) {
   useEffect(() => { setTapped(null); }, [axisIdx]);
 
   function playPop() {
+    // Soft, rounded "plink" — a gentle sine note with a warm quick decay. Quiet and
+    // premium-feeling rather than a sharp beep. A tiny sine overtone adds body.
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      const o = ctx.createOscillator(), g = ctx.createGain();
-      o.type = "triangle";
-      o.frequency.setValueAtTime(440, ctx.currentTime);
-      o.frequency.exponentialRampToValueAtTime(760, ctx.currentTime + 0.11);
-      g.gain.setValueAtTime(0.22, ctx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.19);
-      o.connect(g); g.connect(ctx.destination); o.start(); o.stop(ctx.currentTime + 0.2);
+      const t = ctx.currentTime;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.13, t + 0.012); // soft attack
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.34); // warm decay
+      g.connect(ctx.destination);
+      const o = ctx.createOscillator();
+      o.type = "sine";
+      o.frequency.setValueAtTime(784, t); // G5, mellow
+      o.frequency.exponentialRampToValueAtTime(740, t + 0.3); // slight settle
+      const o2 = ctx.createOscillator(); // gentle octave shimmer, low level
+      o2.type = "sine"; o2.frequency.setValueAtTime(1568, t);
+      const g2 = ctx.createGain(); g2.gain.setValueAtTime(0.04, t); g2.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+      o.connect(g); o2.connect(g2); g2.connect(ctx.destination);
+      o.start(t); o2.start(t); o.stop(t + 0.36); o2.stop(t + 0.18);
     } catch (e) {}
   }
   function tapChoose(pair, pole, v) {
