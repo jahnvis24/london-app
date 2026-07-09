@@ -2054,7 +2054,7 @@ function ListCover({ items, height = 200 }) {
 }
 
 // Full detail view for a saved spot: About, Book/Website, Notes, Add to calendar.
-function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan, user, onSpotUpdate }) {
+function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan, user, onSpotUpdate, readOnly, onSaveToBoard, savedToBoard }) {
   const cat = normaliseCategory(spot.category);
   const [note, setNote] = useState(() => { if (spot.note != null) return spot.note; try { return localStorage.getItem("cl_note_" + spot.id) || ""; } catch { return ""; } });
   const [savedNote, setSavedNote] = useState(false);
@@ -2064,7 +2064,8 @@ function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan, user, onSpotUpdate
   // localStorage if the column isn't there yet / the write fails.
   async function persist(patch, localKey, localVal) {
     let ok = false;
-    try { const { error } = await supabase.from("experiences").update(patch).eq("id", spot.id); ok = !error; } catch (e) {}
+    // Read-only (viewing a friend's spot): never write to their experiences row — keep it local.
+    if (!readOnly) { try { const { error } = await supabase.from("experiences").update(patch).eq("id", spot.id); ok = !error; } catch (e) {} }
     if (!ok) { try { localStorage.setItem(localKey, localVal); } catch (e) {} }
     onSpotUpdate && onSpotUpdate(spot.id, patch);
   }
@@ -2144,6 +2145,9 @@ function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan, user, onSpotUpdate
 
         <div style={{ marginTop: 14 }}>
           <div data-tour="spot-book"><Action href={bookUrl} primary>{spot.website ? "🔗 Book / Website" : "🔗 Open in Google Maps"}</Action></div>
+          {readOnly && onSaveToBoard && <Action onClick={onSaveToBoard}>{savedToBoard ? "✓ Saved to your board" : "＋ Save to my board"}</Action>}
+          {readOnly && !onSaveToBoard && savedToBoard && <div style={{ textAlign: "center", padding: "12px", borderRadius: 12, fontSize: "0.85rem", fontWeight: 600, marginBottom: 8, background: "#f5f0e8", color: "#726A4E" }}>✓ Saved to your board</div>}
+          {!readOnly && (
           <div style={{ padding: "12px", background: "#fff", border: "1.5px solid #ddd8ce", borderRadius: 12, marginBottom: 8 }}>
             <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "#4a4438", marginBottom: 8 }}>📅 Add to your calendar</div>
             <div style={{ display: "flex", gap: 8 }}>
@@ -2152,14 +2156,17 @@ function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan, user, onSpotUpdate
             </div>
             <div style={{ fontSize: "0.68rem", color: "#9b8f7a", marginTop: 6 }}>Shows in your Saved → Calendar.{" "}<a href={gcalUrl} target="_blank" rel="noreferrer" style={{ color: "#9b8f7a", textDecoration: "underline" }}>Google Calendar ↗</a></div>
           </div>
+          )}
           {onShowOnMap && <Action onClick={() => onShowOnMap(spot)}>📍 Show on map</Action>}
           {onMakePlan && <Action onClick={() => onMakePlan(spot)}>✦ Make a plan based on this</Action>}
           {spot.source_url && (spot.source_type === "tiktok" || spot.source_type === "instagram") && <Action href={spot.source_url}>{SOURCE_ICON[spot.source_type]} View original ↗</Action>}
         </div>
 
+        {!readOnly && <>
         <div style={{ fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#9b8f7a", fontWeight: 600, margin: "18px 0 6px" }}>Notes</div>
         <textarea value={note} onChange={e => setNote(e.target.value)} placeholder="Add your own notes — who recommended it, what to order, etc." className="input-field" rows={4} style={{ resize: "vertical", width: "100%" }} />
         <button className="btn btn-teal" style={{ marginTop: 8 }} onClick={saveNote}>{savedNote ? "✓ Saved" : "Save notes"}</button>
+        </>}
       </div>
     </div>
   );
@@ -2319,7 +2326,7 @@ function SpotsMap({ saves, listName, focusSpot, onCategory, peek, peekHeight, on
   const capitalise = (s) => s ? String(s).charAt(0).toUpperCase() + String(s).slice(1) : "";
   const filteredPts = filter === "all" ? pts : pts.filter(s => normaliseCategory(s.category) === filter);
   const filterLabel = CAT_LABEL[filter] || capitalise(filter);
-  const mapH = peek ? (peekHeight || 150) : (listName || onCategory) ? 320 : 440;
+  const mapH = peek ? (peekHeight || 150) : (listName || onCategory) ? 380 : 440;
 
   // Peek mode: a live, non-interactive preview that expands the full map on tap.
   if (peek) return (
@@ -3594,7 +3601,7 @@ Return a JSON object with this exact structure:
             </div>
             {mapCat && renderSheet(scopeSaves, (
               <div style={{ padding: "0 14px 12px" }}>
-                <div style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a", marginBottom: ((mapCat === "bar" || mapCat === "nightlife") || scopeSaves.length > 1) ? 9 : 0 }}>{CAT_LABEL[mapCat] || cap(mapCat)} ({scopeSaves.length})</div>
+                <div style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "0.9rem", color: "#1c1c1a", marginBottom: ((mapCat === "bar" || mapCat === "nightlife") || scopeSaves.length > 1) ? 8 : 0 }}>{CAT_LABEL[mapCat] || cap(mapCat)} <span style={{ fontSize: "0.76rem", color: "#9b8f7a" }}>· {scopeSaves.length}</span></div>
                 {(mapCat === "bar" || mapCat === "nightlife")
                   ? <button onClick={() => onBarCrawl(scopeSaves)} style={{ width: "100%", border: "none", background: "#726A4E", color: "#fff", borderRadius: 100, padding: "10px 14px", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer" }}>🍸 Planning a bar crawl? Tap here!</button>
                   : (scopeSaves.length > 1 && <button onClick={() => onBuildPlan(scopeSaves)} style={{ width: "100%", border: "none", background: "#726A4E", color: "#fff", borderRadius: 100, padding: "10px 14px", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer" }}>✦ Build a plan from these</button>)}
@@ -3654,8 +3661,8 @@ Return a JSON object with this exact structure:
             )}
             {folderSaves.length === 0 && <div style={{ fontSize: "0.8rem", color: "#9b8f7a" }}>No spots in this list yet — pick it as the list when you save something.</div>}
             {folderSaves.length > 0 && renderSheet(folderSaves, (
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0 14px 12px" }}>
-                <div style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a" }}>{openFolder} ({folderSaves.length} place{folderSaves.length !== 1 ? "s" : ""})</div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0 14px 8px" }}>
+                <div style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "0.9rem", color: "#1c1c1a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{openFolder} <span style={{ fontSize: "0.76rem", color: "#9b8f7a" }}>· {folderSaves.length} place{folderSaves.length !== 1 ? "s" : ""}</span></div>
                 <div style={{ display: "flex", gap: 8 }}>
                   {onShare && <button onClick={() => onShare({ kind: "list", title: openFolder, payload: { name: openFolder, spots: folderSaves.map(({ id, user_id, created_at, status, ...rest }) => rest) } })} style={{ fontSize: "0.74rem", padding: "6px 12px", borderRadius: 100, border: "none", background: "#726A4E", color: "#fff", fontWeight: 600, cursor: "pointer" }}>Send</button>}
                   <button onClick={() => renameFolder(openFolder)} style={{ fontSize: "0.74rem", padding: "6px 12px", borderRadius: 100, border: "1.5px solid #e8e2d8", background: "#fff", color: "#6b5e4e", fontWeight: 500, cursor: "pointer" }}>✎ Rename</button>
@@ -4594,6 +4601,7 @@ function FriendProfile({ user, friend, onClose }) {
   const [loading, setLoading] = useState(true);
   const [savedIds, setSavedIds] = useState(new Set());
   const [openFolder, setOpenFolder] = useState(null);
+  const [detailSpot, setDetailSpot] = useState(null);
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     (async () => {
@@ -4648,25 +4656,37 @@ function FriendProfile({ user, friend, onClose }) {
           </div>
         )}
 
-        {/* Inside a folder — spot cards, each copyable to your board */}
+        {/* Inside a folder — big spot cards, exactly like your own Saves folders.
+            Tap a card to open its full detail page; save any to your own board. */}
         {openFolder && (
           <div style={{ marginTop: "1.25rem" }}>
-            <div style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "1.1rem", color: "#1c1c1a", marginBottom: 10 }}>{openFolder} ({folderSaves.length})</div>
+            <div style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "1.1rem", color: "#1c1c1a", marginBottom: 12 }}>{openFolder} ({folderSaves.length})</div>
             {folderSaves.map(s => (
-              <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 11, padding: 10, background: "#fff", border: "1px solid #f0ebe2", borderRadius: 14, marginBottom: 8 }}>
-                {s.photo_url ? <img src={s.photo_url} alt="" style={{ width: 46, height: 46, borderRadius: 10, objectFit: "cover", flexShrink: 0 }} /> : <div style={{ width: 46, height: 46, borderRadius: 10, background: "#f5f0e8", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{CAT_EMOJI[String(s.category || "").toLowerCase()] || "📍"}</div>}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: "0.88rem", fontWeight: 600, color: "#1c1c1a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.name}</div>
-                  <div style={{ fontSize: "0.72rem", color: "#9b8f7a" }}>{[s.category ? cap(s.category) : null, s.area].filter(Boolean).join(" · ")}{s.google_rating ? ` · ⭐ ${s.google_rating}` : ""}</div>
+              <div key={s.id} style={{ position: "relative", borderRadius: 16, overflow: "hidden", boxShadow: "0 2px 10px rgba(0,0,0,0.08)", border: "1px solid #f0ebe2", background: "#fff", marginBottom: 14 }}>
+                <div onClick={() => setDetailSpot(s)} style={{ cursor: "pointer" }}>
+                  <BigSpotCard s={s} photo={s.photo_url} />
                 </div>
-                {savedIds.has(s.id)
-                  ? <span style={{ fontSize: "0.76rem", color: "#726A4E", fontWeight: 600, flexShrink: 0 }}>✓ Saved</span>
-                  : <button disabled={busy} onClick={() => saveToMine(s)} style={{ border: "1.5px solid #726A4E", background: "#fff", color: "#726A4E", borderRadius: 100, padding: "6px 13px", fontSize: "0.74rem", fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>＋ Save</button>}
+                <div style={{ padding: "0 12px 12px", display: "flex", justifyContent: "center" }}>
+                  {savedIds.has(s.id)
+                    ? <span style={{ fontSize: "0.74rem", color: "#726A4E", fontWeight: 600, padding: "7px 16px" }}>✓ Saved to your board</span>
+                    : <button disabled={busy} onClick={() => saveToMine(s)} style={{ border: "1.5px solid #726A4E", background: "#fff", color: "#726A4E", borderRadius: 100, padding: "7px 18px", fontSize: "0.74rem", fontWeight: 600, cursor: "pointer" }}>＋ Save to my board</button>}
+                </div>
               </div>
             ))}
           </div>
         )}
       </div>
+
+      {detailSpot && (
+        <SpotDetail
+          spot={detailSpot}
+          user={user}
+          readOnly
+          onClose={() => setDetailSpot(null)}
+          onSaveToBoard={savedIds.has(detailSpot.id) ? null : () => saveToMine(detailSpot)}
+          savedToBoard={savedIds.has(detailSpot.id)}
+        />
+      )}
     </div>
   );
 }
@@ -4932,7 +4952,7 @@ export default function App() {
   const [shareItem, setShareItem] = useState(null); // { kind, title, payload } -> ShareModal
   const [barCrawl, setBarCrawl] = useState(null);   // { seed: [...] } -> BarCrawlQuiz
   const [pendingGen, setPendingGen] = useState(false); // fire generate() after ans/times state commits
-  const [activeTab, setActiveTab] = useState("plans"); // Plans is the landing tab; planning is a CTA there
+  const [activeTab, setActiveTab] = useState("saved"); // Saves is the landing tab (first tab)
   const [tourStep, setTourStep] = useState(-1); // -1 = off; guided product tour (Me → "Take a tour")
   const [importSignal, setImportSignal] = useState(0); // bump to launch the hands-on "add a save" walkthrough
   const [peopleBadge, setPeopleBadge] = useState(0); // unsaved shares sent to you → People tab badge
@@ -5235,8 +5255,8 @@ export default function App() {
   const showViewingPlan = activeTab === "plans" && viewingPlan;
 
   const TABS = [
-    { id: "plans", label: "Plans", icon: "📋" },
     { id: "saved", label: "Saves", icon: "📌" },
+    { id: "plans", label: "Plans", icon: "📋" },
     { id: "people", label: "People", icon: "👥", badge: peopleBadge },
     { id: "me", label: "Me", icon: "🙂", badge: isAdmin ? adminBadge : 0 },
   ];
