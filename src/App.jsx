@@ -4472,13 +4472,15 @@ function SharedListView({ list, user, onClose }) {
 // Friendly, unambiguous 4-letter words used as connect codes — easy to say and type.
 const FRIEND_WORDS = ["BEAR","WOLF","DEER","FROG","DUCK","SWAN","CROW","DOVE","HAWK","MOTH","CRAB","SEAL","GOAT","LAMB","PONY","MULE","FAWN","FISH","TOAD","NEWT","HARE","MOLE","LYNX","ORCA","PUMA","WREN","LARK","LION","BASS","CLAM","RAIN","SNOW","WIND","STAR","MOON","DUSK","DAWN","TIDE","WAVE","LAKE","POND","HILL","PEAK","CAVE","ROCK","SAND","DUNE","REEF","FERN","MOSS","REED","VINE","LEAF","SEED","TREE","BARK","ROOT","PINE","PALM","MINT","LIME","PEAR","PLUM","KALE","BEAN","RICE","CAKE","TART","CORN","OKRA","SAGE","DILL","BLUE","TEAL","GOLD","RUBY","JADE","ROSE","PINK","OPAL","ONYX","BOAT","SHIP","KITE","BELL","DRUM","HARP","LAMP","DOOR","BOOK","NOTE","COIN","RING","BEAD","LENS","FLAG","FIRE","GLOW","MIST","HAZE","GATE","PATH","NEST","WING"];
 
-// A friend's board, read-only: see everywhere they've saved and copy any spot to
-// your own saves. Opened by tapping a connection in the People tab.
+// A friend's profile, Instagram-style: avatar + stats header, then their saves
+// grouped into folders exactly like your own Saves page. Tap a folder to see the
+// spots inside and copy any of them to your own board.
 function FriendProfile({ user, friend, onClose }) {
   const nameOf = (p) => p?.name || (p?.email ? p.email.split("@")[0] : null) || "Friend";
   const [saves, setSaves] = useState([]);
   const [loading, setLoading] = useState(true);
   const [savedIds, setSavedIds] = useState(new Set());
+  const [openFolder, setOpenFolder] = useState(null);
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     (async () => {
@@ -4493,30 +4495,64 @@ function FriendProfile({ user, friend, onClose }) {
     if (!error) setSavedIds(prev => new Set(prev).add(s.id));
     setBusy(false);
   }
+  const FCAT = { restaurant: "Restaurants", cafe: "Cafés", bar: "Bars", nightlife: "Nightlife", market: "Markets", outdoor: "Outdoor", museum: "Museums", gallery: "Galleries", experience: "Experiences", event: "Events" };
+  const folderOf = (s) => s.folder || FCAT[String(s.category || "").toLowerCase()] || "Other";
+  const grouped = saves.reduce((acc, s) => { const f = folderOf(s); (acc[f] = acc[f] || []).push(s); return acc; }, {});
+  const folderNames = Object.keys(grouped).sort();
+  const folderSaves = openFolder ? (grouped[openFolder] || []) : [];
+  const stat = (n, l) => <div style={{ textAlign: "center" }}><div style={{ fontSize: "1.15rem", fontWeight: 700, color: "#1c1c1a" }}>{n}</div><div style={{ fontSize: "0.68rem", color: "#9b8f7a", textTransform: "uppercase", letterSpacing: "0.06em" }}>{l}</div></div>;
+
   return (
     <div style={{ position: "fixed", inset: 0, background: "#fbfaf8", zIndex: 1200, overflowY: "auto", animation: "fadeIn 0.2s" }}>
       <div style={{ maxWidth: 420, margin: "0 auto", padding: "1rem 1.5rem 6rem" }}>
-        <button className="btn-outline" style={{ marginTop: 0, width: "auto", padding: "8px 14px" }} onClick={onClose}>← People</button>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "1rem 0 1.25rem" }}>
-          <div style={{ width: 52, height: 52, borderRadius: "50%", background: "#726A4E", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: "1.3rem", overflow: "hidden", flexShrink: 0 }}>{friend.avatar_url ? <img src={friend.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : nameOf(friend).charAt(0).toUpperCase()}</div>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "1.4rem", color: "#1c1c1a", lineHeight: 1.1 }}>{nameOf(friend)}</div>
-            <div style={{ fontSize: "0.78rem", color: "#9b8f7a", marginTop: 2 }}>{loading ? "Loading…" : `${saves.length} saved place${saves.length !== 1 ? "s" : ""}`}</div>
+        <button className="btn-outline" style={{ marginTop: 0, width: "auto", padding: "8px 14px" }} onClick={openFolder ? () => setOpenFolder(null) : onClose}>← {openFolder ? "Profile" : "People"}</button>
+
+        {/* Instagram-style header */}
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: "1.25rem" }}>
+          <div style={{ width: 88, height: 88, borderRadius: "50%", background: "#726A4E", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: "2.2rem", overflow: "hidden", border: "3px solid #fff", boxShadow: "0 2px 10px rgba(0,0,0,0.12)" }}>{friend.avatar_url ? <img src={friend.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : nameOf(friend).charAt(0).toUpperCase()}</div>
+          <div style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "1.5rem", color: "#1c1c1a", marginTop: 10 }}>{nameOf(friend)}</div>
+          <div style={{ display: "flex", gap: 30, marginTop: 12 }}>
+            {stat(saves.length, "Saves")}
+            {stat(folderNames.length, "Lists")}
           </div>
         </div>
-        {!loading && saves.length === 0 && <div style={{ fontSize: "0.85rem", color: "#9b8f7a", textAlign: "center", padding: "2rem 1rem", lineHeight: 1.5 }}>{nameOf(friend)} hasn't saved anything yet.</div>}
-        {saves.map(s => (
-          <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 11, padding: 10, background: "#fff", border: "1px solid #f0ebe2", borderRadius: 14, marginBottom: 8 }}>
-            {s.photo_url ? <img src={s.photo_url} alt="" style={{ width: 46, height: 46, borderRadius: 10, objectFit: "cover", flexShrink: 0 }} /> : <div style={{ width: 46, height: 46, borderRadius: 10, background: "#f5f0e8", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{CAT_EMOJI[String(s.category || "").toLowerCase()] || "📍"}</div>}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: "0.88rem", fontWeight: 600, color: "#1c1c1a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.name}</div>
-              <div style={{ fontSize: "0.72rem", color: "#9b8f7a" }}>{[s.category, s.area].filter(Boolean).join(" · ")}{s.google_rating ? ` · ⭐ ${s.google_rating}` : ""}</div>
-            </div>
-            {savedIds.has(s.id)
-              ? <span style={{ fontSize: "0.76rem", color: "#726A4E", fontWeight: 600, flexShrink: 0 }}>✓ Saved</span>
-              : <button disabled={busy} onClick={() => saveToMine(s)} style={{ border: "1.5px solid #726A4E", background: "#fff", color: "#726A4E", borderRadius: 100, padding: "6px 13px", fontSize: "0.74rem", fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>＋ Save</button>}
+
+        {loading && <div style={{ fontSize: "0.82rem", color: "#9b8f7a", textAlign: "center", marginTop: "1.5rem" }}>Loading…</div>}
+        {!loading && saves.length === 0 && <div style={{ fontSize: "0.85rem", color: "#9b8f7a", textAlign: "center", padding: "2.5rem 1rem", lineHeight: 1.5 }}>{nameOf(friend)} hasn't saved anything yet.</div>}
+
+        {/* Folder grid — same layout as your own Saves page */}
+        {!openFolder && folderNames.length > 0 && (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: "1.5rem" }}>
+            {folderNames.map(f => (
+              <button key={f} onClick={() => setOpenFolder(f)} style={{ borderRadius: 16, overflow: "hidden", boxShadow: "0 2px 8px rgba(0,0,0,0.06)", background: "#fff", border: "none", padding: 0, cursor: "pointer", textAlign: "left" }}>
+                <ListCover items={grouped[f]} height={130} />
+                <div style={{ padding: "10px 12px" }}>
+                  <div style={{ fontSize: "0.84rem", fontWeight: 600, color: "#1c1c1a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f}</div>
+                  <div style={{ fontSize: "0.68rem", color: "#9b8f7a" }}>{grouped[f].length} spot{grouped[f].length !== 1 ? "s" : ""}</div>
+                </div>
+              </button>
+            ))}
           </div>
-        ))}
+        )}
+
+        {/* Inside a folder — spot cards, each copyable to your board */}
+        {openFolder && (
+          <div style={{ marginTop: "1.25rem" }}>
+            <div style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "1.1rem", color: "#1c1c1a", marginBottom: 10 }}>{openFolder} ({folderSaves.length})</div>
+            {folderSaves.map(s => (
+              <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 11, padding: 10, background: "#fff", border: "1px solid #f0ebe2", borderRadius: 14, marginBottom: 8 }}>
+                {s.photo_url ? <img src={s.photo_url} alt="" style={{ width: 46, height: 46, borderRadius: 10, objectFit: "cover", flexShrink: 0 }} /> : <div style={{ width: 46, height: 46, borderRadius: 10, background: "#f5f0e8", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{CAT_EMOJI[String(s.category || "").toLowerCase()] || "📍"}</div>}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: "0.88rem", fontWeight: 600, color: "#1c1c1a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.name}</div>
+                  <div style={{ fontSize: "0.72rem", color: "#9b8f7a" }}>{[s.category, s.area].filter(Boolean).join(" · ")}{s.google_rating ? ` · ⭐ ${s.google_rating}` : ""}</div>
+                </div>
+                {savedIds.has(s.id)
+                  ? <span style={{ fontSize: "0.76rem", color: "#726A4E", fontWeight: 600, flexShrink: 0 }}>✓ Saved</span>
+                  : <button disabled={busy} onClick={() => saveToMine(s)} style={{ border: "1.5px solid #726A4E", background: "#fff", color: "#726A4E", borderRadius: 100, padding: "6px 13px", fontSize: "0.74rem", fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>＋ Save</button>}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -4535,6 +4571,7 @@ function PeopleScreen({ user, onSavePlan, onShareSaved }) {
   const [codeInput, setCodeInput] = useState("");
   const [connecting, setConnecting] = useState(false);
   const [viewFriend, setViewFriend] = useState(null); // open a friend's board
+  const [showConnect, setShowConnect] = useState(false); // collapse the connect card by default
   const inviteLink = `https://london-app.vercel.app/?invite=${user.id}`;
   const nameOf = (p) => p?.name || (p?.email ? p.email.split("@")[0] : null) || "Friend";
 
@@ -4619,33 +4656,55 @@ function PeopleScreen({ user, onSavePlan, onShareSaved }) {
       </div>
       {msg && <div style={{ margin: "0 1.5rem 0.75rem", background: "#eef3d8", color: "#4B342F", borderRadius: 12, padding: "10px 12px", fontSize: "0.82rem" }}>{msg}</div>}
 
+      {/* Friends first — the heart of the tab */}
       <div style={{ padding: "0 1.5rem 1rem" }}>
-        <div data-tour="invite" style={{ background: "#fff", border: "1px solid #f0ebe2", borderRadius: 16, padding: "1rem" }}>
-          <div style={{ fontWeight: 600, color: "#1c1c1a", marginBottom: 4 }}>Your invite link</div>
-          <div style={{ fontSize: "0.76rem", color: "#9b8f7a", marginBottom: 10 }}>Send this to friends. When they open it, you're connected.</div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button className="btn-outline" style={{ marginTop: 0, flex: 1 }} onClick={() => { navigator.clipboard?.writeText(inviteLink); setCopied(true); setTimeout(() => setCopied(false), 2000); }}>{copied ? "✓ Copied" : "🔗 Copy link"}</button>
-            <button className="btn-outline" style={{ marginTop: 0, flex: 1 }} onClick={() => { if (navigator.share) navigator.share({ title: "Connect on Curated", url: inviteLink }); else window.open(`https://wa.me/?text=${encodeURIComponent("Connect with me on Curated: " + inviteLink)}`); }}>📤 Share</button>
-          </div>
+        <div style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a", margin: "0.25rem 0 0.6rem" }}>Friends ({connections.length})</div>
+        {connections.length === 0 && <div style={{ fontSize: "0.82rem", color: "#9b8f7a" }}>No friends yet — tap “Connect with a friend” below.</div>}
+        {connections.length > 0 && <div style={{ fontSize: "0.72rem", color: "#b3a892", marginBottom: 8 }}>Tap a friend to see their profile & saves.</div>}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+          {connections.map(c => (
+            <button key={c.id} onClick={() => setViewFriend(c)} style={{ display: "flex", alignItems: "center", gap: 8, background: "#fff", border: "1px solid #f0ebe2", borderRadius: 100, padding: "6px 12px 6px 6px", cursor: "pointer" }}>
+              <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#726A4E", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 600, fontSize: "0.8rem", overflow: "hidden" }}>{c.avatar_url ? <img src={c.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : nameOf(c).charAt(0).toUpperCase()}</div>
+              <span style={{ fontSize: "0.8rem", color: "#1c1c1a" }}>{nameOf(c)}</span>
+              <span style={{ color: "#c9bfae", fontSize: "1rem" }}>›</span>
+            </button>
+          ))}
         </div>
       </div>
 
+      {/* Connect — collapsed to a single row until tapped */}
       <div style={{ padding: "0 1.5rem 1rem" }}>
-        <div style={{ background: "#fff", border: "1px solid #f0ebe2", borderRadius: 16, padding: "1rem" }}>
-          <div style={{ fontWeight: 600, color: "#1c1c1a", marginBottom: 2 }}>Both got the app? Swap words</div>
-          <div style={{ fontSize: "0.76rem", color: "#9b8f7a", marginBottom: 12 }}>Tell your friend your word — they type it into their app to connect you.</div>
-          <div style={{ background: "#faf9f6", borderRadius: 12, padding: "14px", textAlign: "center" }}>
-            <div style={{ fontSize: "0.66rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#9b8f7a", fontWeight: 700, marginBottom: 5 }}>Your word</div>
-            <div style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "2.2rem", letterSpacing: "0.18em", color: "#1c1c1a", lineHeight: 1, paddingLeft: "0.18em" }}>{myCode || "····"}</div>
-            <button className="btn-outline" style={{ marginTop: 12, padding: "8px 22px", fontSize: "0.8rem", width: "auto" }} disabled={!myCode} onClick={() => { navigator.clipboard?.writeText(myCode); setCodeCopied(true); setTimeout(() => setCodeCopied(false), 2000); }}>{codeCopied ? "✓ Copied" : "Copy word"}</button>
+        {!showConnect ? (
+          <button data-tour="invite" onClick={() => setShowConnect(true)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, background: "#fff", border: "1px solid #f0ebe2", borderRadius: 16, padding: "14px 16px", cursor: "pointer" }}>
+            <span style={{ fontSize: "1.1rem" }}>🤝</span>
+            <span style={{ flex: 1, textAlign: "left", fontSize: "0.9rem", fontWeight: 600, color: "#1c1c1a" }}>Connect with a friend</span>
+            <span style={{ color: "#c9bfae", fontSize: "1.2rem" }}>›</span>
+          </button>
+        ) : (
+          <div data-tour="invite" style={{ background: "#fff", border: "1px solid #f0ebe2", borderRadius: 16, padding: "1rem" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+              <div style={{ fontWeight: 600, color: "#1c1c1a" }}>Connect with a friend</div>
+              <button onClick={() => setShowConnect(false)} style={{ border: "none", background: "none", color: "#9b8f7a", fontSize: "0.8rem", cursor: "pointer" }}>Hide</button>
+            </div>
+            <div style={{ fontSize: "0.76rem", color: "#9b8f7a", marginBottom: 10 }}>Both got the app? Swap words. Tell your friend your word, or enter theirs.</div>
+            <div style={{ background: "#faf9f6", borderRadius: 12, padding: "14px", textAlign: "center" }}>
+              <div style={{ fontSize: "0.66rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#9b8f7a", fontWeight: 700, marginBottom: 5 }}>Your word</div>
+              <div style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "2.2rem", letterSpacing: "0.18em", color: "#1c1c1a", lineHeight: 1, paddingLeft: "0.18em" }}>{myCode || "····"}</div>
+              <button className="btn-outline" style={{ marginTop: 12, padding: "8px 22px", fontSize: "0.8rem", width: "auto" }} disabled={!myCode} onClick={() => { navigator.clipboard?.writeText(myCode); setCodeCopied(true); setTimeout(() => setCodeCopied(false), 2000); }}>{codeCopied ? "✓ Copied" : "Copy word"}</button>
+            </div>
+            <div style={{ fontSize: "0.76rem", color: "#6b5e4e", margin: "12px 0 8px" }}>Have your friend's word? Enter it:</div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input value={codeInput} onChange={e => setCodeInput(e.target.value.toUpperCase().replace(/[^A-Z]/g, ""))} placeholder="e.g. BLUE" maxLength={4} className="input-field" style={{ flex: 1, textTransform: "uppercase", letterSpacing: "0.14em", fontWeight: 600 }} />
+              <button onClick={connectByCode} disabled={connecting || codeInput.trim().length !== 4} style={{ border: "none", background: codeInput.trim().length === 4 ? "#726A4E" : "#cfc8ba", color: "#fff", borderRadius: 10, padding: "0 18px", fontWeight: 600, fontSize: "0.82rem", cursor: codeInput.trim().length === 4 ? "pointer" : "default" }}>{connecting ? "…" : "Connect"}</button>
+            </div>
+            <div style={{ height: 1, background: "#f0ebe2", margin: "14px 0" }} />
+            <div style={{ fontSize: "0.76rem", color: "#9b8f7a", marginBottom: 8 }}>Not on the app yet? Send them an invite link:</div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button className="btn-outline" style={{ marginTop: 0, flex: 1 }} onClick={() => { navigator.clipboard?.writeText(inviteLink); setCopied(true); setTimeout(() => setCopied(false), 2000); }}>{copied ? "✓ Copied" : "🔗 Copy link"}</button>
+              <button className="btn-outline" style={{ marginTop: 0, flex: 1 }} onClick={() => { if (navigator.share) navigator.share({ title: "Connect on Curated", url: inviteLink }); else window.open(`https://wa.me/?text=${encodeURIComponent("Connect with me on Curated: " + inviteLink)}`); }}>📤 Share</button>
+            </div>
           </div>
-          <div style={{ height: 1, background: "#f0ebe2", margin: "14px 0" }} />
-          <div style={{ fontSize: "0.76rem", color: "#6b5e4e", marginBottom: 8 }}>Have your friend's word? Enter it to connect:</div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <input value={codeInput} onChange={e => setCodeInput(e.target.value.toUpperCase().replace(/[^A-Z]/g, ""))} placeholder="e.g. BLUE" maxLength={4} className="input-field" style={{ flex: 1, textTransform: "uppercase", letterSpacing: "0.14em", fontWeight: 600 }} />
-            <button onClick={connectByCode} disabled={connecting || codeInput.trim().length !== 4} style={{ border: "none", background: codeInput.trim().length === 4 ? "#726A4E" : "#cfc8ba", color: "#fff", borderRadius: 10, padding: "0 18px", fontWeight: 600, fontSize: "0.82rem", cursor: codeInput.trim().length === 4 ? "pointer" : "default" }}>{connecting ? "…" : "Connect"}</button>
-          </div>
-        </div>
+        )}
       </div>
 
       <div data-tour="shared-lists"><SharedListsSection user={user} /></div>
@@ -4663,21 +4722,6 @@ function PeopleScreen({ user, onSavePlan, onShareSaved }) {
             {!s.seen && <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#DD4124" }} />}
           </div>
         ))}
-      </div>
-
-      <div style={{ padding: "0 1.5rem 1rem" }}>
-        <div style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a", margin: "0.25rem 0 0.6rem" }}>Connected ({connections.length})</div>
-        {connections.length === 0 && <div style={{ fontSize: "0.82rem", color: "#9b8f7a" }}>No connections yet — share your invite link above.</div>}
-        {connections.length > 0 && <div style={{ fontSize: "0.72rem", color: "#b3a892", marginBottom: 8 }}>Tap a friend to see their saves.</div>}
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-          {connections.map(c => (
-            <button key={c.id} onClick={() => setViewFriend(c)} style={{ display: "flex", alignItems: "center", gap: 8, background: "#fff", border: "1px solid #f0ebe2", borderRadius: 100, padding: "6px 12px 6px 6px", cursor: "pointer" }}>
-              <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#726A4E", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 600, fontSize: "0.8rem", overflow: "hidden" }}>{c.avatar_url ? <img src={c.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : nameOf(c).charAt(0).toUpperCase()}</div>
-              <span style={{ fontSize: "0.8rem", color: "#1c1c1a" }}>{nameOf(c)}</span>
-              <span style={{ color: "#c9bfae", fontSize: "1rem" }}>›</span>
-            </button>
-          ))}
-        </div>
       </div>
 
       {viewFriend && <FriendProfile user={user} friend={viewFriend} onClose={() => setViewFriend(null)} />}
@@ -4936,7 +4980,16 @@ export default function App() {
     setLoading(true); setError(null);
     const shortlistResult = buildShortlist(ans, dbVenues, venueRatings);
     let shortlist = shortlistResult.venues || shortlistResult;
-    if (ans._barCrawl) {
+    const savedVenues = ans.savedVenues || [];
+    if (ans._barCrawl && savedVenues.length) {
+      // Bar crawl started from your OWN saved bars → the crawl IS those saves.
+      // Don't pad it out with venues from the general pool.
+      shortlist = savedVenues.map(v => ({
+        name: v.name, type: v.category || "bar", travelZone: v.zone || v.area || "London",
+        price: v.price, tags: v.vibe_tags, desc: v.comment, emoji: "🍸",
+        bookingRequired: false, google_rating: v.google_rating,
+      }));
+    } else if (ans._barCrawl) {
       const drink = shortlist.filter(v => /bar|pub|night|wine|cocktail/i.test(v.type || ""));
       if (drink.length >= 3) shortlist = drink;
     }
@@ -4949,7 +5002,6 @@ export default function App() {
       price_range: v.price || null,
     })));
 
-    const savedVenues = ans.savedVenues || [];
     const matchVenue = (name) => {
       const n = (name || "").toLowerCase();
       const hit = (v) => v.name && (v.name.toLowerCase().includes(n) || n.includes(v.name.toLowerCase()));
@@ -5261,7 +5313,11 @@ export default function App() {
           const atmos = a.vibe === "quiet" ? "quiet, intimate spots" : a.vibe === "music" ? "lively bars with music and a buzz" : "a progression that starts chilled and gets livelier";
           const dress = a.dress === "fancy" ? "smart / dressy venues" : a.dress === "casual" ? "casual, laid-back venues" : "any dress code";
           const setting = a.setting === "indoor" ? "mostly indoor" : a.setting === "outdoor" ? "rooftops and terraces where possible" : "indoor or outdoor";
-          const clause = `. THIS IS A BAR CRAWL: every single stop MUST be a bar or pub (no restaurants, cafes, museums or shops). Pick 4-5 drinking venues within a short walk of each other and order them as a natural crawl. Preference: ${typeLabel}. Atmosphere: ${atmos}. Dress: ${dress}. Setting: ${setting}. Set every stop's "type" to "bar" or "pub".`;
+          const seeded = (barCrawl.seed || []).length;
+          const stopsLine = seeded > 0
+            ? `Use the user's OWN saved bars as the stops — include ALL ${seeded} of them and add NO other venues; just order them into a natural walking crawl.`
+            : "Pick 4-5 drinking venues within a short walk of each other and order them as a natural crawl.";
+          const clause = `. THIS IS A BAR CRAWL: every single stop MUST be a bar or pub (no restaurants, cafes, museums or shops). ${stopsLine} Preference: ${typeLabel}. Atmosphere: ${atmos}. Dress: ${dress}. Setting: ${setting}. Set every stop's "type" to "bar" or "pub".`;
           setAns(prev => ({ ...prev, timeOfDay: "night", vibes, area: a.area, budget: a.budget, groupSize: prev.groupSize || "small_group", energy: "high", travel: "walking", extras: [], savedVenues: barCrawl.seed || [], _barCrawl: true, _barCrawlClause: clause }));
           setTimes({ start: "18:00", end: "23:30" });
           setBarCrawl(null); setActiveTab("home"); setQuizStep(QUESTIONS.length); setPendingGen(true);
