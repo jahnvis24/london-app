@@ -408,8 +408,8 @@ const styles = `
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
   button { color: #1c1c1a; font-family: inherit; -webkit-tap-highlight-color: transparent; }
-  body { font-family: 'Aleo', -apple-system, sans-serif; background: #f7f6f2; color: #1c1c1a; min-height: 100vh; overflow-x: hidden; }
-  .app { max-width: 420px; margin: 0 auto; min-height: 100vh; background: #f7f6f2; padding-bottom: 80px; position: relative; }
+  body { font-family: 'Aleo', -apple-system, sans-serif; background: #fbfaf8; color: #1c1c1a; min-height: 100vh; overflow-x: hidden; }
+  .app { max-width: 420px; margin: 0 auto; min-height: 100vh; background: #fbfaf8; padding-bottom: 80px; position: relative; }
 
   .shapes-wrap { position: absolute; top: 0; right: -20px; width: 220px; height: 260px; pointer-events: none; z-index: 0; }
   .shape-circle { position: absolute; border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden; animation: spin-cw 14s linear infinite; }
@@ -431,7 +431,7 @@ const styles = `
   @keyframes tapPulse { 0%{transform:scale(1)} 35%{transform:scale(0.95)} 100%{transform:scale(1)} }
   @keyframes burstIn { 0%{transform:scale(0);opacity:0} 55%{transform:scale(1.2);opacity:1} 100%{transform:scale(1);opacity:1} }
 
-  .home-hero { padding: 3.5rem 1.5rem 2rem; position: relative; overflow: hidden; min-height: 300px; background: #f7f6f2; }
+  .home-hero { padding: 3.5rem 1.5rem 2rem; position: relative; overflow: hidden; min-height: 300px; background: #fbfaf8; }
   .home-eyebrow { font-size: 0.68rem; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: #9b8f7a; margin-bottom: 0.6rem; position: relative; z-index: 1; }
   .home-title { font-family: 'Aleo', Georgia, serif; font-size: 3rem; font-weight: 400; line-height: 1.0; letter-spacing: -0.03em; color: #1c1c1a; margin-bottom: 0.75rem; position: relative; z-index: 1; }
   .home-title em { font-style: italic; color: #726A4E; }
@@ -1128,7 +1128,7 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
 function MyPlansScreen({ plans, onViewPlan, onNewPlan, onSchedule, dbVenues }) {
   const photoFor = (name) => { if (!name || !dbVenues) return null; const v = dbVenues.find(x => x.name && x.name.toLowerCase() === String(name).toLowerCase()); return v?.photo_url || null; };
   const Header = (
-    <div style={{ padding: "1.75rem 1.5rem 0.5rem" }}>
+    <div style={{ padding: "1.75rem 1.5rem 0.5rem", textAlign: "center" }}>
       <div style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "2rem", color: "#1c1c1a", lineHeight: 1.05 }}>Itineraries</div>
       <div style={{ fontSize: "0.86rem", color: "#9b8f7a", marginTop: 5 }}>Turn your saved spots into plans you'll actually do.</div>
       <button data-tour="plan-cta" onClick={onNewPlan} style={{ width: "100%", marginTop: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "#726A4E", color: "#fff", border: "none", borderRadius: 14, padding: "15px", fontSize: "0.95rem", fontWeight: 600, cursor: "pointer", boxShadow: "0 3px 12px rgba(114,106,78,0.28)" }}>✦ Plan my day or night</button>
@@ -3689,14 +3689,18 @@ function LoginScreen({ onLogin }) {
     setOtpBusy(true); setError(null);
     const { error } = await supabase.auth.signInWithOtp({ email: addr, options: { shouldCreateUser: true } });
     setOtpBusy(false);
-    if (error) { setError(error.message); return; }
-    setStage("code"); setOtp(""); setCooldown(30);
+    if (error) {
+      if (/rate limit/i.test(error.message)) { setStage("code"); setCooldown(60); setError("Too many requests just now — wait a moment, then use the most recent code we already sent."); }
+      else setError(error.message);
+      return;
+    }
+    setStage("code"); setOtp(""); setCooldown(60);
     if (isResend) { setResent(true); setTimeout(() => setResent(false), 4000); }
   }
 
   async function verifyCode() {
     const token = otp.trim();
-    if (token.length < 6) { setError("Enter the 6-digit code from your email."); return; }
+    if (token.length < 6) { setError("Enter the code from your email."); return; }
     setOtpBusy(true); setError(null);
     const { error } = await supabase.auth.verifyOtp({ email: email.trim().toLowerCase(), token, type: "email" });
     setOtpBusy(false);
@@ -3735,9 +3739,9 @@ function LoginScreen({ onLogin }) {
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <div style={{ fontSize: "0.78rem", color: "#6b5e4e" }}>We sent a 6-digit code to <strong>{email}</strong>.</div>
-            <div style={{ fontSize: "0.72rem", color: "#9b8f7a", lineHeight: 1.4 }}>Type the 6 digits below — <strong>not</strong> any link in the email. Use the newest email if you asked more than once.</div>
-            <input inputMode="numeric" autoComplete="one-time-code" maxLength={6} placeholder="• • • • • •" value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, ""))} onKeyDown={e => e.key === "Enter" && verifyCode()} style={{ ...inputStyle, letterSpacing: "0.4em", fontSize: "1.2rem", fontWeight: 600 }} />
+            <div style={{ fontSize: "0.78rem", color: "#6b5e4e" }}>We sent a sign-in code to <strong>{email}</strong>.</div>
+            <div style={{ fontSize: "0.72rem", color: "#9b8f7a", lineHeight: 1.4 }}>Type the code below — <strong>not</strong> any link in the email. Use the newest email if you asked more than once.</div>
+            <input inputMode="numeric" autoComplete="one-time-code" maxLength={10} placeholder="••••••" value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, ""))} onKeyDown={e => e.key === "Enter" && verifyCode()} style={{ ...inputStyle, letterSpacing: "0.35em", fontSize: "1.2rem", fontWeight: 600 }} />
             <button onClick={verifyCode} disabled={otpBusy} style={{ width: "100%", padding: "13px", borderRadius: 100, border: "none", background: "#726A4E", color: "#fff", fontFamily: "'Aleo', sans-serif", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer" }}>{otpBusy ? "Verifying…" : "Verify & sign in"}</button>
             {resent && <div style={{ fontSize: "0.74rem", color: "#726A4E", fontWeight: 600 }}>✓ New code sent — check your inbox.</div>}
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.74rem" }}>
@@ -4483,12 +4487,10 @@ function PeopleScreen({ user, onSavePlan }) {
         <div style={{ background: "#fff", border: "1px solid #f0ebe2", borderRadius: 16, padding: "1rem" }}>
           <div style={{ fontWeight: 600, color: "#1c1c1a", marginBottom: 2 }}>Both got the app? Swap words</div>
           <div style={{ fontSize: "0.76rem", color: "#9b8f7a", marginBottom: 12 }}>Tell your friend your word — they type it into their app to connect you.</div>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, background: "#f7f6f2", borderRadius: 12, padding: "12px 14px" }}>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: "0.66rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#9b8f7a", fontWeight: 700, marginBottom: 3 }}>Your word</div>
-              <div style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "2rem", letterSpacing: "0.14em", color: "#1c1c1a", lineHeight: 1 }}>{myCode || "····"}</div>
-            </div>
-            <button className="btn-outline" style={{ marginTop: 0, padding: "9px 16px", fontSize: "0.8rem", flexShrink: 0 }} disabled={!myCode} onClick={() => { navigator.clipboard?.writeText(myCode); setCodeCopied(true); setTimeout(() => setCodeCopied(false), 2000); }}>{codeCopied ? "✓ Copied" : "Copy"}</button>
+          <div style={{ background: "#faf9f6", borderRadius: 12, padding: "14px", textAlign: "center" }}>
+            <div style={{ fontSize: "0.66rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#9b8f7a", fontWeight: 700, marginBottom: 5 }}>Your word</div>
+            <div style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "2.2rem", letterSpacing: "0.18em", color: "#1c1c1a", lineHeight: 1, paddingLeft: "0.18em" }}>{myCode || "····"}</div>
+            <button className="btn-outline" style={{ marginTop: 12, padding: "8px 22px", fontSize: "0.8rem", width: "auto" }} disabled={!myCode} onClick={() => { navigator.clipboard?.writeText(myCode); setCodeCopied(true); setTimeout(() => setCodeCopied(false), 2000); }}>{codeCopied ? "✓ Copied" : "Copy word"}</button>
           </div>
           <div style={{ height: 1, background: "#f0ebe2", margin: "14px 0" }} />
           <div style={{ fontSize: "0.76rem", color: "#6b5e4e", marginBottom: 8 }}>Have your friend's word? Enter it to connect:</div>
