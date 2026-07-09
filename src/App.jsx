@@ -3668,6 +3668,9 @@ function LoginScreen({ onLogin }) {
   const [otp, setOtp] = useState("");
   const [stage, setStage] = useState("email"); // email | code
   const [otpBusy, setOtpBusy] = useState(false);
+  const [cooldown, setCooldown] = useState(0); // seconds until Resend is allowed again
+  const [resent, setResent] = useState(false); // brief "code re-sent" confirmation
+  useEffect(() => { if (cooldown <= 0) return; const t = setTimeout(() => setCooldown(c => c - 1), 1000); return () => clearTimeout(t); }, [cooldown]);
 
   async function signInWithGoogle() {
     setLoading(true);
@@ -3680,14 +3683,15 @@ function LoginScreen({ onLogin }) {
     if (error) { setError(error.message); setLoading(false); }
   }
 
-  async function sendCode() {
+  async function sendCode(isResend) {
     const addr = email.trim().toLowerCase();
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(addr)) { setError("Enter a valid email address."); return; }
     setOtpBusy(true); setError(null);
     const { error } = await supabase.auth.signInWithOtp({ email: addr, options: { shouldCreateUser: true } });
     setOtpBusy(false);
     if (error) { setError(error.message); return; }
-    setStage("code");
+    setStage("code"); setOtp(""); setCooldown(30);
+    if (isResend) { setResent(true); setTimeout(() => setResent(false), 4000); }
   }
 
   async function verifyCode() {
@@ -3727,16 +3731,18 @@ function LoginScreen({ onLogin }) {
         {stage === "email" ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <input type="email" inputMode="email" autoComplete="email" placeholder="you@email.com" value={email} onChange={e => setEmail(e.target.value)} onKeyDown={e => e.key === "Enter" && sendCode()} style={inputStyle} />
-            <button onClick={sendCode} disabled={otpBusy} style={{ width: "100%", padding: "13px", borderRadius: 100, border: "none", background: "#726A4E", color: "#fff", fontFamily: "'Aleo', sans-serif", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer" }}>{otpBusy ? "Sending…" : "Email me a code"}</button>
+            <button onClick={() => sendCode()} disabled={otpBusy} style={{ width: "100%", padding: "13px", borderRadius: 100, border: "none", background: "#726A4E", color: "#fff", fontFamily: "'Aleo', sans-serif", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer" }}>{otpBusy ? "Sending…" : "Email me a code"}</button>
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <div style={{ fontSize: "0.78rem", color: "#6b5e4e" }}>We sent a 6-digit code to <strong>{email}</strong>.</div>
+            <div style={{ fontSize: "0.72rem", color: "#9b8f7a", lineHeight: 1.4 }}>Type the 6 digits below — <strong>not</strong> any link in the email. Use the newest email if you asked more than once.</div>
             <input inputMode="numeric" autoComplete="one-time-code" maxLength={6} placeholder="• • • • • •" value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, ""))} onKeyDown={e => e.key === "Enter" && verifyCode()} style={{ ...inputStyle, letterSpacing: "0.4em", fontSize: "1.2rem", fontWeight: 600 }} />
             <button onClick={verifyCode} disabled={otpBusy} style={{ width: "100%", padding: "13px", borderRadius: 100, border: "none", background: "#726A4E", color: "#fff", fontFamily: "'Aleo', sans-serif", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer" }}>{otpBusy ? "Verifying…" : "Verify & sign in"}</button>
+            {resent && <div style={{ fontSize: "0.74rem", color: "#726A4E", fontWeight: 600 }}>✓ New code sent — check your inbox.</div>}
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.74rem" }}>
               <button onClick={() => { setStage("email"); setOtp(""); setError(null); }} style={{ border: "none", background: "none", color: "#9b8f7a", cursor: "pointer" }}>← Change email</button>
-              <button onClick={sendCode} disabled={otpBusy} style={{ border: "none", background: "none", color: "#726A4E", fontWeight: 600, cursor: "pointer" }}>Resend code</button>
+              <button onClick={() => sendCode(true)} disabled={otpBusy || cooldown > 0} style={{ border: "none", background: "none", color: cooldown > 0 ? "#c9bfae" : "#726A4E", fontWeight: 600, cursor: cooldown > 0 ? "default" : "pointer" }}>{cooldown > 0 ? `Resend in ${cooldown}s` : "Resend code"}</button>
             </div>
           </div>
         )}
