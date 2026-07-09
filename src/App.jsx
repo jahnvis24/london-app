@@ -456,7 +456,7 @@ const styles = `
   .btn { width: 100%; padding: 14px; border-radius: 100px; border: none; background: #1c1c1a; color: #ffffff; font-family: 'Aleo', sans-serif; font-size: 0.9rem; font-weight: 500; cursor: pointer; transition: opacity 0.15s, transform 0.1s; letter-spacing: 0.01em; }
   .btn:disabled { opacity: 0.25; cursor: not-allowed; }
   .btn:hover:not(:disabled) { opacity: 0.88; }
-  .btn:active:not(:disabled) { transform: scale(0.99); }
+  .btn:active:not(:disabled) { transform: scale(0.96); }
   .btn-teal { background: #726A4E; color: #ffffff; }
   .btn-outline { width: 100%; padding: 13px; border-radius: 100px; border: 1.5px solid #ddd8ce; background: transparent; color: #4a4438; font-family: 'Aleo', sans-serif; font-size: 0.85rem; cursor: pointer; margin-top: 0.6rem; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.15s; }
   .btn-outline:hover { border-color: #1c1c1a; color: #1c1c1a; }
@@ -465,7 +465,9 @@ const styles = `
 
   .chip { padding: 9px 16px; border-radius: 100px; border: 1.5px solid #ddd8ce; font-family: 'Aleo', sans-serif; font-size: 0.85rem; cursor: pointer; background: #fff; color: #4a4438; transition: all 0.15s; display: flex; align-items: center; gap: 6px; user-select: none; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
   .chip:hover { border-color: #b8ac9a; }
+  .chip:active { transform: scale(0.93); }
   .chip.sel { background: #1c1c1a; color: #ffffff; border-color: #1c1c1a; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+  .btn-outline:active { transform: scale(0.96); }
   .chips { display: flex; flex-wrap: wrap; gap: 8px; }
 
   .card { background: #fff; border: 1px solid #e8e2d8; border-radius: 16px; padding: 1.4rem; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
@@ -1935,6 +1937,50 @@ function notify(title, body) {
 // Category labels render in ALL CAPS (e.g. "RESTAURANT") — used everywhere a spot's category shows.
 function cap(s) { return s ? String(s).toUpperCase() : ""; }
 
+// ── Delight layer: haptics + confetti ────────────────────────────────────────
+// Dependency-free. haptic() is a no-op where the Vibration API is unsupported
+// (desktop, iOS Safari). confetti() paints a quick celebratory burst on a
+// throwaway full-screen canvas — self-contained, CSP-safe, no external assets.
+function haptic(pattern = 15) {
+  try { if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(pattern); } catch { /* unsupported */ }
+}
+function confetti({ count = 80, power = 1, origin = 0.5 } = {}) {
+  if (typeof document === "undefined" || typeof window === "undefined") return;
+  if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const canvas = document.createElement("canvas");
+  canvas.style.cssText = "position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:99999";
+  document.body.appendChild(canvas);
+  const ctx = canvas.getContext("2d");
+  const W = (canvas.width = window.innerWidth * dpr);
+  const H = (canvas.height = window.innerHeight * dpr);
+  const colors = ["#726A4E", "#DFEF87", "#E8C07D", "#C98F6B", "#8FB08C", "#E4B2C4", "#F4E4C1"];
+  const cx = W * origin, cy = H * 0.4;
+  const parts = Array.from({ length: count }, () => {
+    const ang = Math.random() * Math.PI * 2;
+    const spd = (6 + Math.random() * 9) * power * dpr;
+    return { x: cx, y: cy, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd - 5 * dpr, g: 0.28 * dpr, rot: Math.random() * 6.28, vr: (Math.random() - 0.5) * 0.45, size: (5 + Math.random() * 6) * dpr, color: colors[(Math.random() * colors.length) | 0], life: 0, ttl: 70 + Math.random() * 45 };
+  });
+  let frame = 0;
+  (function tick() {
+    frame++;
+    ctx.clearRect(0, 0, W, H);
+    let alive = 0;
+    for (const p of parts) {
+      if (p.life > p.ttl) continue;
+      alive++; p.life++; p.vy += p.g; p.x += p.vx; p.y += p.vy; p.rot += p.vr;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, 1 - p.life / p.ttl);
+      ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+      ctx.restore();
+    }
+    if (alive > 0 && frame < 240) requestAnimationFrame(tick);
+    else canvas.remove();
+  })();
+}
+
 // Simple flat line icons for the bottom nav (inherit colour via currentColor).
 const NAV_ICON_PATHS = {
   home: '<path d="M12 3l2.2 6.8H21l-5.4 4 2.1 6.7L12 16.4 6.3 20.5l2.1-6.7-5.4-4h6.8z"/>',
@@ -2750,6 +2796,8 @@ function SavedScreen({ user, onBuildPlan, onShare, onBarCrawl, openSignal, calen
   function showSuccess(name) {
     setSuccessVenue(name);
     playChime();
+    haptic([12, 30, 12]);
+    confetti({ count: 70 });
     setTimeout(() => setSuccessVenue(null), 2200);
   }
 
@@ -3561,8 +3609,14 @@ Return a JSON object with this exact structure:
               <SpotsMap key="peek" saves={saves} peek peekHeight={150} onExpand={() => setSavedView("map")} />
             )}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "0.5rem 0 0.75rem" }}>
-              <div style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a" }}>Your lists ({saves.length} spot{saves.length !== 1 ? "s" : ""})</div>
-              <button onClick={createFolder} style={{ fontSize: "0.74rem", padding: "6px 12px", borderRadius: 100, border: "1.5px solid #726A4E", background: "#fff", color: "#726A4E", fontWeight: 600, cursor: "pointer" }}>+ New list</button>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                <div style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a" }}>Your lists ({saves.length} spot{saves.length !== 1 ? "s" : ""})</div>
+                {(() => {
+                  const week = saves.filter(s => s.created_at && (Date.now() - new Date(s.created_at).getTime()) < 7 * 864e5).length;
+                  return week > 0 ? <span title={`${week} saved in the last 7 days`} style={{ flexShrink: 0, fontSize: "0.66rem", fontWeight: 700, color: "#9a5b2e", background: "linear-gradient(180deg,#fbe7cf,#f6d6ae)", border: "1px solid #eec79a", borderRadius: 100, padding: "3px 9px", whiteSpace: "nowrap" }}>🔥 {week} this week</span> : null;
+                })()}
+              </div>
+              <button onClick={createFolder} style={{ fontSize: "0.74rem", padding: "6px 12px", borderRadius: 100, border: "1.5px solid #726A4E", background: "#fff", color: "#726A4E", fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>+ New list</button>
             </div>
             <div data-tour="saves-lists" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               {folderNames.map((f, fi) => {
@@ -3808,6 +3862,7 @@ function Onboarding({ user, dbVenues, onDone }) {
   function playPop() {
     // Soft, rounded "plink" — a gentle sine note with a warm quick decay. Quiet and
     // premium-feeling rather than a sharp beep. A tiny sine overtone adds body.
+    haptic(9); // a light tactile tick to match the sound
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
       const t = ctx.currentTime;
@@ -4301,6 +4356,12 @@ function SharedListView({ list, user, onClose }) {
 
   async function toggleDone(it) {
     const next = !it.done;
+    // Completing the very last unticked item = the whole list is done → big celebration.
+    const completesList = next && items.length > 1 && items.filter(x => x.id !== it.id).every(x => x.done);
+    if (next) {
+      if (completesList) { haptic([15, 40, 15, 40, 25]); confetti({ count: 130, power: 1.25 }); }
+      else haptic(18);
+    }
     setItems(prev => prev.map(x => x.id === it.id ? { ...x, done: next, done_by: next ? user.id : null } : x));
     await supabase.from("shared_list_items").update({ done: next, done_by: next ? user.id : null, done_at: next ? new Date().toISOString() : null }).eq("id", it.id);
   }
@@ -4664,6 +4725,7 @@ function PeopleScreen({ user, onSavePlan, onShareSaved }) {
       // pair never triggers an UPDATE (which the connections table has no policy for).
       const { error } = await supabase.from("connections").upsert({ user_a: a, user_b: b }, { onConflict: "user_a,user_b", ignoreDuplicates: true });
       if (error) throw error;
+      haptic([15, 40, 15, 40, 25]); confetti({ count: 120, power: 1.2 });
       setMsg(`Connected with ${data.name || "your friend"}! 🎉`); setCodeInput("");
       await load();
     } catch (e) { setMsg("Couldn't connect: " + e.message); }
