@@ -1932,7 +1932,8 @@ function notify(title, body) {
   try { if (typeof Notification !== "undefined" && Notification.permission === "granted") new Notification(title, { body, icon: "/favicon.svg" }); } catch (e) {}
 }
 // Capitalise the first letter (for category labels shown across the app).
-function cap(s) { return s ? String(s).charAt(0).toUpperCase() + String(s).slice(1) : ""; }
+// Category labels render in ALL CAPS (e.g. "RESTAURANT") — used everywhere a spot's category shows.
+function cap(s) { return s ? String(s).toUpperCase() : ""; }
 
 // Simple flat line icons for the bottom nav (inherit colour via currentColor).
 const NAV_ICON_PATHS = {
@@ -4258,6 +4259,7 @@ function SharedListView({ list, user, onClose }) {
   const [saves, setSaves] = useState([]);
   const [savesLoaded, setSavesLoaded] = useState(false);
   const [mName, setMName] = useState(""); const [mCat, setMCat] = useState(""); const [mArea, setMArea] = useState(""); const [mComment, setMComment] = useState("");
+  const [suggest, setSuggest] = useState(null); // null | "loading" | "none" | { ...google match, photo }
   const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
   const inviteLink = `https://london-app.vercel.app/?blist=${list.id}`;
@@ -4328,12 +4330,41 @@ function SharedListView({ list, user, onClose }) {
     setBusy(false);
   }
 
+  function resetManual() { setMName(""); setMCat(""); setMArea(""); setMComment(""); setSuggest(null); setPicker(null); }
+
   async function addManual() {
     const name = mName.trim(); if (!name) return;
     setBusy(true);
     const row = { list_id: list.id, added_by: user.id, name, category: mCat || null, area: mArea.trim() || null, comment: mComment.trim() || null };
     const { data, error } = await supabase.from("shared_list_items").insert(row).select().single();
-    if (!error && data) { setItems(prev => [...prev, data]); setMName(""); setMArea(""); setMComment(""); setPicker(null); }
+    if (!error && data) { setItems(prev => [...prev, data]); resetManual(); }
+    setBusy(false);
+  }
+
+  // "Did you mean this?!" — look the typed name up on Google, then fetch its photo,
+  // so the user confirms the real place (with address + rating + pic) before adding.
+  async function findSuggestion() {
+    const name = mName.trim(); if (!name) return;
+    setSuggest("loading");
+    try {
+      const r = await fetch("/api/enrich-venue", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, area: mArea.trim() }) });
+      const d = await r.json();
+      if (!d || !d.found) { setSuggest("none"); return; }
+      let photo = null;
+      if (d.google_place_id) {
+        try { const pr = await fetch("/api/saved-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool: "image", place_id: d.google_place_id }) }); const pj = await pr.json(); if (pj.found && pj.url) photo = pj.url; } catch { /* no photo, still show the match */ }
+      }
+      setSuggest({ ...d, photo });
+    } catch { setSuggest("none"); }
+  }
+
+  // Add the confirmed Google match, enriched with address/coords/rating/photo.
+  async function addSuggested() {
+    const d = suggest; if (!d || typeof d === "string") return;
+    setBusy(true);
+    const row = { list_id: list.id, added_by: user.id, name: d.validated_name || mName.trim(), category: mCat || null, area: mArea.trim() || d.derived_area || d.derived_zone || null, comment: mComment.trim() || null, address: d.validated_address || null, lat: d.lat ?? null, lng: d.lng ?? null, google_place_id: d.google_place_id || null, google_rating: d.google_rating != null ? String(d.google_rating) : null, price: d.price || null, website: d.website || null, photo_url: d.photo || null };
+    const { data, error } = await supabase.from("shared_list_items").insert(row).select().single();
+    if (!error && data) { setItems(prev => [...prev, data]); resetManual(); }
     setBusy(false);
   }
 
@@ -4380,7 +4411,7 @@ function SharedListView({ list, user, onClose }) {
             <button onClick={() => toggleDone(it)} style={{ width: 24, height: 24, borderRadius: "50%", border: it.done ? "none" : "2px solid #cfc6b5", background: it.done ? "#726A4E" : "#fff", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, cursor: "pointer", marginTop: 1, fontSize: "0.8rem" }}>{it.done ? "✓" : ""}</button>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: "0.9rem", fontWeight: 600, color: it.done ? "#9b8f7a" : "#1c1c1a", textDecoration: it.done ? "line-through" : "none" }}>{it.name}</div>
-              {[it.category, it.area].filter(Boolean).length > 0 && <div style={{ fontSize: "0.72rem", color: "#9b8f7a", marginTop: 1 }}>{[it.category, it.area].filter(Boolean).join(" · ")}</div>}
+              {[it.category, it.area].filter(Boolean).length > 0 && <div style={{ fontSize: "0.72rem", color: "#9b8f7a", marginTop: 1 }}>{[it.category ? cap(it.category) : null, it.area].filter(Boolean).join(" · ")}</div>}
               {it.comment && <div style={{ fontSize: "0.74rem", color: "#6b5e4e", marginTop: 2 }}>{it.comment}</div>}
               <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 5 }}>
                 <label style={{ display: "inline-flex", alignItems: "center", gap: 4, position: "relative", fontSize: "0.7rem", fontWeight: 600, color: it.target_date ? "#726A4E" : "#b3a892", cursor: "pointer" }}>
@@ -4417,7 +4448,7 @@ function SharedListView({ list, user, onClose }) {
                 {s.photo_url ? <img src={s.photo_url} alt="" style={{ width: 38, height: 38, borderRadius: 9, objectFit: "cover", flexShrink: 0 }} /> : <div style={{ width: 38, height: 38, borderRadius: 9, background: "#f5f0e8", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>📍</div>}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1c1c1a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.name}</div>
-                  <div style={{ fontSize: "0.72rem", color: "#9b8f7a" }}>{[s.category, s.area].filter(Boolean).join(" · ")}</div>
+                  <div style={{ fontSize: "0.72rem", color: "#9b8f7a" }}>{[s.category ? cap(s.category) : null, s.area].filter(Boolean).join(" · ")}</div>
                 </div>
                 <span style={{ color: "#726A4E", fontWeight: 700, fontSize: "1.1rem", flexShrink: 0 }}>＋</span>
               </button>
@@ -4450,18 +4481,39 @@ function SharedListView({ list, user, onClose }) {
       })()}
 
       {picker === "manual" && (
-        <div onClick={() => setPicker(null)} style={slOverlay}>
+        <div onClick={resetManual} style={slOverlay}>
           <div onClick={e => e.stopPropagation()} style={slSheet}>
-            <div style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "1.1rem", color: "#1c1c1a", marginBottom: 10 }}>Add a place</div>
-            <input value={mName} onChange={e => setMName(e.target.value)} placeholder="Place name" autoFocus style={slInput} />
-            <select value={mCat} onChange={e => setMCat(e.target.value)} style={{ ...slInput, marginTop: 8 }}>
-              <option value="">Category — none</option>
-              {["restaurant", "cafe", "bar", "nightlife", "market", "outdoor", "museum", "gallery", "experience", "event"].map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-            <input value={mArea} onChange={e => setMArea(e.target.value)} placeholder="Area (optional)" style={{ ...slInput, marginTop: 8 }} />
-            <input value={mComment} onChange={e => setMComment(e.target.value)} placeholder="Note (optional)" style={{ ...slInput, marginTop: 8 }} />
-            <button className="btn btn-teal" style={{ marginTop: 12 }} disabled={busy || !mName.trim()} onClick={addManual}>{busy ? "Adding…" : "Add to list"}</button>
-            <button onClick={() => setPicker(null)} className="btn-outline">Cancel</button>
+            {suggest && typeof suggest === "object" ? (
+              <>
+                <div style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "1.2rem", color: "#1c1c1a", marginBottom: 3 }}>Did you mean this?! ✨</div>
+                <div style={{ fontSize: "0.76rem", color: "#9b8f7a", marginBottom: 12 }}>We found this on Google — add it and we'll fill in the photo, address & rating.</div>
+                <div style={{ display: "flex", gap: 12, alignItems: "center", background: "#fff", border: "1px solid #f0ebe2", borderRadius: 16, padding: 12, marginBottom: 14 }}>
+                  {suggest.photo ? <img src={suggest.photo} alt="" style={{ width: 72, height: 72, borderRadius: 12, objectFit: "cover", flexShrink: 0 }} /> : <div style={{ width: 72, height: 72, borderRadius: 12, background: "#f5f0e8", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.6rem", flexShrink: 0 }}>{CAT_EMOJI[String(mCat || "").toLowerCase()] || "📍"}</div>}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: "0.98rem", fontWeight: 700, color: "#1c1c1a", lineHeight: 1.2 }}>{suggest.validated_name}</div>
+                    <div style={{ fontSize: "0.72rem", color: "#9b8f7a", margin: "3px 0" }}>{[mCat ? cap(mCat) : null, suggest.derived_area || suggest.derived_zone].filter(Boolean).join(" · ")}{suggest.google_rating ? ` · ⭐ ${suggest.google_rating}` : ""}</div>
+                    {suggest.validated_address && <div style={{ fontSize: "0.7rem", color: "#b3a892", lineHeight: 1.3 }}>{suggest.validated_address}</div>}
+                  </div>
+                </div>
+                <button className="btn btn-teal" style={{ marginTop: 0 }} disabled={busy} onClick={addSuggested}>{busy ? "Adding…" : "Yes — add this"}</button>
+                <button onClick={() => setSuggest(null)} className="btn-outline">Not this one ↩</button>
+              </>
+            ) : (
+              <>
+                <div style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "1.1rem", color: "#1c1c1a", marginBottom: 10 }}>Add a place</div>
+                <input value={mName} onChange={e => { setMName(e.target.value); if (suggest) setSuggest(null); }} placeholder="Place name — e.g. Tangra" autoFocus style={slInput} />
+                <select value={mCat} onChange={e => setMCat(e.target.value)} style={{ ...slInput, marginTop: 8 }}>
+                  <option value="">Category — none</option>
+                  {["restaurant", "cafe", "bar", "nightlife", "market", "outdoor", "museum", "gallery", "experience", "event"].map(c => <option key={c} value={c}>{cap(c)}</option>)}
+                </select>
+                <input value={mArea} onChange={e => setMArea(e.target.value)} placeholder="Area (optional — helps us find it)" style={{ ...slInput, marginTop: 8 }} />
+                <input value={mComment} onChange={e => setMComment(e.target.value)} placeholder="Note (optional)" style={{ ...slInput, marginTop: 8 }} />
+                {suggest === "none" && <div style={{ fontSize: "0.74rem", color: "#b0745a", margin: "10px 2px 0", lineHeight: 1.4 }}>Couldn't find that on Google — add an area, or just add it as typed below.</div>}
+                <button className="btn btn-teal" style={{ marginTop: 12 }} disabled={busy || suggest === "loading" || !mName.trim()} onClick={findSuggestion}>{suggest === "loading" ? "Searching Google…" : "🔍 Find it"}</button>
+                <button className="btn-outline" style={{ marginTop: 8 }} disabled={busy || !mName.trim()} onClick={addManual}>{busy ? "Adding…" : "Add as typed"}</button>
+                <button onClick={resetManual} style={{ display: "block", width: "100%", marginTop: 10, background: "none", border: "none", color: "#9b8f7a", fontSize: "0.8rem", cursor: "pointer" }}>Cancel</button>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -4544,7 +4596,7 @@ function FriendProfile({ user, friend, onClose }) {
                 {s.photo_url ? <img src={s.photo_url} alt="" style={{ width: 46, height: 46, borderRadius: 10, objectFit: "cover", flexShrink: 0 }} /> : <div style={{ width: 46, height: 46, borderRadius: 10, background: "#f5f0e8", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{CAT_EMOJI[String(s.category || "").toLowerCase()] || "📍"}</div>}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: "0.88rem", fontWeight: 600, color: "#1c1c1a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.name}</div>
-                  <div style={{ fontSize: "0.72rem", color: "#9b8f7a" }}>{[s.category, s.area].filter(Boolean).join(" · ")}{s.google_rating ? ` · ⭐ ${s.google_rating}` : ""}</div>
+                  <div style={{ fontSize: "0.72rem", color: "#9b8f7a" }}>{[s.category ? cap(s.category) : null, s.area].filter(Boolean).join(" · ")}{s.google_rating ? ` · ⭐ ${s.google_rating}` : ""}</div>
                 </div>
                 {savedIds.has(s.id)
                   ? <span style={{ fontSize: "0.76rem", color: "#726A4E", fontWeight: 600, flexShrink: 0 }}>✓ Saved</span>
