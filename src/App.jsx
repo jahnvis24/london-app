@@ -2694,7 +2694,7 @@ function SavedScreen({ user, onBuildPlan, onShare, onBarCrawl, openSignal, calen
     if (tourStep === 0 && preview.length > 0) setTourStep(1);
     else if ((tourStep === 1 || tourStep === 2) && preview.length === 0 && tourSavedRef.current) setTourStep(3);
   }, [preview.length, tourStep]);
-  const [mName, setMName] = useState(""); const [mCat, setMCat] = useState("restaurant"); const [mNotes, setMNotes] = useState("");
+  const [mName, setMName] = useState(""); const [mCat, setMCat] = useState(""); const [mNotes, setMNotes] = useState("");
   const [focusSpot, setFocusSpot] = useState(null); // tapping a list card pans the map to it
   const [mapCat, setMapCat] = useState(""); // Map tab: "" = all, else a category scope
 
@@ -3184,7 +3184,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
     setSaving(true); setError(null); setParseStatus(`Saving ${mName.trim()}...`);
     try {
       const g = await enrich(mName.trim(), null);
-      const d = buildDraft({ name: mName.trim(), category: mCat, comment: mNotes.trim() || null }, g, { source_type: "manual", source_url: null });
+      const d = buildDraft({ name: mName.trim(), category: mCat || null, comment: mNotes.trim() || null }, g, { source_type: "manual", source_url: null });
       const photo_url = d.photo_url || await resolvePhoto(d);
       const row = {
         user_id: user.id, name: d.name, address: d.address, area: d.area, zone: d.zone || "Central",
@@ -3483,12 +3483,11 @@ Return a JSON object with this exact structure:
                   <input className="input-field" value={mName} onChange={e => setMName(e.target.value)} placeholder="e.g. Dishoom Shoreditch" />
                 </div>
                 <div>
-                  <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "#1c1c1a", marginBottom: 8 }}>Category</div>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                    {MANUAL_CATS.map(([id, lbl, color]) => (
-                      <button key={id} onClick={() => setMCat(id)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 13px", borderRadius: 100, cursor: "pointer", fontSize: "0.8rem", fontWeight: 500, border: mCat === id ? "1.5px solid #1c1c1a" : "1.5px solid #e8e2d8", background: "#fff", color: "#1c1c1a" }}><span style={{ width: 9, height: 9, borderRadius: "50%", background: color }} />{lbl}</button>
-                    ))}
-                  </div>
+                  <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "#1c1c1a", marginBottom: 8 }}>Category <span style={{ color: "#9b8f7a", fontWeight: 400 }}>(optional)</span></div>
+                  <select value={mCat} onChange={e => setMCat(e.target.value)} className="input-field" style={{ padding: "11px 12px" }}>
+                    <option value="">None — we'll auto-detect it</option>
+                    {MANUAL_CATS.map(([id, lbl]) => <option key={id} value={id}>{lbl}</option>)}
+                  </select>
                 </div>
                 <div>
                   <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "#1c1c1a", marginBottom: 6 }}>Notes</div>
@@ -4252,16 +4251,23 @@ function SharedListsSection({ user }) {
 function SharedListView({ list, user, onClose }) {
   const [items, setItems] = useState([]);
   const [members, setMembers] = useState([]);
+  const [conns, setConns] = useState([]); // your connected friends, to add directly
   const [loading, setLoading] = useState(true);
-  const [picker, setPicker] = useState(null); // null | "saves" | "manual"
+  const [picker, setPicker] = useState(null); // null | "saves" | "manual" | "friends"
   const [savesFolder, setSavesFolder] = useState(null); // open folder in the "from saves" picker
   const [saves, setSaves] = useState([]);
   const [savesLoaded, setSavesLoaded] = useState(false);
-  const [mName, setMName] = useState(""); const [mCat, setMCat] = useState("restaurant"); const [mArea, setMArea] = useState(""); const [mComment, setMComment] = useState("");
+  const [mName, setMName] = useState(""); const [mCat, setMCat] = useState(""); const [mArea, setMArea] = useState(""); const [mComment, setMComment] = useState("");
   const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
   const inviteLink = `https://london-app.vercel.app/?blist=${list.id}`;
   const nameOf = (p) => p?.name || (p?.email ? p.email.split("@")[0] : null) || "Friend";
+  // Add-to-Google-Calendar link for a bucket-list item (uses its planned date if set).
+  const gcalUrlFor = (it) => {
+    const p = new URLSearchParams({ action: "TEMPLATE", text: it.name || "Visit", details: it.comment || "", location: it.address || it.area || "London" });
+    if (it.target_date) { const s = it.target_date.replace(/-/g, ""); const e = new Date(it.target_date); e.setDate(e.getDate() + 1); p.set("dates", `${s}/${e.toISOString().slice(0, 10).replace(/-/g, "")}`); }
+    return `https://calendar.google.com/calendar/render?${p.toString()}`;
+  };
 
   async function load() {
     setLoading(true);
@@ -4274,7 +4280,22 @@ function SharedListView({ list, user, onClose }) {
     setMembers(ids.map(id => ({ id, ...(profs[id] || {}) })));
     setLoading(false);
   }
-  useEffect(() => { load(); }, []);
+  // Your connections (so you can add a friend to the list directly, no link needed).
+  async function loadConns() {
+    const { data: cons } = await supabase.from("connections").select("*").or(`user_a.eq.${user.id},user_b.eq.${user.id}`);
+    const otherIds = (cons || []).map(c => (c.user_a === user.id ? c.user_b : c.user_a));
+    if (!otherIds.length) { setConns([]); return; }
+    const { data: profs } = await supabase.from("profiles").select("id,name,avatar_url,email").in("id", otherIds);
+    setConns((profs || []).map(p => ({ id: p.id, ...p })));
+  }
+  async function addMember(friendId) {
+    setBusy(true);
+    const { error } = await supabase.from("shared_list_members").insert({ list_id: list.id, user_id: friendId });
+    if (!error) await load();
+    else alert("Couldn't add them: " + error.message);
+    setBusy(false);
+  }
+  useEffect(() => { load(); loadConns(); }, []);
 
   async function toggleDone(it) {
     const next = !it.done;
@@ -4310,7 +4331,7 @@ function SharedListView({ list, user, onClose }) {
   async function addManual() {
     const name = mName.trim(); if (!name) return;
     setBusy(true);
-    const row = { list_id: list.id, added_by: user.id, name, category: mCat, area: mArea.trim() || null, comment: mComment.trim() || null };
+    const row = { list_id: list.id, added_by: user.id, name, category: mCat || null, area: mArea.trim() || null, comment: mComment.trim() || null };
     const { data, error } = await supabase.from("shared_list_items").insert(row).select().single();
     if (!error && data) { setItems(prev => [...prev, data]); setMName(""); setMArea(""); setMComment(""); setPicker(null); }
     setBusy(false);
@@ -4342,7 +4363,8 @@ function SharedListView({ list, user, onClose }) {
           {members.map(m => (
             <div key={m.id} title={nameOf(m)} style={{ width: 30, height: 30, borderRadius: "50%", background: "#726A4E", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 600, fontSize: "0.78rem", overflow: "hidden", border: "2px solid #f7f6f2", marginLeft: -6 }}>{m.avatar_url ? <img src={m.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : nameOf(m).charAt(0).toUpperCase()}</div>
           ))}
-          <button onClick={() => { navigator.clipboard?.writeText(inviteLink); setCopied(true); setTimeout(() => setCopied(false), 2000); }} style={{ ...slPill, marginLeft: 8 }}>{copied ? "✓ Link copied" : "🔗 Invite a friend"}</button>
+          {list.owner === user.id && <button onClick={() => { loadConns(); setPicker("friends"); }} style={{ ...slPill, marginLeft: 8, borderColor: "#726A4E", color: "#726A4E", fontWeight: 600 }}>＋ Add a friend</button>}
+          <button onClick={() => { navigator.clipboard?.writeText(inviteLink); setCopied(true); setTimeout(() => setCopied(false), 2000); }} style={slPill}>{copied ? "✓ Link copied" : "🔗 Invite by link"}</button>
         </div>
 
         <div style={{ display: "flex", gap: 8, margin: "0.25rem 0 1.1rem" }}>
@@ -4360,10 +4382,13 @@ function SharedListView({ list, user, onClose }) {
               <div style={{ fontSize: "0.9rem", fontWeight: 600, color: it.done ? "#9b8f7a" : "#1c1c1a", textDecoration: it.done ? "line-through" : "none" }}>{it.name}</div>
               {[it.category, it.area].filter(Boolean).length > 0 && <div style={{ fontSize: "0.72rem", color: "#9b8f7a", marginTop: 1 }}>{[it.category, it.area].filter(Boolean).join(" · ")}</div>}
               {it.comment && <div style={{ fontSize: "0.74rem", color: "#6b5e4e", marginTop: 2 }}>{it.comment}</div>}
-              <label style={{ display: "inline-flex", alignItems: "center", gap: 4, position: "relative", marginTop: 5, fontSize: "0.7rem", fontWeight: 600, color: it.target_date ? "#726A4E" : "#b3a892", cursor: "pointer" }}>
-                📅 {it.target_date ? new Date(it.target_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "Plan a date"}
-                <input type="date" value={it.target_date || ""} onChange={(e) => setItemDate(it, e.target.value)} style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer", width: "100%" }} />
-              </label>
+              <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 5 }}>
+                <label style={{ display: "inline-flex", alignItems: "center", gap: 4, position: "relative", fontSize: "0.7rem", fontWeight: 600, color: it.target_date ? "#726A4E" : "#b3a892", cursor: "pointer" }}>
+                  📅 {it.target_date ? new Date(it.target_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "Plan a date"}
+                  <input type="date" value={it.target_date || ""} onChange={(e) => setItemDate(it, e.target.value)} style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer", width: "100%" }} />
+                </label>
+                <a href={gcalUrlFor(it)} target="_blank" rel="noreferrer" style={{ fontSize: "0.7rem", fontWeight: 600, color: "#726A4E", textDecoration: "none" }}>＋ Google Cal</a>
+              </div>
             </div>
             {(it.added_by === user.id || list.owner === user.id) && <button onClick={() => removeItem(it)} style={{ border: "none", background: "none", color: "#c9bfae", cursor: "pointer", fontSize: "0.95rem", flexShrink: 0, padding: "0 2px" }}>✕</button>}
           </div>
@@ -4402,12 +4427,35 @@ function SharedListView({ list, user, onClose }) {
         </div>
       )}
 
+      {picker === "friends" && (() => {
+        const memberIds = new Set(members.map(m => m.id));
+        const addable = conns.filter(c => !memberIds.has(c.id));
+        return (
+          <div onClick={() => setPicker(null)} style={slOverlay}>
+            <div onClick={e => e.stopPropagation()} style={slSheet}>
+              <div style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "1.1rem", color: "#1c1c1a", marginBottom: 4 }}>Add a friend</div>
+              <div style={{ fontSize: "0.76rem", color: "#9b8f7a", marginBottom: 12 }}>Add someone you're connected with — they'll get the list instantly, no link needed.</div>
+              {addable.length === 0 && <div style={{ fontSize: "0.82rem", color: "#9b8f7a", lineHeight: 1.5 }}>{conns.length === 0 ? "You're not connected with anyone yet. Connect on the People tab first (swap words), then add them here." : "Everyone you're connected with is already on this list."}</div>}
+              {addable.map(c => (
+                <button key={c.id} disabled={busy} onClick={() => addMember(c.id)} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", padding: "8px 10px", borderRadius: 12, border: "1px solid #f0ebe2", background: "#fff", cursor: "pointer", marginBottom: 8 }}>
+                  <div style={{ width: 34, height: 34, borderRadius: "50%", background: "#726A4E", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 600, fontSize: "0.82rem", overflow: "hidden", flexShrink: 0 }}>{c.avatar_url ? <img src={c.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : nameOf(c).charAt(0).toUpperCase()}</div>
+                  <span style={{ flex: 1, fontSize: "0.88rem", fontWeight: 600, color: "#1c1c1a" }}>{nameOf(c)}</span>
+                  <span style={{ color: "#726A4E", fontWeight: 700, fontSize: "1.1rem", flexShrink: 0 }}>＋</span>
+                </button>
+              ))}
+              <button onClick={() => setPicker(null)} className="btn-outline">Done</button>
+            </div>
+          </div>
+        );
+      })()}
+
       {picker === "manual" && (
         <div onClick={() => setPicker(null)} style={slOverlay}>
           <div onClick={e => e.stopPropagation()} style={slSheet}>
             <div style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "1.1rem", color: "#1c1c1a", marginBottom: 10 }}>Add a place</div>
             <input value={mName} onChange={e => setMName(e.target.value)} placeholder="Place name" autoFocus style={slInput} />
             <select value={mCat} onChange={e => setMCat(e.target.value)} style={{ ...slInput, marginTop: 8 }}>
+              <option value="">Category — none</option>
               {["restaurant", "cafe", "bar", "nightlife", "market", "outdoor", "museum", "gallery", "experience", "event"].map(c => <option key={c} value={c}>{c}</option>)}
             </select>
             <input value={mArea} onChange={e => setMArea(e.target.value)} placeholder="Area (optional)" style={{ ...slInput, marginTop: 8 }} />
