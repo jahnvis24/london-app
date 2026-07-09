@@ -3739,9 +3739,9 @@ function LoginScreen({ onLogin }) {
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <div style={{ fontSize: "0.78rem", color: "#6b5e4e" }}>We sent a sign-in code to <strong>{email}</strong>.</div>
-            <div style={{ fontSize: "0.72rem", color: "#9b8f7a", lineHeight: 1.4 }}>Type the code below — <strong>not</strong> any link in the email. Use the newest email if you asked more than once.</div>
-            <input inputMode="numeric" autoComplete="one-time-code" maxLength={10} placeholder="••••••" value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, ""))} onKeyDown={e => e.key === "Enter" && verifyCode()} style={{ ...inputStyle, letterSpacing: "0.35em", fontSize: "1.2rem", fontWeight: 600 }} />
+            <div style={{ fontSize: "0.78rem", color: "#6b5e4e" }}>We sent a 6-digit code to <strong>{email}</strong>.</div>
+            <div style={{ fontSize: "0.72rem", color: "#9b8f7a", lineHeight: 1.4 }}>Type the 6 digits below — <strong>not</strong> any link in the email. Use the newest email if you asked more than once.</div>
+            <input inputMode="numeric" autoComplete="one-time-code" maxLength={6} placeholder="• • • • • •" value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, ""))} onKeyDown={e => e.key === "Enter" && verifyCode()} style={{ ...inputStyle, letterSpacing: "0.4em", fontSize: "1.2rem", fontWeight: 600 }} />
             <button onClick={verifyCode} disabled={otpBusy} style={{ width: "100%", padding: "13px", borderRadius: 100, border: "none", background: "#726A4E", color: "#fff", fontFamily: "'Aleo', sans-serif", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer" }}>{otpBusy ? "Verifying…" : "Verify & sign in"}</button>
             {resent && <div style={{ fontSize: "0.74rem", color: "#726A4E", fontWeight: 600 }}>✓ New code sent — check your inbox.</div>}
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.74rem" }}>
