@@ -2875,14 +2875,39 @@ function SavedScreen({ user, onBuildPlan, onShare, onBarCrawl, openSignal, calen
     return () => { cancelled = true; };
   }, [saves.length]);
 
-  // Check URL params for share target
+  // Web Share Target: something was shared INTO the app from the OS share sheet.
+  // A screenshot (image file) arrives via a POST the service worker caches (see
+  // sw.js) then redirects here with ?shared=1; a plain link may also arrive as
+  // ?text= / ?url=. Either way, open the right capture tab and feed it in.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const sharedText = params.get("text") || params.get("url") || "";
-    if (sharedText && /tiktok\.com|instagram\.com/i.test(sharedText)) {
-      setMediaType(sharedText.includes("instagram.com") ? "instagram" : "tiktok");
-      setTextInput(sharedText);
-      window.history.replaceState({}, "", "/");
+    const clearUrl = () => window.history.replaceState({}, "", "/");
+    const prefillLink = (t) => { setMediaType(t.includes("instagram.com") ? "instagram" : "tiktok"); setTextInput(t); setCaptureTab("link"); setCaptureOpen(true); };
+
+    // Legacy / direct link params (GET share).
+    const getText = params.get("text") || params.get("url") || "";
+    if (getText && /tiktok\.com|instagram\.com/i.test(getText)) { prefillLink(getText); clearUrl(); return; }
+
+    // POST share captured by the service worker (screenshot and/or link).
+    if (params.get("shared")) {
+      (async () => {
+        try {
+          const cache = await caches.open("cl-share");
+          const fileRes = await cache.match("shared-file");
+          if (fileRes) {
+            const blob = await fileRes.blob();
+            const file = new File([blob], "shared.jpg", { type: blob.type || "image/jpeg" });
+            setCaptureTab("screenshot"); setCaptureOpen(true);
+            handleParse([file], "screenshot");
+          } else {
+            const txtRes = await cache.match("shared-text");
+            const txt = txtRes ? await txtRes.text() : "";
+            if (txt && /tiktok\.com|instagram\.com/i.test(txt)) prefillLink(txt);
+          }
+          await cache.delete("shared-file"); await cache.delete("shared-text");
+        } catch (e) { /* nothing usable was shared */ }
+        clearUrl();
+      })();
     }
   }, []);
 
