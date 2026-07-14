@@ -5256,8 +5256,20 @@ export default function App() {
   }
 
   function startQuiz() { setQuizStep(0); setAns({}); setResult(null); setError(null); setActiveTab("home"); }
-  function nextStep() { setQuizStep(s => s + 1); }
-  function prevStep() { setQuizStep(s => Math.max(0, s - 1)); }
+  function nextStep() {
+    setQuizStep(s => {
+      const next = s + 1;
+      if (next === 2 && ans.savedVenues?.length) return 3;
+      return next;
+    });
+  }
+  function prevStep() {
+    setQuizStep(s => {
+      const prev = s - 1;
+      if (prev === 2 && ans.savedVenues?.length) return 1;
+      return Math.max(0, prev);
+    });
+  }
 
   async function generate() {
     setLoading(true); setError(null);
@@ -5290,12 +5302,14 @@ export default function App() {
       const hit = (v) => v.name && (v.name.toLowerCase().includes(n) || n.includes(v.name.toLowerCase()));
       return dbVenues.find(hit) || savedVenues.find(hit) || null;
     };
-    const savedForPrompt = savedVenues.map(v => ({ name: v.name, type: v.category, area: v.zone || v.area || "London", price: v.price, tags: v.vibe_tags, desc: v.comment }));
+    const savedForPrompt = savedVenues.map(v => ({ name: v.name, type: v.category, area: v.zone || v.area || "London", price: v.price, tags: v.vibe_tags, desc: v.comment, lat: v.lat, lng: v.lng }));
     const savedClause = savedVenues.length
-      ? '. IMPORTANT: the following are the USER\'S OWN saved spots — you MUST include at least 1 (ideally 2) of them in the plan, and they take priority over the curated venues. For each stop that is one of these saved spots, add "saved": true to that stop. Saved spots: ' + JSON.stringify(savedForPrompt)
+      ? '. CRITICAL REQUIREMENT: the following are the USER\'S OWN saved spots — you MUST include ALL of them in the plan (they can appear at the start, middle, or end). ALL other stops MUST be within walking distance (max 15 min walk) of the saved spots. The plan should be anchored around these locations. For each stop that is one of these saved spots, add "saved": true to that stop. Saved spots: ' + JSON.stringify(savedForPrompt)
       : "";
 
-    const areaNote = ans.area === "map_pin" ? `near dropped pin (${ans.mapPin?.lat?.toFixed(3)}, ${ans.mapPin?.lng?.toFixed(3)})` : ans.area;
+    const areaNote = savedVenues.length
+      ? `near ${savedVenues[0].name} in ${savedVenues[0].area || savedVenues[0].zone || "London"} (all stops walking distance)`
+      : ans.area === "map_pin" ? `near dropped pin (${ans.mapPin?.lat?.toFixed(3)}, ${ans.mapPin?.lng?.toFixed(3)})` : ans.area;
     const travelNote = ans.travel === "walking"
   ? "walking only, all stops must be within 20 min walk of each other"
   : ans.travel === "max10"
