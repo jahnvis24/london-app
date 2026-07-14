@@ -3761,7 +3761,7 @@ Return a JSON object with this exact structure:
 // Splash / value prop — one screen, one CTA. Warm, editorial, type-led (no imagery).
 function Splash({ onStart }) {
   return (
-    <div style={{ minHeight: "100vh", background: "#f3e9d9", display: "flex", flexDirection: "column", justifyContent: "space-between", padding: "4.5rem 2rem 2.5rem", maxWidth: 420, margin: "0 auto" }}>
+    <div style={{ minHeight: "100vh", background: "#ffffff", display: "flex", flexDirection: "column", justifyContent: "space-between", padding: "4.5rem 2rem 2.5rem", maxWidth: 420, margin: "0 auto", textAlign: "center" }}>
       <div>
         <div style={{ fontSize: "0.68rem", letterSpacing: "0.26em", textTransform: "uppercase", color: "#a3865f", fontWeight: 600, marginBottom: 30 }}>Saved · Sorted · Planned</div>
         <div style={{ fontFamily: "'Sofia', cursive", fontWeight: 700, fontSize: "3.4rem", lineHeight: 1, color: "#726A4E", marginBottom: 26 }}>Curated</div>
@@ -3771,8 +3771,8 @@ function Splash({ onStart }) {
       </div>
 
       <div>
-        <div style={{ width: 46, height: 2, background: "#d8c4a4", marginBottom: 20 }} />
-        <p style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "1.05rem", color: "#6b5a44", lineHeight: 1.6, marginBottom: 34, maxWidth: 330 }}>
+        <div style={{ width: 46, height: 2, background: "#d8c4a4", margin: "0 auto 20px" }} />
+        <p style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "1.05rem", color: "#6b5a44", lineHeight: 1.6, margin: "0 auto 34px", maxWidth: 330 }}>
           The spots you love on Instagram, TikTok and in your screenshots — gathered onto one board, then turned into real plans.
         </p>
         <button onClick={onStart} style={{ width: "100%", padding: "16px", borderRadius: 100, border: "none", background: "#33281c", color: "#f3e9d9", fontSize: "1rem", fontWeight: 700, fontFamily: "'Aleo', sans-serif", cursor: "pointer", letterSpacing: "0.01em" }}>Get started</button>
