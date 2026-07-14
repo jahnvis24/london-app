@@ -303,7 +303,7 @@ const QUESTIONS = [
   { id: "vibes", label: "2 of 8", title: "Pick your vibe", multi: true, options: [{ value: "chill", label: "Chill", emoji: "😌" }, { value: "romantic", label: "Romantic", emoji: "🌹" }, { value: "chaotic", label: "Chaotic fun", emoji: "🌀" }, { value: "cultural", label: "Cultural", emoji: "🏛️" }, { value: "fancy", label: "Fancy", emoji: "🥂" }, { value: "hidden_gems", label: "Hidden gems", emoji: "💎" }, { value: "social", label: "Social", emoji: "🎉" }, { value: "solo", label: "Solo reset", emoji: "🧘" }, { value: "creative", label: "Creative", emoji: "🎨" }, { value: "activity", label: "Activity-based", emoji: "🎯" }, { value: "active", label: "Active", emoji: "🏃" }] },
   { id: "area", label: "3 of 8", title: "Any area preference?", multi: false, options: [{ value: "central", label: "Central", emoji: "🎭" }, { value: "east", label: "East", emoji: "🧱" }, { value: "south", label: "South", emoji: "🌉" }, { value: "west", label: "West", emoji: "🌳" }, { value: "north", label: "North", emoji: "🌲" }, { value: "southwest", label: "Southwest", emoji: "🏡" }, { value: "northwest", label: "Northwest", emoji: "🌿" }, { value: "outskirts", label: "Outskirts", emoji: "🚂" }, { value: "surprise_me", label: "Surprise me", emoji: "🎲" }, { value: "map_pin", label: "Pick on map", emoji: "📍" }] },
   { id: "travel", label: "4 of 8", title: "How do you want to get around?", multi: false, options: [{ value: "walking", label: "Walking only", emoji: "🚶" }, { value: "walk_tube", label: "Walk + tube", emoji: "🚇" }, { value: "max10", label: "Max 10 min each stop", emoji: "⚡" }] },
-  { id: "budget", label: "5 of 8", title: "Budget vibe?", multi: false, options: [{ value: "low", label: "Broke but fun", emoji: "💸" }, { value: "mid", label: "Mid range", emoji: "💳" }, { value: "high", label: "Treat yourself", emoji: "✨" }, { value: "unlimited", label: "No limit", emoji: "🚀" }] },
+  { id: "budget", label: "5 of 8", title: "What's your total budget per person?", multi: false, options: [{ value: "£10–£30", label: "£10–£30", emoji: "💸" }, { value: "£30–£50", label: "£30–£50", emoji: "💳" }, { value: "£50–£80", label: "£50–£80", emoji: "✨" }, { value: "£80+", label: "£80+", emoji: "🚀" }] },
   { id: "groupSize", label: "6 of 8", title: "Who's coming?", multi: false, options: [{ value: "solo", label: "Just me", emoji: "🙋" }, { value: "duo", label: "Two of us", emoji: "👫" }, { value: "small", label: "3–5 people", emoji: "👯" }, { value: "large", label: "5+ crew", emoji: "🎊" }] },
   { id: "energy", label: "7 of 8", title: "Energy level today?", multi: false, options: [{ value: "low", label: "Low & breezy", emoji: "🌿" }, { value: "medium", label: "Up for it", emoji: "⚡" }, { value: "high", label: "Max chaos", emoji: "🔥" }] },
   { id: "extras", label: "8 of 8", title: "Must-haves?", multi: true, options: [{ value: "food", label: "Food included", emoji: "🍜" }, { value: "drinks", label: "Drinks/bars", emoji: "🍸" }, { value: "outdoor", label: "Outdoor spaces", emoji: "🌳" }, { value: "social", label: "Meet people", emoji: "🤝" }, { value: "scenic_walk", label: "Scenic walk", emoji: "🚶" }, { value: "nature_trails", label: "Nature trails", emoji: "🌿" }, { value: "plant_friendly", label: "Plant-friendly food", emoji: "🌱" }] },
@@ -5317,16 +5317,18 @@ export default function App() {
   : "walking and tube ok, keep total travel between stops under 30 min";
 
     const stopCount = shortlist.length >= 5 ? "pick best 4-5" : `use ALL ${shortlist.length} venues`;
+    const budgetNote = `TOTAL budget for the ENTIRE plan per person: ${ans.budget}. The sum of all stop cost_estimates MUST stay within this range. Pick venues accordingly — do NOT exceed this total.`;
     const prompt = "You are London's sharpest local guide. Build a perfect itinerary from these curated venues. User: " +
       ans.timeOfDay + " plan, vibes: " + (ans.vibes || []).join(", ") +
-      ", area: " + areaNote + ", budget: " + ans.budget +
+      ", area: " + areaNote +
       ", group: " + ans.groupSize + ", energy: " + ans.energy +
       ", travel: " + travelNote +
       ", " + times.start + " to " + times.end +
       ", include: " + ((ans.extras || []).join(", ") || "no extras") +
+      ". " + budgetNote +
       ". Venues (" + stopCount + "): " + venueData + savedClause + (ans._barCrawlClause || "") +
       ". Space stops evenly across the time window. Respond ONLY with valid JSON, no markdown, no backticks: " +
-      '{"title":"punchy name","tagline":"witty sentence","vibe_scores":{"fun":7,"romantic":3,"cultural":6,"chaotic":2},"total_cost_estimate":"35-55pp","stops":[{"time":"18:30","name":"venue name","type":"bar","area":"Shoreditch","emoji":"🍸","saved":false,"hook":"best thing about this place","why_it_fits":"vibe match","booking":"Walk-in fine","cost_estimate":"£15-35pp","travel_to_next":"calculating..."}],"extend_the_night":"late suggestion","local_tip":"insider tip"}';
+      '{"title":"punchy name","tagline":"witty sentence","vibe_scores":{"fun":7,"romantic":3,"cultural":6,"chaotic":2},"total_cost_estimate":"£X-£Ypp (this is the SUM across all stops, must be within the user budget)","stops":[{"time":"18:30","name":"venue name","type":"bar","area":"Shoreditch","emoji":"🍸","saved":false,"hook":"best thing about this place","why_it_fits":"vibe match","booking":"Walk-in fine","cost_estimate":"£X-£Ypp (avg spend at THIS stop only)","travel_to_next":"calculating..."}],"extend_the_night":"late suggestion","local_tip":"insider tip"}';
 
     try {
       const txt = await callClaude(prompt, 1200);
