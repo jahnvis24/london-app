@@ -1980,6 +1980,23 @@ function confetti({ count = 80, power = 1, origin = 0.5 } = {}) {
     else canvas.remove();
   })();
 }
+// A short, bright rising "blip" — a quiet reward sound for adding/ticking a list item.
+function blip(freq = 660) {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const t = ctx.currentTime;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.09, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.24);
+    g.connect(ctx.destination);
+    const o = ctx.createOscillator();
+    o.type = "sine";
+    o.frequency.setValueAtTime(freq, t);
+    o.frequency.exponentialRampToValueAtTime(freq * 1.5, t + 0.12);
+    o.connect(g); o.start(t); o.stop(t + 0.26);
+  } catch { /* audio unavailable */ }
+}
 
 // Simple flat line icons for the bottom nav (inherit colour via currentColor).
 const NAV_ICON_PATHS = {
@@ -4301,7 +4318,7 @@ function SharedListsSection({ user }) {
         <div style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a" }}>Bucket lists</div>
         <button onClick={() => setCreating(v => !v)} style={slPill}>+ New list</button>
       </div>
-      <div style={{ fontSize: "0.76rem", color: "#9b8f7a", marginBottom: 12 }}>Shared lists you and friends add to and tick off together.</div>
+      <div style={{ marginBottom: 12 }} />
 
       {creating && (
         <div style={{ background: "#fff", border: "1px solid #f0ebe2", borderRadius: 14, padding: "0.9rem", marginBottom: 12 }}>
@@ -4358,6 +4375,7 @@ function SharedListView({ list, user, onClose }) {
   const [suggest, setSuggest] = useState(null); // null | "loading" | "none" | { ...google match, photo }
   const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [detailItem, setDetailItem] = useState(null); // open a list spot's full detail page
   const inviteLink = `https://london-app.vercel.app/?blist=${list.id}`;
   const nameOf = (p) => p?.name || (p?.email ? p.email.split("@")[0] : null) || "Friend";
   // Add-to-Google-Calendar link for a bucket-list item (uses its planned date if set).
@@ -4400,14 +4418,19 @@ function SharedListView({ list, user, onClose }) {
     // Completing the very last unticked item = the whole list is done → big celebration.
     const completesList = next && items.length > 1 && items.filter(x => x.id !== it.id).every(x => x.done);
     if (next) {
-      if (completesList) { haptic([15, 40, 15, 40, 25]); confetti({ count: 130, power: 1.25 }); }
-      else haptic(18);
+      if (completesList) { haptic([15, 40, 15, 40, 25]); blip(880); confetti({ count: 130, power: 1.25 }); }
+      else { haptic(18); blip(784); }
     }
     setItems(prev => prev.map(x => x.id === it.id ? { ...x, done: next, done_by: next ? user.id : null } : x));
     await supabase.from("shared_list_items").update({ done: next, done_by: next ? user.id : null, done_at: next ? new Date().toISOString() : null }).eq("id", it.id);
   }
 
+  // Little reward whenever something lands on the list — sound + buzz + a small burst.
+  function celebrateAdd() { haptic(15); blip(660); confetti({ count: 45, power: 0.9 }); }
+
   async function removeItem(it) {
+    // Guard against accidental taps — removing is destructive and shared with friends.
+    if (!window.confirm(`Remove "${it.name}" from this list?`)) return;
     setItems(prev => prev.filter(x => x.id !== it.id));
     await supabase.from("shared_list_items").delete().eq("id", it.id);
   }
@@ -4428,7 +4451,7 @@ function SharedListView({ list, user, onClose }) {
     setBusy(true);
     const row = { list_id: list.id, added_by: user.id, name: s.name, category: s.category, address: s.address, area: s.area, comment: s.comment, lat: s.lat, lng: s.lng, google_place_id: s.google_place_id, google_rating: s.google_rating != null ? String(s.google_rating) : null, price: s.price || s.google_price_level || null, website: s.website, photo_url: s.photo_url };
     const { data, error } = await supabase.from("shared_list_items").insert(row).select().single();
-    if (!error && data) setItems(prev => [...prev, data]);
+    if (!error && data) { setItems(prev => [...prev, data]); celebrateAdd(); }
     setBusy(false);
   }
 
@@ -4439,7 +4462,7 @@ function SharedListView({ list, user, onClose }) {
     setBusy(true);
     const row = { list_id: list.id, added_by: user.id, name, category: mCat || null, area: mArea.trim() || null, comment: mComment.trim() || null };
     const { data, error } = await supabase.from("shared_list_items").insert(row).select().single();
-    if (!error && data) { setItems(prev => [...prev, data]); resetManual(); }
+    if (!error && data) { setItems(prev => [...prev, data]); celebrateAdd(); resetManual(); }
     setBusy(false);
   }
 
@@ -4466,11 +4489,12 @@ function SharedListView({ list, user, onClose }) {
     setBusy(true);
     const row = { list_id: list.id, added_by: user.id, name: d.validated_name || mName.trim(), category: mCat || null, area: mArea.trim() || d.derived_area || d.derived_zone || null, comment: mComment.trim() || null, address: d.validated_address || null, lat: d.lat ?? null, lng: d.lng ?? null, google_place_id: d.google_place_id || null, google_rating: d.google_rating != null ? String(d.google_rating) : null, price: d.price || null, website: d.website || null, photo_url: d.photo || null };
     const { data, error } = await supabase.from("shared_list_items").insert(row).select().single();
-    if (!error && data) { setItems(prev => [...prev, data]); resetManual(); }
+    if (!error && data) { setItems(prev => [...prev, data]); celebrateAdd(); resetManual(); }
     setBusy(false);
   }
 
   const doneCount = items.filter(i => i.done).length;
+  const mapItems = items.filter(i => i.lat && i.lng);
   const onListPlaceIds = new Set(items.map(i => i.google_place_id).filter(Boolean));
   const onListNames = new Set(items.map(i => String(i.name || "").toLowerCase()));
   const availableSaves = saves.filter(s => (s.google_place_id ? !onListPlaceIds.has(s.google_place_id) : !onListNames.has(String(s.name || "").toLowerCase())));
@@ -4506,27 +4530,58 @@ function SharedListView({ list, user, onClose }) {
         </div>
 
         {loading && <div style={{ fontSize: "0.82rem", color: "#9b8f7a" }}>Loading…</div>}
-        {!loading && items.length === 0 && <div style={{ fontSize: "0.85rem", color: "#9b8f7a", textAlign: "center", padding: "2rem 1rem", lineHeight: 1.5 }}>Nothing here yet. Add places from your saves or type one in — then invite a friend to build it with you.</div>}
+        {!loading && items.length === 0 && <div style={{ fontSize: "0.9rem", color: "#9b8f7a", textAlign: "center", padding: "2.5rem 1rem" }}>Nothing here yet — add your first place ✨</div>}
 
-        {items.map(it => (
-          <div key={it.id} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: 12, background: "#fff", border: "1px solid #f0ebe2", borderRadius: 14, marginBottom: 8 }}>
-            <button onClick={() => toggleDone(it)} style={{ width: 24, height: 24, borderRadius: "50%", border: it.done ? "none" : "2px solid #cfc6b5", background: it.done ? "#726A4E" : "#fff", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, cursor: "pointer", marginTop: 1, fontSize: "0.8rem" }}>{it.done ? "✓" : ""}</button>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: "0.9rem", fontWeight: 600, color: it.done ? "#9b8f7a" : "#1c1c1a", textDecoration: it.done ? "line-through" : "none" }}>{it.name}</div>
-              {[it.category, it.area].filter(Boolean).length > 0 && <div style={{ fontSize: "0.72rem", color: "#9b8f7a", marginTop: 1 }}>{[it.category ? cap(it.category) : null, it.area].filter(Boolean).join(" · ")}</div>}
-              {it.comment && <div style={{ fontSize: "0.74rem", color: "#6b5e4e", marginTop: 2 }}>{it.comment}</div>}
-              <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 5 }}>
-                <label style={{ display: "inline-flex", alignItems: "center", gap: 4, position: "relative", fontSize: "0.7rem", fontWeight: 600, color: it.target_date ? "#726A4E" : "#b3a892", cursor: "pointer" }}>
-                  📅 {it.target_date ? new Date(it.target_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "Plan a date"}
-                  <input type="date" value={it.target_date || ""} onChange={(e) => setItemDate(it, e.target.value)} style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer", width: "100%" }} />
-                </label>
-                <a href={gcalUrlFor(it)} target="_blank" rel="noreferrer" style={{ fontSize: "0.7rem", fontWeight: 600, color: "#726A4E", textDecoration: "none" }}>＋ Google Cal</a>
-              </div>
-            </div>
-            {(it.added_by === user.id || list.owner === user.id) && <button onClick={() => removeItem(it)} style={{ border: "none", background: "none", color: "#c9bfae", cursor: "pointer", fontSize: "0.95rem", flexShrink: 0, padding: "0 2px" }}>✕</button>}
+        {/* Mini map of every spot with a location */}
+        {mapItems.length > 0 && (
+          <div style={{ marginBottom: 14 }}>
+            <SpotsMap key={"blist-" + list.id} saves={mapItems} listName={list.name} />
           </div>
-        ))}
+        )}
+
+        {/* Photo gallery — tap a tile for its full detail page; tick the circle to cross it off */}
+        {items.length > 0 && (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            {items.map(it => {
+              const canRemove = it.added_by === user.id || list.owner === user.id;
+              return (
+                <div key={it.id} style={{ position: "relative", borderRadius: 16, overflow: "hidden", boxShadow: "0 2px 10px rgba(0,0,0,0.08)", border: "1px solid #f0ebe2", background: "#fff", animation: "popIn 0.25s ease" }}>
+                  <div onClick={() => setDetailItem(it)} style={{ cursor: "pointer", position: "relative" }}>
+                    <div style={{ height: 118, background: "#f5f0e8", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+                      {it.photo_url
+                        ? <img src={it.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", filter: it.done ? "grayscale(0.6) brightness(0.92)" : "none" }} />
+                        : <span style={{ fontSize: "2rem", opacity: it.done ? 0.5 : 1 }}>{CAT_EMOJI[String(it.category || "").toLowerCase()] || "📍"}</span>}
+                    </div>
+                    {it.done && <div style={{ position: "absolute", inset: 0, background: "rgba(114,106,78,0.32)", display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ width: 40, height: 40, borderRadius: "50%", background: "#726A4E", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.3rem", boxShadow: "0 2px 8px rgba(0,0,0,0.3)" }}>✓</span></div>}
+                  </div>
+                  <button onClick={() => toggleDone(it)} title={it.done ? "Un-tick" : "Tick off"} style={{ position: "absolute", top: 8, left: 8, width: 28, height: 28, borderRadius: "50%", border: it.done ? "none" : "2px solid #fff", background: it.done ? "#726A4E" : "rgba(0,0,0,0.28)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: "0.85rem", boxShadow: "0 1px 4px rgba(0,0,0,0.25)" }}>{it.done ? "✓" : ""}</button>
+                  {canRemove && <button onClick={() => removeItem(it)} title="Remove" style={{ position: "absolute", top: 8, right: 8, width: 26, height: 26, borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.92)", color: "#b0745a", cursor: "pointer", fontSize: "0.8rem", lineHeight: 1, boxShadow: "0 1px 4px rgba(0,0,0,0.2)" }}>✕</button>}
+                  <div style={{ padding: "8px 10px 10px" }}>
+                    <div onClick={() => setDetailItem(it)} style={{ cursor: "pointer", fontSize: "0.84rem", fontWeight: 600, color: it.done ? "#9b8f7a" : "#1c1c1a", textDecoration: it.done ? "line-through" : "none", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{it.name}</div>
+                    {[it.category, it.area].filter(Boolean).length > 0 && <div style={{ fontSize: "0.66rem", color: "#9b8f7a", marginTop: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{[it.category ? cap(it.category) : null, it.area].filter(Boolean).join(" · ")}</div>}
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }}>
+                      <label style={{ display: "inline-flex", alignItems: "center", gap: 3, position: "relative", fontSize: "0.66rem", fontWeight: 600, color: it.target_date ? "#726A4E" : "#b3a892", cursor: "pointer" }}>
+                        📅 {it.target_date ? new Date(it.target_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "Date"}
+                        <input type="date" value={it.target_date || ""} onChange={(e) => setItemDate(it, e.target.value)} style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer", width: "100%" }} />
+                      </label>
+                      <a href={gcalUrlFor(it)} target="_blank" rel="noreferrer" style={{ fontSize: "0.66rem", fontWeight: 600, color: "#726A4E", textDecoration: "none" }}>＋ Cal</a>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
+
+      {detailItem && (
+        <SpotDetail
+          spot={detailItem}
+          user={user}
+          readOnly
+          onClose={() => setDetailItem(null)}
+        />
+      )}
 
       {picker === "saves" && (
         <div onClick={() => { setPicker(null); setSavesFolder(null); }} style={slOverlay}>
