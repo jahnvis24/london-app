@@ -1,6 +1,6 @@
 {
-  "name": "Curated London",
-  "short_name": "Curated LDN",
+  "name": "Curated",
+  "short_name": "Curated",
   "description": "Your personal London itinerary generator",
   "start_url": "/",
   "display": "standalone",
