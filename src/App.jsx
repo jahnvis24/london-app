@@ -2722,6 +2722,7 @@ function SavedScreen({ user, onBuildPlan, onShare, onBarCrawl, openSignal, calen
   const [openFolder, setOpenFolder] = useState(null);
   const [saveFolder, setSaveFolder] = useState(""); // "" = auto by category, "__new__" = create new
   const [newFolder, setNewFolder] = useState("");
+  const [saveNote, setSaveNote] = useState("");
   const [savedView, setSavedView] = useState("folders"); // folders | map | calendar
   const [customFolders, setCustomFolders] = useState([]); // user-created (possibly empty) folders
   const [menuFolder, setMenuFolder] = useState(null);
@@ -3238,18 +3239,19 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
   async function saveAll() {
     if (!preview.length || !user?.id) return;
     ensureNotifyPermission();
-    const total = preview.length;
+    const toSave = preview.filter(d => !d._dup);
+    const skipped = preview.length - toSave.length;
+    if (!toSave.length) { setError("All spots are already in your saves."); return; }
     setSaving(true); setError(null);
     let savedCount = 0;
     try {
-      for (let i = 0; i < preview.length; i++) {
-        const d = preview[i];
-        setParseStatus(`Saving ${i + 1} of ${preview.length}: ${d.name}...`);
+      for (let i = 0; i < toSave.length; i++) {
+        const d = toSave[i];
+        setParseStatus(`Saving ${i + 1} of ${toSave.length}: ${d.name}...`);
         const photo_url = d.photo_url || await resolvePhoto(d);
         const chosen = saveFolder === "__new__" ? newFolder.trim() : saveFolder.trim();
-        // Auto = leave folder null so it always derives from the category tag (and
-        // auto-corrects if the category->folder mapping changes). Explicit pick stores it.
         const folder = chosen || null;
+        const note = saveNote.trim() || null;
         const row = {
           user_id: user.id,
           name: d.name, address: d.address, area: d.area, zone: d.zone || "Central",
@@ -3262,7 +3264,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
           website: d.website, opening_hours: d.opening_hours,
           tiktok_url: d.tiktok_url || (d.source_type === "tiktok" ? d.source_url : null),
           source_url: d.source_url, source_type: d.source_type,
-          photo_url, folder, status: "pending",
+          photo_url, folder, note, status: "pending",
         };
         const { data: inserted, error: insertErr } = await supabase.from("experiences").insert(row).select();
         if (insertErr) throw new Error("Save failed: " + insertErr.message);
@@ -3270,11 +3272,13 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
         savedCount++;
       }
       setParseStatus("");
-      tourSavedRef.current = true; // real save happened → the walkthrough may advance to "view"
+      tourSavedRef.current = true;
       setPreview([]);
-      setSaveFolder(""); setNewFolder(""); setCaptureOpen(false);
-      showSuccess(savedCount === 1 ? preview[0].name : `${savedCount} spots`);
-      notify("Saved to your collection ✨", savedCount === 1 ? `${preview[0].name} added` : `${savedCount} spots added`);
+      setSaveFolder(""); setNewFolder(""); setSaveNote(""); setCaptureOpen(false);
+      const msg = savedCount === 1 ? toSave[0].name : `${savedCount} spots`;
+      showSuccess(msg);
+      notify("Saved to your collection ✨", savedCount === 1 ? `${toSave[0].name} added` : `${savedCount} spots added`);
+      if (skipped) setError(`${skipped} duplicate${skipped > 1 ? "s" : ""} skipped — already in your saves.`);
       await loadSaves();
     } catch (e) {
       console.error("[saveAll]", e);
@@ -3285,13 +3289,15 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
     setSaving(false);
   }
 
-  // Manual tab: enrich a typed name on Google and save it straight away.
   async function manualSave() {
     if (!mName.trim() || !user?.id) return;
     setSaving(true); setError(null); setParseStatus(`Saving ${mName.trim()}...`);
     try {
       const g = await enrich(mName.trim(), null);
       const d = buildDraft({ name: mName.trim(), category: mCat || null, comment: mNotes.trim() || null }, g, { source_type: "manual", source_url: null });
+      const dn = (d.name || "").toLowerCase().trim();
+      const isDup = saves.some(s => (d.google_place_id && s.google_place_id === d.google_place_id) || (s.name || "").toLowerCase().trim() === dn);
+      if (isDup) { setError(`"${d.name}" is already in your saves.`); setParseStatus(""); setSaving(false); return; }
       const photo_url = d.photo_url || await resolvePhoto(d);
       const row = {
         user_id: user.id, name: d.name, address: d.address, area: d.area, zone: d.zone || "Central",
@@ -3299,7 +3305,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
         comment: d.comment, vibe_tags: d.vibe_tags || [], lat: d.lat, lng: d.lng, postcode: d.postcode,
         google_place_id: d.google_place_id, google_rating: d.google_rating, google_review_count: d.google_review_count, google_price_level: d.google_price_level,
         website: d.website, opening_hours: d.opening_hours, source_url: null, source_type: "manual",
-        photo_url, folder: null, status: "pending",
+        photo_url, folder: null, note: mNotes.trim() || null, status: "pending",
       };
       const { data: inserted, error } = await supabase.from("experiences").insert(row).select();
       if (error) throw new Error("Save failed: " + error.message);
@@ -3628,7 +3634,16 @@ Return a JSON object with this exact structure:
               <input className="input-field" style={{ marginTop: 6 }} placeholder="New list name" value={newFolder} onChange={e => setNewFolder(e.target.value)} />
             )}
           </div>
-          <button ref={tourSaveRef} className="btn btn-teal" onClick={saveAll} disabled={saving || (saveFolder === "__new__" && !newFolder.trim())} style={{ marginTop: 4 }}>{saving ? "Saving..." : `Save ${preview.length} spot${preview.length !== 1 ? "s" : ""}${saveFolder && saveFolder !== "__new__" ? ` to ${saveFolder}` : ""} ✦`}</button>
+          <div style={{ margin: "10px 0" }}>
+            <div style={{ fontSize: "0.7rem", color: "#6b5e4e", marginBottom: 4 }}>Any context? <span style={{ color: "#9b8f7a" }}>(optional)</span></div>
+            <input className="input-field" type="text" placeholder="e.g. for date nights, when parents visit, Friday lunch spot" value={saveNote} onChange={e => setSaveNote(e.target.value)} style={{ padding: "10px 12px" }} />
+          </div>
+          {preview.some(d => d._dup) && (
+            <div style={{ fontSize: "0.72rem", color: "#DD4124", marginBottom: 8 }}>
+              {preview.filter(d => d._dup).length} duplicate{preview.filter(d => d._dup).length > 1 ? "s" : ""} will be skipped (already in your saves).
+            </div>
+          )}
+          <button ref={tourSaveRef} className="btn btn-teal" onClick={saveAll} disabled={saving || (saveFolder === "__new__" && !newFolder.trim()) || preview.every(d => d._dup)} style={{ marginTop: 4 }}>{saving ? "Saving..." : `Save ${preview.filter(d => !d._dup).length} spot${preview.filter(d => !d._dup).length !== 1 ? "s" : ""}${saveFolder && saveFolder !== "__new__" ? ` to ${saveFolder}` : ""} ✦`}</button>
         </div>
       )}
 
