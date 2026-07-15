@@ -7,6 +7,15 @@ const supabase = createClient(
   import.meta.env.VITE_SUPABASE_ANON_KEY
 );
 
+// ── ANALYTICS ────────────────────────────────────────────────
+function track(event, properties = {}) {
+  const uid = supabase.auth.getUser?.()?.then?.(r => r.data?.user?.id);
+  uid?.then(id => {
+    if (!id) return;
+    supabase.from("analytics_events").insert({ user_id: id, event, properties }).then(() => {});
+  }).catch(() => {});
+}
+
 // ── STATIC VENUE DATABASE (fallback) ─────────────────────────
 const VENUES = [
   { id: "v1", name: "Dishoom Shoreditch", type: "restaurant", area: "east", tags: ["romantic", "chill", "aesthetic", "iconic"], price: "mid", bestTime: "day,night", bookingRequired: true, desc: "Bombay café vibes with legendary black dhal. The Bacon Naan Roll at brunch is London law.", emoji: "🍛", travelZone: "east" },
@@ -82,7 +91,7 @@ const ZONE_MAP = {
 
 const AREA_ZONES = { central: ["central"], east: ["east"], south: ["south"], west: ["west"], north: ["north"], southwest: ["southwest"], northwest: ["northwest"], outskirts: ["outskirts"], anywhere: ["central", "east", "south", "west", "north", "southwest", "northwest", "northeast", "southeast"] };
 const VIBE_TAG_MAP = { chill: ["chill", "outdoor", "solo"], romantic: ["romantic", "aesthetic", "luxury"], chaotic: ["chaotic", "social", "underground", "night"], cultural: ["cultural", "iconic"], fancy: ["fancy", "luxury", "iconic"], hidden_gems: ["hidden_gems", "underground"], social: ["social", "chaotic"], solo: ["solo", "chill", "cultural"], creative: ["cultural", "aesthetic", "hidden_gems"], activity: ["outdoor", "social", "chaotic"], active: ["outdoor", "chill", "social"] };
-const BUDGET_MAP = { low: ["low"], mid: ["low", "mid"], high: ["low", "mid", "high"], unlimited: ["low", "mid", "high"] };
+const BUDGET_KEY_MAP = { "£10–£30": "low", "£30–£50": "mid", "£50–£80": "high", "£80+": "unlimited" };
 const STOP_ORDER = { day: ["cafe", "walk", "outdoor", "museum", "gallery", "market", "experience", "restaurant"], night: ["restaurant", "bar", "event"], full: ["cafe", "walk", "outdoor", "museum", "restaurant", "bar", "event"] };
 
 const ZONES = ["North", "Northwest", "Northeast", "South", "Southwest", "Southeast", "East", "West", "Central", "Outskirts"];
@@ -124,7 +133,8 @@ function haversineKm(lat1, lng1, lat2, lng2) {
 }
 
 function buildShortlist(answers, dbVenues = [], venueRatings = {}) {
-  const { vibes, area, budget, timeOfDay, extras, groupSize, energy } = answers;
+  const { vibes, area, timeOfDay, extras, groupSize, energy } = answers;
+  const budget = BUDGET_KEY_MAP[answers.budget] || answers.budget || "mid";
   const isSurprise = area === "surprise_me";
 
   const allVenues = dbVenues.map(v => ({
@@ -223,7 +233,8 @@ function buildShortlist(answers, dbVenues = [], venueRatings = {}) {
   const scoredAll = withCoords.map(v => ({ ...v, score: scoreVenue(v, vibes || [], budget || "mid", timeOfDay || "night", extras || [], groupSize, energy, venueRatings) }))
     .filter(v => v.score >= 0).sort((a, b) => b.score - a.score);
 
-  const targetStops = timeOfDay === "full" ? 5 : 4;
+  const userStops = answers.stops === "5+" ? 5 : parseInt(answers.stops) || (timeOfDay === "full" ? 5 : 4);
+  const targetStops = userStops;
   const types = STOP_ORDER[timeOfDay] || STOP_ORDER.night;
 
   function chainBuild(anchor, pool, radius) {
@@ -337,15 +348,25 @@ const ADMIN_EMAIL = "jahnvisolanki2412@gmail.com";
 function generateId() { return Math.random().toString(36).slice(2, 8).toUpperCase(); }
 
 async function callClaude(prompt, maxTokens = 1000) {
-  const resp = await fetch("/api/claude", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-6",
-      max_tokens: maxTokens,
-      messages: [{ role: "user", content: prompt }]
-    }),
-  });
+  let resp;
+  try {
+    resp = await fetch("/api/claude", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: maxTokens,
+        messages: [{ role: "user", content: prompt }]
+      }),
+    });
+  } catch (e) {
+    throw new Error("Our AI is taking a break — try again in a moment.");
+  }
+  if (resp.status >= 500) throw new Error("Our AI is taking a break — try again in a moment.");
+  if (!resp.ok) {
+    const errData = await resp.json().catch(() => ({}));
+    throw new Error(errData?.error?.message || "Something went wrong with the AI — please try again.");
+  }
   const data = await resp.json();
   const txt = data.content?.find(b => b.type === "text")?.text || "";
   return txt.replace(/```json|```/g, "").trim();
@@ -422,6 +443,9 @@ const styles = `
   .inner-star4 { animation: spin-cw 10s linear infinite; }
   @keyframes spin-cw { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
   @keyframes spin { to{transform:rotate(360deg)} }
+  @media (prefers-reduced-motion: reduce) {
+    .shape-circle, .inner-oval, .inner-starburst, .inner-star4 { animation: none; }
+  }
   @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
   @keyframes fadeIn { from{opacity:0} to{opacity:1} }
   @keyframes popIn { from{opacity:0;transform:scale(0.7)} to{opacity:1;transform:scale(1)} }
@@ -653,8 +677,8 @@ function HomeScreen({ onStart }) {
       <div className="divider" />
       <div className="section-pad">
         <div className="section-title">How it works</div>
-        <p className="section-sub">Answer 7 quick questions. Get one perfectly sequenced plan.</p>
-        {[["✦", "7 quick questions", "Tell us your vibe, budget, area, and energy level."],
+        <p className="section-sub">Answer 9 quick questions. Get one perfectly sequenced plan.</p>
+        {[["✦", "9 quick questions", "Tell us your vibe, budget, area, and energy level."],
           ["◎", "We match the experience", "Our curated database of 60+ hand-picked spots filters to your exact vibe."],
           ["→", "One perfect plan", "Claude sequences them geographically and temporally. Just follow it."]
         ].map(([icon, title, desc], i) => (
@@ -823,14 +847,13 @@ function QuizScreen({ step, ans, times, setTimes, onToggle, onNext, onBack, onGe
   return (
     <div>
       <div style={{ padding: "1.5rem 1.5rem 0" }}>
-        <div className="progress-label">{step + 1} of {totalSteps}</div>
+        <div className="progress-label">{step < QUESTIONS.length ? `${step + 1} of ${QUESTIONS.length}` : "Almost done"}</div>
         <div className="progress-bg"><div className="progress-fill" style={{ width: `${progressPct}%` }} /></div>
       </div>
       {error && <div className="err">⚠️ {error}</div>}
       <button className="btn-ghost" onClick={step > 0 ? onBack : onExit}>← Back</button>
       {step < QUESTIONS.length ? (
         <div style={{ padding: step > 0 ? "1rem 1.5rem 1.5rem" : "2rem 1.5rem 1.5rem" }}>
-          <div className="q-label">{q.label}</div>
           <div className="q-title">{q.title}</div>
           <div className="chips">
             {q.options.map((opt) => {
@@ -888,11 +911,21 @@ function QuizScreen({ step, ans, times, setTimes, onToggle, onNext, onBack, onGe
         </div>
       ) : (
         <div style={{ padding: "1rem 1.5rem 1.5rem" }}>
-          <div className="q-label">Almost there</div>
           <div className="q-title">What time are you planning?</div>
           <div className="time-row">
             <div className="time-wrap"><label>Start time</label><input type="time" value={times.start} onChange={(e) => setTimes(t => ({ ...t, start: e.target.value }))} /></div>
             <div className="time-wrap"><label>End time</label><input type="time" value={times.end} onChange={(e) => setTimes(t => ({ ...t, end: e.target.value }))} /></div>
+          </div>
+          <div style={{ marginTop: "1.25rem" }}>
+            <div style={{ fontSize: "0.78rem", color: "#6b5e4e", marginBottom: 6 }}>Anything else? <span style={{ color: "#9b8f7a" }}>(optional)</span></div>
+            <input
+              type="text"
+              className="input-field"
+              placeholder="e.g. somewhere with a nice terrace, no chains, dog-friendly..."
+              value={ans.freeText || ""}
+              onChange={(e) => onToggle("freeText", e.target.value, false)}
+              style={{ padding: "11px 14px", fontSize: "0.85rem" }}
+            />
           </div>
           <button className="btn btn-teal" style={{ marginTop: "1.25rem" }} onClick={onGenerate}>Generate my plan ✦</button>
         </div>
@@ -969,7 +1002,30 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
     return `£${low}–£${high}pp`;
   }
 
-  function swapVenue(alt) {
+  async function recalcTravel(stops) {
+    const travelMode = ans.travel === "walk_tube" ? "transit" : "walking";
+    const updated = [...stops];
+    for (let i = 0; i < updated.length - 1; i++) {
+      const curr = dbVenues.find(v => v.name?.toLowerCase() === updated[i].name?.toLowerCase());
+      const next = dbVenues.find(v => v.name?.toLowerCase() === updated[i + 1].name?.toLowerCase());
+      if (curr?.lat && curr?.lng && next?.lat && next?.lng) {
+        try {
+          const r = await fetch("/api/travel-time", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ origin: { lat: curr.lat, lng: curr.lng }, destination: { lat: next.lat, lng: next.lng }, mode: travelMode, departureTime: new Date().toISOString() })
+          });
+          const d = await r.json();
+          if (d.found) { updated[i] = { ...updated[i], travel_to_next: d.label, travel_minutes: d.durationMinutes }; }
+        } catch {}
+      } else {
+        updated[i] = { ...updated[i], travel_to_next: null, travel_minutes: null };
+      }
+    }
+    if (updated.length > 0) updated[updated.length - 1] = { ...updated[updated.length - 1], travel_to_next: null, travel_minutes: null };
+    return updated;
+  }
+
+  async function swapVenue(alt) {
     const newStops = [...result.stops];
     newStops[swappingIdx] = {
       ...newStops[swappingIdx],
@@ -985,14 +1041,18 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
     onUpdateResult({ ...result, stops: newStops, ...(newTotal ? { total_cost_estimate: newTotal } : {}) });
     setSwappingIdx(null);
     setAlternatives([]);
+    const withTravel = await recalcTravel(newStops);
+    onUpdateResult({ ...result, stops: withTravel, ...(newTotal ? { total_cost_estimate: newTotal } : {}) });
   }
 
-  function removeStop(idx) {
+  async function removeStop(idx) {
     const newStops = result.stops.filter((_, i) => i !== idx);
     const newTotal = recalcTotalCost(newStops);
     onUpdateResult({ ...result, stops: newStops, ...(newTotal ? { total_cost_estimate: newTotal } : {}) });
     setSwappingIdx(null);
     setAlternatives([]);
+    const withTravel = await recalcTravel(newStops);
+    onUpdateResult({ ...result, stops: withTravel, ...(newTotal ? { total_cost_estimate: newTotal } : {}) });
   }
 
   return (
@@ -1001,6 +1061,7 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
         <div className="result-eyebrow">✦ Your curated plan</div>
         <div className="result-title">{result.title}</div>
         <div className="result-tagline">{result.tagline}</div>
+        {result._fewerStops && <div style={{ fontSize: "0.74rem", color: "#9b8f7a", marginTop: 4 }}>{result._fewerStops}</div>}
         <div className="result-meta">
           <span>💰 {result.total_cost_estimate}</span>
           <span>🕐 {times.start}–{times.end}</span>
@@ -1904,6 +1965,33 @@ function MeScreen({ user, preferences, setPreferences, isAdmin, onBadgeUpdate, a
             <span style={{ color: "#c9bfae", fontSize: "1.2rem" }}>›</span>
           </button>
         )}
+        <button style={row} onClick={async () => {
+          try {
+            const r = await fetch("/api/gdpr", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "export", user_id: user.id }) });
+            const j = await r.json();
+            if (!j.found) { alert("No data found."); return; }
+            const blob = new Blob([JSON.stringify(j.data, null, 2)], { type: "application/json" });
+            const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "curated-data-export.json"; a.click();
+          } catch (e) { alert("Export failed: " + e.message); }
+        }}>
+          <span style={{ fontSize: "1.1rem", width: 24, textAlign: "center" }}>📦</span>
+          <span style={{ flex: 1 }}><span style={{ display: "block", fontSize: "0.9rem", fontWeight: 600, color: "#1c1c1a" }}>Export my data</span><span style={{ display: "block", fontSize: "0.74rem", color: "#9b8f7a" }}>Download all your data as JSON</span></span>
+          <span style={{ color: "#c9bfae", fontSize: "1.2rem" }}>›</span>
+        </button>
+        <button style={row} onClick={async () => {
+          if (!window.confirm("Are you sure you want to delete your account? This will permanently remove all your data and cannot be undone.")) return;
+          if (!window.confirm("This is irreversible. All your saves, plans, connections, and bucket lists will be deleted forever. Proceed?")) return;
+          try {
+            await fetch("/api/gdpr", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "delete", user_id: user.id }) });
+            await supabase.auth.signOut();
+            localStorage.clear();
+            alert("Your account and all data have been deleted.");
+          } catch (e) { alert("Delete failed: " + e.message); }
+        }}>
+          <span style={{ fontSize: "1.1rem", width: 24, textAlign: "center" }}>🗑️</span>
+          <span style={{ flex: 1 }}><span style={{ display: "block", fontSize: "0.9rem", fontWeight: 600, color: "#DD4124" }}>Delete my account</span><span style={{ display: "block", fontSize: "0.74rem", color: "#9b8f7a" }}>Permanently delete all your data</span></span>
+          <span style={{ color: "#c9bfae", fontSize: "1.2rem" }}>›</span>
+        </button>
         <button style={row} onClick={() => supabase.auth.signOut()}>
           <span style={{ fontSize: "1.1rem", width: 24, textAlign: "center" }}>↪</span>
           <span style={{ flex: 1, fontSize: "0.9rem", fontWeight: 600, color: "#DD4124" }}>Sign out</span>
@@ -2094,7 +2182,7 @@ function ListCover({ items, height = 200 }) {
 }
 
 // Full detail view for a saved spot: About, Book/Website, Notes, Add to calendar.
-function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan, user, onSpotUpdate, readOnly, onSaveToBoard, savedToBoard }) {
+function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan, user, onSpotUpdate, readOnly, onSaveToBoard, savedToBoard, onAddToBucketList }) {
   const cat = normaliseCategory(spot.category);
   const [note, setNote] = useState(() => { if (spot.note != null) return spot.note; try { return localStorage.getItem("cl_note_" + spot.id) || ""; } catch { return ""; } });
   const [savedNote, setSavedNote] = useState(false);
@@ -2199,6 +2287,7 @@ function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan, user, onSpotUpdate
           )}
           {onShowOnMap && <Action onClick={() => onShowOnMap(spot)}>📍 Show on map</Action>}
           {onMakePlan && <Action onClick={() => onMakePlan(spot)}>✦ Make a plan based on this</Action>}
+          {onAddToBucketList && <Action onClick={() => onAddToBucketList(spot)}>📋 Add to bucket list</Action>}
           {spot.source_url && (spot.source_type === "tiktok" || spot.source_type === "instagram") && <Action href={spot.source_url}>{SOURCE_ICON[spot.source_type]} View original ↗</Action>}
         </div>
 
@@ -2746,11 +2835,29 @@ function SavedScreen({ user, onBuildPlan, onShare, onBarCrawl, openSignal, calen
   const [saveFolder, setSaveFolder] = useState(""); // "" = auto by category, "__new__" = create new
   const [newFolder, setNewFolder] = useState("");
   const [saveNote, setSaveNote] = useState("");
-  const [savedView, setSavedView] = useState("folders"); // folders | map | calendar
+  const [savedView, setSavedView] = useState("folders"); // folders | list | map | calendar
   const [customFolders, setCustomFolders] = useState([]); // user-created (possibly empty) folders
   const [menuFolder, setMenuFolder] = useState(null);
   const [movingSpot, setMovingSpot] = useState(null);
   const [detailSpot, setDetailSpot] = useState(null);
+  const [bucketListPicker, setBucketListPicker] = useState(null); // spot to add to a bucket list
+  const [bucketLists, setBucketLists] = useState([]);
+  const [blLoading, setBlLoading] = useState(false);
+  const [savesTipDismissed, setSavesTipDismissed] = useState(() => localStorage.getItem("cl_seen_saves_tip") === "1");
+  async function openBucketListPicker(spot) {
+    setBucketListPicker(spot);
+    setBlLoading(true);
+    const { data } = await supabase.from("shared_lists").select("id,name,emoji").order("created_at", { ascending: false });
+    setBucketLists(data || []);
+    setBlLoading(false);
+  }
+  async function addSpotToBucketList(listId) {
+    const s = bucketListPicker;
+    if (!s) return;
+    const row = { list_id: listId, added_by: user.id, name: s.name, category: s.category, address: s.address, area: s.area, comment: s.comment, lat: s.lat, lng: s.lng, google_place_id: s.google_place_id, google_rating: s.google_rating != null ? String(s.google_rating) : null, price: s.price || null, website: s.website, photo_url: s.photo_url };
+    await supabase.from("shared_list_items").insert(row);
+    setBucketListPicker(null);
+  }
   // Product tour: when it reaches the "inside a spot" steps, open a real saved
   // spot's detail sheet so its rating / photos / book button can be spotlighted;
   // close it again when those steps end. Keyed only on tourWantsSpot so normal
@@ -3189,10 +3296,18 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
       if (!drafts.length) throw new Error("Nothing found to add. Try a clearer source.");
       setParseStatus("Fetching photos...");
       for (const d of drafts) await withPreviewPhoto(d);
-      // Flag spots already in the user's saves (by Google place id, else name).
+      // Flag spots already in the user's saves (by Google place id, fuzzy name, or address).
+      const normalize = (n) => (n || "").toLowerCase().replace(/[^a-z0-9]/g, "");
       for (const d of drafts) {
-        const dn = (d.name || "").toLowerCase().trim();
-        d._dup = saves.some(s => (d.google_place_id && s.google_place_id === d.google_place_id) || (s.name || "").toLowerCase().trim() === dn);
+        const dn = normalize(d.name);
+        const dAddr = normalize(d.address);
+        d._dup = saves.some(s => {
+          if (d.google_place_id && s.google_place_id === d.google_place_id) return true;
+          const sn = normalize(s.name);
+          if (sn && dn && (sn === dn || sn.includes(dn) || dn.includes(sn))) return true;
+          if (dAddr && dAddr.length > 10 && normalize(s.address) === dAddr) return true;
+          return false;
+        });
       }
       const dupCount = drafts.filter(d => d._dup).length;
       setPreview(prev => [...prev, ...drafts]);
@@ -3294,6 +3409,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
         if (!inserted || !inserted.length) throw new Error("Save didn't persist — check you're signed in and that the migration has been run.");
         savedCount++;
       }
+      track("save", { count: savedCount, source: toSave[0]?.source_type || "unknown" });
       setParseStatus("");
       tourSavedRef.current = true;
       setPreview([]);
@@ -3342,76 +3458,6 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
 
   function removeDraft(i) { setPreview(prev => prev.filter((_, idx) => idx !== i)); }
 
-  // eslint-disable-next-line no-unused-vars
-  async function parseAndSave_legacy(url) {
-    const urlMatch = (url || "").match(/https?:\/\/[^\s]*(tiktok\.com|vm\.tiktok\.com)[^\s]*/i);
-    if (!urlMatch) { return; }
-    const cleanUrl = urlMatch[0];
-    if (!user?.id) { return; }
-    setParsing(true); setError(null); setParseStatus("Fetching TikTok...");
-
-    try {
-      const tikResp = await fetch("/api/tiktok", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url: cleanUrl }) });
-      if (!tikResp.ok) throw new Error("TikTok API returned " + tikResp.status);
-      const tikData = await tikResp.json();
-      if (tikData.error) throw new Error(tikData.error);
-
-      const rawCaption = tikData.description || tikData.title || "";
-      if (!rawCaption.trim()) throw new Error("No caption found in this video. Try a different one.");
-      const caption = rawCaption.slice(0, 800).replace(/[\u0000-\u001F\u007F]/g, " ");
-
-      setParseStatus("Parsing venue...");
-      const prompt = `You are parsing a TikTok video caption about London experiences or venues.
-Extract structured data and return ONLY valid JSON with no markdown.
-Caption: ${JSON.stringify(caption)}
-
-Return a JSON object with this exact structure:
-{
-  "name": "venue name",
-  "area": "neighbourhood e.g. Shoreditch, Chelsea, Clapham",
-  "category": "EXACTLY one of: restaurant, bar, cafe, market, experience, outdoor, museum, gallery, event, nightlife (an exhibition = gallery; a pop-up/show/festival/concert = event; a club = nightlife; a pub = bar)",
-  "price": "e.g. Free, Under 15pp, 15-35pp, or null if unknown",
-  "vibe_tags": ["tags from: chill, romantic, chaotic, cultural, fancy, hidden_gems, social, foodie, outdoor, aesthetic, iconic, solo, underground"],
-  "comment": "one sentence about this venue"
-}`;
-
-      const txt = await callClaude(prompt, 500);
-      if (!txt) throw new Error("AI returned empty response. Try again.");
-      const parsed = JSON.parse(txt);
-
-      setParseStatus("Looking up on Google...");
-      const enrichResp = await fetch("/api/enrich-venue", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: parsed.name, area: parsed.area }) });
-      const enrichData = await enrichResp.json();
-
-      setParseStatus("Saving...");
-      const save = {
-        user_id: user.id,
-        name: enrichData.found ? enrichData.validated_name : parsed.name,
-        area: enrichData.found ? (enrichData.derived_area || parsed.area) : parsed.area,
-        zone: enrichData.found ? enrichData.derived_zone : null,
-        category: parsed.category,
-        price: enrichData.found ? enrichData.price : parsed.price,
-        vibe_tags: parsed.vibe_tags || [],
-        comment: parsed.comment,
-        tiktok_url: cleanUrl,
-        google_rating: enrichData.found ? enrichData.google_rating : null,
-        lat: enrichData.found ? enrichData.lat : null,
-        lng: enrichData.found ? enrichData.lng : null,
-      };
-
-      const { data: inserted, error: insertErr } = await supabase.from("user_saves").insert(save).select();
-      if (insertErr) throw new Error("Save failed: " + insertErr.message);
-      if (!inserted || inserted.length === 0) throw new Error("Save didn't persist — the database accepted the request but returned no row. Check you're signed in and that RLS allows this user to read/write user_saves.");
-      setParseStatus("");
-      showSuccess(save.name);
-      await loadSaves();
-    } catch (e) {
-      console.error("[parseAndSave]", e);
-      setError(e.message || "Couldn't parse this TikTok.");
-      setParseStatus("");
-    }
-    setParsing(false);
-  }
 
   async function removeSave(id) {
     if (!window.confirm("Are you sure you want to delete this spot? This can't be reversed.")) return;
@@ -3673,7 +3719,7 @@ Return a JSON object with this exact structure:
       <div style={{ padding: "0 1.5rem 1rem" }}>
         {saves.length > 0 && !openFolder && (
           <div ref={tourListRef} style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-            {[["folders", "Lists"], ["calendar", "Calendar"]].map(([id, label]) => (
+            {[["folders", "Folders"], ["list", "List"], ["calendar", "Calendar"]].map(([id, label]) => (
               <button key={id} onClick={() => { setSavedView(id); setOpenFolder(null); }}
                 style={{ fontSize: "0.74rem", padding: "6px 14px", borderRadius: 100, cursor: "pointer",
                   border: savedView === id ? "1.5px solid #726A4E" : "1.5px solid #e8e2d8",
@@ -3699,6 +3745,20 @@ Return a JSON object with this exact structure:
           </>
         )}
         {saves.length > 0 && savedView === "calendar" && <SpotsCalendar saves={saves} user={user} onBuildPlan={onBuildPlan} onShare={onShare} />}
+        {saves.length > 0 && savedView === "list" && (
+          <div>
+            {saves.map(s => (
+              <div key={s.id} onClick={() => setDetailSpot(s)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: "1px solid #f0ebe2", cursor: "pointer" }}>
+                {s.photo_url ? <img src={s.photo_url} alt="" style={{ width: 44, height: 44, borderRadius: 10, objectFit: "cover", flexShrink: 0 }} /> : <div style={{ width: 44, height: 44, borderRadius: 10, background: "#f5f0e8", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: "1.1rem" }}>{CAT_EMOJI[normaliseCategory(s.category)] || "📍"}</div>}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: "0.88rem", fontWeight: 600, color: "#1c1c1a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.name}</div>
+                  <div style={{ fontSize: "0.72rem", color: "#9b8f7a" }}>{[s.category ? cap(normaliseCategory(s.category)) : null, s.area, s.google_rating ? `⭐ ${s.google_rating}` : null].filter(Boolean).join(" · ")}</div>
+                </div>
+                <span style={{ color: "#c9bfae", fontSize: "1rem", flexShrink: 0 }}>›</span>
+              </div>
+            ))}
+          </div>
+        )}
         {saves.length > 0 && savedView === "folders" && !openFolder && (
           <>
             {saves.some(s => s.lat && s.lng) && (
@@ -3743,10 +3803,8 @@ Return a JSON object with this exact structure:
         {saves.length > 0 && savedView === "folders" && openFolder && (
           <>
             <button className="btn-ghost" onClick={() => { setOpenFolder(null); setFocusSpot(null); }} style={{ marginBottom: "0.75rem" }}>← All lists</button>
-            {folderSaves.length > 0 && (
-              <div style={{ position: "sticky", top: 0, zIndex: 1 }}>
-                <SpotsMap key={"list-" + openFolder} saves={folderSaves} listName={openFolder} focusSpot={focusSpot} />
-              </div>
+            {folderSaves.length > 0 && folderSaves.some(s => s.lat && s.lng) && (
+              <SpotsMap key={"peek-" + openFolder} saves={folderSaves} listName={openFolder} peek peekHeight={120} onExpand={() => setSavedView("map")} />
             )}
             {folderSaves.length === 0 && <div style={{ fontSize: "0.8rem", color: "#9b8f7a" }}>No spots in this list yet — pick it as the list when you save something.</div>}
             {folderSaves.length > 0 && renderSheet(folderSaves, (
@@ -3768,7 +3826,19 @@ Return a JSON object with this exact structure:
           <div className="empty-state">
             <div className="empty-emoji">📌</div>
             <div className="empty-title">No saved spots yet</div>
-            <div className="empty-sub">Pick a source above — TikTok, Instagram, screenshots, or Google Maps — and start capturing.</div>
+            {!savesTipDismissed ? (
+              <div style={{ position: "relative" }}>
+                <div className="empty-sub">Three ways to save a spot:</div>
+                <div style={{ textAlign: "left", maxWidth: 260, margin: "0.5rem auto 0", fontSize: "0.82rem", color: "#9b8f7a", lineHeight: 1.7 }}>
+                  📸 Screenshot a post from Instagram or TikTok<br/>
+                  🔗 Paste a link (TikTok or Instagram URL)<br/>
+                  ✏️ Type a place name manually
+                </div>
+                <button onClick={() => { localStorage.setItem("cl_seen_saves_tip", "1"); setSavesTipDismissed(true); }} style={{ marginTop: 10, border: "none", background: "none", color: "#9b8f7a", fontSize: "0.76rem", cursor: "pointer", textDecoration: "underline" }}>Got it</button>
+              </div>
+            ) : (
+              <div className="empty-sub">Pick a source above to start capturing.</div>
+            )}
           </div>
         )}
       </div>
@@ -3792,6 +3862,7 @@ Return a JSON object with this exact structure:
           onClose={() => setDetailSpot(null)}
           onShowOnMap={(s) => { setDetailSpot(null); if (savedView !== "map" && !openFolder) setSavedView("map"); setFocusSpot({ ...s, _focus: Date.now() }); window.scrollTo({ top: 0, behavior: "smooth" }); }}
           onMakePlan={(s) => { setDetailSpot(null); onBuildPlan([s]); }}
+          onAddToBucketList={(s) => { setDetailSpot(null); openBucketListPicker(s); }}
         />
       )}
 
@@ -3806,6 +3877,21 @@ Return a JSON object with this exact structure:
             ))}
             <button onClick={() => { const n = (window.prompt("New list name") || "").trim(); if (n) moveSpot(movingSpot, n); }} style={{ display: "block", width: "100%", textAlign: "left", padding: "11px 12px", borderRadius: 10, border: "1.5px solid #726A4E", background: "#fff", cursor: "pointer", fontSize: "0.82rem", color: "#726A4E", fontWeight: 600, marginBottom: 8 }}>+ New list…</button>
             <button onClick={() => setMovingSpot(null)} style={{ display: "block", width: "100%", textAlign: "center", padding: "10px", borderRadius: 10, border: "none", background: "#f5f0e8", cursor: "pointer", fontSize: "0.8rem", color: "#6b5e4e" }}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {bucketListPicker && (
+        <div onClick={() => setBucketListPicker(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 1000, animation: "fadeIn 0.2s" }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: "1.25rem 1.25rem 1.5rem", width: "100%", maxWidth: 420, maxHeight: "70vh", overflowY: "auto", animation: "cardIn 0.25s ease" }}>
+            <div style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a", marginBottom: 4 }}>Add to bucket list</div>
+            <div style={{ fontSize: "0.78rem", color: "#9b8f7a", marginBottom: 12, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{bucketListPicker.name}</div>
+            {blLoading && <div style={{ fontSize: "0.82rem", color: "#9b8f7a" }}>Loading lists...</div>}
+            {!blLoading && bucketLists.length === 0 && <div style={{ fontSize: "0.82rem", color: "#9b8f7a", marginBottom: 12 }}>No bucket lists yet. Create one in the People tab.</div>}
+            {!blLoading && bucketLists.map(l => (
+              <button key={l.id} onClick={() => addSpotToBucketList(l.id)} style={{ display: "block", width: "100%", textAlign: "left", padding: "11px 12px", borderRadius: 10, border: "1px solid #e8e2d8", background: "#fff", cursor: "pointer", fontSize: "0.82rem", color: "#1c1c1a", marginBottom: 8 }}>{l.emoji || "✨"} {l.name}</button>
+            ))}
+            <button onClick={() => setBucketListPicker(null)} style={{ display: "block", width: "100%", textAlign: "center", padding: "10px", borderRadius: 10, border: "none", background: "#f5f0e8", cursor: "pointer", fontSize: "0.8rem", color: "#6b5e4e", marginTop: 4 }}>Cancel</button>
           </div>
         </div>
       )}
@@ -4414,6 +4500,47 @@ function SharedListView({ list, user, onClose }) {
   const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
   const [detailItem, setDetailItem] = useState(null); // open a list spot's full detail page
+  const [mapExpanded, setMapExpanded] = useState(false);
+  const [ssStatus, setSsStatus] = useState("");
+
+  async function handleScreenshotAdd(files) {
+    if (!files?.length) return;
+    setBusy(true); setSsStatus("Reading screenshot...");
+    try {
+      const { base64, mediaType } = await fileToDownscaledBase64(files[0]);
+      setSsStatus("Parsing with AI...");
+      const resp = await fetch("/api/claude", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-6", max_tokens: 1500,
+          messages: [{ role: "user", content: [
+            { type: "image", source: { type: "base64", media_type: mediaType, data: base64 } },
+            { type: "text", text: 'This is a screenshot about a London venue. Return ONLY valid JSON (no markdown): [{"name":"venue name","area":"neighbourhood","category":"restaurant|bar|cafe|experience|outdoor|museum|gallery|market|event|nightlife","price":"e.g. £20-30 or null","comment":"short description"}]' },
+          ] }],
+        }),
+      });
+      const data = await resp.json();
+      const txt = (data.content?.find(b => b.type === "text")?.text || "");
+      const raw = safeJsonParse(txt);
+      if (!raw) { setSsStatus(""); setBusy(false); return; }
+      const venues = Array.isArray(raw) ? raw : [raw];
+      for (const v of venues) {
+        if (!v?.name) continue;
+        setSsStatus(`Looking up "${v.name}"...`);
+        let photo = null, lat = null, lng = null, gid = null, grating = null, address = null;
+        try {
+          const r = await fetch("/api/enrich-venue", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: v.name, area: v.area }) });
+          const d = await r.json();
+          if (d.found) { lat = d.lat; lng = d.lng; gid = d.google_place_id; grating = d.google_rating; address = d.validated_address; }
+          if (gid) { const pr = await fetch("/api/saved-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool: "image", place_id: gid }) }); const pj = await pr.json(); if (pj.found) photo = pj.url; }
+        } catch {}
+        const row = { list_id: list.id, added_by: user.id, name: v.name, category: v.category || null, area: v.area || null, comment: v.comment || null, address, lat, lng, google_place_id: gid, google_rating: grating != null ? String(grating) : null, price: v.price || null, photo_url: photo };
+        const { data: ins } = await supabase.from("shared_list_items").insert(row).select().single();
+        if (ins) { setItems(prev => [...prev, ins]); celebrateAdd(); }
+      }
+    } catch (e) { console.error("[bucket-screenshot]", e); }
+    setSsStatus(""); setBusy(false); setPicker(null);
+  }
   const inviteLink = `https://london-app.vercel.app/?blist=${list.id}`;
   const nameOf = (p) => p?.name || (p?.email ? p.email.split("@")[0] : null) || "Friend";
   // Add-to-Google-Calendar link for a bucket-list item (uses its planned date if set).
@@ -4461,6 +4588,7 @@ function SharedListView({ list, user, onClose }) {
     }
     setItems(prev => prev.map(x => x.id === it.id ? { ...x, done: next, done_by: next ? user.id : null } : x));
     await supabase.from("shared_list_items").update({ done: next, done_by: next ? user.id : null, done_at: next ? new Date().toISOString() : null }).eq("id", it.id);
+    if (next) track("list_ticked", { item: it.name, list_id: list.id });
   }
 
   // Little reward whenever something lands on the list — sound + buzz + a small burst.
@@ -4562,18 +4690,22 @@ function SharedListView({ list, user, onClose }) {
           <button onClick={() => { navigator.clipboard?.writeText(inviteLink); setCopied(true); setTimeout(() => setCopied(false), 2000); }} style={slPill}>{copied ? "✓ Link copied" : "🔗 Invite by link"}</button>
         </div>
 
-        <div style={{ display: "flex", gap: 8, margin: "0.25rem 0 1.1rem" }}>
-          <button className="btn btn-teal" style={{ marginTop: 0, flex: 1 }} onClick={openSaves}>＋ From your saves</button>
-          <button className="btn-outline" style={{ marginTop: 0, flex: 1 }} onClick={() => setPicker("manual")}>✎ Add manually</button>
+        <div style={{ display: "flex", gap: 8, margin: "0.25rem 0 1.1rem", flexWrap: "wrap" }}>
+          <button className="btn btn-teal" style={{ marginTop: 0, flex: 1, minWidth: "40%" }} onClick={openSaves}>＋ From saves</button>
+          <button className="btn-outline" style={{ marginTop: 0, flex: 1, minWidth: "40%" }} onClick={() => setPicker("manual")}>✎ Manually</button>
+          <button className="btn-outline" style={{ marginTop: 0, flex: 1, minWidth: "40%" }} onClick={() => setPicker("screenshot")}>📷 Screenshot</button>
         </div>
 
         {loading && <div style={{ fontSize: "0.82rem", color: "#9b8f7a" }}>Loading…</div>}
         {!loading && items.length === 0 && <div style={{ fontSize: "0.9rem", color: "#9b8f7a", textAlign: "center", padding: "2.5rem 1rem" }}>Nothing here yet — add your first place ✨</div>}
 
-        {/* Mini map of every spot with a location */}
+        {/* Mini map of every spot with a location — collapsed, tap to expand */}
         {mapItems.length > 0 && (
           <div style={{ marginBottom: 14 }}>
-            <SpotsMap key={"blist-" + list.id} saves={mapItems} listName={list.name} />
+            {mapExpanded
+              ? <><SpotsMap key={"blist-" + list.id} saves={mapItems} listName={list.name} /><button onClick={() => setMapExpanded(false)} style={{ fontSize: "0.72rem", color: "#726A4E", fontWeight: 600, border: "none", background: "none", cursor: "pointer", padding: "6px 0" }}>Collapse map ↑</button></>
+              : <SpotsMap key={"blist-peek-" + list.id} saves={mapItems} listName={list.name} peek peekHeight={120} onExpand={() => setMapExpanded(true)} />
+            }
           </div>
         )}
 
@@ -4674,6 +4806,21 @@ function SharedListView({ list, user, onClose }) {
           </div>
         );
       })()}
+
+      {picker === "screenshot" && (
+        <div onClick={() => setPicker(null)} style={slOverlay}>
+          <div onClick={e => e.stopPropagation()} style={slSheet}>
+            <div style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "1.1rem", color: "#1c1c1a", marginBottom: 10 }}>Add from screenshot</div>
+            <div style={{ fontSize: "0.78rem", color: "#9b8f7a", marginBottom: 14 }}>Upload a screenshot of a venue — we'll parse the name and details automatically.</div>
+            {ssStatus && <div style={{ fontSize: "0.82rem", color: "#726A4E", marginBottom: 10 }}>{ssStatus}</div>}
+            <label className="btn btn-teal" style={{ marginTop: 0, textAlign: "center", cursor: "pointer", display: "block" }}>
+              {busy ? ssStatus || "Processing..." : "📷 Choose screenshot"}
+              <input type="file" accept="image/*" multiple style={{ display: "none" }} disabled={busy} onChange={e => { const f = [...e.target.files]; e.target.value = ""; if (f.length) handleScreenshotAdd(f); }} />
+            </label>
+            <button onClick={() => setPicker(null)} style={{ display: "block", width: "100%", marginTop: 10, background: "none", border: "none", color: "#9b8f7a", fontSize: "0.8rem", cursor: "pointer" }}>Cancel</button>
+          </div>
+        </div>
+      )}
 
       {picker === "manual" && (
         <div onClick={resetManual} style={slOverlay}>
@@ -4877,6 +5024,7 @@ function PeopleScreen({ user, onSavePlan, onShareSaved }) {
   const [connecting, setConnecting] = useState(false);
   const [viewFriend, setViewFriend] = useState(null); // open a friend's board
   const [showConnect, setShowConnect] = useState(false); // collapse the connect card by default
+  const [peopleTipDismissed, setPeopleTipDismissed] = useState(() => localStorage.getItem("cl_seen_people_tip") === "1");
   const inviteLink = `https://london-app.vercel.app/?invite=${user.id}`;
   const nameOf = (p) => p?.name || (p?.email ? p.email.split("@")[0] : null) || "Friend";
 
@@ -4965,7 +5113,13 @@ function PeopleScreen({ user, onSavePlan, onShareSaved }) {
       {/* Friends first — the heart of the tab */}
       <div style={{ padding: "0 1.5rem 1rem" }}>
         <div style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a", margin: "0.25rem 0 0.6rem" }}>Friends ({connections.length})</div>
-        {connections.length === 0 && <div style={{ fontSize: "0.82rem", color: "#9b8f7a" }}>No friends yet — tap “Connect with a friend” below.</div>}
+        {connections.length === 0 && <div style={{ fontSize: "0.82rem", color: "#9b8f7a" }}>No friends yet — tap &ldquo;Connect with a friend&rdquo; below.</div>}
+        {connections.length === 0 && !peopleTipDismissed && (
+          <div style={{ background: "#faf9f6", border: "1px solid #e8e2d8", borderRadius: 14, padding: "12px 14px", marginTop: 10, position: "relative" }}>
+            <button onClick={() => { localStorage.setItem("cl_seen_people_tip", "1"); setPeopleTipDismissed(true); }} style={{ position: "absolute", top: 8, right: 10, border: "none", background: "none", color: "#9b8f7a", fontSize: "1rem", cursor: "pointer", lineHeight: 1 }}>&times;</button>
+            <div style={{ fontSize: "0.82rem", color: "#6b5e4e", lineHeight: 1.5, paddingRight: 16 }}>Connect with friends by swapping your 4-letter word code. Once connected, you can share lists and spots with each other.</div>
+          </div>
+        )}
         {connections.length > 0 && <div style={{ fontSize: "0.72rem", color: "#b3a892", marginBottom: 8 }}>Tap a friend to see their profile & saves.</div>}
         <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
           {connections.map(c => (
@@ -5180,6 +5334,15 @@ export default function App() {
         showToast(`A friend sent you ${k} — check People`);
         notify("New from a friend ✦", `You've been sent ${k}`);
       })
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "shared_list_members", filter: `user_id=eq.${user.id}` }, async (payload) => {
+        const listId = payload.new?.list_id;
+        if (!listId) return;
+        const { data: listData } = await supabase.from("shared_lists").select("name,emoji").eq("id", listId).single();
+        const name = listData?.name || "a bucket list";
+        showToast(`You've been added to "${name}" 🎉`);
+        notify("New bucket list ✦", `You've been added to "${name}"`);
+        setPeopleBadge(n => n + 1);
+      })
       .subscribe();
     return () => { active = false; supabase.removeChannel(ch); };
   }, [user]);
@@ -5300,8 +5463,6 @@ export default function App() {
     let shortlist = shortlistResult.venues || shortlistResult;
     const savedVenues = ans.savedVenues || [];
     if (ans._barCrawl && savedVenues.length) {
-      // Bar crawl started from your OWN saved bars → the crawl IS those saves.
-      // Don't pad it out with venues from the general pool.
       shortlist = savedVenues.map(v => ({
         name: v.name, type: v.category || "bar", travelZone: v.zone || v.area || "London",
         price: v.price, tags: v.vibe_tags, desc: v.comment, emoji: "🍸",
@@ -5310,6 +5471,15 @@ export default function App() {
     } else if (ans._barCrawl) {
       const drink = shortlist.filter(v => /bar|pub|night|wine|cocktail/i.test(v.type || ""));
       if (drink.length >= 3) shortlist = drink;
+    } else if (savedVenues.length) {
+      // Inject saved venues into shortlist so Claude has them in the venue data
+      const savedAsShortlist = savedVenues.map(v => ({
+        name: v.name, type: v.category || "experience", travelZone: v.zone || v.area || "London",
+        price: v.price, tags: v.vibe_tags || [], desc: v.comment, emoji: "📌",
+        bookingRequired: false, google_rating: v.google_rating, _saved: true,
+      }));
+      const savedNames = new Set(savedVenues.map(v => v.name?.toLowerCase()));
+      shortlist = [...savedAsShortlist, ...shortlist.filter(v => !savedNames.has(v.name?.toLowerCase()))];
     }
     const chosenZone = shortlistResult.zone || ans.area;
     const venueData = JSON.stringify(shortlist.map(v => ({
@@ -5327,7 +5497,7 @@ export default function App() {
     };
     const savedForPrompt = savedVenues.map(v => ({ name: v.name, type: v.category, area: v.zone || v.area || "London", price: v.price, tags: v.vibe_tags, desc: v.comment, lat: v.lat, lng: v.lng }));
     const savedClause = savedVenues.length
-      ? '. CRITICAL REQUIREMENT: the following are the USER\'S OWN saved spots — you MUST include ALL of them in the plan (they can appear at the start, middle, or end). ALL other stops MUST be within walking distance (max 15 min walk) of the saved spots. The plan should be anchored around these locations. For each stop that is one of these saved spots, add "saved": true to that stop. Saved spots: ' + JSON.stringify(savedForPrompt)
+      ? '. ABSOLUTE REQUIREMENT — FAILURE TO FOLLOW IS AN ERROR: You MUST include these saved spots in the plan. They are non-negotiable. Place them at the start, middle, or end — wherever they fit the flow best. Every other stop MUST be within walking distance (max 10 min walk) of a saved spot. The entire plan must be geographically clustered around these locations. For each saved spot, set "saved": true. Saved spots (MUST appear in output): ' + JSON.stringify(savedForPrompt)
       : "";
 
     const areaNote = savedVenues.length
@@ -5341,8 +5511,8 @@ export default function App() {
 
     const userStops = ans.stops === "5+" ? 5 : parseInt(ans.stops) || 4;
     const stopCount = `exactly ${userStops} stops`;
-    const budgetNote = `TOTAL budget for the ENTIRE plan per person: ${ans.budget}. The sum of all stop cost_estimates MUST stay within this range. Pick venues accordingly — do NOT exceed this total.`;
-    const varietyRule = "IMPORTANT: every stop must be a DIFFERENT type (e.g. do NOT include 2 restaurants or 2 bars). Vary the types across the plan (mix of restaurant, bar, cafe, activity, gallery, park, etc).";
+    const budgetNote = `TOTAL budget for ALL stops combined per person: ${ans.budget}. This is NOT per-stop — it is the total for the entire plan. Divide this budget across ${userStops} stops. Example: if budget is £30-£50 total and there are 3 stops, each stop should average £10-£17. The sum of all stop cost_estimates MUST stay within ${ans.budget}.`;
+    const varietyRule = "STRICT: never include 2 of the same type. No 2 restaurants, no 2 bars, no 2 cafes. A good evening structure: restaurant + bar, or restaurant + dessert + bar, or activity + restaurant + bar. Vary types across the plan.";
     const prompt = "You are London's sharpest local guide. Build a perfect itinerary from these curated venues. User: " +
       ans.timeOfDay + " plan, vibes: " + (ans.vibes || []).join(", ") +
       ", area: " + areaNote +
@@ -5352,6 +5522,7 @@ export default function App() {
       ", include: " + ((ans.extras || []).join(", ") || "no extras") +
       ". " + budgetNote +
       ". " + varietyRule +
+      (ans.freeText ? ". ADDITIONAL USER PREFERENCE: " + ans.freeText : "") +
       ". Venues (" + stopCount + "): " + venueData + savedClause + (ans._barCrawlClause || "") +
       ". Space stops evenly across the time window. Respond ONLY with valid JSON, no markdown, no backticks: " +
       '{"title":"punchy name","tagline":"witty sentence","vibe_scores":{"fun":7,"romantic":3,"cultural":6,"chaotic":2},"total_cost_estimate":"£X-£Ypp (this is the SUM across all stops, must be within the user budget)","stops":[{"time":"18:30","name":"venue name","type":"bar","area":"Shoreditch","emoji":"🍸","saved":false,"hook":"best thing about this place","why_it_fits":"vibe match","booking":"Walk-in fine","cost_estimate":"£X-£Ypp (avg spend at THIS stop only)","travel_to_next":"calculating..."}],"extend_the_night":"late suggestion","local_tip":"insider tip"}';
@@ -5421,8 +5592,10 @@ export default function App() {
         return true;
       });
 
-      const finalResult = { ...parsed, stops: finalStops };
+      const requestedStops = ans.stops === "5+" ? 5 : parseInt(ans.stops) || 4;
+      const finalResult = { ...parsed, stops: finalStops, _fewerStops: finalStops.length < requestedStops ? `We found ${finalStops.length} stops that matched all your criteria (you asked for ${requestedStops}).` : null };
       setResult(finalResult);
+      track("plan_generated", { stops: finalStops.length, vibes: ans.vibes, budget: ans.budget, area: ans.area, fromSaved: !!(ans.savedVenues?.length) });
       setQuizStep(QUESTIONS.length + 1);
       setPlans(prev => {
         const updated = [{ result: finalResult, ans: { ...ans }, times: { ...times }, savedAt: new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }), createdAt: Date.now(), id: generateId() }, ...prev];
@@ -5431,7 +5604,7 @@ export default function App() {
       });
       showToast("Plan saved to My Plans");
     } catch (e) {
-      setError("Couldn't generate your plan. Check your API key and try again.");
+      setError(e.message?.includes("AI is taking a break") ? e.message : "Couldn't generate your plan — try again in a moment.");
     }
     setLoading(false);
   }
@@ -5518,6 +5691,7 @@ export default function App() {
       const nm = data?.name || (data?.email ? data.email.split("@")[0] : null) || "Someone";
       showToast(`🎉 ${nm} connected with you!`);
       notify("New connection", `${nm} connected with you on Curated`);
+      track("friend_connected", { friend_id: otherId });
       try { const s = new Set(JSON.parse(localStorage.getItem(SEEN) || "[]")); s.add(otherId); localStorage.setItem(SEEN, JSON.stringify([...s])); } catch (e) {}
     };
 
@@ -5617,6 +5791,7 @@ export default function App() {
         <nav className="bottom-nav">
           {TABS.map(tab => (
             <button key={tab.id} className={"nav-tab" + (activeTab === tab.id ? " active" : "")}
+              aria-label={tab.label}
               onClick={() => { setActiveTab(tab.id); if (tab.id !== "home") { setQuizStep(-1); setViewingPlan(null); } }}>
               <span className="nav-tab-icon" style={{ position: "relative" }}>
                 <NavIcon id={tab.id} />
@@ -5643,7 +5818,8 @@ export default function App() {
             ? `Use the user's OWN saved bars as the stops — include ALL ${seeded} of them and add NO other venues; just order them into a natural walking crawl.`
             : "Pick 4-5 drinking venues within a short walk of each other and order them as a natural crawl.";
           const clause = `. THIS IS A BAR CRAWL: every single stop MUST be a bar or pub (no restaurants, cafes, museums or shops). ${stopsLine} Preference: ${typeLabel}. Atmosphere: ${atmos}. Dress: ${dress}. Setting: ${setting}. Set every stop's "type" to "bar" or "pub".`;
-          setAns(prev => ({ ...prev, timeOfDay: "night", vibes, area: a.area, budget: a.budget, groupSize: prev.groupSize || "small_group", energy: "high", travel: "walking", extras: [], savedVenues: barCrawl.seed || [], _barCrawl: true, _barCrawlClause: clause }));
+          const bcBudgetMap = { low: "£10–£30", mid: "£30–£50", high: "£50–£80" };
+          setAns(prev => ({ ...prev, timeOfDay: "night", vibes, area: a.area, budget: bcBudgetMap[a.budget] || "£30–£50", groupSize: prev.groupSize || "small_group", energy: "high", travel: "walking", extras: [], savedVenues: barCrawl.seed || [], _barCrawl: true, _barCrawlClause: clause }));
           setTimes({ start: "18:00", end: "23:30" });
           setBarCrawl(null); setActiveTab("home"); setQuizStep(QUESTIONS.length); setPendingGen(true);
         }} />}

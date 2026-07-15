@@ -1,7 +1,7 @@
 # Curated London — Claude Code Briefing
 
 ## What this is
-React/Vite London itinerary generator. Users answer 8 questions, get AI-generated day/night plan.
+React/Vite London itinerary generator. Users answer 9 questions, get AI-generated day/night plan.
 
 ## Stack
 - Frontend: React/Vite, deployed on Vercel (auto-deploys on push to main)

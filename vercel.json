@@ -4,15 +4,11 @@
   "framework": "vite",
   "crons": [
     {
-      "path": "/api/expire-events",
-      "schedule": "0 3 * * *"
-    },
-    {
-      "path": "/api/tiktok-fetch",
+      "path": "/api/social-fetch",
       "schedule": "0 6 * * *"
     },
     {
-      "path": "/api/process-videos",
+      "path": "/api/daily-process",
       "schedule": "0 7 * * *"
     }
   ]

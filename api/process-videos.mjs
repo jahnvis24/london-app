@@ -45,8 +45,10 @@ function areaFromAddress(address) {
   return null;
 }
 
-async function parseCaption(caption) {
-  const prompt = `You are parsing a TikTok video caption about London experiences or venues.
+async function parseCaption(caption, source) {
+  const isInstagram = (source || '').startsWith('ig_');
+  const sourceLabel = isInstagram ? 'an Instagram post' : 'a TikTok video caption';
+  const prompt = `You are parsing ${sourceLabel} about London experiences or venues.
 The caption may mention ONE venue or MULTIPLE venues, or may not be about a specific London venue at all.
 
 Caption: ${JSON.stringify(caption)}
@@ -180,7 +182,7 @@ export default async function handler(req, res) {
     .select('*')
     .eq('processed', false)
     .order('created_at', { ascending: true })
-    .limit(10);
+    .limit(25);
 
   if (!pending || pending.length === 0) {
     return res.status(200).json({ message: 'No pending videos to process', processed: 0 });
@@ -190,7 +192,7 @@ export default async function handler(req, res) {
 
   for (const video of pending) {
     try {
-      const parsed = await parseCaption(video.caption);
+      const parsed = await parseCaption(video.caption, video.source);
       await supabase.from('pending_videos').update({ processed: true }).eq('id', video.id);
       results.processed++;
 

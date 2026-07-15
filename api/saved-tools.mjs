@@ -55,7 +55,8 @@ async function handleImage(req, res) {
 // Pulls the caption + thumbnail from a public Instagram post via its Open Graph
 // tags, so the user can paste just the link. Instagram sometimes serves a login
 // wall to servers — then caption is empty and the client falls back to asking
-// for the pasted caption.
+// for the pasted caption. (RapidAPI is reserved for the cron scraper to stay
+// within the free tier limit.)
 async function handleInstagram(req, res) {
   const { url } = req.body || {};
   if (!url) return res.status(400).json({ error: 'No URL provided' });
@@ -77,7 +78,6 @@ async function handleInstagram(req, res) {
 
     let caption = grab('og:description') || '';
     const image_url = grab('og:image');
-    // og:description looks like: '123 likes, 4 comments - user on date: "the caption"'.
     const quoted = caption.match(/[:\-]\s*[""](.+)[""]\s*$/s) || caption.match(/:\s*"(.+)"$/s);
     if (quoted) caption = quoted[1];
 

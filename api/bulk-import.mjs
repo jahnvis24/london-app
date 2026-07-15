@@ -5,8 +5,17 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY
 );
 
+const ADMIN_EMAIL = "jahnvisolanki2412@gmail.com";
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  // Auth + admin check
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) return res.status(401).json({ error: 'Unauthorized' });
+  const { data: { user }, error: authError } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
+  if (authError || !user) return res.status(401).json({ error: 'Unauthorized' });
+  if (user.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Forbidden' });
 
   const { venues } = req.body;
   if (!venues || !Array.isArray(venues)) return res.status(400).json({ error: 'venues array required' });
