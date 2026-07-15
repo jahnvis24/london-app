@@ -177,6 +177,13 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // Expire past events first
+  const today = new Date().toISOString().split("T")[0];
+  try {
+    await supabase.from("experiences").delete().eq("is_event", true).not("event_end", "is", null).lt("event_end", today);
+    await supabase.from("experiences").delete().eq("is_event", true).is("event_end", null).not("event_start", "is", null).lt("event_start", today);
+  } catch (e) { console.error("[expire]", e.message); }
+
   const { data: pending } = await supabase
     .from('pending_videos')
     .select('*')
