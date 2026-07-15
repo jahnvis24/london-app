@@ -3620,7 +3620,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
 
         {!openFolder && (
           <div style={{ display: "flex", gap: 10 }}>
-            <button ref={tourBtnRef} onClick={() => { setCaptureTab("screenshot"); setError(null); setCaptureOpen(true); }} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: "#1c1c1a", color: "#fff", border: "none", borderRadius: 100, padding: "13px 18px", fontSize: "0.92rem", fontWeight: 600, cursor: "pointer" }}>+ Save a place</button>
+            <button ref={tourBtnRef} onClick={() => { setCaptureTab(null); setError(null); setCaptureOpen(true); }} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: "#1c1c1a", color: "#fff", border: "none", borderRadius: 100, padding: "13px 18px", fontSize: "0.92rem", fontWeight: 600, cursor: "pointer" }}>+ Save a place</button>
             <button onClick={() => { setSavedView(savedView === "calendar" ? "folders" : "calendar"); setOpenFolder(null); }} style={{ width: 48, height: 48, display: "flex", alignItems: "center", justifyContent: "center", background: savedView === "calendar" ? "#726A4E" : "#fff", color: savedView === "calendar" ? "#fff" : "#1c1c1a", border: savedView === "calendar" ? "none" : "1.5px solid #e8e2d8", borderRadius: "50%", cursor: "pointer", fontSize: "1.1rem" }}>📅</button>
           </div>
         )}
@@ -3639,13 +3639,20 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
               <div style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "1.5rem", color: "#1c1c1a" }}>Save a place</div>
               <button onClick={() => setCaptureOpen(false)} style={{ border: "none", background: "none", fontSize: "1.25rem", color: "#9b8f7a", cursor: "pointer", lineHeight: 1 }}>✕</button>
             </div>
-            <div style={{ fontSize: "0.85rem", color: "#9b8f7a", margin: "4px 0 16px" }}>Drop a screenshot, paste a link, or add it yourself.</div>
 
-            <div style={{ display: "flex", gap: 4, background: "#f0ebe2", borderRadius: 12, padding: 4, marginBottom: 16 }}>
-              {[["screenshot", "📷 Screenshot"], ["link", "🔗 Link"], ["manual", "✎ Manual"]].map(([id, lbl]) => (
-                <button key={id} onClick={() => { setCaptureTab(id); setError(null); }} style={{ flex: 1, padding: "9px 4px", borderRadius: 9, border: "none", cursor: "pointer", fontSize: "0.8rem", fontWeight: 600, background: captureTab === id ? "#fff" : "transparent", color: captureTab === id ? "#1c1c1a" : "#9b8f7a", boxShadow: captureTab === id ? "0 1px 4px rgba(0,0,0,0.1)" : "none" }}>{lbl}</button>
-              ))}
-            </div>
+            {!captureTab ? (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 16 }}>
+                {[["screenshot", "📷", "Screenshot"], ["link", "🔗", "Link"], ["manual", "✎", "Manual"], ["newlist", "📋", "New List"]].map(([id, icon, label]) => (
+                  <button key={id} onClick={() => { if (id === "newlist") { setCaptureOpen(false); createFolder(); } else { setCaptureTab(id); setError(null); } }}
+                    style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, padding: "24px 12px", borderRadius: 16, border: "none", background: "#f7f5f0", cursor: "pointer" }}>
+                    <span style={{ fontSize: "1.8rem" }}>{icon}</span>
+                    <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#1c1c1a" }}>{label}</span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <>
+              <button onClick={() => setCaptureTab(null)} style={{ border: "none", background: "none", fontSize: "0.78rem", color: "#726A4E", fontWeight: 600, cursor: "pointer", padding: "8px 0 12px" }}>← Back</button>
 
             {captureTab === "screenshot" && (
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -3699,6 +3706,8 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
 
             {(parsing || saving) && parseStatus && <div style={{ fontSize: "0.78rem", color: "#726A4E", marginTop: 12 }}>{parseStatus}</div>}
             {error && <div className="err" style={{ marginTop: 12 }}>{error}</div>}
+              </>
+            )}
           </div>
         </div>
       )}
@@ -3771,10 +3780,6 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "0.5rem 0 0.75rem" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
                 <div style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "1.05rem", color: "#1c1c1a" }}>Your lists ({saves.length} spot{saves.length !== 1 ? "s" : ""})</div>
-                {(() => {
-                  const week = saves.filter(s => s.created_at && (Date.now() - new Date(s.created_at).getTime()) < 7 * 864e5).length;
-                  return week > 0 ? <span title={`${week} saved in the last 7 days`} style={{ flexShrink: 0, fontSize: "0.66rem", fontWeight: 700, color: "#9a5b2e", background: "linear-gradient(180deg,#fbe7cf,#f6d6ae)", border: "1px solid #eec79a", borderRadius: 100, padding: "3px 9px", whiteSpace: "nowrap" }}>🔥 {week} this week</span> : null;
-                })()}
               </div>
               <button onClick={createFolder} style={{ fontSize: "0.74rem", padding: "6px 12px", borderRadius: 100, border: "1.5px solid #726A4E", background: "#fff", color: "#726A4E", fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>+ New list</button>
             </div>
@@ -3785,9 +3790,9 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
                   <div key={f} data-tour={fi === 0 ? "saves-list-card" : undefined} style={{ position: "relative", borderRadius: 20, overflow: "hidden", boxShadow: "0 4px 16px rgba(0,0,0,0.10)", background: "#fff" }}>
                     <div onClick={() => setOpenFolder(f)} style={{ cursor: "pointer" }}>
                       <ListCover items={items} />
-                      <div style={{ padding: "12px 14px" }}>
-                        <div style={{ fontSize: "0.84rem", fontWeight: 600, color: "#1c1c1a", paddingRight: 20, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f}</div>
-                        <div style={{ fontSize: "0.68rem", color: "#9b8f7a" }}>{items.length} spot{items.length !== 1 ? "s" : ""}</div>
+                      <div style={{ padding: "8px 10px" }}>
+                        <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "#1c1c1a", paddingRight: 20, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f}</div>
+                        <div style={{ fontSize: "0.64rem", color: "#9b8f7a" }}>{items.length} spot{items.length !== 1 ? "s" : ""}</div>
                       </div>
                     </div>
                     <button onClick={(e) => { e.stopPropagation(); setMenuFolder(menuFolder === f ? null : f); }} style={{ position: "absolute", top: 6, right: 6, width: 26, height: 26, borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.92)", cursor: "pointer", fontSize: "0.95rem", lineHeight: 1, boxShadow: "0 1px 4px rgba(0,0,0,0.25)" }}>⋯</button>
