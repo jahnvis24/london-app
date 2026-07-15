@@ -2461,7 +2461,7 @@ function SpotsMap({ saves, listName, focusSpot, onCategory, peek, peekHeight, on
   if (peek) return (
     <div onClick={onExpand} style={{ position: "relative", cursor: "pointer", marginBottom: 12 }}>
       {!loaded && <div style={{ height: mapH, background: "#eef3ee", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", color: "#9b8f7a", fontSize: "0.82rem" }}>Loading map…</div>}
-      <div ref={mapRef} style={{ height: mapH, borderRadius: 16, overflow: "hidden", border: "1px solid #e6e0d4", display: loaded ? "block" : "none" }} />
+      <div ref={mapRef} style={{ height: mapH, borderRadius: 16, overflow: "hidden", boxShadow: "0 4px 16px rgba(0,0,0,0.12)", display: loaded ? "block" : "none" }} />
       <div style={{ position: "absolute", inset: 0, borderRadius: 16, zIndex: 900 }} />
       <div style={{ position: "absolute", top: 10, left: 10, zIndex: 950, background: "rgba(255,255,255,0.92)", color: "#1c1c1a", borderRadius: 100, padding: "5px 11px", fontSize: "0.72rem", fontWeight: 600 }}>📍 {pts.length} on the map</div>
       <div style={{ position: "absolute", bottom: 10, right: 10, zIndex: 950, background: "#1c1c1a", color: "#fff", borderRadius: 100, padding: "6px 13px", fontSize: "0.74rem", fontWeight: 600, boxShadow: "0 2px 8px rgba(0,0,0,0.25)" }}>Open map ›</div>
@@ -2473,7 +2473,7 @@ function SpotsMap({ saves, listName, focusSpot, onCategory, peek, peekHeight, on
       <div style={{ fontSize: "0.7rem", color: "#9b8f7a", marginBottom: 8 }}>{pts.length} {listName ? "place" : "spot"}{pts.length !== 1 ? "s" : ""} {listName ? `in ${listName}` : "on the map"} · tap a pin for the card</div>
       <div style={{ position: "relative" }}>
         {!loaded && <div style={{ height: mapH, background: "#eef3ee", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", color: "#9b8f7a", fontSize: "0.82rem" }}>Loading map…</div>}
-        <div ref={mapRef} style={{ height: mapH, borderRadius: 16, overflow: "hidden", border: "1px solid #e6e0d4", display: loaded ? "block" : "none" }} />
+        <div ref={mapRef} style={{ height: mapH, borderRadius: 16, overflow: "hidden", boxShadow: "0 4px 16px rgba(0,0,0,0.12)", display: loaded ? "block" : "none" }} />
         {loaded && <button onClick={resetView} title="Reset map" style={{ position: "absolute", top: 10, right: 10, zIndex: 470, width: 36, height: 36, borderRadius: "50%", border: "none", background: "#fff", boxShadow: "0 2px 8px rgba(0,0,0,0.22)", cursor: "pointer", fontSize: "1rem", lineHeight: 1 }}>⤢</button>}
 
         {loaded && !listName && !selected && !sheetOpen && cats.length > 1 && (
@@ -3609,12 +3609,13 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
 
   return (
     <div>
-      <div className="section-pad" style={{ paddingBottom: "0.5rem" }}>
-        <div className="section-title">Saved</div>
-        {!openFolder && <p className="section-sub">Capture spots from TikTok, Instagram, screenshots or Maps — organised into lists.</p>}
+      <div style={{ padding: "0.75rem 1.5rem 0.5rem" }}>
+        {!openFolder && <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div className="section-title" style={{ margin: 0 }}>Saved</div>
+        </div>}
       </div>
 
-      <div style={{ padding: "0 1.5rem 1rem" }}>
+      <div style={{ padding: "0 1.5rem 0.75rem" }}>
         {error && <div className="err" style={{ marginBottom: "0.75rem" }}>{error}</div>}
 
         {!openFolder && (
@@ -3785,11 +3786,11 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
               </div>
               <button onClick={createFolder} style={{ fontSize: "0.74rem", padding: "6px 12px", borderRadius: 100, border: "1.5px solid #726A4E", background: "#fff", color: "#726A4E", fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>+ New list</button>
             </div>
-            <div data-tour="saves-lists" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div data-tour="saves-lists" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
               {folderNames.map((f, fi) => {
                 const items = grouped[f] || [];
                 return (
-                  <div key={f} data-tour={fi === 0 ? "saves-list-card" : undefined} style={{ position: "relative", borderRadius: 16, overflow: "hidden", boxShadow: "0 2px 8px rgba(0,0,0,0.06)", background: "#fff" }}>
+                  <div key={f} data-tour={fi === 0 ? "saves-list-card" : undefined} style={{ position: "relative", borderRadius: 20, overflow: "hidden", boxShadow: "0 4px 16px rgba(0,0,0,0.10)", background: "#fff" }}>
                     <div onClick={() => setOpenFolder(f)} style={{ cursor: "pointer" }}>
                       <ListCover items={items} />
                       <div style={{ padding: "12px 14px" }}>
@@ -4720,37 +4721,26 @@ function SharedListView({ list, user, onClose }) {
           </div>
         )}
 
-        {/* Photo gallery — tap a tile for its full detail page; tick the circle to cross it off */}
+        {/* Photo gallery — Pinterest-style image cards with name overlay */}
         {items.length > 0 && (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            {items.map(it => {
-              const canRemove = true;
-              return (
-                <div key={it.id} style={{ position: "relative", borderRadius: 16, overflow: "hidden", boxShadow: "0 2px 10px rgba(0,0,0,0.08)", border: "1px solid #f0ebe2", background: "#fff", animation: "popIn 0.25s ease" }}>
-                  <div onClick={() => setDetailItem(it)} style={{ cursor: "pointer", position: "relative" }}>
-                    <div style={{ height: 118, background: "#f5f0e8", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
-                      {it.photo_url
-                        ? <img src={it.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", filter: it.done ? "grayscale(0.6) brightness(0.92)" : "none" }} />
-                        : <span style={{ fontSize: "2rem", opacity: it.done ? 0.5 : 1 }}>{CAT_EMOJI[String(it.category || "").toLowerCase()] || "📍"}</span>}
-                    </div>
-                    {it.done && <div style={{ position: "absolute", inset: 0, background: "rgba(114,106,78,0.32)", display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ width: 40, height: 40, borderRadius: "50%", background: "#726A4E", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.3rem", boxShadow: "0 2px 8px rgba(0,0,0,0.3)" }}>✓</span></div>}
-                  </div>
-                  <button onClick={() => toggleDone(it)} title={it.done ? "Un-tick" : "Tick off"} style={{ position: "absolute", top: 8, left: 8, width: 28, height: 28, borderRadius: "50%", border: it.done ? "none" : "2px solid #fff", background: it.done ? "#726A4E" : "rgba(0,0,0,0.28)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: "0.85rem", boxShadow: "0 1px 4px rgba(0,0,0,0.25)" }}>{it.done ? "✓" : ""}</button>
-                  {canRemove && <button onClick={() => removeItem(it)} title="Remove" style={{ position: "absolute", top: 8, right: 8, width: 26, height: 26, borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.92)", color: "#b0745a", cursor: "pointer", fontSize: "0.8rem", lineHeight: 1, boxShadow: "0 1px 4px rgba(0,0,0,0.2)" }}>✕</button>}
-                  <div style={{ padding: "8px 10px 10px" }}>
-                    <div onClick={() => setDetailItem(it)} style={{ cursor: "pointer", fontSize: "0.84rem", fontWeight: 600, color: it.done ? "#9b8f7a" : "#1c1c1a", textDecoration: it.done ? "line-through" : "none", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{it.name}</div>
-                    {[it.category, it.area].filter(Boolean).length > 0 && <div style={{ fontSize: "0.66rem", color: "#9b8f7a", marginTop: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{[it.category ? cap(it.category) : null, it.area].filter(Boolean).join(" · ")}</div>}
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }}>
-                      <label style={{ display: "inline-flex", alignItems: "center", gap: 3, position: "relative", fontSize: "0.66rem", fontWeight: 600, color: it.target_date ? "#726A4E" : "#b3a892", cursor: "pointer" }}>
-                        📅 {it.target_date ? new Date(it.target_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "Date"}
-                        <input type="date" value={it.target_date || ""} onChange={(e) => setItemDate(it, e.target.value)} style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer", width: "100%" }} />
-                      </label>
-                      <a href={gcalUrlFor(it)} target="_blank" rel="noreferrer" style={{ fontSize: "0.66rem", fontWeight: 600, color: "#726A4E", textDecoration: "none" }}>＋ Cal</a>
-                    </div>
-                  </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+            {items.map(it => (
+              <div key={it.id} onClick={() => setDetailItem(it)} style={{ position: "relative", borderRadius: 20, overflow: "hidden", boxShadow: "0 4px 16px rgba(0,0,0,0.10)", background: "#f5f0e8", cursor: "pointer", animation: "popIn 0.25s ease" }}>
+                <div style={{ height: 180, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+                  {it.photo_url
+                    ? <img src={it.photo_url} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", filter: it.done ? "grayscale(0.6) brightness(0.85)" : "none" }} />
+                    : <span style={{ fontSize: "2.5rem", opacity: it.done ? 0.5 : 1 }}>{CAT_EMOJI[String(it.category || "").toLowerCase()] || "📍"}</span>}
                 </div>
-              );
-            })}
+                <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 50%, rgba(0,0,0,0.55))", pointerEvents: "none" }} />
+                <div style={{ position: "absolute", bottom: 10, left: 10, right: 10 }}>
+                  <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "#fff", textShadow: "0 1px 6px rgba(0,0,0,0.5)", lineHeight: 1.2, textDecoration: it.done ? "line-through" : "none" }}>{it.name}</div>
+                  {it.area && <div style={{ fontSize: "0.64rem", color: "rgba(255,255,255,0.82)", marginTop: 2 }}>{it.area}</div>}
+                </div>
+                {it.done && <div style={{ position: "absolute", top: 10, left: 10, width: 28, height: 28, borderRadius: "50%", background: "#726A4E", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.85rem", boxShadow: "0 2px 6px rgba(0,0,0,0.3)" }}>✓</div>}
+                <button onClick={(e) => { e.stopPropagation(); toggleDone(it); }} title={it.done ? "Un-tick" : "Tick off"} style={{ position: "absolute", top: 10, right: 10, width: 28, height: 28, borderRadius: "50%", border: it.done ? "none" : "2px solid rgba(255,255,255,0.8)", background: it.done ? "transparent" : "rgba(0,0,0,0.25)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: "0.75rem", boxShadow: "0 1px 4px rgba(0,0,0,0.2)" }}>{it.done ? "" : "○"}</button>
+                <button onClick={(e) => { e.stopPropagation(); removeItem(it); }} title="Remove" style={{ position: "absolute", bottom: 10, right: 10, width: 24, height: 24, borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.85)", color: "#b0745a", cursor: "pointer", fontSize: "0.7rem", lineHeight: 1, boxShadow: "0 1px 4px rgba(0,0,0,0.15)" }}>✕</button>
+              </div>
+            ))}
           </div>
         )}
       </div>
