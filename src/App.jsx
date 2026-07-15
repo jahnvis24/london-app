@@ -3609,13 +3609,13 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
 
   return (
     <div>
-      <div style={{ padding: "0.75rem 1.5rem 0.5rem" }}>
+      <div style={{ padding: "0.75rem 0.75rem 0.5rem" }}>
         {!openFolder && <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div className="section-title" style={{ margin: 0 }}>Saved</div>
         </div>}
       </div>
 
-      <div style={{ padding: "0 1.5rem 0.75rem" }}>
+      <div style={{ padding: "0 0.75rem 0.75rem" }}>
         {error && <div className="err" style={{ marginBottom: "0.75rem" }}>{error}</div>}
 
         {!openFolder && (
@@ -3731,7 +3731,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
         </div>
       )}
 
-      <div ref={tourListRef} style={{ padding: "0 1.5rem 1rem" }}>
+      <div ref={tourListRef} style={{ padding: "0 0.75rem 1rem" }}>
         {saves.length > 0 && savedView === "map" && (
           <>
             <button onClick={() => setSavedView("folders")} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "#1c1c1a", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer", padding: "0 0 10px" }}>← Close map</button>
