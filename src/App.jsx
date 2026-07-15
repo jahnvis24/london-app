@@ -3202,12 +3202,13 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
         const raw = safeJsonParse(t);
         if (!raw) { failed++; continue; }
         const items = Array.isArray(raw) ? raw : [raw];
+        const isSingleVenue = items.filter(p => p?.name).length === 1;
         for (const p of items) {
           if (!p?.name) continue;
           setParseStatus(`Looking up "${p.name}" on Google...`);
           let g = null;
           try { g = await enrich(p.name, p.area); } catch (e) { /* keep without Google */ }
-          drafts.push(buildDraft(p, g, { source_type: "screenshot", source_url: null, _screenshot_b64: base64 }));
+          drafts.push(buildDraft(p, g, { source_type: "screenshot", source_url: null, _screenshot_b64: isSingleVenue ? base64 : null }));
         }
       } catch (e) {
         console.error("[screenshot]", n, e);
@@ -3347,18 +3348,28 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
   }
 
   async function resolvePhoto(d) {
-    // Prefer the Google Maps photo so the card + thumbnail match; fall back to the
-    // screenshot / TikTok cover only when Google has no photo.
-    const attempts = [];
-    if (d.google_place_id) attempts.push({ place_id: d.google_place_id });
-    if (d._screenshot_b64) attempts.push({ image_base64: d._screenshot_b64, content_type: "image/jpeg" });
-    if (d._cover_url) attempts.push({ image_url: d._cover_url });
-    for (const body of attempts) {
+    // Prefer Google Places photo. Only fall back to screenshot/cover for single-venue screenshots
+    // (where the screenshot IS the venue photo). Never use a list screenshot as the venue image.
+    if (d.google_place_id) {
       try {
-        const r = await fetch("/api/saved-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool: "image", ...body }) });
+        const r = await fetch("/api/saved-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool: "image", place_id: d.google_place_id }) });
         const j = await r.json();
         if (j.found && j.url) return j.url;
-      } catch { /* try next source */ }
+      } catch {}
+    }
+    if (d._cover_url) {
+      try {
+        const r = await fetch("/api/saved-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool: "image", image_url: d._cover_url }) });
+        const j = await r.json();
+        if (j.found && j.url) return j.url;
+      } catch {}
+    }
+    if (d._screenshot_b64) {
+      try {
+        const r = await fetch("/api/saved-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool: "image", image_base64: d._screenshot_b64, content_type: "image/jpeg" }) });
+        const j = await r.json();
+        if (j.found && j.url) return j.url;
+      } catch {}
     }
     return null;
   }
@@ -4713,7 +4724,7 @@ function SharedListView({ list, user, onClose }) {
         {items.length > 0 && (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             {items.map(it => {
-              const canRemove = it.added_by === user.id || list.owner === user.id;
+              const canRemove = true;
               return (
                 <div key={it.id} style={{ position: "relative", borderRadius: 16, overflow: "hidden", boxShadow: "0 2px 10px rgba(0,0,0,0.08)", border: "1px solid #f0ebe2", background: "#fff", animation: "popIn 0.25s ease" }}>
                   <div onClick={() => setDetailItem(it)} style={{ cursor: "pointer", position: "relative" }}>

@@ -18,7 +18,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const INPUT = path.resolve(__dirname, "../public/favicon.svg");
 const OUTPUT_DIR = path.resolve(__dirname, "../public");
 
-const sizes = [192, 512];
+const sizes = [180, 192, 512];
 
 for (const size of sizes) {
   const outputPath = path.join(OUTPUT_DIR, `icon-${size}.png`);
