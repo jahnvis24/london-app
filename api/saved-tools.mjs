@@ -14,7 +14,8 @@ export default async function handler(req, res) {
     if (tool === 'maps') return await handleMaps(req, res);
     if (tool === 'instagram') return await handleInstagram(req, res);
     if (tool === 'photos') return await handlePhotos(req, res);
-    return res.status(400).json({ error: 'Unknown tool (expected "image", "maps", "instagram", or "photos")' });
+    if (tool === 'fix-photos') return await handleFixPhotos(req, res);
+    return res.status(400).json({ error: 'Unknown tool' });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -156,4 +157,40 @@ async function handleMaps(req, res) {
     });
   }
   return res.status(200).json({ found: true, finalUrl, count: places.length, places });
+}
+
+async function handleFixPhotos(req, res) {
+  const apiKey = process.env.GOOGLE_PLACES_KEY;
+  if (!apiKey) return res.status(500).json({ error: 'Google Places key not configured' });
+
+  const { createClient } = await import('@supabase/supabase-js');
+  const sb = createClient(process.env.VITE_SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+
+  const { data: saves } = await sb
+    .from("experiences")
+    .select("id, name, google_place_id, source_type")
+    .eq("source_type", "screenshot")
+    .not("google_place_id", "is", null);
+
+  if (!saves?.length) return res.status(200).json({ message: "Nothing to fix", fixed: 0 });
+
+  let fixed = 0, skipped = 0;
+  for (const s of saves) {
+    try {
+      const dr = await fetch(`https://maps.googleapis.com/maps/api/place/details/json?place_id=${s.google_place_id}&fields=photos&key=${apiKey}`);
+      const dd = await dr.json();
+      const ref = dd.result?.photos?.[0]?.photo_reference;
+      if (!ref) { skipped++; continue; }
+
+      const pr = await fetch(`https://maps.googleapis.com/maps/api/place/photo?maxwidth=600&photo_reference=${ref}&key=${apiKey}`);
+      const buffer = Buffer.from(await pr.arrayBuffer());
+      const ct = pr.headers.get("content-type") || "image/jpeg";
+      const ext = ct.includes("png") ? "png" : "jpg";
+      const blob = await put(`saves/${s.id}-google.${ext}`, buffer, { access: "public", contentType: ct });
+      await sb.from("experiences").update({ photo_url: blob.url }).eq("id", s.id);
+      fixed++;
+    } catch { skipped++; }
+  }
+
+  res.status(200).json({ message: "Done", total: saves.length, fixed, skipped });
 }
