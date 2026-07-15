@@ -485,8 +485,8 @@ const styles = `
   .btn-teal { background: #726A4E; color: #ffffff; }
   .btn-outline { width: 100%; padding: 13px; border-radius: 100px; border: 1.5px solid #ddd8ce; background: transparent; color: #4a4438; font-family: 'Aleo', sans-serif; font-size: 0.85rem; cursor: pointer; margin-top: 0.6rem; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.15s; }
   .btn-outline:hover { border-color: #1c1c1a; color: #1c1c1a; }
-  .btn-ghost { background: none; border: none; color: #9b8f7a; font-family: 'Aleo', sans-serif; font-size: 0.82rem; cursor: pointer; padding: 1rem 1.5rem 0; display: flex; align-items: center; gap: 5px; }
-  .btn-ghost:hover { color: #1c1c1a; }
+  .btn-ghost { background: none; border: none; color: #1c1c1a; font-family: 'Aleo', sans-serif; font-size: 0.82rem; font-weight: 600; cursor: pointer; padding: 1rem 1.5rem 0; display: flex; align-items: center; gap: 5px; }
+  .btn-ghost:hover { color: #000; }
 
   .chip { padding: 9px 16px; border-radius: 100px; border: 1.5px solid #ddd8ce; font-family: 'Aleo', sans-serif; font-size: 0.85rem; cursor: pointer; background: #fff; color: #4a4438; transition: all 0.15s; display: flex; align-items: center; gap: 6px; user-select: none; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
   .chip:hover { border-color: #b8ac9a; }
@@ -3619,7 +3619,10 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
         {error && <div className="err" style={{ marginBottom: "0.75rem" }}>{error}</div>}
 
         {!openFolder && (
-          <button ref={tourBtnRef} onClick={() => { setCaptureTab("screenshot"); setError(null); setCaptureOpen(true); }} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: "#1c1c1a", color: "#fff", border: "none", borderRadius: 100, padding: "13px 18px", fontSize: "0.92rem", fontWeight: 600, cursor: "pointer" }}>+ Save a place</button>
+          <div style={{ display: "flex", gap: 10 }}>
+            <button ref={tourBtnRef} onClick={() => { setCaptureTab("screenshot"); setError(null); setCaptureOpen(true); }} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: "#1c1c1a", color: "#fff", border: "none", borderRadius: 100, padding: "13px 18px", fontSize: "0.92rem", fontWeight: 600, cursor: "pointer" }}>+ Save a place</button>
+            <button onClick={() => { setSavedView(savedView === "calendar" ? "folders" : "calendar"); setOpenFolder(null); }} style={{ width: 48, height: 48, display: "flex", alignItems: "center", justifyContent: "center", background: savedView === "calendar" ? "#726A4E" : "#fff", color: savedView === "calendar" ? "#fff" : "#1c1c1a", border: savedView === "calendar" ? "none" : "1.5px solid #e8e2d8", borderRadius: "50%", cursor: "pointer", fontSize: "1.1rem" }}>📅</button>
+          </div>
         )}
 
         {(parsing || saving) && parseStatus && !captureOpen && <div style={{ fontSize: "0.75rem", color: "#726A4E", marginTop: 8 }}>{parseStatus}</div>}
@@ -3728,19 +3731,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
         </div>
       )}
 
-      <div style={{ padding: "0 1.5rem 1rem" }}>
-        {saves.length > 0 && !openFolder && (
-          <div ref={tourListRef} style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-            {[["folders", "Folders"], ["list", "List"], ["calendar", "Calendar"]].map(([id, label]) => (
-              <button key={id} onClick={() => { setSavedView(id); setOpenFolder(null); }}
-                style={{ fontSize: "0.74rem", padding: "6px 14px", borderRadius: 100, cursor: "pointer",
-                  border: savedView === id ? "1.5px solid #726A4E" : "1.5px solid #e8e2d8",
-                  background: savedView === id ? "#eef3d8" : "#fff", color: savedView === id ? "#726A4E" : "#6b5e4e", fontWeight: savedView === id ? 600 : 400 }}>
-                {label}
-              </button>
-            ))}
-          </div>
-        )}
+      <div ref={tourListRef} style={{ padding: "0 1.5rem 1rem" }}>
         {saves.length > 0 && savedView === "map" && (
           <>
             <div style={{ position: "sticky", top: 0, zIndex: 1 }}>
