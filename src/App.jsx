@@ -3734,6 +3734,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
       <div ref={tourListRef} style={{ padding: "0 1.5rem 1rem" }}>
         {saves.length > 0 && savedView === "map" && (
           <>
+            <button onClick={() => setSavedView("folders")} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "#1c1c1a", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer", padding: "0 0 10px" }}>← Close map</button>
             <div style={{ position: "sticky", top: 0, zIndex: 1 }}>
               <SpotsMap key="maptab" saves={saves} focusSpot={focusSpot} onCategory={setMapCat} />
             </div>
