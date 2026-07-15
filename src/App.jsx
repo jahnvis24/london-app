@@ -2870,8 +2870,11 @@ function SavedScreen({ user, onBuildPlan, onShare, onBarCrawl, openSignal, calen
       setDetailSpot(null);
     }
   }, [tourWantsSpot]);
-  const [captureOpen, setCaptureOpen] = useState(false); // collapse the "add a spot" controls by default
-  const [captureTab, setCaptureTab] = useState("screenshot"); // Save modal: screenshot | link | manual
+  const [captureOpen, setCaptureOpen] = useState(false);
+  const [captureTab, setCaptureTab] = useState(null);
+  const [discoverMode, setDiscoverMode] = useState(false);
+  const [discoverPairs, setDiscoverPairs] = useState([]);
+  const [discoverIdx, setDiscoverIdx] = useState(0);
 
   // ── First-run import walkthrough ──────────────────────────────
   const tourBtnRef = useRef(null), tourSelRef = useRef(null), tourSaveRef = useRef(null), tourListRef = useRef(null);
@@ -3806,7 +3809,10 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
                 );
               })}
             </div>
-            <button data-tour="saves-build" className="btn btn-teal" style={{ marginTop: "1rem" }} onClick={() => onBuildPlan(saves)}>Build a plan from your spots ✦</button>
+            <div style={{ display: "flex", gap: 10, marginTop: "1rem" }}>
+              <button data-tour="saves-build" className="btn btn-teal" style={{ marginTop: 0, flex: 1 }} onClick={() => onBuildPlan(saves)}>Build a plan ✦</button>
+              <button className="btn-outline" style={{ marginTop: 0, flex: 1 }} onClick={() => setDiscoverMode(true)}>Discover more?</button>
+            </div>
           </>
         )}
         {saves.length > 0 && savedView === "folders" && openFolder && (
@@ -3889,6 +3895,64 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
           </div>
         </div>
       )}
+
+      {discoverMode && (() => {
+        // Build pairs from DB based on user's taste (categories & vibes from their saves)
+        if (!discoverPairs.length) {
+          const savedIds = new Set(saves.map(s => s.id));
+          const savedCats = saves.map(s => (s.category || "").toLowerCase()).filter(Boolean);
+          const savedVibes = saves.flatMap(s => s.vibe_tags || []);
+          const topCats = [...new Map(savedCats.map(c => [c, savedCats.filter(x => x === c).length])).entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(e => e[0]);
+          const topVibes = [...new Set(savedVibes)].slice(0, 5);
+          const candidates = (dbVenues || []).filter(v => v.photo_url && v.name && !savedIds.has(v.id));
+          const scored = candidates.map(v => {
+            let s = 0;
+            if (topCats.includes((v.category || "").toLowerCase())) s += 3;
+            if ((v.vibe_tags || []).some(t => topVibes.includes(t))) s += 2;
+            if (v.google_rating >= 4.3) s += 1;
+            return { ...v, _score: s + Math.random() };
+          }).sort((a, b) => b._score - a._score).slice(0, 20);
+          const pairs = [];
+          for (let i = 0; i < scored.length - 1; i += 2) pairs.push([scored[i], scored[i + 1]]);
+          if (pairs.length) { setDiscoverPairs(pairs); setDiscoverIdx(0); }
+          else { setDiscoverMode(false); return null; }
+        }
+        const pair = discoverPairs[discoverIdx];
+        if (!pair) { setDiscoverMode(false); return null; }
+        async function pickVenue(v) {
+          haptic(12); blip(660);
+          const row = { user_id: user.id, name: v.name, address: v.address, area: v.area, zone: v.zone, category: v.category, price: v.price, vibe_tags: v.vibe_tags || [], comment: v.comment, lat: v.lat, lng: v.lng, google_place_id: v.google_place_id, google_rating: v.google_rating, photo_url: v.photo_url, source_type: "discover", status: "pending" };
+          try { await supabase.from("experiences").insert(row); } catch {}
+          if (discoverIdx < discoverPairs.length - 1) setDiscoverIdx(discoverIdx + 1);
+          else { setDiscoverMode(false); setDiscoverPairs([]); loadSaves(); }
+        }
+        function skipPair() {
+          if (discoverIdx < discoverPairs.length - 1) setDiscoverIdx(discoverIdx + 1);
+          else { setDiscoverMode(false); setDiscoverPairs([]); }
+        }
+        return (
+          <div style={{ position: "fixed", inset: 0, background: "#fbfaf8", zIndex: 1300, display: "flex", flexDirection: "column", padding: "1.5rem", overflowY: "auto" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <button onClick={() => { setDiscoverMode(false); setDiscoverPairs([]); loadSaves(); }} style={{ border: "none", background: "none", fontSize: "0.85rem", fontWeight: 600, color: "#1c1c1a", cursor: "pointer" }}>← Done</button>
+              <div style={{ fontSize: "0.72rem", color: "#9b8f7a" }}>{discoverIdx + 1} / {discoverPairs.length}</div>
+            </div>
+            <div style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "1.4rem", color: "#1c1c1a", textAlign: "center", marginBottom: 20 }}>Which one would you save?</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14, flex: 1 }}>
+              {pair.map((v, i) => (
+                <div key={v.id || i} onClick={() => pickVenue(v)} style={{ flex: 1, position: "relative", borderRadius: 20, overflow: "hidden", boxShadow: "0 4px 16px rgba(0,0,0,0.12)", cursor: "pointer", minHeight: 180 }}>
+                  <img src={v.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0 }} />
+                  <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 40%, rgba(0,0,0,0.6))" }} />
+                  <div style={{ position: "absolute", bottom: 14, left: 14, right: 14 }}>
+                    <div style={{ fontSize: "1.05rem", fontWeight: 700, color: "#fff", textShadow: "0 1px 6px rgba(0,0,0,0.5)" }}>{v.name}</div>
+                    <div style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.85)", marginTop: 2 }}>{[v.category ? cap(normaliseCategory(v.category)) : null, v.area, v.google_rating ? `⭐ ${v.google_rating}` : null].filter(Boolean).join(" · ")}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <button onClick={skipPair} style={{ marginTop: 14, border: "none", background: "none", color: "#9b8f7a", fontSize: "0.82rem", fontWeight: 500, cursor: "pointer", textAlign: "center" }}>Skip →</button>
+          </div>
+        );
+      })()}
 
       {bucketListPicker && (
         <div onClick={() => setBucketListPicker(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 1000, animation: "fadeIn 0.2s" }}>
