@@ -3897,7 +3897,6 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
       )}
 
       {discoverMode && (() => {
-        // Build pairs from DB based on user's taste (categories & vibes from their saves)
         if (!discoverPairs.length) {
           const savedIds = new Set(saves.map(s => s.id));
           const savedCats = saves.map(s => (s.category || "").toLowerCase()).filter(Boolean);
@@ -3912,44 +3911,67 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
             if (v.google_rating >= 4.3) s += 1;
             return { ...v, _score: s + Math.random() };
           }).sort((a, b) => b._score - a._score).slice(0, 20);
-          const pairs = [];
-          for (let i = 0; i < scored.length - 1; i += 2) pairs.push([scored[i], scored[i + 1]]);
-          if (pairs.length) { setDiscoverPairs(pairs); setDiscoverIdx(0); }
+          if (scored.length) { setDiscoverPairs(scored); setDiscoverIdx(0); }
           else { setDiscoverMode(false); return null; }
         }
-        const pair = discoverPairs[discoverIdx];
-        if (!pair) { setDiscoverMode(false); return null; }
-        async function pickVenue(v) {
-          haptic(12); blip(660);
-          const row = { user_id: user.id, name: v.name, address: v.address, area: v.area, zone: v.zone, category: v.category, price: v.price, vibe_tags: v.vibe_tags || [], comment: v.comment, lat: v.lat, lng: v.lng, google_place_id: v.google_place_id, google_rating: v.google_rating, photo_url: v.photo_url, source_type: "discover", status: "pending" };
-          try { await supabase.from("experiences").insert(row); } catch {}
+        const current = discoverPairs[discoverIdx];
+        if (!current) { setDiscoverMode(false); return null; }
+
+        function advance() {
           if (discoverIdx < discoverPairs.length - 1) setDiscoverIdx(discoverIdx + 1);
           else { setDiscoverMode(false); setDiscoverPairs([]); loadSaves(); }
         }
-        function skipPair() {
-          if (discoverIdx < discoverPairs.length - 1) setDiscoverIdx(discoverIdx + 1);
-          else { setDiscoverMode(false); setDiscoverPairs([]); }
+        async function saveVenue() {
+          haptic(12); blip(660);
+          const v = current;
+          const row = { user_id: user.id, name: v.name, address: v.address, area: v.area, zone: v.zone, category: v.category, price: v.price, vibe_tags: v.vibe_tags || [], comment: v.comment, lat: v.lat, lng: v.lng, google_place_id: v.google_place_id, google_rating: v.google_rating, photo_url: v.photo_url, source_type: "discover", status: "pending" };
+          try { await supabase.from("experiences").insert(row); } catch {}
+          advance();
         }
+
+        // Swipe handling
+        let startX = 0, currentX = 0, swiping = false;
+        function onTouchStart(e) { startX = e.touches[0].clientX; currentX = 0; swiping = true; }
+        function onTouchMove(e) { if (!swiping) return; currentX = e.touches[0].clientX - startX; const card = e.currentTarget; card.style.transform = `translateX(${currentX}px) rotate(${currentX * 0.05}deg)`; card.style.opacity = Math.max(0.5, 1 - Math.abs(currentX) / 400); }
+        function onTouchEnd(e) {
+          swiping = false; const card = e.currentTarget; card.style.transition = "transform 0.3s, opacity 0.3s";
+          if (currentX > 100) { card.style.transform = "translateX(400px) rotate(15deg)"; card.style.opacity = "0"; setTimeout(saveVenue, 250); }
+          else if (currentX < -100) { card.style.transform = "translateX(-400px) rotate(-15deg)"; card.style.opacity = "0"; setTimeout(advance, 250); }
+          else { card.style.transform = ""; card.style.opacity = ""; }
+          setTimeout(() => { card.style.transition = ""; }, 300);
+        }
+
         return (
-          <div style={{ position: "fixed", inset: 0, background: "#fbfaf8", zIndex: 1300, display: "flex", flexDirection: "column", padding: "1.5rem", overflowY: "auto" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <div style={{ position: "fixed", inset: 0, background: "#fbfaf8", zIndex: 1300, display: "flex", flexDirection: "column" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1.25rem 1.25rem 0" }}>
               <button onClick={() => { setDiscoverMode(false); setDiscoverPairs([]); loadSaves(); }} style={{ border: "none", background: "none", fontSize: "0.85rem", fontWeight: 600, color: "#1c1c1a", cursor: "pointer" }}>← Done</button>
               <div style={{ fontSize: "0.72rem", color: "#9b8f7a" }}>{discoverIdx + 1} / {discoverPairs.length}</div>
             </div>
-            <div style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "1.4rem", color: "#1c1c1a", textAlign: "center", marginBottom: 20 }}>Which one would you save?</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 14, flex: 1 }}>
-              {pair.map((v, i) => (
-                <div key={v.id || i} onClick={() => pickVenue(v)} style={{ flex: 1, position: "relative", borderRadius: 20, overflow: "hidden", boxShadow: "0 4px 16px rgba(0,0,0,0.12)", cursor: "pointer", minHeight: 180 }}>
-                  <img src={v.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0 }} />
-                  <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 40%, rgba(0,0,0,0.6))" }} />
-                  <div style={{ position: "absolute", bottom: 14, left: 14, right: 14 }}>
-                    <div style={{ fontSize: "1.05rem", fontWeight: 700, color: "#fff", textShadow: "0 1px 6px rgba(0,0,0,0.5)" }}>{v.name}</div>
-                    <div style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.85)", marginTop: 2 }}>{[v.category ? cap(normaliseCategory(v.category)) : null, v.area, v.google_rating ? `⭐ ${v.google_rating}` : null].filter(Boolean).join(" · ")}</div>
+            <div style={{ textAlign: "center", padding: "10px 0 6px", fontSize: "0.74rem", color: "#9b8f7a" }}>← swipe left to skip · swipe right to save →</div>
+
+            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 1.25rem" }}>
+              <div key={discoverIdx}
+                onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
+                onClick={() => setDetailSpot(current)}
+                style={{ width: "100%", maxWidth: 360, borderRadius: 24, overflow: "hidden", boxShadow: "0 8px 30px rgba(0,0,0,0.15)", position: "relative", cursor: "pointer" }}>
+                <div style={{ height: 400, position: "relative" }}>
+                  <img src={current.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 50%, rgba(0,0,0,0.65))" }} />
+                  <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "20px" }}>
+                    <div style={{ fontSize: "1.4rem", fontWeight: 700, color: "#fff", textShadow: "0 2px 8px rgba(0,0,0,0.5)", lineHeight: 1.2 }}>{current.name}</div>
+                    <div style={{ fontSize: "0.82rem", color: "rgba(255,255,255,0.88)", marginTop: 4 }}>{[current.category ? cap(normaliseCategory(current.category)) : null, current.area, current.google_rating ? `⭐ ${current.google_rating}` : null].filter(Boolean).join(" · ")}</div>
+                    {current.comment && <div style={{ fontSize: "0.76rem", color: "rgba(255,255,255,0.75)", marginTop: 6, lineHeight: 1.4 }}>{current.comment.slice(0, 100)}{current.comment.length > 100 ? "…" : ""}</div>}
+                    {current.price && <div style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.7)", marginTop: 4 }}>💰 {current.price}</div>}
                   </div>
                 </div>
-              ))}
+                <div style={{ padding: "10px 16px 12px", background: "#fff", textAlign: "center", fontSize: "0.72rem", color: "#9b8f7a" }}>Tap for more details</div>
+              </div>
             </div>
-            <button onClick={skipPair} style={{ marginTop: 14, border: "none", background: "none", color: "#9b8f7a", fontSize: "0.82rem", fontWeight: 500, cursor: "pointer", textAlign: "center" }}>Skip →</button>
+
+            <div style={{ display: "flex", justifyContent: "center", gap: 24, padding: "16px 0 28px" }}>
+              <button onClick={advance} style={{ width: 56, height: 56, borderRadius: "50%", border: "2px solid #e8e2d8", background: "#fff", fontSize: "1.4rem", cursor: "pointer", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>✕</button>
+              <button onClick={saveVenue} style={{ width: 56, height: 56, borderRadius: "50%", border: "none", background: "#726A4E", color: "#fff", fontSize: "1.4rem", cursor: "pointer", boxShadow: "0 2px 12px rgba(114,106,78,0.3)" }}>♡</button>
+            </div>
           </div>
         );
       })()}
