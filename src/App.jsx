@@ -2897,6 +2897,10 @@ function SavedScreen({ user, onBuildPlan, onShare, onBarCrawl, openSignal, calen
   const [saveNote, setSaveNote] = useState("");
   const [savedView, setSavedView] = useState("folders"); // folders | list | map | calendar
   const [customFolders, setCustomFolders] = useState([]); // user-created (possibly empty) folders
+  const [creatingFolder, setCreatingFolder] = useState(false);
+  const [folderDraft, setFolderDraft] = useState("");
+  const [renamingFolder, setRenamingFolder] = useState(null);
+  const [renameDraft, setRenameDraft] = useState("");
   const [menuFolder, setMenuFolder] = useState(null);
   const [movingSpot, setMovingSpot] = useState(null);
   const [detailSpot, setDetailSpot] = useState(null);
@@ -3558,15 +3562,25 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
   }
 
   function createFolder() {
-    const name = (window.prompt("Name your new list") || "").trim();
-    if (!name) return;
-    if (!customFolders.includes(name)) persistFolders([...customFolders, name]);
+    setCreatingFolder(true);
+    setFolderDraft("");
     setSavedView("folders"); setOpenFolder(null);
+  }
+  function confirmCreateFolder() {
+    const name = folderDraft.trim();
+    if (!name) { setCreatingFolder(false); return; }
+    if (!customFolders.includes(name)) persistFolders([...customFolders, name]);
+    setCreatingFolder(false); setFolderDraft("");
   }
 
   async function renameFolder(oldName) {
     setMenuFolder(null);
-    const name = (window.prompt("Rename list", oldName) || "").trim();
+    setRenamingFolder(oldName);
+    setRenameDraft(oldName);
+  }
+  async function confirmRename(oldName) {
+    const name = renameDraft.trim();
+    setRenamingFolder(null); setRenameDraft("");
     if (!name || name === oldName) return;
     const ids = (grouped[oldName] || []).map(s => s.id);
     if (ids.length) {
@@ -3682,9 +3696,8 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
         {error && <div className="err" style={{ marginBottom: "0.75rem" }}>{error}</div>}
 
         {!openFolder && (
-          <div style={{ display: "flex", gap: 10 }}>
-            <button ref={tourBtnRef} onClick={() => { setCaptureTab(null); setError(null); setCaptureOpen(true); }} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: "#1c1c1a", color: "#fff", border: "none", borderRadius: 100, padding: "13px 18px", fontSize: "0.92rem", fontWeight: 600, cursor: "pointer" }}>+ Save a place</button>
-            <button onClick={() => { setSavedView(savedView === "calendar" ? "folders" : "calendar"); setOpenFolder(null); }} style={{ width: 48, height: 48, display: "flex", alignItems: "center", justifyContent: "center", background: savedView === "calendar" ? "#726A4E" : "#fff", color: savedView === "calendar" ? "#fff" : "#1c1c1a", border: savedView === "calendar" ? "none" : "1.5px solid #e8e2d8", borderRadius: "50%", cursor: "pointer", fontSize: "1.1rem" }}>📅</button>
+          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+            <button onClick={() => { setSavedView(savedView === "calendar" ? "folders" : "calendar"); setOpenFolder(null); }} style={{ width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", background: savedView === "calendar" ? "#726A4E" : "#fff", color: savedView === "calendar" ? "#fff" : "#1c1c1a", border: savedView === "calendar" ? "none" : "1.5px solid #e8e2d8", borderRadius: "50%", cursor: "pointer", fontSize: "1.1rem" }}>📅</button>
           </div>
         )}
 
@@ -3866,6 +3879,13 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
               </div>
               <button onClick={createFolder} style={{ fontSize: "0.74rem", padding: "6px 12px", borderRadius: 100, border: "1.5px solid #726A4E", background: "#fff", color: "#726A4E", fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>+ New list</button>
             </div>
+            {creatingFolder && (
+              <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+                <input className="input-field" autoFocus placeholder="List name" value={folderDraft} onChange={e => setFolderDraft(e.target.value)} onKeyDown={e => e.key === "Enter" && confirmCreateFolder()} style={{ flex: 1, padding: "10px 12px" }} />
+                <button onClick={confirmCreateFolder} style={{ border: "none", background: "#726A4E", color: "#fff", borderRadius: 10, padding: "0 16px", fontWeight: 600, fontSize: "0.82rem", cursor: "pointer" }}>Create</button>
+                <button onClick={() => setCreatingFolder(false)} style={{ border: "none", background: "none", color: "#7a7062", fontSize: "0.82rem", cursor: "pointer" }}>Cancel</button>
+              </div>
+            )}
             <div data-tour="saves-lists" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
               {folderNames.map((f, fi) => {
                 const items = grouped[f] || [];
@@ -3874,8 +3894,17 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
                     <div onClick={() => setOpenFolder(f)} style={{ cursor: "pointer" }}>
                       <ListCover items={items} />
                       <div style={{ padding: "8px 10px" }}>
-                        <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "#1c1c1a", paddingRight: 20, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f}</div>
-                        <div style={{ fontSize: "0.64rem", color: "#7a7062" }}>{items.length} spot{items.length !== 1 ? "s" : ""}</div>
+                        {renamingFolder === f ? (
+                          <div style={{ display: "flex", gap: 6, alignItems: "center" }} onClick={e => e.stopPropagation()}>
+                            <input className="input-field" autoFocus value={renameDraft} onChange={e => setRenameDraft(e.target.value)} onKeyDown={e => { if (e.key === "Enter") confirmRename(f); if (e.key === "Escape") setRenamingFolder(null); }} style={{ padding: "6px 8px", fontSize: "0.8rem", flex: 1 }} />
+                            <button onClick={() => confirmRename(f)} style={{ border: "none", background: "#726A4E", color: "#fff", borderRadius: 8, padding: "6px 10px", fontSize: "0.72rem", fontWeight: 600, cursor: "pointer" }}>Save</button>
+                          </div>
+                        ) : (
+                          <>
+                            <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "#1c1c1a", paddingRight: 20, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f}</div>
+                            <div style={{ fontSize: "0.64rem", color: "#7a7062" }}>{items.length} spot{items.length !== 1 ? "s" : ""}</div>
+                          </>
+                        )}
                       </div>
                     </div>
                     <button onClick={(e) => { e.stopPropagation(); setMenuFolder(menuFolder === f ? null : f); }} style={{ position: "absolute", top: 6, right: 6, width: 26, height: 26, borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.92)", cursor: "pointer", fontSize: "0.95rem", lineHeight: 1, boxShadow: "0 1px 4px rgba(0,0,0,0.25)" }}>⋯</button>
