@@ -5921,7 +5921,7 @@ export default function App() {
       <div className="app">
         <div className={"toast" + (toast.show ? " show" : "")}>{toast.msg}</div>
         {!showQuiz && !showResult && !showViewingPlan && (
-          <button className="profile-btn" aria-label="Profile & settings" onClick={() => setMeOpen(true)} style={{ position: "relative" }}>
+          <button className="profile-btn" aria-label="Profile & settings" onClick={() => setMeOpen(true)}>
             {user?.user_metadata?.avatar_url ? <img src={user.user_metadata.avatar_url} alt="" /> : (user?.user_metadata?.full_name || user?.email || "U").charAt(0).toUpperCase()}
             {isAdmin && adminBadge > 0 && <span style={{ position: "absolute", top: -2, right: -2, background: "#DD4124", color: "#fff", borderRadius: "50%", fontSize: "0.45rem", width: 12, height: 12, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>{adminBadge}</span>}
           </button>
