@@ -652,7 +652,7 @@ const styles = `
   .skel-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; padding: 0 1.5rem; }
   .skel-grid .skel-card { height: 160px; }
 
-  .profile-btn { position: fixed; top: max(12px, env(safe-area-inset-top)); right: max(14px, calc(50% - 196px)); z-index: 90; width: 36px; height: 36px; border-radius: 50%; border: 2px solid #e8e2d8; background: #726A4E; color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.12); transition: transform 0.12s; font-weight: 600; font-size: 0.82rem; }
+  .profile-btn { position: absolute; top: max(12px, env(safe-area-inset-top)); right: 14px; z-index: 90; width: 36px; height: 36px; border-radius: 50%; border: 2px solid #e8e2d8; background: #726A4E; color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.12); transition: transform 0.12s; font-weight: 600; font-size: 0.82rem; }
   .profile-btn:active { transform: scale(0.9); }
   .profile-btn img { width: 100%; height: 100%; object-fit: cover; }
   .me-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.42); z-index: 1100; display: flex; align-items: flex-end; justify-content: center; animation: fadeIn 0.2s; }
