@@ -497,7 +497,7 @@ const styles = `
   .btn-outline:active { transform: scale(0.96); }
   .chips { display: flex; flex-wrap: wrap; gap: 8px; }
 
-  .card { background: #fff; border: 1px solid #e8e2d8; border-radius: 16px; padding: 1.4rem; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+  .card { background: #fff; border: 1px solid #e8e2d8; border-radius: 16px; padding: 1.4rem; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
 
   .q-label { font-size: 0.68rem; font-weight: 500; color: #8a7e6e; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.6rem; }
   .q-title { font-family: 'Aleo', Georgia, serif; font-size: 1.6rem; line-height: 1.2; color: #1c1c1a; margin-bottom: 1.5rem; }
@@ -533,7 +533,7 @@ const styles = `
   .stat-lbl { font-size: 0.6rem; color: #7a7062; text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; }
 
   .stops-wrap { padding: 1.25rem 1.5rem; }
-  .stop { border: 1px solid #e8e2d8; border-radius: 16px; margin-bottom: 10px; background: #fff; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.04); animation: fadeUp 0.3s ease; }
+  .stop { border: 1px solid #e8e2d8; border-radius: 16px; margin-bottom: 10px; background: #fff; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); animation: fadeUp 0.3s ease; }
   .stop-inner { padding: 1.1rem; }
   .stop-top { display: flex; gap: 10px; align-items: flex-start; }
   .stop-emoji-wrap { width: 44px; height: 44px; border-radius: 12px; background: #f5f0e8; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; flex-shrink: 0; }
@@ -551,15 +551,15 @@ const styles = `
   .why-fit { padding: 0 1.1rem 0.75rem; font-size: 0.75rem; color: #7a7062; font-style: italic; line-height: 1.4; border-top: 1px solid #e8e2d8; padding-top: 0.55rem; }
   .transit { display: flex; align-items: center; gap: 8px; padding: 0 0.5rem; margin-bottom: 10px; color: #8a7e6e; font-size: 0.75rem; }
 
-  .night-box { margin: 0 1.5rem 0.85rem; padding: 1.1rem; border-radius: 14px; background: #1c1c1a; color: #ffffff; }
+  .night-box { margin: 0 1.5rem 0.85rem; padding: 1.1rem; border-radius: 16px; background: #1c1c1a; color: #ffffff; }
   .night-box-label { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.5; margin-bottom: 0.4rem; }
   .night-box-text { font-size: 0.85rem; line-height: 1.5; opacity: 0.88; }
-  .tip-box { margin: 0 1.5rem 0.85rem; padding: 1.1rem; border-radius: 14px; border: 1px solid #e8e2d8; background: #fff; }
+  .tip-box { margin: 0 1.5rem 0.85rem; padding: 1.1rem; border-radius: 16px; border: 1px solid #e8e2d8; background: #fff; }
   .tip-label { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.1em; color: #7a7062; margin-bottom: 0.4rem; }
   .tip-text { font-size: 0.82rem; line-height: 1.5; color: #4a4438; }
 
-  .plan-card { background: #fff; border: 1px solid #e8e2d8; border-radius: 16px; padding: 1.1rem; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); cursor: pointer; transition: all 0.15s; animation: fadeUp 0.3s ease; }
-  .plan-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); transform: translateY(-1px); }
+  .plan-card { background: #fff; border: 1px solid #e8e2d8; border-radius: 16px; padding: 1.1rem; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); cursor: pointer; transition: all 0.15s; animation: fadeUp 0.3s ease; }
+  .plan-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.12); transform: translateY(-1px); }
   .plan-card-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 0.5rem; }
   .plan-card-title { font-family: 'Aleo', Georgia, serif; font-size: 1rem; color: #1c1c1a; line-height: 1.2; }
   .plan-card-date { font-size: 0.68rem; color: #7a7062; }
@@ -567,16 +567,17 @@ const styles = `
   .plan-tag { font-size: 0.66rem; padding: 2px 8px; border-radius: 100px; background: #f5f0e8; color: #6b5e4e; }
   .plan-tag.teal { background: #eef3d8; color: #726A4E; }
   .empty-state { text-align: center; padding: 3rem 2rem; }
+  .empty-icon { width: 56px; height: 56px; border-radius: 16px; background: #f5f0e8; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin: 0 auto 1rem; }
   .empty-emoji { font-size: 3rem; margin-bottom: 1rem; }
-  .empty-title { font-family: 'Aleo', Georgia, serif; font-size: 1.2rem; color: #1c1c1a; margin-bottom: 0.5rem; }
-  .empty-sub { font-size: 0.82rem; color: #7a7062; line-height: 1.5; margin-bottom: 1.5rem; }
+  .empty-title { font-family: 'Aleo', Georgia, serif; font-size: 1.15rem; color: #1c1c1a; margin-bottom: 0.35rem; }
+  .empty-sub { font-size: 0.82rem; color: #7a7062; line-height: 1.5; margin-bottom: 1.25rem; max-width: 260px; margin-left: auto; margin-right: auto; }
 
   .filter-row { display: flex; gap: 8px; overflow-x: auto; padding: 0 1.5rem 1rem; scrollbar-width: none; }
   .filter-row::-webkit-scrollbar { display: none; }
   .filter-chip { padding: 6px 14px; border-radius: 100px; border: 1.5px solid #ddd8ce; font-size: 0.78rem; cursor: pointer; background: #fff; color: #4a4438; white-space: nowrap; transition: all 0.15s; flex-shrink: 0; }
   .filter-chip.sel { background: #1c1c1a; color: #fff; border-color: #1c1c1a; }
 
-  .event-card { border-radius: 16px; overflow: hidden; margin-bottom: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); cursor: pointer; transition: transform 0.15s; animation: fadeUp 0.3s ease; }
+  .event-card { border-radius: 16px; overflow: hidden; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); cursor: pointer; transition: transform 0.15s; animation: fadeUp 0.3s ease; }
   .event-card:hover { transform: translateY(-2px); }
   .event-card-img { height: 140px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
   .event-card-emoji { font-size: 3.5rem; }
@@ -592,7 +593,7 @@ const styles = `
 
   .social-wrap { padding: 1.5rem; }
   .social-section-title { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.1em; color: #7a7062; margin-bottom: 0.75rem; font-weight: 500; }
-  .social-card { border: 1px solid #e8e2d8; border-radius: 14px; background: #fff; overflow: hidden; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+  .social-card { border: 1px solid #e8e2d8; border-radius: 16px; background: #fff; overflow: hidden; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
   .social-card-top { padding: 1rem; border-bottom: 1px solid #e8e2d8; }
   .social-card-title { font-size: 0.9rem; font-weight: 500; color: #1c1c1a; margin-bottom: 3px; }
   .social-card-sub { font-size: 0.75rem; color: #7a7062; line-height: 1.4; }
@@ -618,7 +619,7 @@ const styles = `
   .input-field:focus { outline: none; border-color: #726A4E; }
   .input-field::placeholder { color: #c0b8ad; }
   textarea.input-field { min-height: 100px; resize: vertical; }
-  .preview-card { border: 1px solid #e8e2d8; border-radius: 16px; padding: 1.25rem; margin-bottom: 1rem; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.04); animation: fadeUp 0.3s ease; }
+  .preview-card { border: 1px solid #e8e2d8; border-radius: 16px; padding: 1.25rem; margin-bottom: 1rem; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.06); animation: fadeUp 0.3s ease; }
   .preview-title { font-family: 'Aleo', Georgia, serif; font-size: 1.1rem; color: #1c1c1a; margin-bottom: 0.75rem; }
   .preview-field { display: flex; gap: 8px; margin-bottom: 6px; align-items: flex-start; }
   .preview-key { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; color: #7a7062; min-width: 80px; padding-top: 2px; font-weight: 500; }
@@ -626,7 +627,7 @@ const styles = `
   .zone-badge { display: inline-block; padding: 2px 10px; border-radius: 100px; font-size: 0.7rem; font-weight: 500; background: #eef3d8; color: #726A4E; }
 
   /* ── ADMIN ── */
-  .admin-card { border: 1px solid #e8e2d8; border-radius: 14px; padding: 1rem; margin-bottom: 10px; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.04); animation: fadeUp 0.3s ease; }
+  .admin-card { border: 1px solid #e8e2d8; border-radius: 16px; padding: 1rem; margin-bottom: 10px; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.06); animation: fadeUp 0.3s ease; }
   .admin-card-name { font-family: 'Aleo', Georgia, serif; font-size: 1rem; color: #1c1c1a; margin-bottom: 4px; }
   .admin-card-meta { font-size: 0.75rem; color: #7a7062; margin-bottom: 8px; }
   .admin-actions { display: flex; gap: 8px; }
@@ -865,7 +866,7 @@ function MapPicker({ onPin, currentPin, compact }) {
 
       <div
         ref={mapRef}
-        style={{ height: mapHeight, borderRadius: 14, overflow: "hidden", border: "1.5px solid #ddd8ce", display: loaded ? "block" : "none", transition: "height 0.3s ease" }}
+        style={{ height: mapHeight, borderRadius: 16, overflow: "hidden", border: "1.5px solid #ddd8ce", display: loaded ? "block" : "none", transition: "height 0.3s ease" }}
       />
 
       {currentPin && (
@@ -1298,10 +1299,10 @@ function MyPlansScreen({ plans, onViewPlan, onNewPlan, onSchedule, dbVenues }) {
     <div>
       {Header}
       <div className="empty-state">
-        <div className="empty-emoji">🗺️</div>
+        <div className="empty-icon">🗺️</div>
         <div className="empty-title">No plans yet</div>
-        <div className="empty-sub">Generate your first plan and it'll appear here.</div>
-        <button className="btn btn-teal" style={{ maxWidth: 200, margin: "0 auto" }} onClick={onNewPlan}>Make a plan ✦</button>
+        <div className="empty-sub">Answer 5 quick questions and get a personalised London itinerary.</div>
+        <button className="btn btn-teal" style={{ maxWidth: 220, margin: "0 auto" }} onClick={onNewPlan}>Plan my day or night ✦</button>
       </div>
     </div>
   );
@@ -1313,7 +1314,7 @@ function MyPlansScreen({ plans, onViewPlan, onNewPlan, onSchedule, dbVenues }) {
           const stops = plan.result.stops || [];
           const cover = stops.map(s => s.photo_url || photoFor(s.name)).find(Boolean);
           return (
-            <div key={i} onClick={() => onViewPlan(plan)} style={{ borderRadius: 18, overflow: "hidden", cursor: "pointer", background: "#fff", boxShadow: "0 4px 18px rgba(0,0,0,0.09)" }}>
+            <div key={i} onClick={() => onViewPlan(plan)} style={{ borderRadius: 16, overflow: "hidden", cursor: "pointer", background: "#fff", boxShadow: "0 4px 16px rgba(0,0,0,0.12)" }}>
               <div style={{ position: "relative", height: 200, background: cover ? "#222" : "linear-gradient(135deg, #4B342F, #9B892F)" }}>
                 {cover && <img src={cover} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />}
                 <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 35%, rgba(0,0,0,0.72))" }} />
@@ -1442,9 +1443,9 @@ function DiscoverScreen({ preferences, dbVenues, onStart }) {
       <div style={{ padding: "0 1.5rem 1rem" }}>
         {list.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-emoji">{section === "events" ? "📅" : "💫"}</div>
+            <div className="empty-icon">{section === "events" ? "📅" : "💫"}</div>
             <div className="empty-title">{section === "events" ? "No events right now" : "No celebrity spots yet"}</div>
-            <div className="empty-sub">{section === "events" ? "Check back soon — we add new events weekly." : "Celebrity-tagged venues will appear here."}</div>
+            <div className="empty-sub">{section === "events" ? "We add new events weekly — check back soon." : "Celebrity-tagged venues will appear here as we add them."}</div>
           </div>
         ) : list.map(v => renderCard(v, section === "events"))}
       </div>
@@ -1874,7 +1875,7 @@ function AdminScreen({ onBadgeUpdate }) {
 
       {pending.length === 0 ? (
         <div className="empty-state">
-          <div className="empty-emoji">✅</div>
+          <div className="empty-icon">✅</div>
           <div className="empty-title">All clear</div>
           <div className="empty-sub">No pending submissions.</div>
         </div>
@@ -2508,7 +2509,7 @@ function SpotsMap({ saves, listName, focusSpot, onCategory, peek, peekHeight, on
   }
 
   if (!pts.length) return (
-    <div className="empty-state"><div className="empty-emoji">🗺️</div><div className="empty-title">No mappable spots</div><div className="empty-sub">Saves with a known location show here. Most do once Google finds them.</div></div>
+    <div className="empty-state"><div className="empty-icon">🗺️</div><div className="empty-title">No spots on the map yet</div><div className="empty-sub">Saved places with a known location will appear here.</div></div>
   );
 
   const selCat = normaliseCategory(selected?.category);
@@ -2552,7 +2553,7 @@ function SpotsMap({ saves, listName, focusSpot, onCategory, peek, peekHeight, on
             onClick={() => setSheetOpen(true)}
             onTouchStart={(e) => { e.currentTarget._sy = e.touches[0].clientY; }}
             onTouchEnd={(e) => { const dy = (e.currentTarget._sy || 0) - e.changedTouches[0].clientY; if (dy > 30) setSheetOpen(true); }}
-            style={{ position: "absolute", left: 10, right: 10, bottom: 54, zIndex: 460, background: "#fff", borderRadius: 14, boxShadow: "0 4px 16px rgba(0,0,0,0.2)", padding: "12px 14px 10px", textAlign: "center", cursor: "pointer" }}>
+            style={{ position: "absolute", left: 10, right: 10, bottom: 54, zIndex: 460, background: "#fff", borderRadius: 14, boxShadow: "0 4px 16px rgba(0,0,0,0.12)", padding: "12px 14px 10px", textAlign: "center", cursor: "pointer" }}>
             <div style={{ position: "absolute", top: 6, left: "50%", transform: "translateX(-50%)", width: 34, height: 4, borderRadius: 2, background: "#ddd6c8" }} />
             <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "#1c1c1a" }}>⌃ Swipe up for all {filteredPts.length} {filterLabel}</span>
           </div>
@@ -2570,7 +2571,7 @@ function SpotsMap({ saves, listName, focusSpot, onCategory, peek, peekHeight, on
             </div>
             <div style={{ overflowY: "auto", padding: "12px 12px 16px", flex: 1 }}>
               {filteredPts.map(s => (
-                <div key={s.id} onClick={() => { setSelected(s); setSheetOpen(false); }} style={{ borderRadius: 16, overflow: "hidden", boxShadow: "0 2px 10px rgba(0,0,0,0.1)", border: "1px solid #e8e2d8", background: "#fff", marginBottom: 14, cursor: "pointer" }}>
+                <div key={s.id} onClick={() => { setSelected(s); setSheetOpen(false); }} style={{ borderRadius: 16, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", border: "1px solid #e8e2d8", background: "#fff", marginBottom: 14, cursor: "pointer" }}>
                   <BigSpotCard s={s} photo={s.photo_url} />
                 </div>
               ))}
@@ -3670,7 +3671,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
       <div style={{ width: 40, height: 4, borderRadius: 2, background: "#ddd6c8", margin: "2px auto 12px" }} />
       {header}
       {list.map(s => (
-        <div key={s.id} style={{ position: "relative", borderRadius: 16, overflow: "hidden", boxShadow: "0 2px 10px rgba(0,0,0,0.08)", border: "1px solid #e8e2d8", background: "#fff", marginBottom: 14 }}>
+        <div key={s.id} style={{ position: "relative", borderRadius: 16, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", border: "1px solid #e8e2d8", background: "#fff", marginBottom: 14 }}>
           <button onClick={() => removeSave(s.id)} title="Delete" style={{ position: "absolute", top: 8, right: 8, zIndex: 3, width: 28, height: 28, borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.92)", cursor: "pointer", fontSize: "0.95rem", lineHeight: 1 }}>×</button>
           <div onClick={() => setDetailSpot(s)} style={{ cursor: "pointer" }}>
             <BigSpotCard s={s} photo={s.photo_url} />
@@ -3890,7 +3891,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
               {folderNames.map((f, fi) => {
                 const items = grouped[f] || [];
                 return (
-                  <div key={f} data-tour={fi === 0 ? "saves-list-card" : undefined} style={{ position: "relative", borderRadius: 20, overflow: "hidden", boxShadow: "0 4px 16px rgba(0,0,0,0.10)", background: "#fff" }}>
+                  <div key={f} data-tour={fi === 0 ? "saves-list-card" : undefined} style={{ position: "relative", borderRadius: 16, overflow: "hidden", boxShadow: "0 4px 16px rgba(0,0,0,0.12)", background: "#fff" }}>
                     <div onClick={() => setOpenFolder(f)} style={{ cursor: "pointer" }}>
                       <ListCover items={items} />
                       <div style={{ padding: "8px 10px" }}>
@@ -3909,7 +3910,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
                     </div>
                     <button onClick={(e) => { e.stopPropagation(); setMenuFolder(menuFolder === f ? null : f); }} style={{ position: "absolute", top: 6, right: 6, width: 26, height: 26, borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.92)", cursor: "pointer", fontSize: "0.95rem", lineHeight: 1, boxShadow: "0 1px 4px rgba(0,0,0,0.25)" }}>⋯</button>
                     {menuFolder === f && (
-                      <div style={{ position: "absolute", top: 34, right: 6, background: "#fff", borderRadius: 10, boxShadow: "0 4px 16px rgba(0,0,0,0.18)", overflow: "hidden", zIndex: 10, minWidth: 110 }}>
+                      <div style={{ position: "absolute", top: 34, right: 6, background: "#fff", borderRadius: 10, boxShadow: "0 4px 16px rgba(0,0,0,0.12)", overflow: "hidden", zIndex: 10, minWidth: 110 }}>
                         <button onClick={() => renameFolder(f)} style={{ display: "block", width: "100%", textAlign: "left", padding: "9px 12px", border: "none", background: "#fff", cursor: "pointer", fontSize: "0.78rem", color: "#1c1c1a" }}>Rename</button>
                         <button onClick={() => deleteFolder(f)} style={{ display: "block", width: "100%", textAlign: "left", padding: "9px 12px", border: "none", borderTop: "1px solid #e8e2d8", background: "#fff", cursor: "pointer", fontSize: "0.78rem", color: "#DD4124" }}>Delete</button>
                       </div>
@@ -3948,28 +3949,16 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
         )}
         {saves.length === 0 && preview.length === 0 && (
           <div className="empty-state">
-            <div className="empty-emoji">📌</div>
+            <div className="empty-icon">📌</div>
             <div className="empty-title">No saved spots yet</div>
-            {!savesTipDismissed ? (
-              <div style={{ position: "relative" }}>
-                <div className="empty-sub">Three ways to save a spot:</div>
-                <div style={{ textAlign: "left", maxWidth: 260, margin: "0.5rem auto 0", fontSize: "0.82rem", color: "#7a7062", lineHeight: 1.7 }}>
-                  📸 Screenshot a post from Instagram or TikTok<br/>
-                  🔗 Paste a link (TikTok or Instagram URL)<br/>
-                  ✏️ Type a place name manually
-                </div>
-                <button onClick={() => { localStorage.setItem("cl_seen_saves_tip", "1"); setSavesTipDismissed(true); }} style={{ marginTop: 10, border: "none", background: "none", color: "#7a7062", fontSize: "0.76rem", cursor: "pointer", textDecoration: "underline" }}>Got it</button>
-              </div>
-            ) : (
-              <div className="empty-sub">Pick a source above to start capturing.</div>
-            )}
+            <div className="empty-sub">Tap the + button to save a place from a screenshot, link, or by name.</div>
           </div>
         )}
       </div>
 
       {successVenue && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, animation: "fadeIn 0.2s" }}>
-          <div style={{ background: "#fff", borderRadius: 20, padding: "2rem 1.5rem", textAlign: "center", maxWidth: 280, animation: "popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)" }}>
+          <div style={{ background: "#fff", borderRadius: 16, padding: "2rem 1.5rem", textAlign: "center", maxWidth: 280, animation: "popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)" }}>
             <div style={{ fontSize: "3rem", marginBottom: "0.5rem" }}>✨</div>
             <div style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "1.1rem", color: "#1c1c1a", marginBottom: 6 }}>Saved!</div>
             <div style={{ fontSize: "0.82rem", color: "#6b5e4e" }}>{successVenue}</div>
@@ -4062,7 +4051,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
               <div key={discoverIdx}
                 onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
                 onClick={() => setDetailSpot(current)}
-                style={{ width: "100%", maxWidth: 360, borderRadius: 24, overflow: "hidden", boxShadow: "0 8px 30px rgba(0,0,0,0.15)", position: "relative", cursor: "pointer" }}>
+                style={{ width: "100%", maxWidth: 360, borderRadius: 16, overflow: "hidden", boxShadow: "0 8px 28px rgba(0,0,0,0.22)", position: "relative", cursor: "pointer" }}>
                 <div style={{ height: 400, position: "relative" }}>
                   <img src={current.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                   <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 50%, rgba(0,0,0,0.65))" }} />
@@ -4385,7 +4374,7 @@ function Onboarding({ user, dbVenues, onDone }) {
               <p style={sub}>Tap the one you'd rather go to. <span style={{ color: "#c9bfae" }}>({axisIdx + 1} of {pairs.length})</span></p>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 {[["a", pair.a], ["b", pair.b]].map(([pole, v]) => { const on = tapped === v.id; return (
-                  <button key={v.id} onClick={() => tapChoose(pair, pole, v)} style={{ position: "relative", border: "none", padding: 0, borderRadius: 18, overflow: "hidden", cursor: "pointer", height: 175, background: "#e9e4da", animation: on ? "tapPulse 0.3s ease" : undefined, outline: on ? "3px solid #726A4E" : "none", outlineOffset: -3, opacity: tapped && !on ? 0.5 : 1, transition: "opacity 0.2s" }}>
+                  <button key={v.id} onClick={() => tapChoose(pair, pole, v)} style={{ position: "relative", border: "none", padding: 0, borderRadius: 16, overflow: "hidden", cursor: "pointer", height: 175, background: "#e9e4da", animation: on ? "tapPulse 0.3s ease" : undefined, outline: on ? "3px solid #726A4E" : "none", outlineOffset: -3, opacity: tapped && !on ? 0.5 : 1, transition: "opacity 0.2s" }}>
                     <img src={v.photo_url} alt={v.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                     <div style={{ position: "absolute", inset: 0, background: on ? "rgba(114,106,78,0.32)" : "linear-gradient(transparent 45%, rgba(0,0,0,0.72))" }} />
                     <div style={{ position: "absolute", left: 14, right: 14, bottom: 12, textAlign: "left", color: "#fff" }}>
@@ -4917,7 +4906,7 @@ function SharedListView({ list, user, onClose }) {
         {items.length > 0 && (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
             {items.map(it => (
-              <div key={it.id} onClick={() => setDetailItem(it)} style={{ position: "relative", borderRadius: 20, overflow: "hidden", boxShadow: "0 4px 16px rgba(0,0,0,0.10)", background: "#f5f0e8", cursor: "pointer", animation: "popIn 0.25s ease" }}>
+              <div key={it.id} onClick={() => setDetailItem(it)} style={{ position: "relative", borderRadius: 16, overflow: "hidden", boxShadow: "0 4px 16px rgba(0,0,0,0.12)", background: "#f5f0e8", cursor: "pointer", animation: "popIn 0.25s ease" }}>
                 <div style={{ height: 180, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
                   {it.photo_url
                     ? <img src={it.photo_url} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", filter: it.done ? "grayscale(0.6) brightness(0.85)" : "none" }} />
@@ -5116,7 +5105,7 @@ function FriendProfile({ user, friend, onClose }) {
 
         {/* Instagram-style header */}
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: "1.25rem" }}>
-          <div style={{ width: 88, height: 88, borderRadius: "50%", background: "#726A4E", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: "2.2rem", overflow: "hidden", border: "3px solid #fff", boxShadow: "0 2px 10px rgba(0,0,0,0.12)" }}>{friend.avatar_url ? <img src={friend.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : nameOf(friend).charAt(0).toUpperCase()}</div>
+          <div style={{ width: 88, height: 88, borderRadius: "50%", background: "#726A4E", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: "2.2rem", overflow: "hidden", border: "3px solid #fff", boxShadow: "0 4px 16px rgba(0,0,0,0.12)" }}>{friend.avatar_url ? <img src={friend.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : nameOf(friend).charAt(0).toUpperCase()}</div>
           <div style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "1.5rem", color: "#1c1c1a", marginTop: 10 }}>{nameOf(friend)}</div>
           <div style={{ display: "flex", gap: 30, marginTop: 12 }}>
             {stat(saves.length, "Saves")}
@@ -5149,7 +5138,7 @@ function FriendProfile({ user, friend, onClose }) {
           <div style={{ marginTop: "1.25rem" }}>
             <div style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "1.1rem", color: "#1c1c1a", marginBottom: 12 }}>{openFolder} ({folderSaves.length})</div>
             {folderSaves.map(s => (
-              <div key={s.id} style={{ position: "relative", borderRadius: 16, overflow: "hidden", boxShadow: "0 2px 10px rgba(0,0,0,0.08)", border: "1px solid #e8e2d8", background: "#fff", marginBottom: 14 }}>
+              <div key={s.id} style={{ position: "relative", borderRadius: 16, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", border: "1px solid #e8e2d8", background: "#fff", marginBottom: 14 }}>
                 <div onClick={() => setDetailSpot(s)} style={{ cursor: "pointer" }}>
                   <BigSpotCard s={s} photo={s.photo_url} />
                 </div>
@@ -5441,7 +5430,7 @@ function AppProductTour({ steps, step, onNext, onBack, onDone, onSkip }) {
   const pad = 6;
   const hole = rect && { position: "fixed", top: rect.t - pad, left: rect.l - pad, width: rect.w + pad * 2, height: rect.h + pad * 2, borderRadius: 14, boxShadow: "0 0 0 9999px rgba(20,18,14,0.66)", border: "2px solid #DFEF87", pointerEvents: "none", zIndex: 3001, transition: "top 0.25s ease, left 0.25s ease, width 0.25s ease, height 0.25s ease" };
   const below = !rect || (rect.t + rect.h / 2) < window.innerHeight * 0.52;
-  const tip = { position: "fixed", left: 12, right: 12, maxWidth: 400, margin: "0 auto", background: "#fff", borderRadius: 18, padding: "16px 16px 14px", boxShadow: "0 12px 40px rgba(0,0,0,0.3)", zIndex: 3002, pointerEvents: "auto", ...(rect ? (below ? { top: Math.min(rect.t + rect.h + pad + 12, window.innerHeight - 230) } : { bottom: window.innerHeight - rect.t + pad + 12 }) : { top: "42%" }) };
+  const tip = { position: "fixed", left: 12, right: 12, maxWidth: 400, margin: "0 auto", background: "#fff", borderRadius: 16, padding: "16px 16px 14px", boxShadow: "0 12px 40px rgba(0,0,0,0.3)", zIndex: 3002, pointerEvents: "auto", ...(rect ? (below ? { top: Math.min(rect.t + rect.h + pad + 12, window.innerHeight - 230) } : { bottom: window.innerHeight - rect.t + pad + 12 }) : { top: "42%" }) };
   const btn = { border: "none", borderRadius: 100, padding: "9px 18px", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer" };
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 3000 }}>
