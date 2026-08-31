@@ -533,7 +533,7 @@ const styles = `
   .stat-lbl { font-size: 0.6rem; color: #7a7062; text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; }
 
   .stops-wrap { padding: 1.25rem 1.5rem; }
-  .stop { border: 1px solid #e8e2d8; border-radius: 16px; margin-bottom: 10px; background: #fff; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); animation: fadeUp 0.3s ease; }
+  .stop { border: 1px solid #dde8d0; border-radius: 16px; margin-bottom: 10px; background: #f4f7ef; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); animation: fadeUp 0.3s ease; }
   .stop-inner { padding: 1.1rem; }
   .stop-top { display: flex; gap: 10px; align-items: flex-start; }
   .stop-emoji-wrap { width: 44px; height: 44px; border-radius: 12px; background: #f5f0e8; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; flex-shrink: 0; }
@@ -4151,20 +4151,25 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
                 return (
                   <div key={discoverIdx}
                     onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
-                    style={{ width: "100%", maxWidth: 360, borderRadius: 16, overflow: "hidden", boxShadow: "0 8px 28px rgba(0,0,0,0.22)", position: "relative", background: "#fff", maxHeight: "75vh", overflowY: "auto", scrollSnapType: "y mandatory" }}>
-                    <div style={{ height: 380, position: "relative", scrollSnapAlign: "start", flexShrink: 0 }}>
-                      <img src={current.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                      <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 50%, rgba(0,0,0,0.7))" }} />
-                      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "18px" }}>
-                        <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "#fff", textShadow: "0 2px 8px rgba(0,0,0,0.5)", lineHeight: 1.15 }}>{current.name}</div>
-                        <div style={{ fontSize: "0.82rem", color: "rgba(255,255,255,0.88)", marginTop: 5 }}>{[catEmoji[normaliseCategory(current.category)] || "✨", current.area, current.google_rating ? `⭐ ${current.google_rating}` : null, current.price].filter(Boolean).join(" · ")}</div>
+                    style={{ width: "100%", maxWidth: 360, borderRadius: 16, overflow: "hidden", boxShadow: "0 8px 28px rgba(0,0,0,0.22)", position: "relative", cursor: "pointer", perspective: "800px" }}>
+                    <div onClick={(e) => { const el = e.currentTarget; el.style.transition = "transform 0.5s ease"; el.style.transform = el.style.transform === "rotateY(180deg)" ? "rotateY(0)" : "rotateY(180deg)"; }}
+                      style={{ transformStyle: "preserve-3d", transition: "transform 0.5s ease", position: "relative" }}>
+                      <div style={{ backfaceVisibility: "hidden", height: 420, position: "relative" }}>
+                        <img src={current.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 50%, rgba(0,0,0,0.7))" }} />
+                        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "18px" }}>
+                          <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "#fff", textShadow: "0 2px 8px rgba(0,0,0,0.5)", lineHeight: 1.15 }}>{current.name}</div>
+                          <div style={{ fontSize: "0.82rem", color: "rgba(255,255,255,0.88)", marginTop: 5 }}>{[catEmoji[normaliseCategory(current.category)] || "✨", current.area, current.google_rating ? `⭐ ${current.google_rating}` : null, current.price].filter(Boolean).join(" · ")}</div>
+                        </div>
+                        <div style={{ position: "absolute", bottom: 6, left: "50%", transform: "translateX(-50%)", fontSize: "0.6rem", color: "rgba(255,255,255,0.5)" }}>tap to read more</div>
                       </div>
-                      <div style={{ position: "absolute", bottom: 6, left: "50%", transform: "translateX(-50%)", fontSize: "0.6rem", color: "rgba(255,255,255,0.5)" }}>scroll for more ↓</div>
-                    </div>
-                    <div style={{ padding: "18px 20px 28px", scrollSnapAlign: "start", background: "#BAADE8", color: "#8B162B" }}>
-                      {current.comment && <div style={{ fontSize: "0.95rem", lineHeight: 1.6, marginBottom: 14, fontStyle: "italic" }}>"{current.comment}"</div>}
-                      {vibeDesc && <div style={{ fontSize: "0.88rem", fontWeight: 700, marginBottom: 14 }}>{vibeDesc}</div>}
-                      {current.google_rating && <div style={{ fontSize: "0.82rem", opacity: 0.8 }}>⭐ {current.google_rating}{current.google_review_count ? ` · ${current.google_review_count.toLocaleString()} reviews` : ""}</div>}
+                      <div style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)", position: "absolute", inset: 0, background: "#B8D8E8", color: "#8B162B", padding: "1.5rem", overflowY: "auto", display: "flex", flexDirection: "column", justifyContent: "center" }}>
+                        <div style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "1.4rem", lineHeight: 1.2, marginBottom: 14 }}>{current.name}</div>
+                        {current.comment && <div style={{ fontSize: "0.95rem", lineHeight: 1.6, marginBottom: 14, fontStyle: "italic" }}>"{current.comment}"</div>}
+                        {vibeDesc && <div style={{ fontSize: "0.88rem", fontWeight: 700, marginBottom: 14 }}>{vibeDesc}</div>}
+                        {current.google_rating && <div style={{ fontSize: "0.82rem", opacity: 0.7 }}>⭐ {current.google_rating}{current.google_review_count ? ` · ${current.google_review_count.toLocaleString()} reviews` : ""}</div>}
+                        <div style={{ fontSize: "0.68rem", opacity: 0.5, marginTop: 18, textAlign: "center" }}>tap to flip back</div>
+                      </div>
                     </div>
                   </div>
                 );
@@ -4787,7 +4792,7 @@ function SharedListsSection({ user }) {
 
 // One bucket list: tickable items, add-from-saves + manual add, members, and an invite link.
 function SharedListView({ list, user, onClose }) {
-  const { sheetRef: slSheetRef, scrimRef: slScrimRef } = useDragDismiss(onClose);
+  const slSwipeRef = useSwipeRight(onClose);
   const [items, setItems] = useState([]);
   const [members, setMembers] = useState([]);
   const [conns, setConns] = useState([]); // your connected friends, to add directly
@@ -4971,10 +4976,9 @@ function SharedListView({ list, user, onClose }) {
   const availableFolders = Object.keys(availableByFolder).sort();
 
   return (
-    <div ref={slScrimRef} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.42)", zIndex: 1200, display: "flex", alignItems: "flex-end", justifyContent: "center", animation: "fadeIn 0.2s" }}><div ref={slSheetRef} style={{ width: "100%", maxWidth: 420, background: "#fff", borderRadius: "22px 22px 0 0", maxHeight: "95vh", overflowY: "auto", animation: "cardIn 0.25s ease" }}>
-      <div style={{ display: "flex", justifyContent: "center", padding: "8px 0 0" }}><div style={{ width: 36, height: 4, borderRadius: 2, background: "#ddd8ce" }} /></div>
+    <div ref={slSwipeRef} style={{ position: "fixed", inset: 0, background: "#fbfaf8", zIndex: 1200, overflowY: "auto", animation: "fadeIn 0.2s" }}>
       <div style={{ maxWidth: 420, margin: "0 auto", padding: "1rem 1.5rem 6rem" }}>
-        <button className="btn-outline" style={{ marginTop: 0, width: "auto", padding: "8px 14px" }} onClick={onClose}>← People</button>
+        <button className="btn-ghost" onClick={onClose} style={{ marginBottom: "0.5rem" }}>← Back</button>
 
         <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "1rem 0 0.25rem" }}>
           <div style={{ width: 48, height: 48, borderRadius: 14, background: "#f5f0e8", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", flexShrink: 0 }}>{list.emoji || "✨"}</div>
@@ -5150,7 +5154,7 @@ function SharedListView({ list, user, onClose }) {
           </div>
         </div>
       )}
-    </div></div>
+    </div>
   );
 }
 
@@ -5161,7 +5165,7 @@ const FRIEND_WORDS = ["BEAR","WOLF","DEER","FROG","DUCK","SWAN","CROW","DOVE","H
 // grouped into folders exactly like your own Saves page. Tap a folder to see the
 // spots inside and copy any of them to your own board.
 function FriendProfile({ user, friend, onClose }) {
-  const { sheetRef: fpSheetRef, scrimRef: fpScrimRef } = useDragDismiss(onClose);
+  const fpSwipeRef = useSwipeRight(onClose);
   const nameOf = (p) => p?.name || (p?.email ? p.email.split("@")[0] : null) || "Friend";
   const [saves, setSaves] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -5209,10 +5213,9 @@ function FriendProfile({ user, friend, onClose }) {
   const stat = (n, l) => <div style={{ textAlign: "center" }}><div style={{ fontSize: "1.15rem", fontWeight: 700, color: "#1c1c1a" }}>{n}</div><div style={{ fontSize: "0.68rem", color: "#7a7062", textTransform: "uppercase", letterSpacing: "0.06em" }}>{l}</div></div>;
 
   return (
-    <div ref={fpScrimRef} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.42)", zIndex: 1200, display: "flex", alignItems: "flex-end", justifyContent: "center", animation: "fadeIn 0.2s" }}><div ref={fpSheetRef} style={{ width: "100%", maxWidth: 420, background: "#fff", borderRadius: "22px 22px 0 0", maxHeight: "95vh", overflowY: "auto", animation: "cardIn 0.25s ease" }}>
-      <div style={{ display: "flex", justifyContent: "center", padding: "8px 0 0" }}><div style={{ width: 36, height: 4, borderRadius: 2, background: "#ddd8ce" }} /></div>
+    <div ref={fpSwipeRef} style={{ position: "fixed", inset: 0, background: "#fbfaf8", zIndex: 1200, overflowY: "auto", animation: "fadeIn 0.2s" }}>
       <div style={{ maxWidth: 420, margin: "0 auto", padding: "1rem 1.5rem 6rem" }}>
-        <button className="btn-outline" style={{ marginTop: 0, width: "auto", padding: "8px 14px" }} onClick={openFolder ? () => setOpenFolder(null) : onClose}>← {openFolder ? "Profile" : "People"}</button>
+        <button className="btn-ghost" onClick={openFolder ? () => setOpenFolder(null) : onClose} style={{ marginBottom: "0.5rem" }}>← {openFolder ? "Profile" : "Back"}</button>
 
         {/* Instagram-style header */}
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: "1.25rem" }}>
@@ -5299,7 +5302,7 @@ function FriendProfile({ user, friend, onClose }) {
           </div>
         </div>
       )}
-    </div></div>
+    </div>
   );
 }
 
