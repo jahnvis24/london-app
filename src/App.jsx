@@ -1413,15 +1413,24 @@ function MyPlansScreen({ plans, onViewPlan, onNewPlan, onSchedule, dbVenues }) {
 }
 
 function DiscoverScreen({ preferences, dbVenues, onStart }) {
-  const [section, setSection] = useState("events");
+  const [section, setSection] = useState("picks");
   const [celebFilter, setCelebFilter] = useState("All");
+  const [picksFilter, setPicksFilter] = useState("All");
 
   const CATEGORY_EMOJI = { restaurant: "🍽️", bar: "🍸", cafe: "☕", market: "🛍️", experience: "✨", outdoor: "🌿", museum: "🏛️", gallery: "🎨", nightlife: "🌙", event: "🎫" };
   const CATEGORY_COLOURS = { restaurant: "#9B892F", bar: "#4B342F", cafe: "#9B892F", market: "#726A4E", experience: "#726A4E", outdoor: "#726A4E", museum: "#A1947D", gallery: "#A1947D", nightlife: "#4B342F", event: "#726A4E" };
+  const PICKS_CATS = ["All", "Restaurants", "Bars", "Cafés", "Culture", "Outdoor"];
+  const PICKS_CAT_MAP = { "Restaurants": "restaurant", "Bars": "bar", "Cafés": "cafe", "Culture": ["museum", "gallery", "experience"], "Outdoor": "outdoor" };
 
   const today = new Date().toISOString().split("T")[0];
   const events = dbVenues.filter(v => v.is_event && v.event_start && (!v.event_end || v.event_end >= today))
     .sort((a, b) => new Date(a.event_start) - new Date(b.event_start));
+
+  const topPicks = dbVenues
+    .filter(v => !v.is_event && v.google_rating && parseFloat(v.google_rating) >= 4.0)
+    .filter(v => picksFilter === "All" || (() => { const m = PICKS_CAT_MAP[picksFilter]; return Array.isArray(m) ? m.includes(v.category) : v.category === m; })())
+    .sort((a, b) => (parseFloat(b.google_rating) || 0) - (parseFloat(a.google_rating) || 0))
+    .slice(0, 20);
 
   const allCelebSpots = dbVenues.filter(v => v.celebrity_tags && v.celebrity_tags.length > 0);
   const celebNames = [...new Set(allCelebSpots.flatMap(v => v.celebrity_tags))].filter(Boolean).sort();
@@ -1482,13 +1491,13 @@ function DiscoverScreen({ preferences, dbVenues, onStart }) {
     );
   };
 
-  const list = section === "events" ? events : celebSpots;
+  const list = section === "events" ? events : section === "celeb" ? celebSpots : topPicks;
 
   return (
     <div>
       <div className="section-pad" style={{ paddingBottom: "0.75rem" }}>
         <div className="section-title">Discover</div>
-        <p className="section-sub">What's happening and where the celebs go</p>
+        <p className="section-sub">Top-rated spots, what's on, and where the celebs go</p>
       </div>
 
       {onStart && (
@@ -1498,9 +1507,17 @@ function DiscoverScreen({ preferences, dbVenues, onStart }) {
       )}
 
       <div className="filter-row">
+        <button className={`filter-chip ${section === "picks" ? "sel" : ""}`} onClick={() => setSection("picks")}>✦ Top Picks</button>
         <button className={`filter-chip ${section === "events" ? "sel" : ""}`} onClick={() => setSection("events")}>📅 What's On</button>
         <button className={`filter-chip ${section === "celeb" ? "sel" : ""}`} onClick={() => setSection("celeb")}>💫 Celebrity Spots</button>
       </div>
+      {section === "picks" && (
+        <div className="filter-row" style={{ paddingTop: 0 }}>
+          {PICKS_CATS.map(c => (
+            <button key={c} className={`filter-chip ${picksFilter === c ? "sel" : ""}`} onClick={() => setPicksFilter(c)}>{c}</button>
+          ))}
+        </div>
+      )}
       {section === "celeb" && celebNames.length > 0 && (
         <div className="filter-row" style={{ paddingTop: 0 }}>
           <button className={`filter-chip ${celebFilter === "All" ? "sel" : ""}`} onClick={() => setCelebFilter("All")}>All</button>
@@ -1513,9 +1530,9 @@ function DiscoverScreen({ preferences, dbVenues, onStart }) {
       <div style={{ padding: "0 1.5rem 1rem" }}>
         {list.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-icon">{section === "events" ? "📅" : "💫"}</div>
-            <div className="empty-title">{section === "events" ? "No events right now" : "No celebrity spots yet"}</div>
-            <div className="empty-sub">{section === "events" ? "We add new events weekly — check back soon." : "Celebrity-tagged venues will appear here as we add them."}</div>
+            <div className="empty-icon">{section === "events" ? "📅" : section === "celeb" ? "💫" : "✦"}</div>
+            <div className="empty-title">{section === "events" ? "No events right now" : section === "celeb" ? "No celebrity spots yet" : "No top picks yet"}</div>
+            <div className="empty-sub">{section === "events" ? "We add new events weekly — check back soon." : section === "celeb" ? "Celebrity-tagged venues will appear here as we add them." : "Venues rated 4.0+ will appear here."}</div>
           </div>
         ) : list.map(v => renderCard(v, section === "events"))}
       </div>
@@ -3998,7 +4015,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
           </>
         )}
         {saves.length > 0 && savedView === "folders" && openFolder && (
-          <div ref={folderSwipeRef}>
+          <div ref={folderSwipeRef} style={{ background: "#fbfaf8", minHeight: "60vh" }}>
             <button className="btn-ghost" onClick={() => { setOpenFolder(null); setFocusSpot(null); }} style={{ marginBottom: "0.75rem" }}>← All lists</button>
             {folderSaves.length > 0 && folderSaves.some(s => s.lat && s.lng) && (
               <SpotsMap key={"peek-" + openFolder} saves={folderSaves} listName={openFolder} peek peekHeight={120} onExpand={() => setSavedView("map")} />
