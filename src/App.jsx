@@ -679,6 +679,7 @@ function useDragDismiss(onClose) {
       currentY = e.touches[0].clientY;
       const dy = Math.max(0, currentY - startY);
       if (dy > 0) {
+        e.preventDefault();
         el.style.transform = `translateY(${dy}px)`;
         if (scrimRef.current) scrimRef.current.style.opacity = Math.max(0.3, 1 - dy / 800);
       }
@@ -699,7 +700,7 @@ function useDragDismiss(onClose) {
       }
     };
     el.addEventListener("touchstart", onStart, { passive: true });
-    el.addEventListener("touchmove", onMove, { passive: true });
+    el.addEventListener("touchmove", onMove, { passive: false });
     el.addEventListener("touchend", onEnd, { passive: true });
     return () => { el.removeEventListener("touchstart", onStart); el.removeEventListener("touchmove", onMove); el.removeEventListener("touchend", onEnd); };
   }, [onClose]);
