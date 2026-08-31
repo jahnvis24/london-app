@@ -544,8 +544,8 @@ const styles = `
   .stop-dot { width: 3px; height: 3px; border-radius: 50%; background: #ddd8ce; }
   .stop-name { font-family: 'Aleo', Georgia, serif; font-size: 1.05rem; color: #1c1c1a; margin-bottom: 4px; line-height: 1.2; }
   .stop-hook { font-size: 0.8rem; color: #6b5e4e; line-height: 1.45; }
-  .stop-footer { display: flex; align-items: center; justify-content: space-between; padding: 0.6rem 1.1rem 0.75rem; border-top: 1px solid #e8e2d8; margin-top: 0.75rem; }
-  .stop-pills-row { display: flex; gap: 5px; flex-wrap: wrap; }
+  .stop-footer { display: flex; align-items: center; justify-content: space-between; padding: 0.6rem 1.1rem 0.75rem; border-top: 1px solid #e8e2d8; margin-top: 0.75rem; min-height: 44px; }
+  .stop-pills-row { display: flex; gap: 5px; flex-wrap: nowrap; overflow: hidden; flex: 1; min-width: 0; }
   .stop-pill { font-size: 0.68rem; padding: 3px 8px; border-radius: 100px; background: #f5f0e8; color: #6b5e4e; }
   .stop-booking { font-size: 0.68rem; color: #7a7062; }
   .why-fit { padding: 0 1.1rem 0.75rem; font-size: 0.75rem; color: #7a7062; font-style: italic; line-height: 1.4; border-top: 1px solid #e8e2d8; padding-top: 0.55rem; }
@@ -702,6 +702,18 @@ function useDragDismiss(onClose) {
     return () => { el.removeEventListener("touchstart", onStart); el.removeEventListener("touchmove", onMove); el.removeEventListener("touchend", onEnd); };
   }, [onClose]);
   return { sheetRef, scrimRef };
+}
+
+function DraggableSheet({ onClose, maxHeight = "95vh", children }) {
+  const { sheetRef, scrimRef } = useDragDismiss(onClose);
+  return (
+    <div ref={scrimRef} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.42)", zIndex: 1200, display: "flex", alignItems: "flex-end", justifyContent: "center", animation: "fadeIn 0.2s" }}>
+      <div ref={sheetRef} style={{ width: "100%", maxWidth: 420, background: "#fff", borderRadius: "22px 22px 0 0", maxHeight, overflowY: "auto", animation: "cardIn 0.25s ease" }}>
+        <div style={{ display: "flex", justifyContent: "center", padding: "8px 0 0" }}><div style={{ width: 36, height: 4, borderRadius: 2, background: "#ddd8ce" }} /></div>
+        {children}
+      </div>
+    </div>
+  );
 }
 
 // ── MOCK EVENTS ───────────────────────────────────────────────
@@ -1216,7 +1228,7 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
                         <span key={ci} className="stop-pill" style={{ background: "#f3e8ff", color: "#7c3aed" }}>💫 {celeb}'s fav</span>
                       ))}
                     </div>
-                    <button onClick={() => findAlternatives(idx)} style={{ border: "none", background: "#726A4E", color: "#fff", fontSize: "0.72rem", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", padding: "5px 12px", borderRadius: 100 }}>↻ Swap</button>
+                    <button onClick={() => findAlternatives(idx)} style={{ border: "none", background: "#726A4E", color: "#fff", fontSize: "0.72rem", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", padding: "5px 12px", borderRadius: 100, flexShrink: 0, whiteSpace: "nowrap" }}>↻ Swap</button>
                   </div>
                   {swappingIdx === idx && alternatives.length === 0 && (
                     <div style={{ padding: "0.5rem 1.1rem", borderTop: "1px solid #e8e2d8", fontSize: "0.75rem", color: "#7a7062" }}>No alternatives found for this stop.</div>
@@ -5967,11 +5979,10 @@ export default function App() {
 
         {activeTab === "plans" && !showViewingPlan && <MyPlansScreen plans={plans} dbVenues={dbVenues} onViewPlan={(plan) => setViewingPlan(plan)} onNewPlan={() => { setActiveTab("home"); startQuiz(); }} onSchedule={(i, date) => setPlans(prev => { const u = prev.map((p, idx) => idx === i ? { ...p, scheduledDate: date || null } : p); localStorage.setItem("cl_plans", JSON.stringify(u.slice(0, 20))); return u; })} />}
         {showViewingPlan && (
-          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.42)", zIndex: 1200, display: "flex", alignItems: "flex-end", justifyContent: "center", animation: "fadeIn 0.2s" }}><div style={{ width: "100%", maxWidth: 420, background: "#fff", borderRadius: "22px 22px 0 0", maxHeight: "95vh", overflowY: "auto", animation: "cardIn 0.25s ease" }}>
-            <div style={{ display: "flex", justifyContent: "center", padding: "8px 0 0" }}><div style={{ width: 36, height: 4, borderRadius: 2, background: "#ddd8ce" }} /></div>
+          <DraggableSheet onClose={() => setViewingPlan(null)}>
             <button className="btn-ghost" onClick={() => setViewingPlan(null)} style={{ paddingTop: "0.75rem" }}>← My Plans</button>
             <ResultScreen result={viewingPlan.result} times={viewingPlan.times} ans={viewingPlan.ans} onRestart={() => setViewingPlan(null)} onNewPlan={() => { setViewingPlan(null); setActiveTab("home"); startQuiz(); }} dbVenues={dbVenues} onUpdateResult={(r) => setViewingPlan(p => ({ ...p, result: r }))} onShare={setShareItem} onRate={() => setRatingPlan(viewingPlan)} scheduledDate={viewingPlan.scheduledDate} onSchedule={(date) => { setPlans(prev => { const u = prev.map(x => x.id === viewingPlan.id ? { ...x, scheduledDate: date || null } : x); localStorage.setItem("cl_plans", JSON.stringify(u.slice(0, 20))); return u; }); goToCalendar("It's on your calendar! 📅"); }} />
-          </div></div>
+          </DraggableSheet>
         )}
 
         {activeTab === "discover" && <DiscoverScreen preferences={preferences} dbVenues={dbVenues} onStart={startQuiz} />}
