@@ -660,28 +660,50 @@ const styles = `
   .me-sheet { width: 100%; max-width: 420px; background: #fff; border-radius: 22px 22px 0 0; max-height: 88vh; overflow-y: auto; animation: cardIn 0.25s ease; padding-bottom: env(safe-area-inset-bottom); }
 `;
 
-function useSwipeBack(onBack) {
-  const ref = useRef(null);
+function useDragDismiss(onClose) {
+  const sheetRef = useRef(null);
+  const scrimRef = useRef(null);
   useEffect(() => {
-    const el = ref.current;
+    const el = sheetRef.current;
     if (!el) return;
-    let startX = 0, startY = 0, swiping = false;
+    let startY = 0, currentY = 0, dragging = false;
     const onStart = (e) => {
-      const x = e.touches[0].clientX;
-      if (x < 30) { startX = x; startY = e.touches[0].clientY; swiping = true; }
+      if (el.scrollTop > 5) return;
+      startY = e.touches[0].clientY;
+      currentY = startY;
+      dragging = true;
+      el.style.transition = "none";
     };
-    const onEnd = (e) => {
-      if (!swiping) return;
-      swiping = false;
-      const dx = e.changedTouches[0].clientX - startX;
-      const dy = Math.abs(e.changedTouches[0].clientY - startY);
-      if (dx > 80 && dy < 100) onBack();
+    const onMove = (e) => {
+      if (!dragging) return;
+      currentY = e.touches[0].clientY;
+      const dy = Math.max(0, currentY - startY);
+      if (dy > 0) {
+        el.style.transform = `translateY(${dy}px)`;
+        if (scrimRef.current) scrimRef.current.style.opacity = Math.max(0, 1 - dy / 400);
+      }
+    };
+    const onEnd = () => {
+      if (!dragging) return;
+      dragging = false;
+      const dy = currentY - startY;
+      el.style.transition = "transform 0.25s ease";
+      if (scrimRef.current) scrimRef.current.style.transition = "opacity 0.25s ease";
+      if (dy > 120) {
+        el.style.transform = "translateY(100%)";
+        if (scrimRef.current) scrimRef.current.style.opacity = "0";
+        setTimeout(onClose, 250);
+      } else {
+        el.style.transform = "translateY(0)";
+        if (scrimRef.current) scrimRef.current.style.opacity = "1";
+      }
     };
     el.addEventListener("touchstart", onStart, { passive: true });
+    el.addEventListener("touchmove", onMove, { passive: true });
     el.addEventListener("touchend", onEnd, { passive: true });
-    return () => { el.removeEventListener("touchstart", onStart); el.removeEventListener("touchend", onEnd); };
-  }, [onBack]);
-  return ref;
+    return () => { el.removeEventListener("touchstart", onStart); el.removeEventListener("touchmove", onMove); el.removeEventListener("touchend", onEnd); };
+  }, [onClose]);
+  return { sheetRef, scrimRef };
 }
 
 // ── MOCK EVENTS ───────────────────────────────────────────────
@@ -2256,7 +2278,7 @@ function ListCover({ items, height = 200 }) {
 
 // Full detail view for a saved spot: About, Book/Website, Notes, Add to calendar.
 function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan, user, onSpotUpdate, readOnly, onSaveToBoard, savedToBoard, onAddToBucketList }) {
-  const swipeRef = useSwipeBack(onClose);
+  const { sheetRef, scrimRef } = useDragDismiss(onClose);
   const cat = normaliseCategory(spot.category);
   const [note, setNote] = useState(() => { if (spot.note != null) return spot.note; try { return localStorage.getItem("cl_note_" + spot.id) || ""; } catch { return ""; } });
   const [savedNote, setSavedNote] = useState(false);
@@ -2308,7 +2330,8 @@ function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan, user, onSpotUpdate
     return href ? <a href={href} target="_blank" rel="noreferrer" style={style}>{children}</a> : <button onClick={onClick} style={{ ...style, width: "100%" }}>{children}</button>;
   };
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.42)", zIndex: 1200, display: "flex", alignItems: "flex-end", justifyContent: "center", animation: "fadeIn 0.2s" }}><div ref={swipeRef} style={{ width: "100%", maxWidth: 420, background: "#fff", borderRadius: "22px 22px 0 0", maxHeight: "95vh", overflowY: "auto", animation: "cardIn 0.25s ease" }}>
+    <div ref={scrimRef} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.42)", zIndex: 1200, display: "flex", alignItems: "flex-end", justifyContent: "center", animation: "fadeIn 0.2s" }}><div ref={sheetRef} style={{ width: "100%", maxWidth: 420, background: "#fff", borderRadius: "22px 22px 0 0", maxHeight: "95vh", overflowY: "auto", animation: "cardIn 0.25s ease" }}>
+      <div style={{ display: "flex", justifyContent: "center", padding: "8px 0 0" }}><div style={{ width: 36, height: 4, borderRadius: 2, background: "#ddd8ce" }} /></div>
       <div style={{ position: "relative", height: 240, background: photos.length ? "#e9e4da" : (CAT_COLOURS[cat] || "#726A4E") }}>
         <div style={{ display: "flex", height: "100%", overflowX: "auto", scrollSnapType: "x mandatory" }}>
           {photos.map((p, i) => <img key={i} src={p} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", flexShrink: 0, scrollSnapAlign: "start" }} />)}
