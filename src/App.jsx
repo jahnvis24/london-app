@@ -4161,11 +4161,10 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
                       </div>
                       <div style={{ position: "absolute", bottom: 6, left: "50%", transform: "translateX(-50%)", fontSize: "0.6rem", color: "rgba(255,255,255,0.5)" }}>scroll for more ↓</div>
                     </div>
-                    <div style={{ padding: "16px 18px 24px", scrollSnapAlign: "start" }}>
-                      {current.comment && <div style={{ fontSize: "0.92rem", color: "#1c1c1a", lineHeight: 1.55, marginBottom: 12, fontStyle: "italic" }}>"{current.comment}"</div>}
-                      {vibeDesc && <div style={{ fontSize: "0.84rem", color: "#726A4E", fontWeight: 600, marginBottom: 12 }}>{vibeDesc}</div>}
-                      {(current.vibe_tags || []).length > 0 && <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>{current.vibe_tags.slice(0, 5).map((t, i) => <span key={i} style={{ fontSize: "0.7rem", background: "#f5f0e8", color: "#6b5e4e", padding: "4px 10px", borderRadius: 100 }}>{t.replace(/_/g, " ")}</span>)}</div>}
-                      {current.google_rating && <div style={{ fontSize: "0.82rem", color: "#6b5e4e" }}>⭐ {current.google_rating}{current.google_review_count ? ` · ${current.google_review_count.toLocaleString()} reviews` : ""}</div>}
+                    <div style={{ padding: "18px 20px 28px", scrollSnapAlign: "start", background: "#BAADE8", color: "#8B162B" }}>
+                      {current.comment && <div style={{ fontSize: "0.95rem", lineHeight: 1.6, marginBottom: 14, fontStyle: "italic" }}>"{current.comment}"</div>}
+                      {vibeDesc && <div style={{ fontSize: "0.88rem", fontWeight: 700, marginBottom: 14 }}>{vibeDesc}</div>}
+                      {current.google_rating && <div style={{ fontSize: "0.82rem", opacity: 0.8 }}>⭐ {current.google_rating}{current.google_review_count ? ` · ${current.google_review_count.toLocaleString()} reviews` : ""}</div>}
                     </div>
                   </div>
                 );
