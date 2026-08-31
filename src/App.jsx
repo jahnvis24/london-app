@@ -1074,13 +1074,22 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
       .sort((a, b) => b.score - a.score)
       .slice(0, 3);
 
-    if (swappingIdx === stopIdx) {
-      setSwappingIdx(null);
+    if (candidates.length === 0) {
+      setSwappingIdx(stopIdx);
       setAlternatives([]);
+      return;
+    }
+    // If already swapping this stop, cycle to the next alternative
+    if (swappingIdx === stopIdx && alternatives.length > 0) {
+      const curName = result.stops[stopIdx].name.toLowerCase();
+      const curIdx = alternatives.findIndex(a => a.name.toLowerCase() === curName);
+      const nextIdx = (curIdx + 1) % alternatives.length;
+      swapVenue(alternatives[nextIdx], true);
       return;
     }
     setAlternatives(candidates);
     setSwappingIdx(stopIdx);
+    swapVenue(candidates[0], true);
   }
 
   function recalcTotalCost(stops) {
@@ -1118,10 +1127,11 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
     return updated;
   }
 
-  async function swapVenue(alt) {
+  async function swapVenue(alt, keepCycling) {
+    const idx = swappingIdx;
     const newStops = [...result.stops];
-    newStops[swappingIdx] = {
-      ...newStops[swappingIdx],
+    newStops[idx] = {
+      ...newStops[idx],
       name: alt.name,
       emoji: alt.emoji,
       type: alt.type,
@@ -1132,8 +1142,7 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
     };
     const newTotal = recalcTotalCost(newStops);
     onUpdateResult({ ...result, stops: newStops, ...(newTotal ? { total_cost_estimate: newTotal } : {}) });
-    setSwappingIdx(null);
-    setAlternatives([]);
+    if (!keepCycling) { setSwappingIdx(null); setAlternatives([]); }
     const withTravel = await recalcTravel(newStops);
     onUpdateResult({ ...result, stops: withTravel, ...(newTotal ? { total_cost_estimate: newTotal } : {}) });
   }
@@ -1180,8 +1189,8 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
           </div>
           <div className="stops-wrap">
             {(result.stops || []).map((stop, idx) => (
-              <div key={idx}>
-                <div className="stop" style={stop._saved ? { outline: "2px solid #726A4E", outlineOffset: -2, borderRadius: 16 } : undefined}>
+              <div key={idx + "-" + stop.name}>
+                <div className="stop" style={{ ...(stop._saved ? { outline: "2px solid #726A4E", outlineOffset: -2, borderRadius: 16 } : {}), animation: swappingIdx === idx ? "cardSwap 0.25s ease" : undefined }}>
                   <div className="stop-inner" onClick={() => { setSwappingIdx(null); setAlternatives([]); window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(stop.name + " London")}`, "_blank"); }} style={{ cursor: "pointer" }}>
                     <div className="stop-top">
                       <div className="stop-emoji-wrap">{stop.emoji}</div>
@@ -1207,26 +1216,10 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
                         <span key={ci} className="stop-pill" style={{ background: "#f3e8ff", color: "#7c3aed" }}>💫 {celeb}'s fav</span>
                       ))}
                     </div>
-                    <button onClick={() => findAlternatives(idx)} style={{ border: "none", background: "none", color: "#726A4E", fontSize: "0.72rem", fontWeight: 500, cursor: "pointer", fontFamily: "inherit", padding: "2px 0" }}>↻ Swap</button>
-                    {(result.stops || []).length > 2 && <button onClick={() => removeStop(idx)} style={{ border: "none", background: "none", color: "#DD4124", fontSize: "0.72rem", fontWeight: 500, cursor: "pointer", fontFamily: "inherit", padding: "2px 0" }}>× Remove</button>}
+                    <button onClick={() => findAlternatives(idx)} style={{ border: "none", background: "#726A4E", color: "#fff", fontSize: "0.72rem", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", padding: "5px 12px", borderRadius: 100 }}>↻ Swap</button>
                   </div>
-                  {swappingIdx === idx && alternatives.length > 0 && (
-                    <div style={{ padding: "0.75rem 1.1rem", borderTop: "1px solid #e8e2d8", background: "#f5f0e8" }}>
-                      <div style={{ fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "#7a7062", marginBottom: "0.5rem", fontWeight: 500 }}>Swap with...</div>
-                      {alternatives.map((alt, ai) => (
-                        <div key={ai} onClick={() => swapVenue(alt)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "0.5rem 0", borderBottom: ai < alternatives.length - 1 ? "1px solid #e8e2d8" : "none", cursor: "pointer" }}>
-                          <span style={{ fontSize: "1.1rem" }}>{alt.emoji}</span>
-                          <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: "0.82rem", fontWeight: 500, color: "#1c1c1a" }}>{alt.name}</div>
-                            <div style={{ fontSize: "0.7rem", color: "#7a7062" }}>{alt.type} {alt.google_rating ? `· ⭐ ${alt.google_rating}` : ""}</div>
-                          </div>
-                        </div>
-                      ))}
-                      <button onClick={() => { setSwappingIdx(null); setAlternatives([]); }} style={{ border: "none", background: "none", color: "#7a7062", fontSize: "0.72rem", cursor: "pointer", fontFamily: "inherit", marginTop: "0.4rem" }}>Cancel</button>
-                    </div>
-                  )}
                   {swappingIdx === idx && alternatives.length === 0 && (
-                    <div style={{ padding: "0.5rem 1.1rem", borderTop: "1px solid #e8e2d8", fontSize: "0.75rem", color: "#7a7062" }}>No alternatives found for this stop type.</div>
+                    <div style={{ padding: "0.5rem 1.1rem", borderTop: "1px solid #e8e2d8", fontSize: "0.75rem", color: "#7a7062" }}>No alternatives found for this stop.</div>
                   )}
                   {stop.why_it_fits && <div className="why-fit">↳ {stop.why_it_fits}</div>}
                 </div>
@@ -3948,6 +3941,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
         )}
         {saves.length > 0 && savedView === "folders" && openFolder && (
           <>
+            <div style={{ display: "flex", justifyContent: "center", padding: "4px 0 0" }}><div style={{ width: 36, height: 4, borderRadius: 2, background: "#ddd8ce" }} /></div>
             <button className="btn-ghost" onClick={() => { setOpenFolder(null); setFocusSpot(null); }} style={{ marginBottom: "0.75rem" }}>← All lists</button>
             {folderSaves.length > 0 && folderSaves.some(s => s.lat && s.lng) && (
               <SpotsMap key={"peek-" + openFolder} saves={folderSaves} listName={openFolder} peek peekHeight={120} onExpand={() => setSavedView("map")} />
@@ -5973,10 +5967,11 @@ export default function App() {
 
         {activeTab === "plans" && !showViewingPlan && <MyPlansScreen plans={plans} dbVenues={dbVenues} onViewPlan={(plan) => setViewingPlan(plan)} onNewPlan={() => { setActiveTab("home"); startQuiz(); }} onSchedule={(i, date) => setPlans(prev => { const u = prev.map((p, idx) => idx === i ? { ...p, scheduledDate: date || null } : p); localStorage.setItem("cl_plans", JSON.stringify(u.slice(0, 20))); return u; })} />}
         {showViewingPlan && (
-          <div>
-            <button className="btn-ghost" onClick={() => setViewingPlan(null)} style={{ paddingTop: "1.5rem" }}>← My Plans</button>
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.42)", zIndex: 1200, display: "flex", alignItems: "flex-end", justifyContent: "center", animation: "fadeIn 0.2s" }}><div style={{ width: "100%", maxWidth: 420, background: "#fff", borderRadius: "22px 22px 0 0", maxHeight: "95vh", overflowY: "auto", animation: "cardIn 0.25s ease" }}>
+            <div style={{ display: "flex", justifyContent: "center", padding: "8px 0 0" }}><div style={{ width: 36, height: 4, borderRadius: 2, background: "#ddd8ce" }} /></div>
+            <button className="btn-ghost" onClick={() => setViewingPlan(null)} style={{ paddingTop: "0.75rem" }}>← My Plans</button>
             <ResultScreen result={viewingPlan.result} times={viewingPlan.times} ans={viewingPlan.ans} onRestart={() => setViewingPlan(null)} onNewPlan={() => { setViewingPlan(null); setActiveTab("home"); startQuiz(); }} dbVenues={dbVenues} onUpdateResult={(r) => setViewingPlan(p => ({ ...p, result: r }))} onShare={setShareItem} onRate={() => setRatingPlan(viewingPlan)} scheduledDate={viewingPlan.scheduledDate} onSchedule={(date) => { setPlans(prev => { const u = prev.map(x => x.id === viewingPlan.id ? { ...x, scheduledDate: date || null } : x); localStorage.setItem("cl_plans", JSON.stringify(u.slice(0, 20))); return u; }); goToCalendar("It's on your calendar! 📅"); }} />
-          </div>
+          </div></div>
         )}
 
         {activeTab === "discover" && <DiscoverScreen preferences={preferences} dbVenues={dbVenues} onStart={startQuiz} />}
