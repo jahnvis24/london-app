@@ -706,6 +706,27 @@ function useDragDismiss(onClose) {
   return { sheetRef, scrimRef };
 }
 
+function useSwipeRight(onBack) {
+  const ref = useRef(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    let startX = 0, startY = 0, tracking = false;
+    const onStart = (e) => { startX = e.touches[0].clientX; startY = e.touches[0].clientY; tracking = startX < 40; };
+    const onEnd = (e) => {
+      if (!tracking) return;
+      tracking = false;
+      const dx = e.changedTouches[0].clientX - startX;
+      const dy = Math.abs(e.changedTouches[0].clientY - startY);
+      if (dx > 80 && dy < 80) onBack();
+    };
+    el.addEventListener("touchstart", onStart, { passive: true });
+    el.addEventListener("touchend", onEnd, { passive: true });
+    return () => { el.removeEventListener("touchstart", onStart); el.removeEventListener("touchend", onEnd); };
+  }, [onBack]);
+  return ref;
+}
+
 function DraggableSheet({ onClose, maxHeight = "95vh", children }) {
   const { sheetRef, scrimRef } = useDragDismiss(onClose);
   return (
@@ -2994,6 +3015,7 @@ function SavedScreen({ user, onBuildPlan, onShare, onBarCrawl, openSignal, calen
   }, [preview.length, tourStep]);
   const [mName, setMName] = useState(""); const [mCat, setMCat] = useState(""); const [mNotes, setMNotes] = useState("");
   const [focusSpot, setFocusSpot] = useState(null); // tapping a list card pans the map to it
+  const folderSwipeRef = useSwipeRight(() => { setOpenFolder(null); setFocusSpot(null); });
   const [mapCat, setMapCat] = useState(""); // Map tab: "" = all, else a category scope
 
   // Collapse the capture controls whenever the user switches Folders/Map/Calendar.
@@ -3936,6 +3958,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
                         )}
                       </div>
                     </div>
+                    {items.length > 0 && <button onClick={(e) => { e.stopPropagation(); setDiscoverMode(true); }} style={{ display: "block", width: "100%", padding: "7px 10px", border: "none", borderTop: "1px solid #e8e2d8", background: "none", fontSize: "0.7rem", fontWeight: 600, color: "#726A4E", cursor: "pointer", textAlign: "center" }}>Find more like this →</button>}
                     <button onClick={(e) => { e.stopPropagation(); setMenuFolder(menuFolder === f ? null : f); }} style={{ position: "absolute", top: 6, right: 6, width: 26, height: 26, borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.92)", cursor: "pointer", fontSize: "0.95rem", lineHeight: 1, boxShadow: "0 1px 4px rgba(0,0,0,0.25)" }}>⋯</button>
                     {menuFolder === f && (
                       <div style={{ position: "absolute", top: 34, right: 6, background: "#fff", borderRadius: 10, boxShadow: "0 4px 16px rgba(0,0,0,0.12)", overflow: "hidden", zIndex: 10, minWidth: 110 }}>
@@ -3954,8 +3977,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
           </>
         )}
         {saves.length > 0 && savedView === "folders" && openFolder && (
-          <>
-            <div style={{ display: "flex", justifyContent: "center", padding: "4px 0 0" }}><div style={{ width: 36, height: 4, borderRadius: 2, background: "#ddd8ce" }} /></div>
+          <div ref={folderSwipeRef}>
             <button className="btn-ghost" onClick={() => { setOpenFolder(null); setFocusSpot(null); }} style={{ marginBottom: "0.75rem" }}>← All lists</button>
             {folderSaves.length > 0 && folderSaves.some(s => s.lat && s.lng) && (
               <SpotsMap key={"peek-" + openFolder} saves={folderSaves} listName={openFolder} peek peekHeight={120} onExpand={() => setSavedView("map")} />
@@ -3974,7 +3996,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
               <button className="btn btn-teal" style={{ marginTop: "0.25rem" }} onClick={() => onBarCrawl(folderSaves)}>🍸 Planning a bar crawl? Tap here!</button>
             )}
             {folderSaves.length > 0 && <button className="btn btn-teal" style={{ marginTop: "0.25rem" }} onClick={() => onBuildPlan(folderSaves)}>Build plan from {openFolder} ✦</button>}
-          </>
+          </div>
         )}
         {saves.length === 0 && preview.length === 0 && (
           <div className="empty-state">
