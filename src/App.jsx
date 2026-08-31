@@ -680,7 +680,7 @@ function useDragDismiss(onClose) {
       const dy = Math.max(0, currentY - startY);
       if (dy > 0) {
         el.style.transform = `translateY(${dy}px)`;
-        if (scrimRef.current) scrimRef.current.style.opacity = Math.max(0, 1 - dy / 400);
+        if (scrimRef.current) scrimRef.current.style.opacity = Math.max(0.3, 1 - dy / 800);
       }
     };
     const onEnd = () => {
