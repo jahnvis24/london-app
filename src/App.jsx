@@ -711,18 +711,40 @@ function useSwipeRight(onBack) {
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    let startX = 0, startY = 0, tracking = false;
-    const onStart = (e) => { startX = e.touches[0].clientX; startY = e.touches[0].clientY; tracking = startX < 40; };
+    let startX = 0, startY = 0, dragging = false;
+    const onStart = (e) => {
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      if (startX < 40) { dragging = true; el.style.transition = "none"; }
+    };
+    const onMove = (e) => {
+      if (!dragging) return;
+      const dx = e.touches[0].clientX - startX;
+      const dy = Math.abs(e.touches[0].clientY - startY);
+      if (dy > 60) { dragging = false; el.style.transform = ""; return; }
+      if (dx > 0) {
+        el.style.transform = `translateX(${dx}px)`;
+        el.style.opacity = Math.max(0.3, 1 - dx / 400);
+      }
+    };
     const onEnd = (e) => {
-      if (!tracking) return;
-      tracking = false;
+      if (!dragging) return;
+      dragging = false;
       const dx = e.changedTouches[0].clientX - startX;
-      const dy = Math.abs(e.changedTouches[0].clientY - startY);
-      if (dx > 80 && dy < 80) onBack();
+      el.style.transition = "transform 0.25s ease, opacity 0.25s ease";
+      if (dx > 100) {
+        el.style.transform = "translateX(110%)";
+        el.style.opacity = "0";
+        setTimeout(onBack, 250);
+      } else {
+        el.style.transform = "translateX(0)";
+        el.style.opacity = "1";
+      }
     };
     el.addEventListener("touchstart", onStart, { passive: true });
+    el.addEventListener("touchmove", onMove, { passive: true });
     el.addEventListener("touchend", onEnd, { passive: true });
-    return () => { el.removeEventListener("touchstart", onStart); el.removeEventListener("touchend", onEnd); };
+    return () => { el.removeEventListener("touchstart", onStart); el.removeEventListener("touchmove", onMove); el.removeEventListener("touchend", onEnd); };
   }, [onBack]);
   return ref;
 }
@@ -1234,7 +1256,7 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
                           <span className="stop-time">{stop.time}</span>
                           <span className="stop-dot" />
                           <span className="stop-type">{stop.type}</span>
-                          {stop.google_rating && <><span className="stop-dot" /><span className="stop-type">⭐ {stop.google_rating}</span></>}
+                          {stop.google_rating && <><span className="stop-dot" /><span style={{ fontSize: "0.68rem", fontWeight: 700, color: "#1c1c1a", letterSpacing: "0.02em" }}>⭐ {stop.google_rating}</span></>}
                         </div>
                         <div className="stop-name">{stop.name}</div>
                         <div className="stop-hook">{stop.hook}</div>
@@ -3958,7 +3980,6 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
                         )}
                       </div>
                     </div>
-                    {items.length > 0 && <button onClick={(e) => { e.stopPropagation(); setDiscoverMode(true); }} style={{ display: "block", width: "100%", padding: "7px 10px", border: "none", borderTop: "1px solid #e8e2d8", background: "none", fontSize: "0.7rem", fontWeight: 600, color: "#726A4E", cursor: "pointer", textAlign: "center" }}>Find more like this →</button>}
                     <button onClick={(e) => { e.stopPropagation(); setMenuFolder(menuFolder === f ? null : f); }} style={{ position: "absolute", top: 6, right: 6, width: 26, height: 26, borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.92)", cursor: "pointer", fontSize: "0.95rem", lineHeight: 1, boxShadow: "0 1px 4px rgba(0,0,0,0.25)" }}>⋯</button>
                     {menuFolder === f && (
                       <div style={{ position: "absolute", top: 34, right: 6, background: "#fff", borderRadius: 10, boxShadow: "0 4px 16px rgba(0,0,0,0.12)", overflow: "hidden", zIndex: 10, minWidth: 110 }}>
@@ -3996,6 +4017,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
               <button className="btn btn-teal" style={{ marginTop: "0.25rem" }} onClick={() => onBarCrawl(folderSaves)}>🍸 Planning a bar crawl? Tap here!</button>
             )}
             {folderSaves.length > 0 && <button className="btn btn-teal" style={{ marginTop: "0.25rem" }} onClick={() => onBuildPlan(folderSaves)}>Build plan from {openFolder} ✦</button>}
+            {folderSaves.length > 0 && <button className="btn-outline" style={{ marginTop: "0.5rem" }} onClick={() => setDiscoverMode(true)}>Find similar spots →</button>}
           </div>
         )}
         {saves.length === 0 && preview.length === 0 && (
