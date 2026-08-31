@@ -4164,9 +4164,11 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
                         <div style={{ position: "absolute", bottom: 6, left: "50%", transform: "translateX(-50%)", fontSize: "0.6rem", color: "rgba(255,255,255,0.5)" }}>tap to read more</div>
                       </div>
                       <div style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)", position: "absolute", inset: 0, background: "#B8D8E8", color: "#8B162B", padding: "1.5rem", overflowY: "auto", display: "flex", flexDirection: "column", justifyContent: "center" }}>
-                        <div style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "1.4rem", lineHeight: 1.2, marginBottom: 14 }}>{current.name}</div>
-                        {current.comment && <div style={{ fontSize: "0.95rem", lineHeight: 1.6, marginBottom: 14, fontStyle: "italic" }}>"{current.comment}"</div>}
-                        {vibeDesc && <div style={{ fontSize: "0.88rem", fontWeight: 700, marginBottom: 14 }}>{vibeDesc}</div>}
+                        <div style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "1.4rem", lineHeight: 1.2, marginBottom: 6 }}>{current.name}</div>
+                        {(current.area || current.zone) && <div style={{ fontSize: "0.8rem", opacity: 0.7, marginBottom: 14 }}>📍 {current.area || current.zone}</div>}
+                        {current.comment && <div style={{ fontSize: "0.92rem", lineHeight: 1.6, marginBottom: 14 }}>{current.comment}</div>}
+                        {vibeDesc && <div style={{ fontSize: "0.86rem", fontWeight: 700, marginBottom: 14 }}>{vibeDesc}</div>}
+                        {current.price && <div style={{ fontSize: "0.82rem", marginBottom: 6 }}>💰 {current.price}</div>}
                         {current.google_rating && <div style={{ fontSize: "0.82rem", opacity: 0.7 }}>⭐ {current.google_rating}{current.google_review_count ? ` · ${current.google_review_count.toLocaleString()} reviews` : ""}</div>}
                         <div style={{ fontSize: "0.68rem", opacity: 0.5, marginTop: 18, textAlign: "center" }}>tap to flip back</div>
                       </div>
