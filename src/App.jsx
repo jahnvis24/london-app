@@ -667,17 +667,21 @@ function useDragDismiss(onClose) {
     const el = sheetRef.current;
     if (!el) return;
     let startY = 0, currentY = 0, dragging = false;
+    let startX = 0;
     const onStart = (e) => {
       if (el.scrollTop > 5) return;
       startY = e.touches[0].clientY;
+      startX = e.touches[0].clientX;
       currentY = startY;
       dragging = true;
       el.style.transition = "none";
     };
     const onMove = (e) => {
       if (!dragging) return;
+      const dx = Math.abs(e.touches[0].clientX - startX);
+      const dy = e.touches[0].clientY - startY;
+      if (dx > Math.abs(dy)) { dragging = false; return; }
       currentY = e.touches[0].clientY;
-      const dy = Math.max(0, currentY - startY);
       if (dy > 0) {
         e.preventDefault();
         el.style.transform = `translateY(${dy}px)`;
