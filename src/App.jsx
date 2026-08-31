@@ -4144,31 +4144,32 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
             <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 1.25rem", position: "relative" }}>
               <div style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", fontSize: "1.2rem", color: "rgba(255,255,255,0.2)", pointerEvents: "none" }}>‹</div>
               <div style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", fontSize: "1.2rem", color: "rgba(255,255,255,0.2)", pointerEvents: "none" }}>›</div>
-              <div key={discoverIdx}
-                onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
-                style={{ width: "100%", maxWidth: 360, borderRadius: 16, overflow: "hidden", boxShadow: "0 8px 28px rgba(0,0,0,0.22)", position: "relative", cursor: "pointer", perspective: "800px" }}>
-                <div onClick={(e) => { const el = e.currentTarget; el.style.transition = "transform 0.5s ease"; el.style.transform = el.style.transform === "rotateY(180deg)" ? "rotateY(0)" : "rotateY(180deg)"; }}
-                  style={{ transformStyle: "preserve-3d", transition: "transform 0.5s ease", position: "relative" }}>
-                  <div style={{ backfaceVisibility: "hidden", height: 420, position: "relative" }}>
-                    <img src={current.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                    <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 50%, rgba(0,0,0,0.7))" }} />
-                    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "20px" }}>
-                      <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "#fff", textShadow: "0 2px 8px rgba(0,0,0,0.5)", lineHeight: 1.15 }}>{current.name}</div>
-                      <div style={{ fontSize: "0.82rem", color: "rgba(255,255,255,0.88)", marginTop: 5 }}>{[current.category ? cap(normaliseCategory(current.category)) : null, current.area, current.google_rating ? `⭐ ${current.google_rating}` : null].filter(Boolean).join(" · ")}</div>
+              {(() => {
+                const vibeMap = { chill: "Laid-back vibes", romantic: "Date-night worthy", chaotic: "Beautifully chaotic", cultural: "A proper cultural hit", fancy: "Dress up for this one", hidden_gems: "One the locals keep quiet", social: "Bring the whole crew", solo: "Perfect solo mission", foodie: "Serious food credentials", aesthetic: "Looks incredible", iconic: "A London icon", underground: "Under the radar", outdoor: "Fresh air guaranteed" };
+                const vibeDesc = (current.vibe_tags || []).slice(0, 2).map(t => vibeMap[t] || t.replace(/_/g, " ")).join(". ") + ".";
+                const catEmoji = { restaurant: "🍽️", bar: "🍸", cafe: "☕", market: "🛍️", experience: "✨", outdoor: "🌿", museum: "🏛️", gallery: "🎨", nightlife: "🌙" };
+                return (
+                  <div key={discoverIdx}
+                    onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
+                    style={{ width: "100%", maxWidth: 360, borderRadius: 16, overflow: "hidden", boxShadow: "0 8px 28px rgba(0,0,0,0.22)", position: "relative", background: "#fff", maxHeight: "75vh", overflowY: "auto", scrollSnapType: "y mandatory" }}>
+                    <div style={{ height: 380, position: "relative", scrollSnapAlign: "start", flexShrink: 0 }}>
+                      <img src={current.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 50%, rgba(0,0,0,0.7))" }} />
+                      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "18px" }}>
+                        <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "#fff", textShadow: "0 2px 8px rgba(0,0,0,0.5)", lineHeight: 1.15 }}>{current.name}</div>
+                        <div style={{ fontSize: "0.82rem", color: "rgba(255,255,255,0.88)", marginTop: 5 }}>{[catEmoji[normaliseCategory(current.category)] || "✨", current.area, current.google_rating ? `⭐ ${current.google_rating}` : null, current.price].filter(Boolean).join(" · ")}</div>
+                      </div>
+                      <div style={{ position: "absolute", bottom: 6, left: "50%", transform: "translateX(-50%)", fontSize: "0.6rem", color: "rgba(255,255,255,0.5)" }}>scroll for more ↓</div>
+                    </div>
+                    <div style={{ padding: "16px 18px 24px", scrollSnapAlign: "start" }}>
+                      {current.comment && <div style={{ fontSize: "0.92rem", color: "#1c1c1a", lineHeight: 1.55, marginBottom: 12, fontStyle: "italic" }}>"{current.comment}"</div>}
+                      {vibeDesc && <div style={{ fontSize: "0.84rem", color: "#726A4E", fontWeight: 600, marginBottom: 12 }}>{vibeDesc}</div>}
+                      {(current.vibe_tags || []).length > 0 && <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>{current.vibe_tags.slice(0, 5).map((t, i) => <span key={i} style={{ fontSize: "0.7rem", background: "#f5f0e8", color: "#6b5e4e", padding: "4px 10px", borderRadius: 100 }}>{t.replace(/_/g, " ")}</span>)}</div>}
+                      {current.google_rating && <div style={{ fontSize: "0.82rem", color: "#6b5e4e" }}>⭐ {current.google_rating}{current.google_review_count ? ` · ${current.google_review_count.toLocaleString()} reviews` : ""}</div>}
                     </div>
                   </div>
-                  <div style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)", position: "absolute", inset: 0, background: "#fff", padding: "1.25rem", overflowY: "auto" }}>
-                    <div style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "1.3rem", color: "#1c1c1a", marginBottom: 8 }}>{current.name}</div>
-                    <div style={{ fontSize: "0.78rem", color: "#6b5e4e", marginBottom: 12 }}>{[current.category ? cap(normaliseCategory(current.category)) : null, current.zone, current.area].filter(Boolean).join(" · ")}</div>
-                    {current.google_rating && <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "#1c1c1a", marginBottom: 10 }}>⭐ {current.google_rating}{current.google_review_count ? ` (${current.google_review_count} reviews)` : ""}</div>}
-                    {current.comment && <div style={{ fontSize: "0.85rem", color: "#4a4438", lineHeight: 1.5, marginBottom: 12 }}>{current.comment}</div>}
-                    {current.price && <div style={{ fontSize: "0.82rem", color: "#6b5e4e", marginBottom: 8 }}>💰 {current.price}</div>}
-                    {current.address && <div style={{ fontSize: "0.78rem", color: "#7a7062", marginBottom: 8 }}>📍 {current.address}</div>}
-                    {(current.vibe_tags || []).length > 0 && <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 8 }}>{current.vibe_tags.slice(0, 6).map((t, i) => <span key={i} style={{ fontSize: "0.66rem", background: "#f5f0e8", color: "#6b5e4e", padding: "3px 9px", borderRadius: 100 }}>{t}</span>)}</div>}
-                    <div style={{ fontSize: "0.68rem", color: "#7a7062", marginTop: 16, textAlign: "center" }}>Tap card to flip back</div>
-                  </div>
-                </div>
-              </div>
+                );
+              })()}
             </div>
 
             <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 28, padding: "16px 0 max(28px, env(safe-area-inset-bottom))" }}>
