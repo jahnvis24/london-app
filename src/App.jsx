@@ -4133,7 +4133,25 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
           setTimeout(() => { card.style.transition = ""; }, 300);
         }
 
-        const [flipped, setFlipped] = [false, () => {}]; // placeholder — real state is via cardFlip below
+        const [cardFace, setCardFace] = useState(0); // 0=photo, 1=description, 2=gallery
+        const [extraPhotos, setExtraPhotos] = useState([]);
+        const [photosLoading, setPhotosLoading] = useState(false);
+        useEffect(() => { setCardFace(0); setExtraPhotos([]); }, [discoverIdx]);
+        async function loadPhotos() {
+          if (extraPhotos.length || !current.google_place_id) return;
+          setPhotosLoading(true);
+          try {
+            const r = await fetch("/api/saved-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool: "photos", place_id: current.google_place_id }) });
+            const j = await r.json();
+            if (j.found) setExtraPhotos(j.urls || []);
+          } catch {}
+          setPhotosLoading(false);
+        }
+        function tapCard() {
+          if (cardFace === 0) setCardFace(1);
+          else if (cardFace === 1) { setCardFace(2); loadPhotos(); }
+          else setCardFace(0);
+        }
         return (
           <div style={{ position: "fixed", inset: 0, background: "#1c1c1a", zIndex: 1300, display: "flex", flexDirection: "column" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "max(1.25rem, env(safe-area-inset-top)) 1.25rem 0" }}>
@@ -4151,10 +4169,10 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
                 return (
                   <div key={discoverIdx}
                     onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
-                    style={{ width: "100%", maxWidth: 360, borderRadius: 16, overflow: "hidden", boxShadow: "0 8px 28px rgba(0,0,0,0.22)", position: "relative", cursor: "pointer", perspective: "800px" }}>
-                    <div onClick={(e) => { const el = e.currentTarget; el.style.transition = "transform 0.5s ease"; el.style.transform = el.style.transform === "rotateY(180deg)" ? "rotateY(0)" : "rotateY(180deg)"; }}
-                      style={{ transformStyle: "preserve-3d", transition: "transform 0.5s ease", position: "relative" }}>
-                      <div style={{ backfaceVisibility: "hidden", height: 420, position: "relative" }}>
+                    onClick={tapCard}
+                    style={{ width: "100%", maxWidth: 360, height: 420, borderRadius: 16, overflow: "hidden", boxShadow: "0 8px 28px rgba(0,0,0,0.22)", position: "relative", cursor: "pointer" }}>
+                    {cardFace === 0 && (
+                      <div style={{ height: "100%", position: "relative", animation: "fadeIn 0.3s" }}>
                         <img src={current.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 50%, rgba(0,0,0,0.7))" }} />
                         <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "18px" }}>
@@ -4163,16 +4181,36 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
                         </div>
                         <div style={{ position: "absolute", bottom: 6, left: "50%", transform: "translateX(-50%)", fontSize: "0.6rem", color: "rgba(255,255,255,0.5)" }}>tap to read more</div>
                       </div>
-                      <div style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)", position: "absolute", inset: 0, background: "#B8D8E8", color: "#8B162B", padding: "1.5rem", overflowY: "auto", display: "flex", flexDirection: "column", justifyContent: "center" }}>
+                    )}
+                    {cardFace === 1 && (
+                      <div style={{ height: "100%", background: "#B8D8E8", color: "#8B162B", padding: "1.5rem", overflowY: "auto", display: "flex", flexDirection: "column", justifyContent: "center", animation: "fadeIn 0.3s" }}>
                         <div style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "1.4rem", lineHeight: 1.2, marginBottom: 6 }}>{current.name}</div>
                         {(current.area || current.zone) && <div style={{ fontSize: "0.8rem", opacity: 0.7, marginBottom: 14 }}>📍 {current.area || current.zone}</div>}
                         {current.comment && <div style={{ fontSize: "0.92rem", lineHeight: 1.6, marginBottom: 14 }}>{current.comment}</div>}
                         {vibeDesc && <div style={{ fontSize: "0.86rem", fontWeight: 700, marginBottom: 14 }}>{vibeDesc}</div>}
                         {current.price && <div style={{ fontSize: "0.82rem", marginBottom: 6 }}>💰 {current.price}</div>}
                         {current.google_rating && <div style={{ fontSize: "0.82rem", opacity: 0.7 }}>⭐ {current.google_rating}{current.google_review_count ? ` · ${current.google_review_count.toLocaleString()} reviews` : ""}</div>}
-                        <div style={{ fontSize: "0.68rem", opacity: 0.5, marginTop: 18, textAlign: "center" }}>tap to flip back</div>
+                        <div style={{ fontSize: "0.68rem", opacity: 0.5, marginTop: 18, textAlign: "center" }}>tap for photos</div>
                       </div>
-                    </div>
+                    )}
+                    {cardFace === 2 && (
+                      <div style={{ height: "100%", background: "#1c1c1a", overflowY: "auto", animation: "fadeIn 0.3s" }}>
+                        {photosLoading && <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.6)", fontSize: "0.85rem" }}>Loading photos…</div>}
+                        {!photosLoading && extraPhotos.length === 0 && <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                          <img src={current.photo_url} alt="" style={{ width: "100%", height: "60%", objectFit: "cover" }} />
+                          <div style={{ color: "rgba(255,255,255,0.5)", fontSize: "0.78rem" }}>No extra photos available</div>
+                          <div style={{ color: "rgba(255,255,255,0.3)", fontSize: "0.65rem" }}>tap to go back</div>
+                        </div>}
+                        {!photosLoading && extraPhotos.length > 0 && (
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
+                            {[current.photo_url, ...extraPhotos].map((url, i) => (
+                              <img key={i} src={url} alt="" style={{ width: "100%", height: 140, objectFit: "cover" }} />
+                            ))}
+                          </div>
+                        )}
+                        {!photosLoading && extraPhotos.length > 0 && <div style={{ textAlign: "center", padding: "10px", color: "rgba(255,255,255,0.4)", fontSize: "0.65rem" }}>tap to go back</div>}
+                      </div>
+                    )}
                   </div>
                 );
               })()}
