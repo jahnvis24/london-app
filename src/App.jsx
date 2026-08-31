@@ -1213,6 +1213,7 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
                           <span className="stop-time">{stop.time}</span>
                           <span className="stop-dot" />
                           <span className="stop-type">{stop.type}</span>
+                          {stop.google_rating && <><span className="stop-dot" /><span className="stop-type">⭐ {stop.google_rating}</span></>}
                         </div>
                         <div className="stop-name">{stop.name}</div>
                         <div className="stop-hook">{stop.hook}</div>
@@ -1223,7 +1224,6 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
                     <div className="stop-pills-row">
                       {stop._saved && <span className="stop-pill" style={{ background: "#eef3d8", color: "#726A4E", fontWeight: 700 }}>★ Your saved spot</span>}
                       {stop.price_range && <span className="stop-pill">💰 {stop.price_range}</span>}
-                      {stop.google_rating && <span className="stop-pill">⭐ {stop.google_rating}</span>}
                       {stop.area && <span className="stop-pill">📍 {stop.area}</span>}
                       {stop.plant_friendly && <span className="stop-pill" style={{ background: "#ecfdf5", color: "#059669" }}>🌱 Plant-friendly</span>}
                       {stop.celebrity_tags && [...new Set(stop.celebrity_tags)].map((celeb, ci) => (
@@ -5982,7 +5982,6 @@ export default function App() {
         {activeTab === "plans" && !showViewingPlan && <MyPlansScreen plans={plans} dbVenues={dbVenues} onViewPlan={(plan) => setViewingPlan(plan)} onNewPlan={() => { setActiveTab("home"); startQuiz(); }} onSchedule={(i, date) => setPlans(prev => { const u = prev.map((p, idx) => idx === i ? { ...p, scheduledDate: date || null } : p); localStorage.setItem("cl_plans", JSON.stringify(u.slice(0, 20))); return u; })} />}
         {showViewingPlan && (
           <DraggableSheet onClose={() => setViewingPlan(null)}>
-            <button className="btn-ghost" onClick={() => setViewingPlan(null)} style={{ paddingTop: "0.75rem" }}>← My Plans</button>
             <ResultScreen result={viewingPlan.result} times={viewingPlan.times} ans={viewingPlan.ans} onRestart={() => setViewingPlan(null)} onNewPlan={() => { setViewingPlan(null); setActiveTab("home"); startQuiz(); }} dbVenues={dbVenues} onUpdateResult={(r) => setViewingPlan(p => ({ ...p, result: r }))} onShare={setShareItem} onRate={() => setRatingPlan(viewingPlan)} scheduledDate={viewingPlan.scheduledDate} onSchedule={(date) => { setPlans(prev => { const u = prev.map(x => x.id === viewingPlan.id ? { ...x, scheduledDate: date || null } : x); localStorage.setItem("cl_plans", JSON.stringify(u.slice(0, 20))); return u; }); goToCalendar("It's on your calendar! 📅"); }} />
           </DraggableSheet>
         )}
