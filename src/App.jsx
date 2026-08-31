@@ -681,8 +681,7 @@ function useDragDismiss(onClose) {
       if (dy > 0) {
         e.preventDefault();
         el.style.transform = `translateY(${dy}px)`;
-        if (scrimRef.current) scrimRef.current.style.opacity = Math.max(0.3, 1 - dy / 800);
-      }
+              }
     };
     const onEnd = () => {
       if (!dragging) return;
@@ -692,11 +691,9 @@ function useDragDismiss(onClose) {
       if (scrimRef.current) scrimRef.current.style.transition = "opacity 0.25s ease";
       if (dy > 120) {
         el.style.transform = "translateY(100%)";
-        if (scrimRef.current) scrimRef.current.style.opacity = "0";
         setTimeout(onClose, 250);
       } else {
         el.style.transform = "translateY(0)";
-        if (scrimRef.current) scrimRef.current.style.opacity = "1";
       }
     };
     el.addEventListener("touchstart", onStart, { passive: true });
