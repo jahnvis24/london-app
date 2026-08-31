@@ -3026,6 +3026,7 @@ function SavedScreen({ user, onBuildPlan, onShare, onBarCrawl, openSignal, calen
   const [captureOpen, setCaptureOpen] = useState(false);
   const [captureTab, setCaptureTab] = useState(null);
   const [discoverMode, setDiscoverMode] = useState(false);
+  const [discoverSeed, setDiscoverSeed] = useState(null);
   const [discoverPairs, setDiscoverPairs] = useState([]);
   const [discoverIdx, setDiscoverIdx] = useState(0);
 
@@ -4034,7 +4035,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
               <button className="btn btn-teal" style={{ marginTop: "0.25rem" }} onClick={() => onBarCrawl(folderSaves)}>🍸 Planning a bar crawl? Tap here!</button>
             )}
             {folderSaves.length > 0 && <button className="btn btn-teal" style={{ marginTop: "0.25rem" }} onClick={() => onBuildPlan(folderSaves)}>Build plan from {openFolder} ✦</button>}
-            {folderSaves.length > 0 && <button className="btn-outline" style={{ marginTop: "0.5rem" }} onClick={() => setDiscoverMode(true)}>Find similar spots →</button>}
+            {folderSaves.length > 0 && <button className="btn-outline" style={{ marginTop: "0.5rem" }} onClick={() => { setDiscoverSeed(folderSaves); setDiscoverMode(true); }}>Find similar spots →</button>}
           </div>
         )}
         {saves.length === 0 && preview.length === 0 && (
@@ -4086,18 +4087,21 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
 
       {discoverMode && (() => {
         if (!discoverPairs.length) {
+          const seedSpots = discoverSeed || saves;
           const savedIds = new Set(saves.map(s => s.id));
-          const savedCats = saves.map(s => (s.category || "").toLowerCase()).filter(Boolean);
-          const savedVibes = saves.flatMap(s => s.vibe_tags || []);
+          const savedCats = seedSpots.map(s => (s.category || "").toLowerCase()).filter(Boolean);
+          const savedVibes = seedSpots.flatMap(s => s.vibe_tags || []);
+          const seedAreas = seedSpots.map(s => (s.zone || s.area || "").toLowerCase()).filter(Boolean);
           const topCats = [...new Map(savedCats.map(c => [c, savedCats.filter(x => x === c).length])).entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(e => e[0]);
-          const topVibes = [...new Set(savedVibes)].slice(0, 5);
+          const topVibes = [...new Set(savedVibes)].slice(0, 8);
           const candidates = (dbVenues || []).filter(v => v.photo_url && v.name && !savedIds.has(v.id));
           const scored = candidates.map(v => {
             let s = 0;
-            if (topCats.includes((v.category || "").toLowerCase())) s += 3;
-            if ((v.vibe_tags || []).some(t => topVibes.includes(t))) s += 2;
+            if (topCats.includes((v.category || "").toLowerCase())) s += 5;
+            if ((v.vibe_tags || []).some(t => topVibes.includes(t))) s += 3;
+            if (seedAreas.includes((v.zone || v.area || "").toLowerCase())) s += 2;
             if (v.google_rating >= 4.3) s += 1;
-            return { ...v, _score: s + Math.random() };
+            return { ...v, _score: s + Math.random() * 0.5 };
           }).sort((a, b) => b._score - a._score).slice(0, 20);
           if (scored.length) { setDiscoverPairs(scored); setDiscoverIdx(0); }
           else { setDiscoverMode(false); return null; }
@@ -4107,7 +4111,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
 
         function advance() {
           if (discoverIdx < discoverPairs.length - 1) setDiscoverIdx(discoverIdx + 1);
-          else { setDiscoverMode(false); setDiscoverPairs([]); loadSaves(); }
+          else { setDiscoverMode(false); setDiscoverPairs([]); setDiscoverSeed(null); loadSaves(); }
         }
         async function saveVenue() {
           haptic(12); blip(660);
@@ -4129,36 +4133,49 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
           setTimeout(() => { card.style.transition = ""; }, 300);
         }
 
+        const [flipped, setFlipped] = [false, () => {}]; // placeholder — real state is via cardFlip below
         return (
-          <div style={{ position: "fixed", inset: 0, background: "#fbfaf8", zIndex: 1300, display: "flex", flexDirection: "column" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1.25rem 1.25rem 0" }}>
-              <button onClick={() => { setDiscoverMode(false); setDiscoverPairs([]); loadSaves(); }} style={{ border: "none", background: "none", fontSize: "0.85rem", fontWeight: 600, color: "#1c1c1a", cursor: "pointer" }}>← Done</button>
-              <div style={{ fontSize: "0.72rem", color: "#7a7062" }}>{discoverIdx + 1} / {discoverPairs.length}</div>
+          <div style={{ position: "fixed", inset: 0, background: "#1c1c1a", zIndex: 1300, display: "flex", flexDirection: "column" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "max(1.25rem, env(safe-area-inset-top)) 1.25rem 0" }}>
+              <button onClick={() => { setDiscoverMode(false); setDiscoverPairs([]); setDiscoverSeed(null); loadSaves(); }} style={{ border: "none", background: "none", fontSize: "0.85rem", fontWeight: 600, color: "rgba(255,255,255,0.8)", cursor: "pointer" }}>← Done</button>
+              <div style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.5)" }}>{discoverIdx + 1} / {discoverPairs.length}</div>
             </div>
-            <div style={{ textAlign: "center", padding: "10px 0 6px", fontSize: "0.74rem", color: "#7a7062" }}>← swipe left to skip · swipe right to save →</div>
 
-            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 1.25rem" }}>
+            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 1.25rem", position: "relative" }}>
+              <div style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", fontSize: "1.2rem", color: "rgba(255,255,255,0.2)", pointerEvents: "none" }}>‹</div>
+              <div style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", fontSize: "1.2rem", color: "rgba(255,255,255,0.2)", pointerEvents: "none" }}>›</div>
               <div key={discoverIdx}
                 onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
-                onClick={() => setDetailSpot(current)}
-                style={{ width: "100%", maxWidth: 360, borderRadius: 16, overflow: "hidden", boxShadow: "0 8px 28px rgba(0,0,0,0.22)", position: "relative", cursor: "pointer" }}>
-                <div style={{ height: 400, position: "relative" }}>
-                  <img src={current.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                  <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 50%, rgba(0,0,0,0.65))" }} />
-                  <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "20px" }}>
-                    <div style={{ fontSize: "1.4rem", fontWeight: 700, color: "#fff", textShadow: "0 2px 8px rgba(0,0,0,0.5)", lineHeight: 1.2 }}>{current.name}</div>
-                    <div style={{ fontSize: "0.82rem", color: "rgba(255,255,255,0.88)", marginTop: 4 }}>{[current.category ? cap(normaliseCategory(current.category)) : null, current.area, current.google_rating ? `⭐ ${current.google_rating}` : null].filter(Boolean).join(" · ")}</div>
-                    {current.comment && <div style={{ fontSize: "0.76rem", color: "rgba(255,255,255,0.75)", marginTop: 6, lineHeight: 1.4 }}>{current.comment.slice(0, 100)}{current.comment.length > 100 ? "…" : ""}</div>}
-                    {current.price && <div style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.7)", marginTop: 4 }}>💰 {current.price}</div>}
+                style={{ width: "100%", maxWidth: 360, borderRadius: 16, overflow: "hidden", boxShadow: "0 8px 28px rgba(0,0,0,0.22)", position: "relative", cursor: "pointer", perspective: "800px" }}>
+                <div onClick={(e) => { const el = e.currentTarget; el.style.transition = "transform 0.5s ease"; el.style.transform = el.style.transform === "rotateY(180deg)" ? "rotateY(0)" : "rotateY(180deg)"; }}
+                  style={{ transformStyle: "preserve-3d", transition: "transform 0.5s ease", position: "relative" }}>
+                  <div style={{ backfaceVisibility: "hidden", height: 420, position: "relative" }}>
+                    <img src={current.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 50%, rgba(0,0,0,0.7))" }} />
+                    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "20px" }}>
+                      <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "#fff", textShadow: "0 2px 8px rgba(0,0,0,0.5)", lineHeight: 1.15 }}>{current.name}</div>
+                      <div style={{ fontSize: "0.82rem", color: "rgba(255,255,255,0.88)", marginTop: 5 }}>{[current.category ? cap(normaliseCategory(current.category)) : null, current.area, current.google_rating ? `⭐ ${current.google_rating}` : null].filter(Boolean).join(" · ")}</div>
+                    </div>
+                  </div>
+                  <div style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)", position: "absolute", inset: 0, background: "#fff", padding: "1.25rem", overflowY: "auto" }}>
+                    <div style={{ fontFamily: "'Aleo', Georgia, serif", fontSize: "1.3rem", color: "#1c1c1a", marginBottom: 8 }}>{current.name}</div>
+                    <div style={{ fontSize: "0.78rem", color: "#6b5e4e", marginBottom: 12 }}>{[current.category ? cap(normaliseCategory(current.category)) : null, current.zone, current.area].filter(Boolean).join(" · ")}</div>
+                    {current.google_rating && <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "#1c1c1a", marginBottom: 10 }}>⭐ {current.google_rating}{current.google_review_count ? ` (${current.google_review_count} reviews)` : ""}</div>}
+                    {current.comment && <div style={{ fontSize: "0.85rem", color: "#4a4438", lineHeight: 1.5, marginBottom: 12 }}>{current.comment}</div>}
+                    {current.price && <div style={{ fontSize: "0.82rem", color: "#6b5e4e", marginBottom: 8 }}>💰 {current.price}</div>}
+                    {current.address && <div style={{ fontSize: "0.78rem", color: "#7a7062", marginBottom: 8 }}>📍 {current.address}</div>}
+                    {(current.vibe_tags || []).length > 0 && <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 8 }}>{current.vibe_tags.slice(0, 6).map((t, i) => <span key={i} style={{ fontSize: "0.66rem", background: "#f5f0e8", color: "#6b5e4e", padding: "3px 9px", borderRadius: 100 }}>{t}</span>)}</div>}
+                    <div style={{ fontSize: "0.68rem", color: "#7a7062", marginTop: 16, textAlign: "center" }}>Tap card to flip back</div>
                   </div>
                 </div>
-                <div style={{ padding: "10px 16px 12px", background: "#fff", textAlign: "center", fontSize: "0.72rem", color: "#7a7062" }}>Tap for more details</div>
               </div>
             </div>
 
-            <div style={{ display: "flex", justifyContent: "center", gap: 24, padding: "16px 0 28px" }}>
-              <button onClick={advance} style={{ width: 56, height: 56, borderRadius: "50%", border: "2px solid #e8e2d8", background: "#fff", fontSize: "1.4rem", cursor: "pointer", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>✕</button>
-              <button onClick={saveVenue} style={{ width: 56, height: 56, borderRadius: "50%", border: "none", background: "#726A4E", color: "#fff", fontSize: "1.4rem", cursor: "pointer", boxShadow: "0 2px 12px rgba(114,106,78,0.3)" }}>♡</button>
+            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 28, padding: "16px 0 max(28px, env(safe-area-inset-bottom))" }}>
+              <button onClick={(e) => { const b = e.currentTarget; b.style.transition = "transform 0.2s ease"; b.style.transform = "scale(1.3)"; setTimeout(() => { b.style.transform = "scale(1)"; }, 200); advance(); }}
+                style={{ width: 60, height: 60, borderRadius: "50%", border: "2px solid rgba(255,255,255,0.2)", background: "rgba(255,255,255,0.08)", fontSize: "1.5rem", cursor: "pointer", color: "#fff", transition: "transform 0.2s" }}>✕</button>
+              <button onClick={(e) => { const b = e.currentTarget; b.style.transition = "transform 0.2s ease, box-shadow 0.2s ease"; b.style.transform = "scale(1.35)"; b.style.boxShadow = "0 0 24px rgba(114,106,78,0.6)"; setTimeout(() => { b.style.transform = "scale(1)"; b.style.boxShadow = "0 2px 12px rgba(114,106,78,0.3)"; }, 250); saveVenue(); }}
+                style={{ width: 60, height: 60, borderRadius: "50%", border: "none", background: "#726A4E", color: "#fff", fontSize: "1.5rem", cursor: "pointer", boxShadow: "0 2px 12px rgba(114,106,78,0.3)", transition: "transform 0.2s, box-shadow 0.2s" }}>♥</button>
             </div>
           </div>
         );
@@ -4770,6 +4787,7 @@ function SharedListsSection({ user }) {
 
 // One bucket list: tickable items, add-from-saves + manual add, members, and an invite link.
 function SharedListView({ list, user, onClose }) {
+  const { sheetRef: slSheetRef, scrimRef: slScrimRef } = useDragDismiss(onClose);
   const [items, setItems] = useState([]);
   const [members, setMembers] = useState([]);
   const [conns, setConns] = useState([]); // your connected friends, to add directly
@@ -4953,7 +4971,8 @@ function SharedListView({ list, user, onClose }) {
   const availableFolders = Object.keys(availableByFolder).sort();
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.42)", zIndex: 1200, display: "flex", alignItems: "flex-end", justifyContent: "center", animation: "fadeIn 0.2s" }}><div style={{ width: "100%", maxWidth: 420, background: "#fff", borderRadius: "22px 22px 0 0", maxHeight: "95vh", overflowY: "auto", animation: "cardIn 0.25s ease" }}>
+    <div ref={slScrimRef} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.42)", zIndex: 1200, display: "flex", alignItems: "flex-end", justifyContent: "center", animation: "fadeIn 0.2s" }}><div ref={slSheetRef} style={{ width: "100%", maxWidth: 420, background: "#fff", borderRadius: "22px 22px 0 0", maxHeight: "95vh", overflowY: "auto", animation: "cardIn 0.25s ease" }}>
+      <div style={{ display: "flex", justifyContent: "center", padding: "8px 0 0" }}><div style={{ width: 36, height: 4, borderRadius: 2, background: "#ddd8ce" }} /></div>
       <div style={{ maxWidth: 420, margin: "0 auto", padding: "1rem 1.5rem 6rem" }}>
         <button className="btn-outline" style={{ marginTop: 0, width: "auto", padding: "8px 14px" }} onClick={onClose}>← People</button>
 
@@ -5142,6 +5161,7 @@ const FRIEND_WORDS = ["BEAR","WOLF","DEER","FROG","DUCK","SWAN","CROW","DOVE","H
 // grouped into folders exactly like your own Saves page. Tap a folder to see the
 // spots inside and copy any of them to your own board.
 function FriendProfile({ user, friend, onClose }) {
+  const { sheetRef: fpSheetRef, scrimRef: fpScrimRef } = useDragDismiss(onClose);
   const nameOf = (p) => p?.name || (p?.email ? p.email.split("@")[0] : null) || "Friend";
   const [saves, setSaves] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -5189,7 +5209,8 @@ function FriendProfile({ user, friend, onClose }) {
   const stat = (n, l) => <div style={{ textAlign: "center" }}><div style={{ fontSize: "1.15rem", fontWeight: 700, color: "#1c1c1a" }}>{n}</div><div style={{ fontSize: "0.68rem", color: "#7a7062", textTransform: "uppercase", letterSpacing: "0.06em" }}>{l}</div></div>;
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.42)", zIndex: 1200, display: "flex", alignItems: "flex-end", justifyContent: "center", animation: "fadeIn 0.2s" }}><div style={{ width: "100%", maxWidth: 420, background: "#fff", borderRadius: "22px 22px 0 0", maxHeight: "95vh", overflowY: "auto", animation: "cardIn 0.25s ease" }}>
+    <div ref={fpScrimRef} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.42)", zIndex: 1200, display: "flex", alignItems: "flex-end", justifyContent: "center", animation: "fadeIn 0.2s" }}><div ref={fpSheetRef} style={{ width: "100%", maxWidth: 420, background: "#fff", borderRadius: "22px 22px 0 0", maxHeight: "95vh", overflowY: "auto", animation: "cardIn 0.25s ease" }}>
+      <div style={{ display: "flex", justifyContent: "center", padding: "8px 0 0" }}><div style={{ width: 36, height: 4, borderRadius: 2, background: "#ddd8ce" }} /></div>
       <div style={{ maxWidth: 420, margin: "0 auto", padding: "1rem 1.5rem 6rem" }}>
         <button className="btn-outline" style={{ marginTop: 0, width: "auto", padding: "8px 14px" }} onClick={openFolder ? () => setOpenFolder(null) : onClose}>← {openFolder ? "Profile" : "People"}</button>
 
