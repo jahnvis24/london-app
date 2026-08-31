@@ -681,19 +681,21 @@ function useDragDismiss(onClose) {
       if (dy > 0) {
         e.preventDefault();
         el.style.transform = `translateY(${dy}px)`;
-              }
+        if (scrimRef.current) scrimRef.current.style.background = `rgba(0,0,0,${Math.max(0, 0.42 - dy / 600)})`;
+      }
     };
     const onEnd = () => {
       if (!dragging) return;
       dragging = false;
       const dy = currentY - startY;
       el.style.transition = "transform 0.25s ease";
-      if (scrimRef.current) scrimRef.current.style.transition = "opacity 0.25s ease";
       if (dy > 120) {
         el.style.transform = "translateY(100%)";
+        if (scrimRef.current) { scrimRef.current.style.transition = "background 0.25s ease"; scrimRef.current.style.background = "rgba(0,0,0,0)"; }
         setTimeout(onClose, 250);
       } else {
         el.style.transform = "translateY(0)";
+        if (scrimRef.current) { scrimRef.current.style.transition = "background 0.25s ease"; scrimRef.current.style.background = "rgba(0,0,0,0.42)"; }
       }
     };
     el.addEventListener("touchstart", onStart, { passive: true });
