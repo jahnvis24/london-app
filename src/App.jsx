@@ -1419,7 +1419,7 @@ function MyPlansScreen({ plans, onViewPlan, onNewPlan, onSchedule, dbVenues }) {
 
 function DiscoverScreen({ preferences, dbVenues, onStart }) {
   const [chip, setChip] = useState("All");
-  const CHIPS = ["All", "East", "Date night", "Cheap eats", "Bars", "Culture"];
+  const CHIPS = ["All", "East", "Date night", "Cheap eats", "Bars", "Culture", "Celebrity picks"];
 
   const today = new Date().toISOString().split("T")[0];
   const dayName = new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
@@ -1439,11 +1439,15 @@ function DiscoverScreen({ preferences, dbVenues, onStart }) {
     .sort((a, b) => (parseFloat(b.google_rating) || 0) - (parseFloat(a.google_rating) || 0))
     .slice(0, 5);
 
+  const celebVenues = dbVenues.filter(v => v.celebrity_tags && v.celebrity_tags.length > 0 && v.photo_url)
+    .sort((a, b) => (parseFloat(b.google_rating) || 0) - (parseFloat(a.google_rating) || 0));
+
   const filtered = chip === "All" ? trending : chip === "East" ? trending.filter(v => /east|shoreditch|hackney|bethnal|dalston/i.test(v.zone || v.area || ""))
     : chip === "Date night" ? trending.filter(v => (v.vibe_tags || []).some(t => ["romantic", "fancy", "aesthetic"].includes(t)))
     : chip === "Cheap eats" ? dbVenues.filter(v => !v.is_event && v.photo_url && /low|under|£$|£10|£15/i.test(v.price || "")).slice(0, 6)
     : chip === "Bars" ? trending.filter(v => v.category === "bar")
     : chip === "Culture" ? trending.filter(v => ["museum", "gallery", "experience"].includes(v.category))
+    : chip === "Celebrity picks" ? celebVenues.slice(0, 6)
     : trending;
 
   const formatDate = (start, end) => {
@@ -1486,8 +1490,9 @@ function DiscoverScreen({ preferences, dbVenues, onStart }) {
             <div style={{ position: "relative", height: 206, overflow: "hidden", background: "#F1EDE4" }}>
               {v.photo_url && <img src={v.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
               <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 46%, rgba(20,20,15,.82))" }} />
-              {v.celebrity_tags?.length > 0 && <div style={{ position: "absolute", top: 10, left: 10, padding: "4px 9px", background: "#0F6B63", color: "#FAF7F2", fontSize: 8.5, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase" }}>{v.celebrity_tags[0]}</div>}
-              {!v.celebrity_tags?.length && v.google_rating >= 4.5 && <div style={{ position: "absolute", top: 10, left: 10, padding: "4px 9px", background: "#D9412B", color: "#FAF7F2", fontSize: 8.5, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase" }}>Hot</div>}
+              {v.celebrity_tags?.length > 0 && <div style={{ position: "absolute", top: 10, left: 10, padding: "4px 9px", background: "#0F6B63", color: "#FAF7F2", fontSize: 8.5, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase" }}>{v.celebrity_tags[0]}'s pick</div>}
+              {!v.celebrity_tags?.length && v.google_rating >= 4.5 && <div style={{ position: "absolute", top: 10, left: 10, padding: "4px 9px", background: "#D9412B", color: "#FAF7F2", fontSize: 8.5, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase" }}>Trending</div>}
+              {!v.celebrity_tags?.length && v.google_rating < 4.5 && <div style={{ position: "absolute", top: 10, left: 10, padding: "4px 9px", background: "#14140F", color: "#FAF7F2", fontSize: 8.5, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase" }}>New</div>}
               <div style={{ position: "absolute", left: 12, right: 12, bottom: 12 }}>
                 <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 21, lineHeight: 1, color: "#FAF7F2" }}>{v.name}</div>
                 <div style={{ fontSize: 8.5, fontWeight: 500, letterSpacing: "0.13em", textTransform: "uppercase", color: "rgba(250,247,242,.68)", marginTop: 6 }}>{[v.area, v.price, v.google_rating ? `${v.google_rating}` : null].filter(Boolean).join(" · ")}</div>
@@ -1511,6 +1516,7 @@ function DiscoverScreen({ preferences, dbVenues, onStart }) {
                 <div style={{ fontSize: 8.5, fontWeight: 500, letterSpacing: "0.13em", textTransform: "uppercase", color: "rgba(20,20,15,.45)", marginTop: 5 }}>{[v.area, v.price, v.google_rating ? `${v.google_rating}` : null].filter(Boolean).join(" · ")}</div>
                 {v.comment && <div style={{ fontSize: 12, color: "rgba(20,20,15,.6)", marginTop: 6 }}>{v.comment.length > 60 ? v.comment.slice(0, 60) + "…" : v.comment}</div>}
               </div>
+              <div onClick={(e) => { e.preventDefault(); e.stopPropagation(); }} style={{ width: 38, height: 38, flex: "none", borderRadius: "50%", border: "1.5px solid #14140F", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, cursor: "pointer", transition: "all .2s" }}>+</div>
             </a>
           ))}
         </>
@@ -2253,7 +2259,7 @@ const NAV_ICON_PATHS = {
   home: '<path d="M12 3l2.2 6.8H21l-5.4 4 2.1 6.7L12 16.4 6.3 20.5l2.1-6.7-5.4-4h6.8z"/>',
   plans: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/>',
   saved: '<path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>',
-  discover: '<circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>',
+  discover: '<path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z"/>',
   prefs: '<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8z"/>',
   add: '<path d="M12 5v14M5 12h14"/>',
   people: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
