@@ -1417,7 +1417,7 @@ function MyPlansScreen({ plans, onViewPlan, onNewPlan, onSchedule, dbVenues }) {
   );
 }
 
-function DiscoverScreen({ preferences, dbVenues, onStart }) {
+function DiscoverScreen({ preferences, dbVenues, onStart, onOpenSpot }) {
   const [chip, setChip] = useState("All");
   const CHIPS = ["All", "East", "Date night", "Cheap eats", "Bars", "Culture", "Celebrity picks"];
 
@@ -1486,7 +1486,7 @@ function DiscoverScreen({ preferences, dbVenues, onStart }) {
       </div>
       <div style={{ display: "flex", gap: 12, padding: "0 22px 26px", overflowX: "auto", scrollbarWidth: "none" }}>
         {(filtered.length ? filtered : trending).slice(0, 4).map(v => (
-          <a key={v.id} href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(v.name + " London")}`} target="_blank" rel="noreferrer" style={{ flex: "none", width: 160, cursor: "pointer", textDecoration: "none", color: "inherit" }}>
+          <div key={v.id} onClick={() => onOpenSpot && onOpenSpot(v)} style={{ flex: "none", width: 160, cursor: "pointer" }}>
             <div style={{ position: "relative", height: 206, overflow: "hidden", background: "#F1EDE4" }}>
               {v.photo_url && <img src={v.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
               <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 46%, rgba(20,20,15,.82))" }} />
@@ -1498,7 +1498,7 @@ function DiscoverScreen({ preferences, dbVenues, onStart }) {
                 <div style={{ fontSize: 8.5, fontWeight: 500, letterSpacing: "0.13em", textTransform: "uppercase", color: "rgba(250,247,242,.68)", marginTop: 6 }}>{[v.area, v.price, v.google_rating ? `${v.google_rating}` : null].filter(Boolean).join(" · ")}</div>
               </div>
             </div>
-          </a>
+          </div>
         ))}
       </div>
 
@@ -1507,7 +1507,7 @@ function DiscoverScreen({ preferences, dbVenues, onStart }) {
           <div style={{ padding: "0 22px 4px", fontSize: 9.5, fontWeight: 500, letterSpacing: "0.16em", textTransform: "uppercase", color: "#0F6B63" }}>For you</div>
           <div style={{ padding: "0 22px 12px", fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 22 }}>{forYouLabel}</div>
           {forYou.slice(0, 3).map(v => (
-            <a key={v.id} href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(v.name + " London")}`} target="_blank" rel="noreferrer" style={{ margin: "0 22px", paddingTop: 15, borderTop: "1px solid rgba(20,20,15,.13)", display: "flex", gap: 13, alignItems: "center", cursor: "pointer", textDecoration: "none", color: "inherit" }}>
+            <div key={v.id} onClick={() => onOpenSpot && onOpenSpot(v)} style={{ margin: "0 22px", paddingTop: 15, borderTop: "1px solid rgba(20,20,15,.13)", display: "flex", gap: 13, alignItems: "center", cursor: "pointer" }}>
               <div style={{ width: 76, height: 76, flex: "none", overflow: "hidden", background: "#F1EDE4" }}>
                 {v.photo_url && <img src={v.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
               </div>
@@ -1516,8 +1516,8 @@ function DiscoverScreen({ preferences, dbVenues, onStart }) {
                 <div style={{ fontSize: 8.5, fontWeight: 500, letterSpacing: "0.13em", textTransform: "uppercase", color: "rgba(20,20,15,.45)", marginTop: 5 }}>{[v.area, v.price, v.google_rating ? `${v.google_rating}` : null].filter(Boolean).join(" · ")}</div>
                 {v.comment && <div style={{ fontSize: 12, color: "rgba(20,20,15,.6)", marginTop: 6 }}>{v.comment.length > 60 ? v.comment.slice(0, 60) + "…" : v.comment}</div>}
               </div>
-              <div onClick={(e) => { e.preventDefault(); e.stopPropagation(); }} style={{ width: 38, height: 38, flex: "none", borderRadius: "50%", border: "1.5px solid #14140F", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, cursor: "pointer", transition: "all .2s" }}>+</div>
-            </a>
+              <div onClick={(e) => { e.stopPropagation(); }} style={{ width: 38, height: 38, flex: "none", borderRadius: "50%", border: "1.5px solid #14140F", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, cursor: "pointer", transition: "all .2s" }}>+</div>
+            </div>
           ))}
         </>
       )}
@@ -5601,6 +5601,7 @@ export default function App() {
   const [pendingGen, setPendingGen] = useState(false); // fire generate() after ans/times state commits
   const [activeTab, setActiveTab] = useState("saved"); // Saves is the landing tab (first tab)
   const [meOpen, setMeOpen] = useState(false);
+  const [discoverSpot, setDiscoverSpot] = useState(null);
   const [tourStep, setTourStep] = useState(-1); // -1 = off; guided product tour (Me → "Take a tour")
   const [importSignal, setImportSignal] = useState(0); // bump to launch the hands-on "add a save" walkthrough
   const [peopleBadge, setPeopleBadge] = useState(0); // unsaved shares sent to you → People tab badge
@@ -6096,7 +6097,8 @@ export default function App() {
           </DraggableSheet>
         )}
 
-        {activeTab === "discover" && <DiscoverScreen preferences={preferences} dbVenues={dbVenues} onStart={startQuiz} />}
+        {activeTab === "discover" && <DiscoverScreen preferences={preferences} dbVenues={dbVenues} onStart={startQuiz} onOpenSpot={setDiscoverSpot} />}
+        {discoverSpot && <SpotDetail spot={discoverSpot} onClose={() => setDiscoverSpot(null)} user={user} onMakePlan={(s) => { setDiscoverSpot(null); setActiveTab("home"); setAns({ savedVenues: [s] }); setQuizStep(0); }} />}
         {activeTab === "people" && <PeopleScreen user={user} onShareSaved={() => setPeopleBadge(n => Math.max(0, n - 1))} onSavePlan={(payload) => { const r = payload?.plan; if (!r) return; setPlans(prev => { const updated = [{ result: r, times: payload?.times || times, ans: {}, savedAt: new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }), createdAt: Date.now(), id: generateId() }, ...prev]; localStorage.setItem("cl_plans", JSON.stringify(updated.slice(0, 20))); return updated; }); }} />}
         {/* Always mounted so an in-progress screenshot parse keeps running + persists when you switch tabs */}
         <div style={{ display: activeTab === "saved" ? "block" : "none" }}>
