@@ -654,7 +654,7 @@ const styles = `
   .skel-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; padding: 0 1.5rem; }
   .skel-grid .skel-card { height: 160px; }
 
-  .profile-btn { position: fixed; top: max(12px, env(safe-area-inset-top)); right: 14px; z-index: 90; width: 36px; height: 36px; border-radius: 50%; border: 2px solid rgba(20,20,15,.13); background: #D9412B; color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.12); transition: transform 0.12s; font-weight: 600; font-size: 0.82rem; }
+  .profile-btn { position: fixed; top: max(12px, env(safe-area-inset-top)); right: 22px; z-index: 90; width: 36px; height: 36px; border-radius: 50%; border: none; background: #14140F; color: #FAF7F2; display: flex; align-items: center; justify-content: center; cursor: pointer; overflow: hidden; transition: transform 0.12s; font-weight: 600; font-size: 0.82rem; }
   .profile-btn:active { transform: scale(0.9); }
   .profile-btn img { width: 100%; height: 100%; object-fit: cover; }
   .me-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.42); z-index: 1100; display: flex; align-items: flex-end; justify-content: center; animation: fadeIn 0.2s; }
@@ -1468,7 +1468,7 @@ function DiscoverScreen({ preferences, dbVenues, onStart, onOpenSpot }) {
 
       {onStart && (
         <div onClick={onStart} style={{ margin: "0 22px 22px", padding: 20, background: "#D9412B", color: "#FAF7F2", cursor: "pointer" }}>
-          <div style={{ fontSize: 9.5, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase", opacity: 0.75 }}>Your saves nearby</div>
+          <div style={{ fontSize: 9.5, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase", opacity: 0.75 }}>{dbVenues.length > 0 ? `${Math.min(dbVenues.filter(v => v.lat && v.lng).length, 20)} saves nearby` : "Your saves nearby"}</div>
           <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 28, lineHeight: 1.02, margin: "10px 0 16px" }}>Build me a night out<br />from my saves</div>
           <div style={{ display: "inline-block", padding: "10px 18px", background: "#FAF7F2", color: "#14140F", fontSize: 11.5, fontWeight: 600, letterSpacing: "0.02em" }}>Answer 5 questions →</div>
         </div>
@@ -3767,18 +3767,21 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
 
   return (
     <div>
-      <div style={{ padding: "0.75rem 0.75rem 0.5rem" }}>
-        {!openFolder && <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div className="section-title" style={{ margin: 0 }}>Saved</div>
-        </div>}
+      {!openFolder && (
+      <div style={{ padding: "0 22px" }}>
+        <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 40, lineHeight: 1, letterSpacing: "-0.015em", marginBottom: 4 }}>Saves</div>
+        <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(20,20,15,.42)", marginBottom: 18 }}>{saves.length} spot{saves.length !== 1 ? "s" : ""} · {folderNames.length} list{folderNames.length !== 1 ? "s" : ""}</div>
       </div>
+      )}
 
-      <div style={{ padding: "0 0.75rem 0.75rem" }}>
-        {error && <div className="err" style={{ marginBottom: "0.75rem" }}>{error}</div>}
+      <div style={{ padding: "0 22px 12px" }}>
+        {error && <div className="err" style={{ marginBottom: 12 }}>{error}</div>}
 
         {!openFolder && (
-          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-            <button onClick={() => { setSavedView(savedView === "calendar" ? "folders" : "calendar"); setOpenFolder(null); }} style={{ width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", background: savedView === "calendar" ? "#D9412B" : "#fff", color: savedView === "calendar" ? "#fff" : "#14140F", border: savedView === "calendar" ? "none" : "1.5px solid rgba(20,20,15,.13)", borderRadius: "50%", cursor: "pointer", fontSize: "1.1rem" }}>📅</button>
+          <div style={{ display: "flex", gap: 7, alignItems: "center", marginBottom: 0 }}>
+            <button onClick={() => { setSavedView("folders"); setOpenFolder(null); }} style={{ padding: "7px 14px", borderRadius: 100, background: savedView === "folders" ? "#14140F" : "transparent", color: savedView === "folders" ? "#FAF7F2" : "rgba(20,20,15,.55)", border: savedView === "folders" ? "none" : "1px solid rgba(20,20,15,.16)", fontSize: 11.5, fontWeight: 600, cursor: "pointer" }}>Lists</button>
+            <button onClick={() => { setSavedView(savedView === "calendar" ? "folders" : "calendar"); setOpenFolder(null); }} style={{ padding: "7px 14px", borderRadius: 100, background: savedView === "calendar" ? "#14140F" : "transparent", color: savedView === "calendar" ? "#FAF7F2" : "rgba(20,20,15,.55)", border: savedView === "calendar" ? "none" : "1px solid rgba(20,20,15,.16)", fontSize: 11.5, fontWeight: 600, cursor: "pointer" }}>Calendar</button>
+            <div style={{ flex: 1 }} />
           </div>
         )}
 
@@ -3956,7 +3959,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
             )}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "0.5rem 0 0.75rem" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-                <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: "1.05rem", color: "#14140F" }}>Your lists ({saves.length} spot{saves.length !== 1 ? "s" : ""})</div>
+                <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 22 }}>Your lists</div>
               </div>
               <button onClick={createFolder} style={{ fontSize: "0.74rem", padding: "6px 12px", borderRadius: 100, border: "1.5px solid #D9412B", background: "#fff", color: "#D9412B", fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>+ New list</button>
             </div>
@@ -3982,8 +3985,8 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
                           </div>
                         ) : (
                           <>
-                            <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "#14140F", paddingRight: 20, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f}</div>
-                            <div style={{ fontSize: "0.64rem", color: "#7a7062" }}>{items.length} spot{items.length !== 1 ? "s" : ""}</div>
+                            <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 19, lineHeight: 1.1, paddingRight: 20, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f}</div>
+                            <div style={{ fontSize: 8.5, fontWeight: 500, letterSpacing: "0.13em", textTransform: "uppercase", color: "rgba(20,20,15,.45)", marginTop: 4 }}>{items.length} spot{items.length !== 1 ? "s" : ""}</div>
                           </>
                         )}
                       </div>
