@@ -2380,71 +2380,76 @@ function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan, user, onSpotUpdate
     return href ? <a href={href} target="_blank" rel="noreferrer" style={style}>{children}</a> : <button onClick={onClick} style={{ ...style, width: "100%" }}>{children}</button>;
   };
   return (
-    <div ref={scrimRef} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.42)", zIndex: 1200, display: "flex", alignItems: "flex-end", justifyContent: "center", animation: "fadeIn 0.2s" }}><div ref={sheetRef} style={{ width: "100%", maxWidth: 420, background: "#fff", borderRadius: "22px 22px 0 0", maxHeight: "95vh", overflowY: "auto", animation: "cardIn 0.25s ease" }}>
-      <div style={{ display: "flex", justifyContent: "center", padding: "8px 0 0" }}><div style={{ width: 36, height: 4, borderRadius: 2, background: "rgba(20,20,15,.18)" }} /></div>
-      <div style={{ position: "relative", height: 240, background: photos.length ? "#e9e4da" : (CAT_COLOURS[cat] || "#D9412B") }}>
+    <div style={{ position: "fixed", inset: 0, background: "#FAF7F2", zIndex: 1200, overflowY: "auto", animation: "screenIn .32s cubic-bezier(.2,.9,.3,1)", paddingBottom: 150 }}>
+      <div style={{ position: "relative", height: 290, background: photos.length ? "#F1EDE4" : (CAT_COLOURS[cat] || "#D9412B") }}>
         <div style={{ display: "flex", height: "100%", overflowX: "auto", scrollSnapType: "x mandatory" }}>
           {photos.map((p, i) => <img key={i} src={p} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", flexShrink: 0, scrollSnapAlign: "start" }} />)}
         </div>
-        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 40%, rgba(0,0,0,0.6))", pointerEvents: "none" }} />
-        {photos.length > 1 && <div style={{ position: "absolute", top: 14, right: 14, background: "rgba(0,0,0,0.55)", color: "#fff", borderRadius: 100, padding: "3px 10px", fontSize: "0.68rem", fontWeight: 600 }}>📷 {photos.length}</div>}
-        <button onClick={onClose} style={{ position: "absolute", top: 14, left: 14, width: 34, height: 34, borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.92)", cursor: "pointer", fontSize: "1.1rem", color: "#14140F", fontWeight: 700 }}>←</button>
-        <div style={{ position: "absolute", left: 16, right: 16, bottom: 14, pointerEvents: "none" }}>
-          <div style={{ color: "rgba(255,255,255,0.92)", fontFamily: "'Instrument Serif', Georgia, serif", fontSize: "1.7rem", lineHeight: 1.1, textShadow: "0 2px 14px rgba(0,0,0,0.5)" }}>{spot.name}</div>
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 45%, rgba(20,20,15,.86))" }} />
+        <button onClick={onClose} style={{ position: "absolute", top: 60, left: 20, width: 36, height: 36, border: "none", background: "#FAF7F2", cursor: "pointer", fontSize: 17, display: "flex", alignItems: "center", justifyContent: "center" }}>←</button>
+        {photos.length > 1 && <div style={{ position: "absolute", top: 60, right: 20, padding: "4px 9px", background: "rgba(20,20,15,.55)", color: "#FAF7F2", fontSize: 8.5, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase" }}>📷 {photos.length}</div>}
+        <div style={{ position: "absolute", left: 22, right: 22, bottom: 18 }}>
+          {agg.count > 0 && <div style={{ fontSize: 9, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase", color: "#F0A28E", marginBottom: 7 }}>Rated by {agg.count} {agg.count === 1 ? "person" : "people"}</div>}
+          <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 40, lineHeight: 0.95, color: "#FAF7F2", letterSpacing: "-0.02em" }}>{spot.name}</div>
+          <div style={{ fontSize: 9, fontWeight: 500, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(250,247,242,.7)", marginTop: 9 }}>{[cap(cat), spot.area, spot.price, spot.google_rating ? `${spot.google_rating}` : null].filter(Boolean).join(" · ")}</div>
         </div>
       </div>
 
-      <div style={{ padding: "1.25rem 1.25rem 6rem" }}>
-        <div style={{ fontSize: "0.78rem", color: "#6b5e4e", marginBottom: 14 }}>
-          {cap(cat)}{spot.zone ? ` · ${spot.zone}` : ""}{spot.area ? ` · ${spot.area}` : ""}{spot.google_rating ? ` · ⭐ ${spot.google_rating}` : ""}{spot.price ? ` · ${spot.price}` : ""}
+      <div style={{ padding: "18px 22px 0" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "11px 13px", background: "#F1EDE4", borderLeft: "3px solid #0F6B63", marginBottom: 14 }}>
+          <div style={{ width: 18, height: 18, borderRadius: "50%", background: "#0F6B63", color: "#FAF7F2", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10 }}>✓</div>
+          <div style={{ flex: 1, fontSize: 9, fontWeight: 500, letterSpacing: "0.13em", textTransform: "uppercase", color: "rgba(20,20,15,.6)" }}>Saved in {cat === "bar" ? "Bars" : cat === "restaurant" ? "Restaurants" : cat === "cafe" ? "Cafés" : cap(cat)}</div>
         </div>
 
-        <div data-tour="spot-rating" style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, padding: "10px 12px", background: "#fff", border: "1px solid rgba(20,20,15,.13)", borderRadius: 12 }}>
-          <div>
-            <div style={{ fontSize: "0.66rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "#7a7062", fontWeight: 600, marginBottom: 2 }}>Your rating</div>
-            <div style={{ fontSize: "1.3rem", letterSpacing: 2 }}>
-              {[1, 2, 3, 4, 5].map(n => <span key={n} onClick={() => rate(n)} style={{ cursor: "pointer", color: n <= myStars ? "#D9412B" : "#ddd6c8" }}>★</span>)}
+        <div data-tour="spot-book" onClick={() => { if (bookUrl) window.open(bookUrl, "_blank"); }} style={{ padding: 15, background: "#D9412B", color: "#FAF7F2", textAlign: "center", fontSize: 13.5, fontWeight: 600, cursor: "pointer", marginBottom: 9 }}>{spot.website ? "Book a table" : "Open in Google Maps"}</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+          <a href={googleMapsUrl(spot)} target="_blank" rel="noreferrer" style={{ padding: 12, border: "1px solid rgba(20,20,15,.16)", textAlign: "center", fontSize: 11.5, fontWeight: 600, textDecoration: "none", color: "#14140F" }}>Directions</a>
+          <button onClick={() => {}} style={{ padding: 12, border: "1px solid rgba(20,20,15,.16)", background: "none", textAlign: "center", fontSize: 11.5, fontWeight: 600, cursor: "pointer" }}>Schedule</button>
+          <button onClick={() => {}} style={{ padding: 12, border: "1px solid rgba(20,20,15,.16)", background: "none", textAlign: "center", fontSize: 11.5, fontWeight: 600, cursor: "pointer" }}>Share</button>
+        </div>
+
+        <div style={{ fontSize: 14, lineHeight: 1.5, color: "rgba(20,20,15,.7)", marginTop: 20 }}>{spot.comment || "No description yet."}</div>
+
+        <div data-tour="spot-rating" style={{ marginTop: 20, padding: 16, border: "1px solid rgba(20,20,15,.14)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 12 }}>
+            <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 21 }}>Been? Rate it</div>
+            <div style={{ fontSize: 8.5, fontWeight: 500, letterSpacing: "0.13em", textTransform: "uppercase", color: "rgba(20,20,15,.42)" }}>{myStars ? `You rated it ${myStars}` : "Not rated yet"}</div>
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            {[1, 2, 3, 4, 5].map(n => (
+              <button key={n} onClick={() => rate(n)} style={{ flex: 1, height: 38, border: `1px solid ${myStars >= n ? "#D9412B" : "rgba(20,20,15,.18)"}`, background: myStars >= n ? "#D9412B" : "transparent", color: myStars >= n ? "#FAF7F2" : "rgba(20,20,15,.5)", fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 17, cursor: "pointer", transition: "all .2s" }}>{n}</button>
+            ))}
+          </div>
+        </div>
+
+        {agg.count > 0 && (
+          <div style={{ marginTop: 20, paddingTop: 16, borderTop: "1px solid rgba(20,20,15,.13)" }}>
+            <div style={{ fontSize: 8.5, fontWeight: 500, letterSpacing: "0.16em", textTransform: "uppercase", color: "#0F6B63", marginBottom: 11 }}>Community ratings</div>
+            <div style={{ fontSize: 13, lineHeight: 1.4, color: "rgba(20,20,15,.6)" }}>Average rating: <span style={{ color: "#14140F" }}>{agg.avg?.toFixed(1)}</span> from {agg.count} {agg.count === 1 ? "review" : "reviews"}.</div>
+          </div>
+        )}
+
+        {!readOnly && (
+          <div style={{ marginTop: 20, padding: 15, background: "#F1EDE4", borderLeft: "3px solid #0F6B63" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
+              <div style={{ fontSize: 8.5, fontWeight: 500, letterSpacing: "0.16em", textTransform: "uppercase", color: "#0F6B63" }}>Your note</div>
+              <button onClick={saveNote} style={{ border: "none", background: "none", fontSize: 8.5, fontWeight: 600, letterSpacing: "0.13em", textTransform: "uppercase", color: "rgba(20,20,15,.45)", cursor: "pointer" }}>{savedNote ? "✓ Saved" : "Save"}</button>
             </div>
+            <textarea value={note} onChange={e => setNote(e.target.value)} placeholder="Ask for the anchovy one. Go before 7." style={{ width: "100%", border: "none", background: "transparent", fontSize: 14, color: "rgba(20,20,15,.72)", resize: "vertical", minHeight: 40, outline: "none", fontFamily: "inherit" }} rows={2} />
           </div>
-          <div style={{ marginLeft: "auto", textAlign: "right" }}>
-            <div style={{ fontSize: "0.66rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "#7a7062", fontWeight: 600, marginBottom: 2 }}>Average</div>
-            <div style={{ fontSize: "0.9rem", color: "#14140F", fontWeight: 600 }}>{agg.avg ? `★ ${agg.avg.toFixed(1)}` : "—"} <span style={{ fontSize: "0.72rem", color: "#7a7062", fontWeight: 400 }}>({agg.count})</span></div>
-          </div>
+        )}
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 9, marginTop: 14 }}>
+          {onAddToBucketList && <button onClick={() => onAddToBucketList(spot)} style={{ padding: 14, border: "1px solid #0F6B63", background: "none", color: "#0F6B63", textAlign: "center", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>Add to a bucket list</button>}
+          {onMakePlan && <button onClick={() => onMakePlan(spot)} style={{ padding: 14, border: "1px solid rgba(20,20,15,.18)", background: "none", textAlign: "center", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>Build a night around this</button>}
         </div>
 
-        <div style={{ fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#7a7062", fontWeight: 600, marginBottom: 6 }}>About</div>
-        <div style={{ fontSize: "0.9rem", color: "#4a4438", lineHeight: 1.5, marginBottom: 8 }}>{spot.comment || "No description yet."}</div>
-        {spot.address && <div style={{ fontSize: "0.78rem", color: "#7a7062", marginBottom: 4 }}>📍 {spot.address}</div>}
-        {spot.is_event && (spot.event_start || spot.event_time) && <div style={{ fontSize: "0.78rem", color: "#D9412B", marginBottom: 4 }}>📅 {spot.event_start ? new Date(spot.event_start).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : ""}{spot.event_time ? ` · ${spot.event_time}` : ""}</div>}
-        {spot.vibe_tags?.length > 0 && <div style={{ display: "flex", flexWrap: "wrap", gap: 5, margin: "8px 0 16px" }}>{spot.vibe_tags.slice(0, 6).map((t, i) => <span key={i} style={{ fontSize: "0.66rem", background: "rgba(20,20,15,.13)", color: "#6b5e4e", padding: "3px 9px", borderRadius: 100 }}>{String(t).replace(/_/g, " ")}</span>)}</div>}
-
-        <div style={{ marginTop: 14 }}>
-          <div data-tour="spot-book"><Action href={bookUrl} primary>{spot.website ? "🔗 Book / Website" : "🔗 Open in Google Maps"}</Action></div>
-          {readOnly && onSaveToBoard && <Action onClick={onSaveToBoard}>{savedToBoard ? "✓ Saved to your board" : "＋ Save to my board"}</Action>}
-          {readOnly && !onSaveToBoard && savedToBoard && <div style={{ textAlign: "center", padding: "12px", borderRadius: 12, fontSize: "0.85rem", fontWeight: 600, marginBottom: 8, background: "#F1EDE4", color: "#D9412B" }}>✓ Saved to your board</div>}
-          {!readOnly && (
-          <div style={{ padding: "12px", background: "#fff", border: "1.5px solid rgba(20,20,15,.18)", borderRadius: 12, marginBottom: 8 }}>
-            <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "#4a4438", marginBottom: 8 }}>📅 Add to your calendar</div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <input type="date" value={visitDate} onChange={e => setVisitDate(e.target.value)} className="input-field" style={{ flex: 1 }} />
-              <button onClick={addToCalendar} disabled={!visitDate} style={{ border: "none", background: visitDate ? "#D9412B" : "#cfc8ba", color: "#fff", borderRadius: 10, padding: "0 18px", fontWeight: 600, fontSize: "0.82rem", cursor: visitDate ? "pointer" : "default" }}>{calSaved ? "✓ Added" : "Add"}</button>
-            </div>
-            <div style={{ fontSize: "0.68rem", color: "#7a7062", marginTop: 6 }}>Shows in your Saved → Calendar.{" "}<a href={gcalUrl} target="_blank" rel="noreferrer" style={{ color: "#7a7062", textDecoration: "underline" }}>Google Calendar ↗</a></div>
-          </div>
-          )}
-          {onShowOnMap && <Action onClick={() => onShowOnMap(spot)}>📍 Show on map</Action>}
-          {onMakePlan && <Action onClick={() => onMakePlan(spot)}>✦ Make a plan based on this</Action>}
-          {onAddToBucketList && <Action onClick={() => onAddToBucketList(spot)}>📋 Add to bucket list</Action>}
-          {spot.source_url && (spot.source_type === "tiktok" || spot.source_type === "instagram") && <Action href={spot.source_url}>{SOURCE_ICON[spot.source_type]} View original ↗</Action>}
+        <div style={{ marginTop: 20, paddingTop: 16, borderTop: "1px solid rgba(20,20,15,.13)", display: "flex", flexDirection: "column", gap: 11 }}>
+          {spot.opening_hours?.[0] && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, fontWeight: 500, letterSpacing: "0.14em", textTransform: "uppercase" }}><span style={{ color: "rgba(20,20,15,.45)" }}>Open today</span><span>{spot.opening_hours[0]}</span></div>}
+          {spot.source_type && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, fontWeight: 500, letterSpacing: "0.14em", textTransform: "uppercase" }}><span style={{ color: "rgba(20,20,15,.45)" }}>Saved from</span><span>{spot.source_type === "tiktok" ? "TikTok" : spot.source_type === "instagram" ? "Instagram" : spot.source_type === "screenshot" ? "Screenshot" : cap(spot.source_type || "")}</span></div>}
         </div>
-
-        {!readOnly && <>
-        <div style={{ fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#7a7062", fontWeight: 600, margin: "18px 0 6px" }}>Notes</div>
-        <textarea value={note} onChange={e => setNote(e.target.value)} placeholder="Add your own notes — who recommended it, what to order, etc." className="input-field" rows={4} style={{ resize: "vertical", width: "100%" }} />
-        <button className="btn btn-teal" style={{ marginTop: 8 }} onClick={saveNote}>{savedNote ? "✓ Saved" : "Save notes"}</button>
-        </>}
       </div>
-    </div></div>
+    </div>
   );
 }
 
