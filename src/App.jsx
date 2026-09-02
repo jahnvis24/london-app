@@ -1418,129 +1418,103 @@ function MyPlansScreen({ plans, onViewPlan, onNewPlan, onSchedule, dbVenues }) {
 }
 
 function DiscoverScreen({ preferences, dbVenues, onStart }) {
-  const [section, setSection] = useState("picks");
-  const [celebFilter, setCelebFilter] = useState("All");
-  const [picksFilter, setPicksFilter] = useState("All");
-
-  const CATEGORY_EMOJI = { restaurant: "🍽️", bar: "🍸", cafe: "☕", market: "🛍️", experience: "✨", outdoor: "🌿", museum: "🏛️", gallery: "🎨", nightlife: "🌙", event: "🎫" };
-  const CATEGORY_COLOURS = { restaurant: "#9B892F", bar: "#4B342F", cafe: "#9B892F", market: "#D9412B", experience: "#D9412B", outdoor: "#D9412B", museum: "#A1947D", gallery: "#A1947D", nightlife: "#4B342F", event: "#D9412B" };
-  const PICKS_CATS = ["All", "Restaurants", "Bars", "Cafés", "Culture", "Outdoor"];
-  const PICKS_CAT_MAP = { "Restaurants": "restaurant", "Bars": "bar", "Cafés": "cafe", "Culture": ["museum", "gallery", "experience"], "Outdoor": "outdoor" };
+  const [chip, setChip] = useState("All");
+  const CHIPS = ["All", "East", "Date night", "Cheap eats", "Bars", "Culture"];
 
   const today = new Date().toISOString().split("T")[0];
-  const events = dbVenues.filter(v => v.is_event && v.event_start && (!v.event_end || v.event_end >= today))
-    .sort((a, b) => new Date(a.event_start) - new Date(b.event_start));
+  const dayName = new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+  const hour = new Date().getHours();
+  const greeting = hour >= 17 ? "Tonight in" : hour >= 12 ? "This afternoon in" : "Today in";
 
-  const topPicks = dbVenues
-    .filter(v => !v.is_event && v.google_rating && parseFloat(v.google_rating) >= 4.0)
-    .filter(v => picksFilter === "All" || (() => { const m = PICKS_CAT_MAP[picksFilter]; return Array.isArray(m) ? m.includes(v.category) : v.category === m; })())
+  const trending = dbVenues
+    .filter(v => !v.is_event && v.photo_url && v.google_rating && parseFloat(v.google_rating) >= 4.2)
     .sort((a, b) => (parseFloat(b.google_rating) || 0) - (parseFloat(a.google_rating) || 0))
-    .slice(0, 20);
+    .slice(0, 6);
 
-  const allCelebSpots = dbVenues.filter(v => v.celebrity_tags && v.celebrity_tags.length > 0);
-  const celebNames = [...new Set(allCelebSpots.flatMap(v => v.celebrity_tags))].filter(Boolean).sort();
-  const celebSpots = (celebFilter === "All" ? allCelebSpots : allCelebSpots.filter(v => v.celebrity_tags.includes(celebFilter)))
-    .sort((a, b) => (parseFloat(b.google_rating) || 0) - (parseFloat(a.google_rating) || 0));
+  const forYouCats = dbVenues.filter(v => !v.is_event).map(v => v.category).filter(Boolean);
+  const topCat = [...new Map(forYouCats.map(c => [c, forYouCats.filter(x => x === c).length])).entries()].sort((a, b) => b[1] - a[1])[0];
+  const forYouLabel = topCat ? `Because you have ${topCat[1]} ${topCat[0]}s` : "Picked for you";
+  const forYou = dbVenues
+    .filter(v => !v.is_event && v.photo_url && topCat && v.category === topCat[0])
+    .sort((a, b) => (parseFloat(b.google_rating) || 0) - (parseFloat(a.google_rating) || 0))
+    .slice(0, 5);
+
+  const filtered = chip === "All" ? trending : chip === "East" ? trending.filter(v => /east|shoreditch|hackney|bethnal|dalston/i.test(v.zone || v.area || ""))
+    : chip === "Date night" ? trending.filter(v => (v.vibe_tags || []).some(t => ["romantic", "fancy", "aesthetic"].includes(t)))
+    : chip === "Cheap eats" ? dbVenues.filter(v => !v.is_event && v.photo_url && /low|under|£$|£10|£15/i.test(v.price || "")).slice(0, 6)
+    : chip === "Bars" ? trending.filter(v => v.category === "bar")
+    : chip === "Culture" ? trending.filter(v => ["museum", "gallery", "experience"].includes(v.category))
+    : trending;
 
   const formatDate = (start, end) => {
     const opts = { day: "numeric", month: "short" };
     const s = new Date(start).toLocaleDateString("en-GB", opts);
     if (!end) return s;
-    const e = new Date(end).toLocaleDateString("en-GB", opts);
-    return `${s} – ${e}`;
+    return `${s} – ${new Date(end).toLocaleDateString("en-GB", opts)}`;
   };
-
-  const renderCard = (v, showDate) => {
-    const cat = (v.category || "experience").toLowerCase();
-    const colour = CATEGORY_COLOURS[cat] || "#A1947D";
-    const emoji = CATEGORY_EMOJI[cat] || "✨";
-    return (
-      <a key={v.id} className="event-card" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(v.name + " London")}`} target="_blank" rel="noreferrer" style={{ cursor: "pointer", textDecoration: "none", color: "inherit", display: "block" }}>
-        {v.photo_url ? (
-          <div className="event-card-img" style={{ background: colour }}>
-            <img src={v.photo_url} alt={v.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-          </div>
-        ) : (
-          <div className="event-card-img" style={{ background: colour }}>
-            <span className="event-card-emoji">{emoji}</span>
-          </div>
-        )}
-        <div className="event-card-body">
-          <div className="event-card-cat" style={{ color: colour }}>{cap(cat)}</div>
-          <div className="event-card-name">{v.name}</div>
-          <div className="event-card-venue">{v.area || v.zone || ""}</div>
-          {v.comment && <div style={{ fontSize: "0.72rem", color: "#6b5e4e", marginTop: 4, lineHeight: 1.4 }}>{v.comment.length > 90 ? v.comment.slice(0, 90) + "..." : v.comment}</div>}
-          <div className="event-card-row">
-            <div className="event-card-date">
-              {showDate && v.event_start ? `📅 ${formatDate(v.event_start, v.event_end)}` : ""}
-              {!showDate && v.google_rating ? `⭐ ${v.google_rating}` : ""}
-            </div>
-            <div className="event-card-price">{v.price || ""}</div>
-          </div>
-          {v.celebrity_tags && v.celebrity_tags.length > 0 && (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 6 }}>
-              {[...new Set(v.celebrity_tags)].slice(0, 3).map(c => (
-                <span key={c} style={{ fontSize: "0.62rem", background: "#fdf6e3", color: "#b8860b", padding: "2px 8px", borderRadius: 100 }}>💫 {c}</span>
-              ))}
-            </div>
-          )}
-          {!v.celebrity_tags && (v.vibe_tags || []).length > 0 && (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 6 }}>
-              {v.vibe_tags.slice(0, 3).map(t => (
-                <span key={t} style={{ fontSize: "0.62rem", background: "#F1EDE4", color: "#6b5e4e", padding: "2px 8px", borderRadius: 100 }}>{t}</span>
-              ))}
-            </div>
-          )}
-        </div>
-      </a>
-    );
-  };
-
-  const list = section === "events" ? events : section === "celeb" ? celebSpots : topPicks;
 
   return (
-    <div>
-      <div className="section-pad" style={{ paddingBottom: "0.75rem" }}>
-        <div className="section-title">Discover</div>
-        <p className="section-sub">Top-rated spots, what's on, and where the celebs go</p>
+    <div style={{ animation: "screenIn .32s cubic-bezier(.2,.9,.3,1)" }}>
+      <div style={{ padding: "0 22px 20px", display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+        <div>
+          <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 42, lineHeight: 0.9, letterSpacing: "-0.015em" }}>{greeting}<br /><em style={{ color: "#D9412B" }}>London</em></div>
+          <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(20,20,15,.42)", marginTop: 13 }}>{dayName}</div>
+        </div>
       </div>
 
       {onStart && (
-        <div style={{ padding: "0 1.5rem 0.5rem" }}>
-          <button onClick={onStart} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "#D9412B", color: "#fff", border: "none", borderRadius: 14, padding: "15px", fontSize: "0.95rem", fontWeight: 600, cursor: "pointer", boxShadow: "0 3px 12px rgba(114,106,78,0.28)" }}>✦ Plan my day or night</button>
+        <div onClick={onStart} style={{ margin: "0 22px 22px", padding: 20, background: "#D9412B", color: "#FAF7F2", cursor: "pointer" }}>
+          <div style={{ fontSize: 9.5, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase", opacity: 0.75 }}>Your saves nearby</div>
+          <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 28, lineHeight: 1.02, margin: "10px 0 16px" }}>Build me a night out<br />from my saves</div>
+          <div style={{ display: "inline-block", padding: "10px 18px", background: "#FAF7F2", color: "#14140F", fontSize: 11.5, fontWeight: 600, letterSpacing: "0.02em" }}>Answer 5 questions →</div>
         </div>
       )}
 
-      <div className="filter-row">
-        <button className={`filter-chip ${section === "picks" ? "sel" : ""}`} onClick={() => setSection("picks")}>✦ Top Picks</button>
-        <button className={`filter-chip ${section === "events" ? "sel" : ""}`} onClick={() => setSection("events")}>📅 What's On</button>
-        <button className={`filter-chip ${section === "celeb" ? "sel" : ""}`} onClick={() => setSection("celeb")}>💫 Celebrity Spots</button>
+      <div style={{ display: "flex", gap: 7, padding: "0 22px 20px", overflowX: "auto", scrollbarWidth: "none" }}>
+        {CHIPS.map(c => (
+          <button key={c} onClick={() => setChip(c)} className={`filter-chip ${chip === c ? "sel" : ""}`}>{c}</button>
+        ))}
       </div>
-      {section === "picks" && (
-        <div className="filter-row" style={{ paddingTop: 0 }}>
-          {PICKS_CATS.map(c => (
-            <button key={c} className={`filter-chip ${picksFilter === c ? "sel" : ""}`} onClick={() => setPicksFilter(c)}>{c}</button>
-          ))}
-        </div>
-      )}
-      {section === "celeb" && celebNames.length > 0 && (
-        <div className="filter-row" style={{ paddingTop: 0 }}>
-          <button className={`filter-chip ${celebFilter === "All" ? "sel" : ""}`} onClick={() => setCelebFilter("All")}>All</button>
-          {celebNames.map(name => (
-            <button key={name} className={`filter-chip ${celebFilter === name ? "sel" : ""}`} onClick={() => setCelebFilter(name)}>💫 {name}</button>
-          ))}
-        </div>
-      )}
 
-      <div style={{ padding: "0 1.5rem 1rem" }}>
-        {list.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-icon">{section === "events" ? "📅" : section === "celeb" ? "💫" : "✦"}</div>
-            <div className="empty-title">{section === "events" ? "No events right now" : section === "celeb" ? "No celebrity spots yet" : "No top picks yet"}</div>
-            <div className="empty-sub">{section === "events" ? "We add new events weekly — check back soon." : section === "celeb" ? "Celebrity-tagged venues will appear here as we add them." : "Venues rated 4.0+ will appear here."}</div>
-          </div>
-        ) : list.map(v => renderCard(v, section === "events"))}
+      <div style={{ padding: "0 22px 12px", display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
+        <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 22 }}>Trending this week</div>
+        <div style={{ fontSize: 9.5, fontWeight: 500, letterSpacing: "0.14em", textTransform: "uppercase", color: "#D9412B", cursor: "pointer" }}>See all</div>
       </div>
+      <div style={{ display: "flex", gap: 12, padding: "0 22px 26px", overflowX: "auto", scrollbarWidth: "none" }}>
+        {(filtered.length ? filtered : trending).slice(0, 4).map(v => (
+          <a key={v.id} href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(v.name + " London")}`} target="_blank" rel="noreferrer" style={{ flex: "none", width: 160, cursor: "pointer", textDecoration: "none", color: "inherit" }}>
+            <div style={{ position: "relative", height: 206, overflow: "hidden", background: "#F1EDE4" }}>
+              {v.photo_url && <img src={v.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+              <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 46%, rgba(20,20,15,.82))" }} />
+              {v.celebrity_tags?.length > 0 && <div style={{ position: "absolute", top: 10, left: 10, padding: "4px 9px", background: "#0F6B63", color: "#FAF7F2", fontSize: 8.5, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase" }}>{v.celebrity_tags[0]}</div>}
+              {!v.celebrity_tags?.length && v.google_rating >= 4.5 && <div style={{ position: "absolute", top: 10, left: 10, padding: "4px 9px", background: "#D9412B", color: "#FAF7F2", fontSize: 8.5, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase" }}>Hot</div>}
+              <div style={{ position: "absolute", left: 12, right: 12, bottom: 12 }}>
+                <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 21, lineHeight: 1, color: "#FAF7F2" }}>{v.name}</div>
+                <div style={{ fontSize: 8.5, fontWeight: 500, letterSpacing: "0.13em", textTransform: "uppercase", color: "rgba(250,247,242,.68)", marginTop: 6 }}>{[v.area, v.price, v.google_rating ? `${v.google_rating}` : null].filter(Boolean).join(" · ")}</div>
+              </div>
+            </div>
+          </a>
+        ))}
+      </div>
+
+      {forYou.length > 0 && (
+        <>
+          <div style={{ padding: "0 22px 4px", fontSize: 9.5, fontWeight: 500, letterSpacing: "0.16em", textTransform: "uppercase", color: "#0F6B63" }}>For you</div>
+          <div style={{ padding: "0 22px 12px", fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 22 }}>{forYouLabel}</div>
+          {forYou.slice(0, 3).map(v => (
+            <a key={v.id} href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(v.name + " London")}`} target="_blank" rel="noreferrer" style={{ margin: "0 22px", paddingTop: 15, borderTop: "1px solid rgba(20,20,15,.13)", display: "flex", gap: 13, alignItems: "center", cursor: "pointer", textDecoration: "none", color: "inherit" }}>
+              <div style={{ width: 76, height: 76, flex: "none", overflow: "hidden", background: "#F1EDE4" }}>
+                {v.photo_url && <img src={v.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 21 }}>{v.name}</div>
+                <div style={{ fontSize: 8.5, fontWeight: 500, letterSpacing: "0.13em", textTransform: "uppercase", color: "rgba(20,20,15,.45)", marginTop: 5 }}>{[v.area, v.price, v.google_rating ? `${v.google_rating}` : null].filter(Boolean).join(" · ")}</div>
+                {v.comment && <div style={{ fontSize: 12, color: "rgba(20,20,15,.6)", marginTop: 6 }}>{v.comment.length > 60 ? v.comment.slice(0, 60) + "…" : v.comment}</div>}
+              </div>
+            </a>
+          ))}
+        </>
+      )}
     </div>
   );
 }
