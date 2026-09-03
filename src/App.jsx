@@ -575,7 +575,7 @@ const styles = `
 
   .filter-row { display: flex; gap: 8px; overflow-x: auto; padding: 0 1.5rem 1rem; scrollbar-width: none; }
   .filter-row::-webkit-scrollbar { display: none; }
-  .filter-chip { padding: 8px 15px; border-radius: 100px; border: 1px solid rgba(20,20,15,.16); font-size: 11.5px; font-weight: 600; cursor: pointer; background: transparent; color: rgba(20,20,15,.5); white-space: nowrap; transition: all 0.2s; flex-shrink: 0; }
+  .filter-chip { padding: 8px 15px; border-radius: 100px; border: 1px solid rgba(20,20,15,.16); font-family: 'Instrument Serif', Georgia, serif; font-size: 14px; cursor: pointer; background: transparent; color: rgba(20,20,15,.5); white-space: nowrap; transition: all 0.2s; flex-shrink: 0; }
   .filter-chip.sel { background: #14140F; color: #fff; border-color: #14140F; }
 
   .event-card { border-radius: 0; overflow: hidden; margin-bottom: 10px; cursor: pointer; transition: transform 0.15s; animation: fadeUp 0.3s ease; }
@@ -1458,7 +1458,7 @@ function DiscoverScreen({ preferences, dbVenues, onStart, onOpenSpot }) {
   };
 
   return (
-    <div style={{ animation: "screenIn .32s cubic-bezier(.2,.9,.3,1)" }}>
+    <div style={{ animation: "screenIn .32s cubic-bezier(.2,.9,.3,1)", paddingBottom: 40 }}>
       <div style={{ padding: "0 22px 20px", display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
         <div>
           <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 42, lineHeight: 0.9, letterSpacing: "-0.015em" }}>{greeting}<br /><em style={{ color: "#D9412B" }}>London</em></div>
@@ -1470,7 +1470,7 @@ function DiscoverScreen({ preferences, dbVenues, onStart, onOpenSpot }) {
         <div onClick={onStart} style={{ margin: "0 22px 22px", padding: 20, background: "#D9412B", color: "#FAF7F2", cursor: "pointer" }}>
           <div style={{ fontSize: 9.5, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase", opacity: 0.75 }}>{dbVenues.length > 0 ? `${Math.min(dbVenues.filter(v => v.lat && v.lng).length, 20)} saves nearby` : "Your saves nearby"}</div>
           <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 28, lineHeight: 1.02, margin: "10px 0 16px" }}>Build me a night out<br />from my saves</div>
-          <div style={{ display: "inline-block", padding: "10px 18px", background: "#FAF7F2", color: "#14140F", fontSize: 11.5, fontWeight: 600, letterSpacing: "0.02em" }}>Answer 5 questions →</div>
+          <div style={{ display: "inline-block", padding: "10px 18px", background: "#FAF7F2", color: "#14140F", fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 15 }}>Answer 5 questions →</div>
         </div>
       )}
 
@@ -2259,7 +2259,7 @@ const NAV_ICON_PATHS = {
   home: '<path d="M12 3l2.2 6.8H21l-5.4 4 2.1 6.7L12 16.4 6.3 20.5l2.1-6.7-5.4-4h6.8z"/>',
   plans: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/>',
   saved: '<path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>',
-  discover: '<path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z"/>',
+  discover: '<circle cx="12" cy="12" r="9" fill="none"/><circle cx="12" cy="12" r="2"/>',
   prefs: '<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8z"/>',
   add: '<path d="M12 5v14M5 12h14"/>',
   people: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
@@ -2388,7 +2388,7 @@ function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan, user, onSpotUpdate
         </div>
         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 45%, rgba(20,20,15,.86))" }} />
         <button onClick={onClose} style={{ position: "absolute", top: 14, left: 20, width: 36, height: 36, border: "none", background: "#FAF7F2", cursor: "pointer", fontSize: 17, display: "flex", alignItems: "center", justifyContent: "center" }}>←</button>
-        {photos.length > 1 && <div style={{ position: "absolute", top: 60, right: 20, padding: "4px 9px", background: "rgba(20,20,15,.55)", color: "#FAF7F2", fontSize: 8.5, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase" }}>📷 {photos.length}</div>}
+        {photos.length > 1 && <div style={{ position: "absolute", top: 14, right: 20, padding: "4px 9px", background: "rgba(20,20,15,.55)", color: "#FAF7F2", fontSize: 8.5, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase" }}>📷 {photos.length} · swipe</div>}
         <div style={{ position: "absolute", left: 22, right: 22, bottom: 18 }}>
           {agg.count > 0 && <div style={{ fontSize: 9, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase", color: "#F0A28E", marginBottom: 7 }}>Rated by {agg.count} {agg.count === 1 ? "person" : "people"}</div>}
           <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 40, lineHeight: 0.95, color: "#FAF7F2", letterSpacing: "-0.02em" }}>{spot.name}</div>
@@ -2397,10 +2397,17 @@ function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan, user, onSpotUpdate
       </div>
 
       <div style={{ padding: "18px 22px 0" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "11px 13px", background: "#F1EDE4", borderLeft: "3px solid #0F6B63", marginBottom: 14 }}>
-          <div style={{ width: 18, height: 18, borderRadius: "50%", background: "#0F6B63", color: "#FAF7F2", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10 }}>✓</div>
-          <div style={{ flex: 1, fontSize: 9, fontWeight: 500, letterSpacing: "0.13em", textTransform: "uppercase", color: "rgba(20,20,15,.6)" }}>Saved in {cat === "bar" ? "Bars" : cat === "restaurant" ? "Restaurants" : cat === "cafe" ? "Cafés" : cap(cat)}</div>
-        </div>
+        {spot.user_id || spot.folder || (!readOnly && !onSaveToBoard) ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "11px 13px", background: "#F1EDE4", borderLeft: "3px solid #0F6B63", marginBottom: 14 }}>
+            <div style={{ width: 18, height: 18, borderRadius: "50%", background: "#0F6B63", color: "#FAF7F2", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10 }}>✓</div>
+            <div style={{ flex: 1, fontSize: 9, fontWeight: 500, letterSpacing: "0.13em", textTransform: "uppercase", color: "rgba(20,20,15,.6)" }}>Saved in {spot.folder || (cat === "bar" ? "Bars" : cat === "restaurant" ? "Restaurants" : cat === "cafe" ? "Cafés" : cap(cat))}</div>
+          </div>
+        ) : (
+          <button onClick={onSaveToBoard} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "11px 13px", background: "#14140F", color: "#FAF7F2", border: "none", marginBottom: 14, cursor: "pointer", fontSize: 11.5, fontWeight: 600 }}>
+            <span style={{ fontSize: 16 }}>+</span>
+            <span>{savedToBoard ? "Saved ✓" : "Save this spot"}</span>
+          </button>
+        )}
 
         <div data-tour="spot-book" onClick={() => { if (bookUrl) window.open(bookUrl, "_blank"); }} style={{ padding: 15, background: "#D9412B", color: "#FAF7F2", textAlign: "center", fontSize: 13.5, fontWeight: 600, cursor: "pointer", marginBottom: 9 }}>{spot.website ? "Book a table" : "Open in Google Maps"}</div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
