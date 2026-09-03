@@ -2789,7 +2789,7 @@ function SpotsCalendar({ saves, user, onBuildPlan, onShare }) {
               {e.photo_url ? <img src={e.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span>{meta.emoji}</span>}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: "0.86rem", fontWeight: 600, color: "#14140F" }}>{e.name}</div>
+              <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 19, color: "#14140F" }}>{e.name}</div>
               <div style={{ fontSize: "0.72rem", color: meta.colour, marginTop: 2 }}>
                 📅 {fmt(e.event_start)}{e.event_end && e.event_end !== e.event_start ? ` – ${fmt(e.event_end)}` : ""}{e.event_time ? ` · 🕐 ${e.event_time}` : ""}
                 {e._type === "plan" ? ` · ${e._stops} stop${e._stops !== 1 ? "s" : ""}` : ""}
@@ -3656,7 +3656,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-            <div style={{ fontSize: "0.9rem", fontWeight: 600, color: "#14140F" }}>{v.name}</div>
+            <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 19, color: "#14140F" }}>{v.name}</div>
             {onRemove && <button onClick={onRemove} style={{ border: "none", background: "none", color: "#8a7e6e", cursor: "pointer", fontSize: "1.1rem", lineHeight: 1, flexShrink: 0 }}>×</button>}
           </div>
           <div style={{ fontSize: "0.72rem", color: "#7a7062", marginTop: 2 }}>
@@ -3889,7 +3889,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
               <div key={s.id} onClick={() => setDetailSpot(s)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: "1px solid rgba(20,20,15,.13)", cursor: "pointer" }}>
                 {s.photo_url ? <img src={s.photo_url} alt="" style={{ width: 44, height: 44, borderRadius: 0, objectFit: "cover", flexShrink: 0 }} /> : <div style={{ width: 44, height: 44, borderRadius: 0, background: "#F1EDE4", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: "1.1rem" }}>{CAT_EMOJI[normaliseCategory(s.category)] || "📍"}</div>}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: "0.88rem", fontWeight: 600, color: "#14140F", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.name}</div>
+                  <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 19, color: "#14140F", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.name}</div>
                   <div style={{ fontSize: "0.72rem", color: "#7a7062" }}>{[s.category ? cap(normaliseCategory(s.category)) : null, s.area, s.google_rating ? `⭐ ${s.google_rating}` : null].filter(Boolean).join(" · ")}</div>
                 </div>
                 <span style={{ color: "#c9bfae", fontSize: "1rem", flexShrink: 0 }}>›</span>
@@ -4779,13 +4779,13 @@ function SharedListsSection({ user }) {
           <button key={l.id} onClick={() => setOpenList(l)} style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", padding: 12, background: "#fff", border: "1px solid rgba(20,20,15,.13)", borderRadius: 0, marginBottom: 10, cursor: "pointer" }}>
             <div style={{ width: 42, height: 42, borderRadius: 0, background: "#F1EDE4", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.25rem", flexShrink: 0 }}>{l.emoji || "✨"}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: "0.9rem", fontWeight: 600, color: "#14140F" }}>{l.name}</div>
-              <div style={{ fontSize: "0.72rem", color: "#7a7062", margin: "1px 0 5px" }}>{c.done}/{c.total} done{l.owner !== user.id ? " · shared with you" : ""}</div>
-              <div style={{ height: 5, borderRadius: 100, background: "#efe9df", overflow: "hidden" }}>
-                <div style={{ height: "100%", width: pct + "%", background: "#D9412B", borderRadius: 100 }} />
+              <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 21, color: "#14140F" }}>{l.name}</div>
+              <div style={{ fontSize: 8.5, fontWeight: 500, letterSpacing: "0.13em", textTransform: "uppercase", color: "rgba(20,20,15,.45)", margin: "4px 0 8px" }}>{c.done}/{c.total} done{l.owner !== user.id ? " · shared with you" : ""}</div>
+              <div style={{ height: 4, background: "rgba(20,20,15,.12)", overflow: "hidden" }}>
+                <div style={{ height: "100%", width: pct + "%", background: "#D9412B" }} />
               </div>
             </div>
-            <span style={{ color: "#c9bfae", fontSize: "1.3rem", flexShrink: 0 }}>›</span>
+            <span style={{ color: "rgba(20,20,15,.3)", fontSize: 18, flexShrink: 0 }}>›</span>
           </button>
         );
       })}
@@ -5074,7 +5074,7 @@ function SharedListView({ list, user, onClose }) {
               <button key={s.id} disabled={busy} onClick={() => addFromSave(s)} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", padding: "8px 10px", borderRadius: 0, border: "1px solid rgba(20,20,15,.13)", background: "#fff", cursor: "pointer", marginBottom: 8 }}>
                 {s.photo_url ? <img src={s.photo_url} alt="" style={{ width: 38, height: 38, borderRadius: 9, objectFit: "cover", flexShrink: 0 }} /> : <div style={{ width: 38, height: 38, borderRadius: 9, background: "#F1EDE4", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>📍</div>}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "#14140F", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.name}</div>
+                  <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 17, color: "#14140F", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.name}</div>
                   <div style={{ fontSize: "0.72rem", color: "#7a7062" }}>{[s.category ? cap(s.category) : null, s.area].filter(Boolean).join(" · ")}</div>
                 </div>
                 <span style={{ color: "#D9412B", fontWeight: 700, fontSize: "1.1rem", flexShrink: 0 }}>＋</span>
