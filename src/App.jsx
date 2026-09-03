@@ -508,7 +508,7 @@ const styles = `
   .time-row { display: flex; gap: 10px; }
   .time-wrap { flex: 1; }
   .time-wrap label { font-size: 0.68rem; color: #7a7062; text-transform: uppercase; letter-spacing: 0.08em; display: block; margin-bottom: 6px; }
-  .time-wrap input { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1.5px solid rgba(20,20,15,.18); background: #fff; color: #14140F; font-size: 0.9rem; }
+  .time-wrap input { width: 100%; padding: 10px 12px; border-radius: 0; border: 1px solid rgba(20,20,15,.18); background: #fff; color: #14140F; font-size: 0.9rem; }
   .time-wrap input:focus { outline: none; border-color: #D9412B; }
 
   .loading { display: flex; flex-direction: column; align-items: center; padding: 5rem 2rem; text-align: center; }
@@ -537,7 +537,7 @@ const styles = `
   .stop { border-top: 1px solid rgba(20,20,15,.13); margin-bottom: 0; background: transparent; overflow: hidden; animation: fadeUp 0.3s ease; }
   .stop-inner { padding: 1.1rem; }
   .stop-top { display: flex; gap: 10px; align-items: flex-start; }
-  .stop-emoji-wrap { width: 44px; height: 44px; border-radius: 12px; background: #F1EDE4; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; flex-shrink: 0; }
+  .stop-emoji-wrap { width: 44px; height: 44px; border-radius: 0; background: #F1EDE4; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; flex-shrink: 0; }
   .stop-body { flex: 1; min-width: 0; }
   .stop-meta { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
   .stop-time { font-size: 0.68rem; font-weight: 500; color: #D9412B; text-transform: uppercase; letter-spacing: 0.06em; }
@@ -552,10 +552,10 @@ const styles = `
   .why-fit { padding: 0 1.1rem 0.75rem; font-size: 0.75rem; color: #7a7062; font-style: italic; line-height: 1.4; border-top: 1px solid rgba(20,20,15,.13); padding-top: 0.55rem; }
   .transit { display: flex; align-items: center; gap: 8px; padding: 0 0.5rem; margin-bottom: 10px; color: #8a7e6e; font-size: 0.75rem; }
 
-  .night-box { margin: 0 1.5rem 0.85rem; padding: 1.1rem; border-radius: 16px; background: #14140F; color: #ffffff; }
+  .night-box { margin: 0 1.5rem 0.85rem; padding: 1.1rem; border-radius: 0; background: #14140F; color: #ffffff; }
   .night-box-label { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.5; margin-bottom: 0.4rem; }
   .night-box-text { font-size: 0.85rem; line-height: 1.5; opacity: 0.88; }
-  .tip-box { margin: 0 1.5rem 0.85rem; padding: 1.1rem; border-radius: 16px; border: 1px solid rgba(20,20,15,.13); background: #fff; }
+  .tip-box { margin: 0 1.5rem 0.85rem; padding: 1.1rem; border-radius: 0; border: 1px solid rgba(20,20,15,.13); background: #fff; }
   .tip-label { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.1em; color: #7a7062; margin-bottom: 0.4rem; }
   .tip-text { font-size: 0.82rem; line-height: 1.5; color: #4a4438; }
 
@@ -568,7 +568,7 @@ const styles = `
   .plan-tag { font-size: 0.66rem; padding: 2px 8px; border-radius: 100px; background: #F1EDE4; color: #6b5e4e; }
   .plan-tag.teal { background: #eef3d8; color: #D9412B; }
   .empty-state { text-align: center; padding: 3rem 2rem; }
-  .empty-icon { width: 56px; height: 56px; border-radius: 16px; background: #F1EDE4; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin: 0 auto 1rem; }
+  .empty-icon { width: 56px; height: 56px; border-radius: 0; background: #F1EDE4; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin: 0 auto 1rem; }
   .empty-emoji { font-size: 3rem; margin-bottom: 1rem; }
   .empty-title { font-family: 'Instrument Serif', Georgia, serif; font-size: 1.15rem; color: #14140F; margin-bottom: 0.35rem; }
   .empty-sub { font-size: 0.82rem; color: #7a7062; line-height: 1.5; margin-bottom: 1.25rem; max-width: 260px; margin-left: auto; margin-right: auto; }
@@ -590,17 +590,17 @@ const styles = `
   .event-card-date { font-size: 0.72rem; color: #6b5e4e; }
   .event-card-price { font-size: 0.72rem; font-weight: 500; color: #D9412B; }
   .events-loading { text-align: center; padding: 3rem 1.5rem; color: #7a7062; font-size: 0.85rem; }
-  .api-note { background: #F1EDE4; border-radius: 12px; padding: 1rem; margin: 0 1.5rem 1rem; font-size: 0.75rem; color: #6b5e4e; line-height: 1.5; border-left: 3px solid #D9412B; }
+  .api-note { background: #F1EDE4; border-radius: 0; padding: 1rem; margin: 0 1.5rem 1rem; font-size: 0.75rem; color: #6b5e4e; line-height: 1.5; border-left: 3px solid #D9412B; }
 
   .social-wrap { padding: 1.5rem; }
   .social-section-title { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.1em; color: #7a7062; margin-bottom: 0.75rem; font-weight: 500; }
-  .social-card { border: 1px solid rgba(20,20,15,.13); border-radius: 16px; background: #fff; overflow: hidden; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  .social-card { border: 1px solid rgba(20,20,15,.13); border-radius: 0; background: #fff; overflow: hidden; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
   .social-card-top { padding: 1rem; border-bottom: 1px solid rgba(20,20,15,.13); }
   .social-card-title { font-size: 0.9rem; font-weight: 500; color: #14140F; margin-bottom: 3px; }
   .social-card-sub { font-size: 0.75rem; color: #7a7062; line-height: 1.4; }
   .feat-row { display: flex; align-items: flex-start; gap: 10px; padding: 0.85rem 1rem; border-bottom: 1px solid rgba(20,20,15,.13); }
   .feat-row:last-child { border-bottom: none; }
-  .feat-icon { width: 34px; height: 34px; border-radius: 10px; background: #F1EDE4; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+  .feat-icon { width: 34px; height: 34px; border-radius: 0; background: #F1EDE4; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
   .feat-body { flex: 1; }
   .feat-title { font-size: 0.84rem; font-weight: 500; color: #14140F; margin-bottom: 2px; }
   .feat-sub { font-size: 0.73rem; color: #7a7062; line-height: 1.35; }
@@ -609,18 +609,18 @@ const styles = `
 
   .toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); background: #14140F; color: #ffffff; padding: 10px 20px; border-radius: 100px; font-size: 0.82rem; white-space: nowrap; z-index: 999; pointer-events: none; opacity: 0; transition: opacity 0.2s; }
   .toast.show { opacity: 1; }
-  .err { margin: 1rem 1.5rem; padding: 0.9rem 1rem; border-radius: 10px; background: #fdf0ef; border: 1px solid #f5d0cc; color: #c0392b; font-size: 0.82rem; line-height: 1.4; }
-  .success { margin: 1rem 1.5rem; padding: 0.9rem 1rem; border-radius: 10px; background: #eef3d8; border: 1px solid #D9412B; color: #D9412B; font-size: 0.82rem; line-height: 1.4; }
+  .err { margin: 1rem 1.5rem; padding: 0.9rem 1rem; border-radius: 0; background: #fdf0ef; border: 1px solid #f5d0cc; color: #c0392b; font-size: 0.82rem; line-height: 1.4; }
+  .success { margin: 1rem 1.5rem; padding: 0.9rem 1rem; border-radius: 0; background: #eef3d8; border: 1px solid #D9412B; color: #D9412B; font-size: 0.82rem; line-height: 1.4; }
 
   /* ── TIKTOK PARSER ── */
   .parser-wrap { padding: 1.5rem; }
   .input-group { margin-bottom: 1rem; }
   .input-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; color: #7a7062; display: block; margin-bottom: 6px; font-weight: 500; }
-  .input-field { width: 100%; padding: 12px 14px; border-radius: 12px; border: 1.5px solid rgba(20,20,15,.18); background: #fff; color: #14140F; font-size: 0.9rem; transition: border-color 0.15s; }
+  .input-field { width: 100%; padding: 12px 14px; border-radius: 0; border: 1.5px solid rgba(20,20,15,.18); background: #fff; color: #14140F; font-size: 0.9rem; transition: border-color 0.15s; }
   .input-field:focus { outline: none; border-color: #D9412B; }
   .input-field::placeholder { color: #c0b8ad; }
   textarea.input-field { min-height: 100px; resize: vertical; }
-  .preview-card { border: 1px solid rgba(20,20,15,.13); border-radius: 16px; padding: 1.25rem; margin-bottom: 1rem; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.06); animation: fadeUp 0.3s ease; }
+  .preview-card { border: 1px solid rgba(20,20,15,.13); border-radius: 0; padding: 1.25rem; margin-bottom: 1rem; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.06); animation: fadeUp 0.3s ease; }
   .preview-title { font-family: 'Instrument Serif', Georgia, serif; font-size: 1.1rem; color: #14140F; margin-bottom: 0.75rem; }
   .preview-field { display: flex; gap: 8px; margin-bottom: 6px; align-items: flex-start; }
   .preview-key { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; color: #7a7062; min-width: 80px; padding-top: 2px; font-weight: 500; }
@@ -628,13 +628,13 @@ const styles = `
   .zone-badge { display: inline-block; padding: 2px 10px; border-radius: 100px; font-size: 0.7rem; font-weight: 500; background: #eef3d8; color: #D9412B; }
 
   /* ── ADMIN ── */
-  .admin-card { border: 1px solid rgba(20,20,15,.13); border-radius: 16px; padding: 1rem; margin-bottom: 10px; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.06); animation: fadeUp 0.3s ease; }
+  .admin-card { border: 1px solid rgba(20,20,15,.13); border-radius: 0; padding: 1rem; margin-bottom: 10px; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.06); animation: fadeUp 0.3s ease; }
   .admin-card-name { font-family: 'Instrument Serif', Georgia, serif; font-size: 1rem; color: #14140F; margin-bottom: 4px; }
   .admin-card-meta { font-size: 0.75rem; color: #7a7062; margin-bottom: 8px; }
   .admin-actions { display: flex; gap: 8px; }
-  .btn-approve { flex: 1; padding: 8px; border-radius: 8px; border: none; background: #D9412B; color: #fff; font-size: 0.8rem; cursor: pointer; font-weight: 500; }
-  .btn-reject { flex: 1; padding: 8px; border-radius: 8px; border: 1.5px solid rgba(20,20,15,.18); background: transparent; color: #7a7062; font-size: 0.8rem; cursor: pointer; }
-  .zone-select { width: 100%; padding: 8px 10px; border-radius: 8px; border: 1.5px solid rgba(20,20,15,.18); background: #fff; color: #14140F; font-size: 0.82rem; margin-bottom: 8px; }
+  .btn-approve { flex: 1; padding: 8px; border-radius: 0; border: none; background: #D9412B; color: #fff; font-size: 0.8rem; cursor: pointer; font-weight: 500; }
+  .btn-reject { flex: 1; padding: 8px; border-radius: 0; border: 1.5px solid rgba(20,20,15,.18); background: transparent; color: #7a7062; font-size: 0.8rem; cursor: pointer; }
+  .zone-select { width: 100%; padding: 8px 10px; border-radius: 0; border: 1.5px solid rgba(20,20,15,.18); background: #fff; color: #14140F; font-size: 0.82rem; margin-bottom: 8px; }
 
   /* ── PREFERENCES ── */
   .pref-wrap { padding: 1.5rem; }
@@ -644,8 +644,8 @@ const styles = `
   .pref-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 1.25rem; }
 
   @keyframes shimmer { 0%{background-position:-200px 0} 100%{background-position:calc(200px + 100%) 0} }
-  .skel { background: linear-gradient(90deg, #F1EDE4 25%, #ede7db 37%, #F1EDE4 63%); background-size: 200px 100%; animation: shimmer 1.4s ease infinite; border-radius: 8px; }
-  .skel-card { height: 200px; border-radius: 16px; margin-bottom: 14px; }
+  .skel { background: linear-gradient(90deg, #F1EDE4 25%, #ede7db 37%, #F1EDE4 63%); background-size: 200px 100%; animation: shimmer 1.4s ease infinite; border-radius: 0; }
+  .skel-card { height: 200px; border-radius: 0; margin-bottom: 14px; }
   .skel-line { height: 14px; margin-bottom: 10px; border-radius: 6px; }
   .skel-line.w60 { width: 60%; }
   .skel-line.w40 { width: 40%; }
@@ -838,7 +838,7 @@ function HomeScreen({ onStart }) {
           ["→", "One perfect plan", "Claude sequences them geographically and temporally. Just follow it."]
         ].map(([icon, title, desc], i) => (
           <div key={i} style={{ display: "flex", gap: "1rem", marginBottom: "1.1rem", alignItems: "flex-start" }}>
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: i === 0 ? "#D9412B" : i === 1 ? "#9B892F" : "#14140F", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: "1rem", flexShrink: 0, fontWeight: 700 }}>{icon}</div>
+            <div style={{ width: 36, height: 36, borderRadius: 0, background: i === 0 ? "#D9412B" : i === 1 ? "#9B892F" : "#14140F", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: "1rem", flexShrink: 0, fontWeight: 700 }}>{icon}</div>
             <div>
               <div style={{ fontSize: "0.88rem", fontWeight: 500, color: "#14140F", marginBottom: 2 }}>{title}</div>
               <div style={{ fontSize: "0.78rem", color: "#7a7062", lineHeight: 1.45 }}>{desc}</div>
@@ -941,14 +941,14 @@ function MapPicker({ onPin, currentPin, compact }) {
       )}
 
       {!loaded && (
-        <div style={{ height: mapHeight, background: "#F1EDE4", borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center", color: "#7a7062", fontSize: "0.82rem" }}>
+        <div style={{ height: mapHeight, background: "#F1EDE4", borderRadius: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "#7a7062", fontSize: "0.82rem" }}>
           Loading map...
         </div>
       )}
 
       <div
         ref={mapRef}
-        style={{ height: mapHeight, borderRadius: 16, overflow: "hidden", border: "1.5px solid rgba(20,20,15,.18)", display: loaded ? "block" : "none", transition: "height 0.3s ease" }}
+        style={{ height: mapHeight, borderRadius: 0, overflow: "hidden", border: "1.5px solid rgba(20,20,15,.18)", display: loaded ? "block" : "none", transition: "height 0.3s ease" }}
       />
 
       {currentPin && (
@@ -1034,7 +1034,7 @@ function QuizScreen({ step, ans, times, setTimes, onToggle, onNext, onBack, onGe
                 style={{ marginBottom: 0 }}
               />
               {areaMatches.length > 0 && (
-                <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "#fff", border: "1.5px solid rgba(20,20,15,.18)", borderRadius: 12, zIndex: 10, overflow: "hidden", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", marginTop: 4 }}>
+                <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "#fff", border: "1.5px solid rgba(20,20,15,.18)", borderRadius: 0, zIndex: 10, overflow: "hidden", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", marginTop: 4 }}>
                   {areaMatches.map(area => (
                     <div key={area} onClick={() => selectNeighbourhood(area)}
                       style={{ padding: "10px 14px", fontSize: "0.85rem", color: "#14140F", cursor: "pointer", borderBottom: "1px solid rgba(20,20,15,.13)" }}
@@ -1252,7 +1252,7 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
           <div className="stops-wrap">
             {(result.stops || []).map((stop, idx) => (
               <div key={idx + "-" + stop.name}>
-                <div className="stop" style={{ ...(stop._saved ? { outline: "2px solid #D9412B", outlineOffset: -2, borderRadius: 16 } : {}), animation: swappingIdx === idx ? "cardSwap 0.25s ease" : undefined }}>
+                <div className="stop" style={{ ...(stop._saved ? { outline: "2px solid #D9412B", outlineOffset: -2, borderRadius: 0 } : {}), animation: swappingIdx === idx ? "cardSwap 0.25s ease" : undefined }}>
                   <div className="stop-inner" onClick={() => { setSwappingIdx(null); setAlternatives([]); window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(stop.name + " London")}`, "_blank"); }} style={{ cursor: "pointer" }}>
                     <div className="stop-top">
                       <div className="stop-emoji-wrap">{stop.emoji}</div>
@@ -1336,7 +1336,7 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
               <div className="social-section-title" style={{ marginTop: 16 }}>Add to your calendar</div>
               <div className="social-card">
                 <div style={{ padding: "0.9rem 1rem", display: "flex", flexDirection: "column", gap: 10 }}>
-                  <label style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, position: "relative", cursor: "pointer", background: "#D9412B", color: "#fff", borderRadius: 12, padding: "12px 14px", fontSize: "0.88rem", fontWeight: 600 }}>
+                  <label style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, position: "relative", cursor: "pointer", background: "#D9412B", color: "#fff", borderRadius: 0, padding: "12px 14px", fontSize: "0.88rem", fontWeight: 600 }}>
                     <span>📅 {scheduledDate ? `Planned for ${new Date(scheduledDate).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "long" })}` : "Pick a date for this plan"}</span>
                     <span style={{ opacity: 0.85 }}>{scheduledDate ? "Change" : "Choose ›"}</span>
                     <input type="date" value={scheduledDate || ""} onChange={(e) => e.target.value && onSchedule(e.target.value)} style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer", width: "100%" }} />
@@ -1365,7 +1365,7 @@ function MyPlansScreen({ plans, onViewPlan, onNewPlan, onSchedule, dbVenues }) {
     <div style={{ padding: "1.75rem 1.5rem 0.5rem", textAlign: "center" }}>
       <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: "2rem", color: "#14140F", lineHeight: 1.05 }}>Itineraries</div>
       <div style={{ fontSize: "0.86rem", color: "#7a7062", marginTop: 5 }}>Turn your saved spots into plans you'll actually do.</div>
-      <button data-tour="plan-cta" onClick={onNewPlan} style={{ width: "100%", marginTop: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "#D9412B", color: "#fff", border: "none", borderRadius: 14, padding: "15px", fontSize: "0.95rem", fontWeight: 600, cursor: "pointer", boxShadow: "0 3px 12px rgba(114,106,78,0.28)" }}>✦ Plan my day or night</button>
+      <button data-tour="plan-cta" onClick={onNewPlan} style={{ width: "100%", marginTop: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "#D9412B", color: "#fff", border: "none", borderRadius: 0, padding: "15px", fontSize: "0.95rem", fontWeight: 600, cursor: "pointer", boxShadow: "0 3px 12px rgba(114,106,78,0.28)" }}>✦ Plan my day or night</button>
     </div>
   );
   const CalIcon = <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>;
@@ -1389,7 +1389,7 @@ function MyPlansScreen({ plans, onViewPlan, onNewPlan, onSchedule, dbVenues }) {
           const stops = plan.result.stops || [];
           const cover = stops.map(s => s.photo_url || photoFor(s.name)).find(Boolean);
           return (
-            <div key={i} onClick={() => onViewPlan(plan)} style={{ borderRadius: 16, overflow: "hidden", cursor: "pointer", background: "#fff", boxShadow: "0 4px 16px rgba(0,0,0,0.12)" }}>
+            <div key={i} onClick={() => onViewPlan(plan)} style={{ borderRadius: 0, overflow: "hidden", cursor: "pointer", background: "#fff", boxShadow: "0 4px 16px rgba(0,0,0,0.12)" }}>
               <div style={{ position: "relative", height: 200, background: cover ? "#222" : "linear-gradient(135deg, #4B342F, #9B892F)" }}>
                 {cover && <img src={cover} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />}
                 <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 35%, rgba(0,0,0,0.72))" }} />
@@ -1798,7 +1798,7 @@ Each object must have this exact structure:
             {preview.venues.length > 1 ? `${preview.venues.length} venues found` : "Preview"} — check before saving
           </div>
           {preview._caption && (
-            <div style={{ fontSize: "0.72rem", color: "#7a7062", background: "#F1EDE4", borderRadius: 10, padding: "0.75rem", marginBottom: "1rem", lineHeight: 1.5 }}>
+            <div style={{ fontSize: "0.72rem", color: "#7a7062", background: "#F1EDE4", borderRadius: 0, padding: "0.75rem", marginBottom: "1rem", lineHeight: 1.5 }}>
               <strong>Caption:</strong> {preview._caption}
             </div>
           )}
@@ -2027,7 +2027,7 @@ function PreferencesScreen({ preferences, setPreferences, user }) {
       </div>
 
       {preferences.length > 0 && (
-        <div style={{ marginTop: "1rem", padding: "1rem", background: "#F1EDE4", borderRadius: 12 }}>
+        <div style={{ marginTop: "1rem", padding: "1rem", background: "#F1EDE4", borderRadius: 0 }}>
           <div style={{ fontSize: "0.75rem", color: "#6b5e4e", lineHeight: 1.5 }}>
             ✦ Your Discover tab will prioritise: <strong>{preferences.join(", ")}</strong>
           </div>
@@ -2068,7 +2068,7 @@ function MeScreen({ user, preferences, setPreferences, isAdmin, onBadgeUpdate, a
     </div>
   );
 
-  const row = { display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", padding: "14px 16px", background: "#fff", border: "1px solid rgba(20,20,15,.13)", borderRadius: 14, marginBottom: 10, cursor: "pointer" };
+  const row = { display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", padding: "14px 16px", background: "#fff", border: "1px solid rgba(20,20,15,.13)", borderRadius: 0, marginBottom: 10, cursor: "pointer" };
 
   return (
     <div>
@@ -2376,7 +2376,7 @@ function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan, user, onSpotUpdate
     return `https://calendar.google.com/calendar/render?${p.toString()}`;
   })();
   const Action = ({ href, onClick, children, primary }) => {
-    const style = { display: "block", textAlign: "center", padding: "12px", borderRadius: 12, fontSize: "0.85rem", fontWeight: 600, marginBottom: 8, cursor: "pointer", textDecoration: "none", border: primary ? "none" : "1.5px solid rgba(20,20,15,.18)", background: primary ? "#D9412B" : "#fff", color: primary ? "#fff" : "#4a4438" };
+    const style = { display: "block", textAlign: "center", padding: "12px", borderRadius: 0, fontSize: "0.85rem", fontWeight: 600, marginBottom: 8, cursor: "pointer", textDecoration: "none", border: primary ? "none" : "1.5px solid rgba(20,20,15,.18)", background: primary ? "#D9412B" : "#fff", color: primary ? "#fff" : "#4a4438" };
     return href ? <a href={href} target="_blank" rel="noreferrer" style={style}>{children}</a> : <button onClick={onClick} style={{ ...style, width: "100%" }}>{children}</button>;
   };
   return (
@@ -2607,9 +2607,9 @@ function SpotsMap({ saves, listName, focusSpot, onCategory, peek, peekHeight, on
   // Peek mode: a live, non-interactive preview that expands the full map on tap.
   if (peek) return (
     <div onClick={onExpand} style={{ position: "relative", cursor: "pointer", marginBottom: 12 }}>
-      {!loaded && <div style={{ height: mapH, background: "#eef3ee", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", color: "#7a7062", fontSize: "0.82rem" }}>Loading map…</div>}
-      <div ref={mapRef} style={{ height: mapH, borderRadius: 16, overflow: "hidden", boxShadow: "0 4px 16px rgba(0,0,0,0.12)", display: loaded ? "block" : "none" }} />
-      <div style={{ position: "absolute", inset: 0, borderRadius: 16, zIndex: 900 }} />
+      {!loaded && <div style={{ height: mapH, background: "#eef3ee", borderRadius: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "#7a7062", fontSize: "0.82rem" }}>Loading map…</div>}
+      <div ref={mapRef} style={{ height: mapH, borderRadius: 0, overflow: "hidden", boxShadow: "0 4px 16px rgba(0,0,0,0.12)", display: loaded ? "block" : "none" }} />
+      <div style={{ position: "absolute", inset: 0, borderRadius: 0, zIndex: 900 }} />
       <div style={{ position: "absolute", top: 10, left: 10, zIndex: 950, background: "rgba(255,255,255,0.92)", color: "#14140F", borderRadius: 100, padding: "5px 11px", fontSize: "0.72rem", fontWeight: 600 }}>📍 {pts.length} on the map</div>
       <div style={{ position: "absolute", bottom: 10, right: 10, zIndex: 950, background: "#14140F", color: "#fff", borderRadius: 100, padding: "6px 13px", fontSize: "0.74rem", fontWeight: 600, boxShadow: "0 2px 8px rgba(0,0,0,0.25)" }}>Open map ›</div>
     </div>
@@ -2619,8 +2619,8 @@ function SpotsMap({ saves, listName, focusSpot, onCategory, peek, peekHeight, on
     <div>
       <div style={{ fontSize: "0.7rem", color: "#7a7062", marginBottom: 8 }}>{pts.length} {listName ? "place" : "spot"}{pts.length !== 1 ? "s" : ""} {listName ? `in ${listName}` : "on the map"} · tap a pin for the card</div>
       <div style={{ position: "relative" }}>
-        {!loaded && <div style={{ height: mapH, background: "#eef3ee", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", color: "#7a7062", fontSize: "0.82rem" }}>Loading map…</div>}
-        <div ref={mapRef} style={{ height: mapH, borderRadius: 16, overflow: "hidden", boxShadow: "0 4px 16px rgba(0,0,0,0.12)", display: loaded ? "block" : "none" }} />
+        {!loaded && <div style={{ height: mapH, background: "#eef3ee", borderRadius: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "#7a7062", fontSize: "0.82rem" }}>Loading map…</div>}
+        <div ref={mapRef} style={{ height: mapH, borderRadius: 0, overflow: "hidden", boxShadow: "0 4px 16px rgba(0,0,0,0.12)", display: loaded ? "block" : "none" }} />
         {loaded && <button onClick={resetView} title="Reset map" style={{ position: "absolute", top: 10, right: 10, zIndex: 470, width: 36, height: 36, borderRadius: "50%", border: "none", background: "#fff", boxShadow: "0 2px 8px rgba(0,0,0,0.22)", cursor: "pointer", fontSize: "1rem", lineHeight: 1 }}>⤢</button>}
 
         {loaded && !listName && !selected && !sheetOpen && cats.length > 1 && (
@@ -2639,14 +2639,14 @@ function SpotsMap({ saves, listName, focusSpot, onCategory, peek, peekHeight, on
             onClick={() => setSheetOpen(true)}
             onTouchStart={(e) => { e.currentTarget._sy = e.touches[0].clientY; }}
             onTouchEnd={(e) => { const dy = (e.currentTarget._sy || 0) - e.changedTouches[0].clientY; if (dy > 30) setSheetOpen(true); }}
-            style={{ position: "absolute", left: 10, right: 10, bottom: 54, zIndex: 460, background: "#fff", borderRadius: 14, boxShadow: "0 4px 16px rgba(0,0,0,0.12)", padding: "12px 14px 10px", textAlign: "center", cursor: "pointer" }}>
+            style={{ position: "absolute", left: 10, right: 10, bottom: 54, zIndex: 460, background: "#fff", borderRadius: 0, boxShadow: "0 4px 16px rgba(0,0,0,0.12)", padding: "12px 14px 10px", textAlign: "center", cursor: "pointer" }}>
             <div style={{ position: "absolute", top: 6, left: "50%", transform: "translateX(-50%)", width: 34, height: 4, borderRadius: 2, background: "#ddd6c8" }} />
             <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "#14140F" }}>⌃ Swipe up for all {filteredPts.length} {filterLabel}</span>
           </div>
         )}
 
         {loaded && !listName && !onCategory && sheetOpen && filter !== "all" && (
-          <div style={{ position: "absolute", inset: 0, zIndex: 600, background: "#fff", borderRadius: 16, display: "flex", flexDirection: "column", animation: "cardIn 0.25s ease" }}>
+          <div style={{ position: "absolute", inset: 0, zIndex: 600, background: "#fff", borderRadius: 0, display: "flex", flexDirection: "column", animation: "cardIn 0.25s ease" }}>
             <div
               onTouchStart={(e) => { e.currentTarget._sy = e.touches[0].clientY; }}
               onTouchEnd={(e) => { const dy = e.changedTouches[0].clientY - (e.currentTarget._sy || 0); if (dy > 40) setSheetOpen(false); }}
@@ -2657,7 +2657,7 @@ function SpotsMap({ saves, listName, focusSpot, onCategory, peek, peekHeight, on
             </div>
             <div style={{ overflowY: "auto", padding: "12px 12px 16px", flex: 1 }}>
               {filteredPts.map(s => (
-                <div key={s.id} onClick={() => { setSelected(s); setSheetOpen(false); }} style={{ borderRadius: 16, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", border: "1px solid rgba(20,20,15,.13)", background: "#fff", marginBottom: 14, cursor: "pointer" }}>
+                <div key={s.id} onClick={() => { setSelected(s); setSheetOpen(false); }} style={{ borderRadius: 0, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", border: "1px solid rgba(20,20,15,.13)", background: "#fff", marginBottom: 14, cursor: "pointer" }}>
                   <BigSpotCard s={s} photo={s.photo_url} />
                 </div>
               ))}
@@ -2666,7 +2666,7 @@ function SpotsMap({ saves, listName, focusSpot, onCategory, peek, peekHeight, on
         )}
 
         {selected && (
-          <div key={selected.id} style={{ position: "absolute", left: 10, right: 10, bottom: 10, zIndex: 500, borderRadius: 16, overflow: "hidden", boxShadow: "0 8px 28px rgba(0,0,0,0.28)", background: "#fff", animation: "cardSwap 0.2s ease-out" }}>
+          <div key={selected.id} style={{ position: "absolute", left: 10, right: 10, bottom: 10, zIndex: 500, borderRadius: 0, overflow: "hidden", boxShadow: "0 8px 28px rgba(0,0,0,0.28)", background: "#fff", animation: "cardSwap 0.2s ease-out" }}>
             <button onClick={() => setSelected(null)} style={{ position: "absolute", top: 8, right: 8, width: 28, height: 28, borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.92)", cursor: "pointer", fontSize: "0.95rem", lineHeight: 1, zIndex: 3 }}>×</button>
             <BigSpotCard s={selected} photo={cardPhoto} />
           </div>
@@ -2805,9 +2805,9 @@ function SpotsCalendar({ saves, user, onBuildPlan, onShare }) {
         ))}
       </div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-        <button onClick={() => { setMonthOffset(monthOffset - 1); setSelDay(null); }} style={{ border: "none", background: "#F1EDE4", borderRadius: 8, width: 32, height: 32, cursor: "pointer", fontSize: "1rem" }}>‹</button>
+        <button onClick={() => { setMonthOffset(monthOffset - 1); setSelDay(null); }} style={{ border: "none", background: "#F1EDE4", borderRadius: 0, width: 32, height: 32, cursor: "pointer", fontSize: "1rem" }}>‹</button>
         <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: "1rem", color: "#14140F" }}>{monthName}</div>
-        <button onClick={() => { setMonthOffset(monthOffset + 1); setSelDay(null); }} style={{ border: "none", background: "#F1EDE4", borderRadius: 8, width: 32, height: 32, cursor: "pointer", fontSize: "1rem" }}>›</button>
+        <button onClick={() => { setMonthOffset(monthOffset + 1); setSelDay(null); }} style={{ border: "none", background: "#F1EDE4", borderRadius: 0, width: 32, height: 32, cursor: "pointer", fontSize: "1rem" }}>›</button>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 3, fontSize: "0.6rem", color: "#7a7062", textAlign: "center", marginBottom: 4 }}>
         {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => <div key={i}>{d}</div>)}
@@ -2846,8 +2846,8 @@ function SpotsCalendar({ saves, user, onBuildPlan, onShare }) {
       {shown.map(e => {
         const meta = CAL_TYPE[e._type] || CAL_TYPE.spot;
         return (
-          <div key={e.id} style={{ display: "flex", gap: 10, padding: 10, background: "#fff", border: "1px solid rgba(20,20,15,.13)", borderRadius: 12, marginBottom: 8, borderLeft: `3px solid ${meta.colour}` }}>
-            <div style={{ width: 46, height: 46, borderRadius: 8, overflow: "hidden", flexShrink: 0, background: meta.colour, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.1rem" }}>
+          <div key={e.id} style={{ display: "flex", gap: 10, padding: 10, background: "#fff", border: "1px solid rgba(20,20,15,.13)", borderRadius: 0, marginBottom: 8, borderLeft: `3px solid ${meta.colour}` }}>
+            <div style={{ width: 46, height: 46, borderRadius: 0, overflow: "hidden", flexShrink: 0, background: meta.colour, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.1rem" }}>
               {e.photo_url ? <img src={e.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span>{meta.emoji}</span>}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -2877,14 +2877,14 @@ function SpotsCalendar({ saves, user, onBuildPlan, onShare }) {
         </div>
       )}
       {selDay && adding && (
-        <div style={{ marginTop: 8, background: "#fff", border: "1px solid rgba(20,20,15,.13)", borderRadius: 12, padding: 10 }}>
+        <div style={{ marginTop: 8, background: "#fff", border: "1px solid rgba(20,20,15,.13)", borderRadius: 0, padding: 10 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
             {pickFolder && <button onClick={() => setPickFolder(null)} style={{ border: "none", background: "none", cursor: "pointer", fontSize: "0.78rem", color: "#D9412B", fontWeight: 600, padding: 0 }}>‹ Lists</button>}
             <div style={{ fontSize: "0.74rem", color: "#7a7062" }}>{pickFolder ? `${pickFolder} → ${fmt(dayStr(selDay))}` : `Pick a list · ${fmtFull(new Date(year, month, selDay))}`}</div>
           </div>
           {!pickFolder && undatedFolders.length === 0 && <div style={{ fontSize: "0.78rem", color: "#7a7062" }}>No undated spots left to add.</div>}
           {!pickFolder && undatedFolders.map(f => (
-            <button key={f} onClick={() => setPickFolder(f)} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", textAlign: "left", padding: "9px 8px", borderRadius: 10, border: "none", background: "transparent", cursor: "pointer" }}>
+            <button key={f} onClick={() => setPickFolder(f)} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", textAlign: "left", padding: "9px 8px", borderRadius: 0, border: "none", background: "transparent", cursor: "pointer" }}>
               <span style={{ fontSize: "1.05rem", width: 28, textAlign: "center" }}>📁</span>
               <span style={{ flex: 1, fontSize: "0.84rem", fontWeight: 600, color: "#14140F" }}>{f}</span>
               <span style={{ fontSize: "0.72rem", color: "#7a7062" }}>{undatedByFolder[f].length}</span>
@@ -2892,7 +2892,7 @@ function SpotsCalendar({ saves, user, onBuildPlan, onShare }) {
             </button>
           ))}
           {pickFolder && (undatedByFolder[pickFolder] || []).map(s => (
-            <button key={s.id} onClick={() => assignSpot(s)} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", textAlign: "left", padding: "7px 8px", borderRadius: 10, border: "none", background: "transparent", cursor: "pointer" }}>
+            <button key={s.id} onClick={() => assignSpot(s)} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", textAlign: "left", padding: "7px 8px", borderRadius: 0, border: "none", background: "transparent", cursor: "pointer" }}>
               {s.photo_url ? <img src={s.photo_url} alt="" style={{ width: 32, height: 32, borderRadius: 7, objectFit: "cover", flexShrink: 0 }} /> : <div style={{ width: 32, height: 32, borderRadius: 7, background: "#F1EDE4", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>📍</div>}
               <span style={{ flex: 1, minWidth: 0, fontSize: "0.82rem", fontWeight: 500, color: "#14140F", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.name}</span>
               <span style={{ color: "#D9412B", fontWeight: 700 }}>＋</span>
@@ -2939,7 +2939,7 @@ function TourSpotlight({ targetRef, step, last, onDone, onSkip }) {
   const hole = rect ? { t: rect.t - P, l: rect.l - P, w: rect.w + P * 2, h: rect.h + P * 2 } : null;
   const below = hole ? hole.t + hole.h + 160 < vh : true;
   const tip = (
-    <div style={{ pointerEvents: "auto", background: "#14140F", color: "#fff", borderRadius: 14, padding: "14px 16px", maxWidth: 320, margin: "0 auto", boxShadow: "0 10px 30px rgba(0,0,0,0.45)" }}>
+    <div style={{ pointerEvents: "auto", background: "#14140F", color: "#fff", borderRadius: 0, padding: "14px 16px", maxWidth: 320, margin: "0 auto", boxShadow: "0 10px 30px rgba(0,0,0,0.45)" }}>
       <div style={{ fontSize: "0.68rem", color: "#8f8ba3", marginBottom: 4 }}>Step {step + 1} of {IMPORT_TOUR.length}</div>
       <div style={{ fontWeight: 700, fontSize: "0.95rem", marginBottom: 3 }}>{info.title}</div>
       <div style={{ fontSize: "0.83rem", lineHeight: 1.45, color: "#d9d7e6" }}>{info.body}</div>
@@ -2958,7 +2958,7 @@ function TourSpotlight({ targetRef, step, last, onDone, onSkip }) {
         <div style={{ position: "fixed", top: hole.t + hole.h, left: 0, right: 0, bottom: 0, background: dim, pointerEvents: "auto" }} />
         <div style={{ position: "fixed", top: hole.t, left: 0, width: Math.max(0, hole.l), height: hole.h, background: dim, pointerEvents: "auto" }} />
         <div style={{ position: "fixed", top: hole.t, left: hole.l + hole.w, right: 0, height: hole.h, background: dim, pointerEvents: "auto" }} />
-        <div style={{ position: "fixed", top: hole.t, left: hole.l, width: hole.w, height: hole.h, borderRadius: 12, boxShadow: "0 0 0 2px #fff", pointerEvents: "none" }} />
+        <div style={{ position: "fixed", top: hole.t, left: hole.l, width: hole.w, height: hole.h, borderRadius: 0, boxShadow: "0 0 0 2px #fff", pointerEvents: "none" }} />
         <div style={{ position: "fixed", left: 16, right: 16, [below ? "top" : "bottom"]: below ? hole.t + hole.h + 12 : Math.max(12, vh - hole.t + 12) }}>{tip}</div>
       </>) : (
         <div style={{ position: "fixed", inset: 0, background: dim, pointerEvents: "auto", display: "flex", alignItems: "flex-end", justifyContent: "center", padding: "0 16px 40px" }}>{tip}</div>
@@ -3710,8 +3710,8 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
       ? [fmtDate(v.event_start), fmtDate(v.event_end)].filter(Boolean).join(" – ")
       : null;
     return (
-      <div style={{ display: "flex", gap: 12, padding: 12, background: "#fff", border: "1px solid rgba(20,20,15,.13)", borderRadius: 14, marginBottom: 10 }}>
-        <div style={{ width: 64, height: 64, borderRadius: 10, overflow: "hidden", flexShrink: 0, background: (v.photo_url || v._previewImage) ? "#e9e4da" : colour, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ display: "flex", gap: 12, padding: 12, background: "#fff", border: "1px solid rgba(20,20,15,.13)", borderRadius: 0, marginBottom: 10 }}>
+        <div style={{ width: 64, height: 64, borderRadius: 0, overflow: "hidden", flexShrink: 0, background: (v.photo_url || v._previewImage) ? "#e9e4da" : colour, display: "flex", alignItems: "center", justifyContent: "center" }}>
           {(v.photo_url || v._previewImage)
             ? <img src={v.photo_url || v._previewImage} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
             : <span style={{ fontSize: "1.6rem" }}>{emoji}</span>}
@@ -3759,7 +3759,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
       <div style={{ width: 40, height: 4, borderRadius: 2, background: "#ddd6c8", margin: "2px auto 12px" }} />
       {header}
       {list.map(s => (
-        <div key={s.id} style={{ position: "relative", borderRadius: 16, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", border: "1px solid rgba(20,20,15,.13)", background: "#fff", marginBottom: 14 }}>
+        <div key={s.id} style={{ position: "relative", borderRadius: 0, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", border: "1px solid rgba(20,20,15,.13)", background: "#fff", marginBottom: 14 }}>
           <button onClick={() => removeSave(s.id)} title="Delete" style={{ position: "absolute", top: 8, right: 8, zIndex: 3, width: 28, height: 28, borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.92)", cursor: "pointer", fontSize: "0.95rem", lineHeight: 1 }}>×</button>
           <div onClick={() => setDetailSpot(s)} style={{ cursor: "pointer" }}>
             <BigSpotCard s={s} photo={s.photo_url} />
@@ -3826,7 +3826,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
                   <div style={{ flex: 1, height: 1, background: "rgba(20,20,15,.13)" }} />
                 </div>
 
-                <label style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "14px 16px", border: "1.5px dashed rgba(20,20,15,.18)", borderRadius: 14, cursor: parsing ? "default" : "pointer", textAlign: "center" }}>
+                <label style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "14px 16px", border: "1.5px dashed rgba(20,20,15,.18)", borderRadius: 0, cursor: parsing ? "default" : "pointer", textAlign: "center" }}>
                   <span style={{ fontSize: "1.1rem" }}>📷</span>
                   <span style={{ fontSize: "0.88rem", color: "#14140F", fontWeight: 500 }}>{parsing ? "Reading…" : "Upload a screenshot"}</span>
                   <input type="file" accept="image/*" multiple style={{ display: "none" }} disabled={parsing || saving}
@@ -3844,7 +3844,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
 
             {captureTab === "screenshot" && (
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                <label style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 7, padding: "34px 16px", border: "1.5px dashed rgba(20,20,15,.18)", borderRadius: 14, cursor: parsing ? "default" : "pointer", textAlign: "center" }}>
+                <label style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 7, padding: "34px 16px", border: "1.5px dashed rgba(20,20,15,.18)", borderRadius: 0, cursor: parsing ? "default" : "pointer", textAlign: "center" }}>
                   <span style={{ fontSize: "1.5rem" }}>⬆️</span>
                   <span style={{ fontSize: "0.92rem", color: "#14140F", fontWeight: 500 }}>{parsing ? "Reading…" : "Click to upload a screenshot"}</span>
                   <span style={{ fontSize: "0.76rem", color: "#7a7062" }}>PNG or JPG — pick several at once</span>
@@ -3950,7 +3950,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
           <div>
             {saves.map(s => (
               <div key={s.id} onClick={() => setDetailSpot(s)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: "1px solid rgba(20,20,15,.13)", cursor: "pointer" }}>
-                {s.photo_url ? <img src={s.photo_url} alt="" style={{ width: 44, height: 44, borderRadius: 10, objectFit: "cover", flexShrink: 0 }} /> : <div style={{ width: 44, height: 44, borderRadius: 10, background: "#F1EDE4", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: "1.1rem" }}>{CAT_EMOJI[normaliseCategory(s.category)] || "📍"}</div>}
+                {s.photo_url ? <img src={s.photo_url} alt="" style={{ width: 44, height: 44, borderRadius: 0, objectFit: "cover", flexShrink: 0 }} /> : <div style={{ width: 44, height: 44, borderRadius: 0, background: "#F1EDE4", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: "1.1rem" }}>{CAT_EMOJI[normaliseCategory(s.category)] || "📍"}</div>}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: "0.88rem", fontWeight: 600, color: "#14140F", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.name}</div>
                   <div style={{ fontSize: "0.72rem", color: "#7a7062" }}>{[s.category ? cap(normaliseCategory(s.category)) : null, s.area, s.google_rating ? `⭐ ${s.google_rating}` : null].filter(Boolean).join(" · ")}</div>
@@ -3974,7 +3974,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
             {creatingFolder && (
               <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
                 <input className="input-field" autoFocus placeholder="List name" value={folderDraft} onChange={e => setFolderDraft(e.target.value)} onKeyDown={e => e.key === "Enter" && confirmCreateFolder()} style={{ flex: 1, padding: "10px 12px" }} />
-                <button onClick={confirmCreateFolder} style={{ border: "none", background: "#D9412B", color: "#fff", borderRadius: 10, padding: "0 16px", fontWeight: 600, fontSize: "0.82rem", cursor: "pointer" }}>Create</button>
+                <button onClick={confirmCreateFolder} style={{ border: "none", background: "#D9412B", color: "#fff", borderRadius: 0, padding: "0 16px", fontWeight: 600, fontSize: "0.82rem", cursor: "pointer" }}>Create</button>
                 <button onClick={() => setCreatingFolder(false)} style={{ border: "none", background: "none", color: "#7a7062", fontSize: "0.82rem", cursor: "pointer" }}>Cancel</button>
               </div>
             )}
@@ -3982,14 +3982,14 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
               {folderNames.map((f, fi) => {
                 const items = grouped[f] || [];
                 return (
-                  <div key={f} data-tour={fi === 0 ? "saves-list-card" : undefined} style={{ position: "relative", borderRadius: 16, overflow: "hidden", boxShadow: "0 4px 16px rgba(0,0,0,0.12)", background: "#fff" }}>
+                  <div key={f} data-tour={fi === 0 ? "saves-list-card" : undefined} style={{ position: "relative", borderRadius: 0, overflow: "hidden", boxShadow: "0 4px 16px rgba(0,0,0,0.12)", background: "#fff" }}>
                     <div onClick={() => setOpenFolder(f)} style={{ cursor: "pointer" }}>
                       <ListCover items={items} />
                       <div style={{ padding: "8px 10px" }}>
                         {renamingFolder === f ? (
                           <div style={{ display: "flex", gap: 6, alignItems: "center" }} onClick={e => e.stopPropagation()}>
                             <input className="input-field" autoFocus value={renameDraft} onChange={e => setRenameDraft(e.target.value)} onKeyDown={e => { if (e.key === "Enter") confirmRename(f); if (e.key === "Escape") setRenamingFolder(null); }} style={{ padding: "6px 8px", fontSize: "0.8rem", flex: 1 }} />
-                            <button onClick={() => confirmRename(f)} style={{ border: "none", background: "#D9412B", color: "#fff", borderRadius: 8, padding: "6px 10px", fontSize: "0.72rem", fontWeight: 600, cursor: "pointer" }}>Save</button>
+                            <button onClick={() => confirmRename(f)} style={{ border: "none", background: "#D9412B", color: "#fff", borderRadius: 0, padding: "6px 10px", fontSize: "0.72rem", fontWeight: 600, cursor: "pointer" }}>Save</button>
                           </div>
                         ) : (
                           <>
@@ -4001,7 +4001,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
                     </div>
                     <button onClick={(e) => { e.stopPropagation(); setMenuFolder(menuFolder === f ? null : f); }} style={{ position: "absolute", top: 6, right: 6, width: 26, height: 26, borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.92)", cursor: "pointer", fontSize: "0.95rem", lineHeight: 1, boxShadow: "0 1px 4px rgba(0,0,0,0.25)" }}>⋯</button>
                     {menuFolder === f && (
-                      <div style={{ position: "absolute", top: 34, right: 6, background: "#fff", borderRadius: 10, boxShadow: "0 4px 16px rgba(0,0,0,0.12)", overflow: "hidden", zIndex: 10, minWidth: 110 }}>
+                      <div style={{ position: "absolute", top: 34, right: 6, background: "#fff", borderRadius: 0, boxShadow: "0 4px 16px rgba(0,0,0,0.12)", overflow: "hidden", zIndex: 10, minWidth: 110 }}>
                         <button onClick={() => renameFolder(f)} style={{ display: "block", width: "100%", textAlign: "left", padding: "9px 12px", border: "none", background: "#fff", cursor: "pointer", fontSize: "0.78rem", color: "#14140F" }}>Rename</button>
                         <button onClick={() => deleteFolder(f)} style={{ display: "block", width: "100%", textAlign: "left", padding: "9px 12px", border: "none", borderTop: "1px solid rgba(20,20,15,.13)", background: "#fff", cursor: "pointer", fontSize: "0.78rem", color: "#DD4124" }}>Delete</button>
                       </div>
@@ -4050,7 +4050,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
 
       {successVenue && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, animation: "fadeIn 0.2s" }}>
-          <div style={{ background: "#fff", borderRadius: 16, padding: "2rem 1.5rem", textAlign: "center", maxWidth: 280, animation: "popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)" }}>
+          <div style={{ background: "#fff", borderRadius: 0, padding: "2rem 1.5rem", textAlign: "center", maxWidth: 280, animation: "popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)" }}>
             <div style={{ fontSize: "3rem", marginBottom: "0.5rem" }}>✨</div>
             <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: "1.1rem", color: "#14140F", marginBottom: 6 }}>Saved!</div>
             <div style={{ fontSize: "0.82rem", color: "#6b5e4e" }}>{successVenue}</div>
@@ -4076,12 +4076,12 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
           <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: "1.25rem 1.25rem 1.5rem", width: "100%", maxWidth: 420, maxHeight: "70vh", overflowY: "auto", animation: "cardIn 0.25s ease" }}>
             <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: "1.05rem", color: "#14140F", marginBottom: 4 }}>Move to list</div>
             <div style={{ fontSize: "0.78rem", color: "#7a7062", marginBottom: 12, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{movingSpot.name}</div>
-            <button onClick={() => moveSpot(movingSpot, null)} style={{ display: "block", width: "100%", textAlign: "left", padding: "11px 12px", borderRadius: 10, border: "1px solid rgba(20,20,15,.13)", background: "#fff", cursor: "pointer", fontSize: "0.82rem", color: "#14140F", marginBottom: 8 }}>✨ Auto — by category</button>
+            <button onClick={() => moveSpot(movingSpot, null)} style={{ display: "block", width: "100%", textAlign: "left", padding: "11px 12px", borderRadius: 0, border: "1px solid rgba(20,20,15,.13)", background: "#fff", cursor: "pointer", fontSize: "0.82rem", color: "#14140F", marginBottom: 8 }}>✨ Auto — by category</button>
             {folderNames.map(f => (
-              <button key={f} onClick={() => moveSpot(movingSpot, f)} style={{ display: "block", width: "100%", textAlign: "left", padding: "11px 12px", borderRadius: 10, border: "1px solid rgba(20,20,15,.13)", background: "#fff", cursor: "pointer", fontSize: "0.82rem", color: "#14140F", marginBottom: 8 }}>📁 {f}</button>
+              <button key={f} onClick={() => moveSpot(movingSpot, f)} style={{ display: "block", width: "100%", textAlign: "left", padding: "11px 12px", borderRadius: 0, border: "1px solid rgba(20,20,15,.13)", background: "#fff", cursor: "pointer", fontSize: "0.82rem", color: "#14140F", marginBottom: 8 }}>📁 {f}</button>
             ))}
-            <button onClick={() => { const n = (window.prompt("New list name") || "").trim(); if (n) moveSpot(movingSpot, n); }} style={{ display: "block", width: "100%", textAlign: "left", padding: "11px 12px", borderRadius: 10, border: "1.5px solid #D9412B", background: "#fff", cursor: "pointer", fontSize: "0.82rem", color: "#D9412B", fontWeight: 600, marginBottom: 8 }}>+ New list…</button>
-            <button onClick={() => setMovingSpot(null)} style={{ display: "block", width: "100%", textAlign: "center", padding: "10px", borderRadius: 10, border: "none", background: "#F1EDE4", cursor: "pointer", fontSize: "0.8rem", color: "#6b5e4e" }}>Cancel</button>
+            <button onClick={() => { const n = (window.prompt("New list name") || "").trim(); if (n) moveSpot(movingSpot, n); }} style={{ display: "block", width: "100%", textAlign: "left", padding: "11px 12px", borderRadius: 0, border: "1.5px solid #D9412B", background: "#fff", cursor: "pointer", fontSize: "0.82rem", color: "#D9412B", fontWeight: 600, marginBottom: 8 }}>+ New list…</button>
+            <button onClick={() => setMovingSpot(null)} style={{ display: "block", width: "100%", textAlign: "center", padding: "10px", borderRadius: 0, border: "none", background: "#F1EDE4", cursor: "pointer", fontSize: "0.8rem", color: "#6b5e4e" }}>Cancel</button>
           </div>
         </div>
       )}
@@ -4171,7 +4171,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
                   <div key={discoverIdx}
                     onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
                     onClick={tapCard}
-                    style={{ width: "100%", maxWidth: 360, height: 420, borderRadius: 16, overflow: "hidden", boxShadow: "0 8px 28px rgba(0,0,0,0.22)", position: "relative", cursor: "pointer" }}>
+                    style={{ width: "100%", maxWidth: 360, height: 420, borderRadius: 0, overflow: "hidden", boxShadow: "0 8px 28px rgba(0,0,0,0.22)", position: "relative", cursor: "pointer" }}>
                     {cardFace === 0 && (
                       <div style={{ height: "100%", position: "relative", animation: "fadeIn 0.3s" }}>
                         <img src={current.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
@@ -4235,9 +4235,9 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
             {blLoading && <div style={{ fontSize: "0.82rem", color: "#7a7062" }}>Loading lists...</div>}
             {!blLoading && bucketLists.length === 0 && <div style={{ fontSize: "0.82rem", color: "#7a7062", marginBottom: 12 }}>No bucket lists yet. Create one in the People tab.</div>}
             {!blLoading && bucketLists.map(l => (
-              <button key={l.id} onClick={() => addSpotToBucketList(l.id)} style={{ display: "block", width: "100%", textAlign: "left", padding: "11px 12px", borderRadius: 10, border: "1px solid rgba(20,20,15,.13)", background: "#fff", cursor: "pointer", fontSize: "0.82rem", color: "#14140F", marginBottom: 8 }}>{l.emoji || "✨"} {l.name}</button>
+              <button key={l.id} onClick={() => addSpotToBucketList(l.id)} style={{ display: "block", width: "100%", textAlign: "left", padding: "11px 12px", borderRadius: 0, border: "1px solid rgba(20,20,15,.13)", background: "#fff", cursor: "pointer", fontSize: "0.82rem", color: "#14140F", marginBottom: 8 }}>{l.emoji || "✨"} {l.name}</button>
             ))}
-            <button onClick={() => setBucketListPicker(null)} style={{ display: "block", width: "100%", textAlign: "center", padding: "10px", borderRadius: 10, border: "none", background: "#F1EDE4", cursor: "pointer", fontSize: "0.8rem", color: "#6b5e4e", marginTop: 4 }}>Cancel</button>
+            <button onClick={() => setBucketListPicker(null)} style={{ display: "block", width: "100%", textAlign: "center", padding: "10px", borderRadius: 0, border: "none", background: "#F1EDE4", cursor: "pointer", fontSize: "0.8rem", color: "#6b5e4e", marginTop: 4 }}>Cancel</button>
           </div>
         </div>
       )}
@@ -4251,7 +4251,7 @@ function Splash({ onStart }) {
     <div style={{ minHeight: "100vh", background: "#ffffff", display: "flex", flexDirection: "column", justifyContent: "space-between", padding: "4.5rem 2rem 2.5rem", maxWidth: 420, margin: "0 auto", textAlign: "center" }}>
       <div>
         <div style={{ fontSize: "0.68rem", letterSpacing: "0.26em", textTransform: "uppercase", color: "#a3865f", fontWeight: 600, marginBottom: 30 }}>Saved · Sorted · Planned</div>
-        <div style={{ fontFamily: "'Sofia', cursive", fontWeight: 700, fontSize: "3.4rem", lineHeight: 1, color: "#D9412B", marginBottom: 26 }}>Curated</div>
+        <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontWeight: 700, fontSize: "3.4rem", lineHeight: 1, color: "#D9412B", marginBottom: 26 }}>Curated</div>
         <h1 style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: "2.6rem", lineHeight: 1.14, color: "#33281c", fontWeight: 700, margin: 0 }}>
           Everything you save,<br />in one <em style={{ fontStyle: "italic", color: "#b5563b" }}>beautiful</em> place.
         </h1>
@@ -4315,7 +4315,7 @@ function LoginScreen({ onLogin }) {
     // The onAuthStateChange listener in App handles the signed-in state.
   }
 
-  const inputStyle = { width: "100%", padding: "13px 15px", borderRadius: 12, border: "1.5px solid rgba(20,20,15,.18)", background: "#fff", color: "#14140F", fontFamily: "inherit", fontSize: "0.92rem", boxSizing: "border-box", textAlign: "center" };
+  const inputStyle = { width: "100%", padding: "13px 15px", borderRadius: 0, border: "1.5px solid rgba(20,20,15,.18)", background: "#fff", color: "#14140F", fontFamily: "inherit", fontSize: "0.92rem", boxSizing: "border-box", textAlign: "center" };
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#ffffff", padding: "2rem" }}>
@@ -4493,14 +4493,14 @@ function Onboarding({ user, dbVenues, onDone }) {
           <div style={{ fontSize: "2.6rem", marginBottom: 10 }}>📍</div>
           <div style={h}>Show places near you?</div>
           <p style={sub}>We use your location to centre the map and surface what's close. You can just browse everything instead.</p>
-          <button onClick={() => chooseLocation("allow")} style={{ width: "100%", padding: "14px", borderRadius: 14, border: "none", background: "#D9412B", color: "#fff", fontSize: "0.95rem", fontWeight: 700, fontFamily: "inherit", cursor: "pointer", marginBottom: 10 }}>Allow location</button>
-          <button onClick={() => chooseLocation("london")} style={{ width: "100%", padding: "14px", borderRadius: 14, border: "1.5px solid rgba(20,20,15,.18)", background: "#fff", color: "#4a4438", fontSize: "0.92rem", fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>Just browse instead</button>
+          <button onClick={() => chooseLocation("allow")} style={{ width: "100%", padding: "14px", borderRadius: 0, border: "none", background: "#D9412B", color: "#fff", fontSize: "0.95rem", fontWeight: 700, fontFamily: "inherit", cursor: "pointer", marginBottom: 10 }}>Allow location</button>
+          <button onClick={() => chooseLocation("london")} style={{ width: "100%", padding: "14px", borderRadius: 0, border: "1.5px solid rgba(20,20,15,.18)", background: "#fff", color: "#4a4438", fontSize: "0.92rem", fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>Just browse instead</button>
         </>)}
 
         {step === 1 && (<>
           <div style={h}>What's your name?</div>
           <p style={sub}>So we can make Curated feel like yours.</p>
-          <input value={name} onChange={e => setName(e.target.value)} placeholder="First name" autoFocus onKeyDown={e => e.key === "Enter" && canNext && next()} style={{ width: "100%", padding: "14px 16px", borderRadius: 14, border: "1.5px solid rgba(20,20,15,.18)", background: "#fff", fontSize: "1rem", fontFamily: "inherit", color: "#14140F", boxSizing: "border-box" }} />
+          <input value={name} onChange={e => setName(e.target.value)} placeholder="First name" autoFocus onKeyDown={e => e.key === "Enter" && canNext && next()} style={{ width: "100%", padding: "14px 16px", borderRadius: 0, border: "1.5px solid rgba(20,20,15,.18)", background: "#fff", fontSize: "1rem", fontFamily: "inherit", color: "#14140F", boxSizing: "border-box" }} />
         </>)}
 
         {step === 2 && (<>
@@ -4527,7 +4527,7 @@ function Onboarding({ user, dbVenues, onDone }) {
               <p style={sub}>Tap the one you'd rather go to. <span style={{ color: "#c9bfae" }}>({axisIdx + 1} of {pairs.length})</span></p>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 {[["a", pair.a], ["b", pair.b]].map(([pole, v]) => { const on = tapped === v.id; return (
-                  <button key={v.id} onClick={() => tapChoose(pair, pole, v)} style={{ position: "relative", border: "none", padding: 0, borderRadius: 16, overflow: "hidden", cursor: "pointer", height: 175, background: "#e9e4da", animation: on ? "tapPulse 0.3s ease" : undefined, outline: on ? "3px solid #D9412B" : "none", outlineOffset: -3, opacity: tapped && !on ? 0.5 : 1, transition: "opacity 0.2s" }}>
+                  <button key={v.id} onClick={() => tapChoose(pair, pole, v)} style={{ position: "relative", border: "none", padding: 0, borderRadius: 0, overflow: "hidden", cursor: "pointer", height: 175, background: "#e9e4da", animation: on ? "tapPulse 0.3s ease" : undefined, outline: on ? "3px solid #D9412B" : "none", outlineOffset: -3, opacity: tapped && !on ? 0.5 : 1, transition: "opacity 0.2s" }}>
                     <img src={v.photo_url} alt={v.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                     <div style={{ position: "absolute", inset: 0, background: on ? "rgba(114,106,78,0.32)" : "linear-gradient(transparent 45%, rgba(0,0,0,0.72))" }} />
                     <div style={{ position: "absolute", left: 14, right: 14, bottom: 12, textAlign: "left", color: "#fff" }}>
@@ -4546,7 +4546,7 @@ function Onboarding({ user, dbVenues, onDone }) {
 
       {showFooter && (
         <div style={{ padding: "0.75rem 1.5rem 1.5rem" }}>
-          <button onClick={next} disabled={!canNext} style={{ width: "100%", padding: "15px", borderRadius: 14, border: "none", background: canNext ? "#D9412B" : "#cfc6b5", color: "#fff", fontSize: "0.95rem", fontWeight: 700, fontFamily: "inherit", cursor: canNext ? "pointer" : "default" }}>Continue</button>
+          <button onClick={next} disabled={!canNext} style={{ width: "100%", padding: "15px", borderRadius: 0, border: "none", background: canNext ? "#D9412B" : "#cfc6b5", color: "#fff", fontSize: "0.95rem", fontWeight: 700, fontFamily: "inherit", cursor: canNext ? "pointer" : "default" }}>Continue</button>
         </div>
       )}
     </div>
@@ -4638,7 +4638,7 @@ function SparkleLoader({ label = "Curating…", brand = false }) {
     <div style={{ position: "fixed", inset: 0, background: "#F1EDE4", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
       {sparkles.map((sp, i) => <span key={i} style={{ position: "absolute", top: sp.top, left: sp.left, fontSize: brand ? sp.s * 1.5 : sp.s, color: brand ? "#800000" : "#D9412B", animation: `twinkle 1.5s ease-in-out ${sp.d}s infinite` }}>✦</span>)}
       {brand
-        ? <div style={{ fontFamily: "'Sofia', cursive", fontWeight: 700, fontSize: "4.5rem", lineHeight: 1, color: "#D9412B", textAlign: "center", zIndex: 1, animation: "loaderPulse 1.6s ease-in-out infinite" }}>Curated</div>
+        ? <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontWeight: 700, fontSize: "4.5rem", lineHeight: 1, color: "#D9412B", textAlign: "center", zIndex: 1, animation: "loaderPulse 1.6s ease-in-out infinite" }}>Curated</div>
         : <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: "1.3rem", color: "#14140F", textAlign: "center", zIndex: 1, animation: "loaderPulse 1.6s ease-in-out infinite" }}>{label}</div>}
     </div>
   );
@@ -4675,7 +4675,7 @@ function BarCrawlQuiz({ seedCount = 0, onComplete, onCancel }) {
       <div style={{ fontSize: "1.15rem", fontWeight: 600, color: "#14140F", margin: "20px 0 16px" }}>{Q.q}</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {Q.opts.map(([label, val]) => (
-          <button key={val + label} onClick={() => pick(val)} style={{ textAlign: "left", padding: "15px 16px", borderRadius: 14, border: "1.5px solid rgba(20,20,15,.13)", background: "#fff", fontSize: "0.95rem", color: "#14140F", cursor: "pointer", fontWeight: 500 }}>{label}</button>
+          <button key={val + label} onClick={() => pick(val)} style={{ textAlign: "left", padding: "15px 16px", borderRadius: 0, border: "1.5px solid rgba(20,20,15,.13)", background: "#fff", fontSize: "0.95rem", color: "#14140F", cursor: "pointer", fontWeight: 500 }}>{label}</button>
         ))}
       </div>
     </div></div>
@@ -4719,13 +4719,13 @@ function ShareModal({ user, item, onClose, showToast }) {
           <div style={{ fontSize: "0.85rem", color: "#6b5e4e", lineHeight: 1.5 }}>You're not connected with anyone yet. Open the <strong>People</strong> tab → share your invite link, and once a friend opens it you can send them things here.</div>
         )}
         {people.map(p => (
-          <button key={p.id} disabled={sending} onClick={() => send(p.id)} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", padding: "10px 12px", borderRadius: 12, border: "1px solid rgba(20,20,15,.13)", background: "#fff", cursor: "pointer", marginBottom: 8 }}>
+          <button key={p.id} disabled={sending} onClick={() => send(p.id)} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", padding: "10px 12px", borderRadius: 0, border: "1px solid rgba(20,20,15,.13)", background: "#fff", cursor: "pointer", marginBottom: 8 }}>
             <div style={{ width: 34, height: 34, borderRadius: "50%", background: "#D9412B", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 600, flexShrink: 0, overflow: "hidden" }}>{p.avatar_url ? <img src={p.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : nameOf(p).charAt(0).toUpperCase()}</div>
             <span style={{ fontSize: "0.88rem", color: "#14140F", fontWeight: 500 }}>{nameOf(p)}</span>
             <span style={{ marginLeft: "auto", fontSize: "0.78rem", color: "#D9412B", fontWeight: 600 }}>Send →</span>
           </button>
         ))}
-        <button onClick={onClose} style={{ display: "block", width: "100%", textAlign: "center", padding: "10px", borderRadius: 10, border: "none", background: "#F1EDE4", cursor: "pointer", fontSize: "0.8rem", color: "#6b5e4e", marginTop: 4 }}>Cancel</button>
+        <button onClick={onClose} style={{ display: "block", width: "100%", textAlign: "center", padding: "10px", borderRadius: 0, border: "none", background: "#F1EDE4", cursor: "pointer", fontSize: "0.8rem", color: "#6b5e4e", marginTop: 4 }}>Cancel</button>
       </div>
     </div>
   );
@@ -4733,7 +4733,7 @@ function ShareModal({ user, item, onClose, showToast }) {
 
 // Shared styles for the bucket-list UI.
 const slPill = { padding: "7px 12px", borderRadius: 100, border: "1px solid #d8d0c0", background: "#fff", color: "#4a4438", fontSize: "0.78rem", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" };
-const slInput = { width: "100%", padding: "11px 12px", borderRadius: 10, border: "1.5px solid rgba(20,20,15,.18)", background: "#fff", color: "#14140F", fontFamily: "inherit", fontSize: "0.9rem", boxSizing: "border-box" };
+const slInput = { width: "100%", padding: "11px 12px", borderRadius: 0, border: "1.5px solid rgba(20,20,15,.18)", background: "#fff", color: "#14140F", fontFamily: "inherit", fontSize: "0.9rem", boxSizing: "border-box" };
 const slOverlay = { position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 1300, animation: "fadeIn 0.2s" };
 const slSheet = { background: "#fff", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: "1.25rem 1.25rem 1.5rem", width: "100%", maxWidth: 420, maxHeight: "75vh", overflowY: "auto", animation: "cardIn 0.25s ease" };
 
@@ -4791,11 +4791,11 @@ function SharedListsSection({ user }) {
       <div style={{ marginBottom: 12 }} />
 
       {creating && (
-        <div style={{ background: "#fff", border: "1px solid rgba(20,20,15,.13)", borderRadius: 14, padding: "0.9rem", marginBottom: 12 }}>
+        <div style={{ background: "#fff", border: "1px solid rgba(20,20,15,.13)", borderRadius: 0, padding: "0.9rem", marginBottom: 12 }}>
           <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="e.g. Date spots" autoFocus style={slInput} />
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6, margin: "10px 0" }}>
             {EMOJIS.map(em => (
-              <button key={em} onClick={() => setNewEmoji(em)} style={{ width: 34, height: 34, borderRadius: 10, border: newEmoji === em ? "2px solid #D9412B" : "1px solid rgba(20,20,15,.13)", background: "#fff", fontSize: "1.05rem", cursor: "pointer" }}>{em}</button>
+              <button key={em} onClick={() => setNewEmoji(em)} style={{ width: 34, height: 34, borderRadius: 0, border: newEmoji === em ? "2px solid #D9412B" : "1px solid rgba(20,20,15,.13)", background: "#fff", fontSize: "1.05rem", cursor: "pointer" }}>{em}</button>
             ))}
           </div>
           <div style={{ display: "flex", gap: 8 }}>
@@ -4812,8 +4812,8 @@ function SharedListsSection({ user }) {
         const c = counts[l.id] || { done: 0, total: 0 };
         const pct = c.total ? Math.round((c.done / c.total) * 100) : 0;
         return (
-          <button key={l.id} onClick={() => setOpenList(l)} style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", padding: 12, background: "#fff", border: "1px solid rgba(20,20,15,.13)", borderRadius: 14, marginBottom: 10, cursor: "pointer" }}>
-            <div style={{ width: 42, height: 42, borderRadius: 12, background: "#F1EDE4", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.25rem", flexShrink: 0 }}>{l.emoji || "✨"}</div>
+          <button key={l.id} onClick={() => setOpenList(l)} style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", padding: 12, background: "#fff", border: "1px solid rgba(20,20,15,.13)", borderRadius: 0, marginBottom: 10, cursor: "pointer" }}>
+            <div style={{ width: 42, height: 42, borderRadius: 0, background: "#F1EDE4", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.25rem", flexShrink: 0 }}>{l.emoji || "✨"}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: "0.9rem", fontWeight: 600, color: "#14140F" }}>{l.name}</div>
               <div style={{ fontSize: "0.72rem", color: "#7a7062", margin: "1px 0 5px" }}>{c.done}/{c.total} done{l.owner !== user.id ? " · shared with you" : ""}</div>
@@ -5022,7 +5022,7 @@ function SharedListView({ list, user, onClose }) {
         <button className="btn-ghost" onClick={onClose} style={{ marginBottom: "0.5rem" }}>← Back</button>
 
         <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "1rem 0 0.25rem" }}>
-          <div style={{ width: 48, height: 48, borderRadius: 14, background: "#F1EDE4", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", flexShrink: 0 }}>{list.emoji || "✨"}</div>
+          <div style={{ width: 48, height: 48, borderRadius: 0, background: "#F1EDE4", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", flexShrink: 0 }}>{list.emoji || "✨"}</div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: "1.4rem", color: "#14140F", lineHeight: 1.1 }}>{list.name}</div>
             <div style={{ fontSize: "0.76rem", color: "#7a7062", marginTop: 2 }}>{doneCount}/{items.length} ticked off</div>
@@ -5060,7 +5060,7 @@ function SharedListView({ list, user, onClose }) {
         {items.length > 0 && (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
             {items.map(it => (
-              <div key={it.id} onClick={() => setDetailItem(it)} style={{ position: "relative", borderRadius: 16, overflow: "hidden", boxShadow: "0 4px 16px rgba(0,0,0,0.12)", background: "#F1EDE4", cursor: "pointer", animation: "popIn 0.25s ease" }}>
+              <div key={it.id} onClick={() => setDetailItem(it)} style={{ position: "relative", borderRadius: 0, overflow: "hidden", boxShadow: "0 4px 16px rgba(0,0,0,0.12)", background: "#F1EDE4", cursor: "pointer", animation: "popIn 0.25s ease" }}>
                 <div style={{ height: 180, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
                   {it.photo_url
                     ? <img src={it.photo_url} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", filter: it.done ? "grayscale(0.6) brightness(0.85)" : "none" }} />
@@ -5099,7 +5099,7 @@ function SharedListView({ list, user, onClose }) {
             {!savesLoaded && <div style={{ fontSize: "0.82rem", color: "#7a7062" }}>Loading…</div>}
             {savesLoaded && availableSaves.length === 0 && <div style={{ fontSize: "0.82rem", color: "#7a7062", lineHeight: 1.5 }}>Nothing left to add — everything's already on the list, or you haven't saved any spots yet (add some in the Saves tab).</div>}
             {savesLoaded && !savesFolder && availableFolders.map(f => (
-              <button key={f} onClick={() => setSavesFolder(f)} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", padding: "10px", borderRadius: 12, border: "1px solid rgba(20,20,15,.13)", background: "#fff", cursor: "pointer", marginBottom: 8 }}>
+              <button key={f} onClick={() => setSavesFolder(f)} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", padding: "10px", borderRadius: 0, border: "1px solid rgba(20,20,15,.13)", background: "#fff", cursor: "pointer", marginBottom: 8 }}>
                 <span style={{ fontSize: "1.15rem", width: 30, textAlign: "center" }}>📁</span>
                 <span style={{ flex: 1, fontSize: "0.88rem", fontWeight: 600, color: "#14140F" }}>{f}</span>
                 <span style={{ fontSize: "0.74rem", color: "#7a7062" }}>{availableByFolder[f].length}</span>
@@ -5107,7 +5107,7 @@ function SharedListView({ list, user, onClose }) {
               </button>
             ))}
             {savesFolder && (availableByFolder[savesFolder] || []).map(s => (
-              <button key={s.id} disabled={busy} onClick={() => addFromSave(s)} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", padding: "8px 10px", borderRadius: 12, border: "1px solid rgba(20,20,15,.13)", background: "#fff", cursor: "pointer", marginBottom: 8 }}>
+              <button key={s.id} disabled={busy} onClick={() => addFromSave(s)} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", padding: "8px 10px", borderRadius: 0, border: "1px solid rgba(20,20,15,.13)", background: "#fff", cursor: "pointer", marginBottom: 8 }}>
                 {s.photo_url ? <img src={s.photo_url} alt="" style={{ width: 38, height: 38, borderRadius: 9, objectFit: "cover", flexShrink: 0 }} /> : <div style={{ width: 38, height: 38, borderRadius: 9, background: "#F1EDE4", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>📍</div>}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "#14140F", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.name}</div>
@@ -5131,7 +5131,7 @@ function SharedListView({ list, user, onClose }) {
               <div style={{ fontSize: "0.76rem", color: "#7a7062", marginBottom: 12 }}>Add someone you're connected with — they'll get the list instantly, no link needed.</div>
               {addable.length === 0 && <div style={{ fontSize: "0.82rem", color: "#7a7062", lineHeight: 1.5 }}>{conns.length === 0 ? "You're not connected with anyone yet. Connect on the People tab first (swap words), then add them here." : "Everyone you're connected with is already on this list."}</div>}
               {addable.map(c => (
-                <button key={c.id} disabled={busy} onClick={() => addMember(c.id)} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", padding: "8px 10px", borderRadius: 12, border: "1px solid rgba(20,20,15,.13)", background: "#fff", cursor: "pointer", marginBottom: 8 }}>
+                <button key={c.id} disabled={busy} onClick={() => addMember(c.id)} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", padding: "8px 10px", borderRadius: 0, border: "1px solid rgba(20,20,15,.13)", background: "#fff", cursor: "pointer", marginBottom: 8 }}>
                   <div style={{ width: 34, height: 34, borderRadius: "50%", background: "#D9412B", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 600, fontSize: "0.82rem", overflow: "hidden", flexShrink: 0 }}>{c.avatar_url ? <img src={c.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : nameOf(c).charAt(0).toUpperCase()}</div>
                   <span style={{ flex: 1, fontSize: "0.88rem", fontWeight: 600, color: "#14140F" }}>{nameOf(c)}</span>
                   <span style={{ color: "#D9412B", fontWeight: 700, fontSize: "1.1rem", flexShrink: 0 }}>＋</span>
@@ -5165,8 +5165,8 @@ function SharedListView({ list, user, onClose }) {
               <>
                 <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: "1.2rem", color: "#14140F", marginBottom: 3 }}>Did you mean this?! ✨</div>
                 <div style={{ fontSize: "0.76rem", color: "#7a7062", marginBottom: 12 }}>We found this on Google — add it and we'll fill in the photo, address & rating.</div>
-                <div style={{ display: "flex", gap: 12, alignItems: "center", background: "#fff", border: "1px solid rgba(20,20,15,.13)", borderRadius: 16, padding: 12, marginBottom: 14 }}>
-                  {suggest.photo ? <img src={suggest.photo} alt="" style={{ width: 72, height: 72, borderRadius: 12, objectFit: "cover", flexShrink: 0 }} /> : <div style={{ width: 72, height: 72, borderRadius: 12, background: "#F1EDE4", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.6rem", flexShrink: 0 }}>{CAT_EMOJI[String(mCat || "").toLowerCase()] || "📍"}</div>}
+                <div style={{ display: "flex", gap: 12, alignItems: "center", background: "#fff", border: "1px solid rgba(20,20,15,.13)", borderRadius: 0, padding: 12, marginBottom: 14 }}>
+                  {suggest.photo ? <img src={suggest.photo} alt="" style={{ width: 72, height: 72, borderRadius: 0, objectFit: "cover", flexShrink: 0 }} /> : <div style={{ width: 72, height: 72, borderRadius: 0, background: "#F1EDE4", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.6rem", flexShrink: 0 }}>{CAT_EMOJI[String(mCat || "").toLowerCase()] || "📍"}</div>}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: "0.98rem", fontWeight: 700, color: "#14140F", lineHeight: 1.2 }}>{suggest.validated_name}</div>
                     <div style={{ fontSize: "0.72rem", color: "#7a7062", margin: "3px 0" }}>{[mCat ? cap(mCat) : null, suggest.derived_area || suggest.derived_zone].filter(Boolean).join(" · ")}{suggest.google_rating ? ` · ⭐ ${suggest.google_rating}` : ""}</div>
@@ -5276,7 +5276,7 @@ function FriendProfile({ user, friend, onClose }) {
         {!openFolder && folderNames.length > 0 && (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: "1.5rem" }}>
             {folderNames.map(f => (
-              <button key={f} onClick={() => setOpenFolder(f)} style={{ borderRadius: 16, overflow: "hidden", boxShadow: "0 2px 8px rgba(0,0,0,0.06)", background: "#fff", border: "none", padding: 0, cursor: "pointer", textAlign: "left" }}>
+              <button key={f} onClick={() => setOpenFolder(f)} style={{ borderRadius: 0, overflow: "hidden", boxShadow: "0 2px 8px rgba(0,0,0,0.06)", background: "#fff", border: "none", padding: 0, cursor: "pointer", textAlign: "left" }}>
                 <ListCover items={grouped[f]} height={130} />
                 <div style={{ padding: "10px 12px" }}>
                   <div style={{ fontSize: "0.84rem", fontWeight: 600, color: "#14140F", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f}</div>
@@ -5293,7 +5293,7 @@ function FriendProfile({ user, friend, onClose }) {
           <div style={{ marginTop: "1.25rem" }}>
             <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: "1.1rem", color: "#14140F", marginBottom: 12 }}>{openFolder} ({folderSaves.length})</div>
             {folderSaves.map(s => (
-              <div key={s.id} style={{ position: "relative", borderRadius: 16, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", border: "1px solid rgba(20,20,15,.13)", background: "#fff", marginBottom: 14 }}>
+              <div key={s.id} style={{ position: "relative", borderRadius: 0, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", border: "1px solid rgba(20,20,15,.13)", background: "#fff", marginBottom: 14 }}>
                 <div onClick={() => setDetailSpot(s)} style={{ cursor: "pointer" }}>
                   <BigSpotCard s={s} photo={s.photo_url} />
                 </div>
@@ -5325,19 +5325,19 @@ function FriendProfile({ user, friend, onClose }) {
           <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: "1.25rem 1.25rem 1.75rem", width: "100%", maxWidth: 420, maxHeight: "72vh", overflowY: "auto", animation: "cardIn 0.25s ease" }}>
             <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: "1.15rem", color: "#14140F", marginBottom: 3 }}>Save to which list?</div>
             <div style={{ fontSize: "0.76rem", color: "#7a7062", marginBottom: 14, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{savePick.name}</div>
-            <button disabled={busy} onClick={() => saveToMine(savePick, null)} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", padding: "11px 12px", borderRadius: 12, border: "1px solid rgba(20,20,15,.13)", background: "#FAF7F2", cursor: "pointer", marginBottom: 8 }}>
+            <button disabled={busy} onClick={() => saveToMine(savePick, null)} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", padding: "11px 12px", borderRadius: 0, border: "1px solid rgba(20,20,15,.13)", background: "#FAF7F2", cursor: "pointer", marginBottom: 8 }}>
               <span style={{ fontSize: "1.1rem", width: 26, textAlign: "center" }}>✨</span>
               <span style={{ flex: 1, fontWeight: 600, fontSize: "0.88rem", color: "#14140F" }}>Auto — sort by category</span>
             </button>
             {myFolders.map(f => (
-              <button key={f} disabled={busy} onClick={() => saveToMine(savePick, f)} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", padding: "11px 12px", borderRadius: 12, border: "1px solid rgba(20,20,15,.13)", background: "#fff", cursor: "pointer", marginBottom: 8 }}>
+              <button key={f} disabled={busy} onClick={() => saveToMine(savePick, f)} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", padding: "11px 12px", borderRadius: 0, border: "1px solid rgba(20,20,15,.13)", background: "#fff", cursor: "pointer", marginBottom: 8 }}>
                 <span style={{ fontSize: "1.1rem", width: 26, textAlign: "center" }}>📁</span>
                 <span style={{ flex: 1, fontWeight: 600, fontSize: "0.88rem", color: "#14140F", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f}</span>
               </button>
             ))}
             <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-              <input value={newFolder} onChange={e => setNewFolder(e.target.value)} placeholder="New list name…" style={{ flex: 1, padding: "11px 12px", borderRadius: 12, border: "1px solid rgba(20,20,15,.13)", fontSize: "0.88rem", fontFamily: "inherit" }} />
-              <button disabled={busy || !newFolder.trim()} onClick={() => saveToMine(savePick, newFolder.trim())} style={{ border: "none", background: newFolder.trim() ? "#D9412B" : "#cfc8ba", color: "#fff", borderRadius: 12, padding: "0 20px", fontWeight: 600, fontSize: "0.85rem", cursor: newFolder.trim() ? "pointer" : "default" }}>Add</button>
+              <input value={newFolder} onChange={e => setNewFolder(e.target.value)} placeholder="New list name…" style={{ flex: 1, padding: "11px 12px", borderRadius: 0, border: "1px solid rgba(20,20,15,.13)", fontSize: "0.88rem", fontFamily: "inherit" }} />
+              <button disabled={busy || !newFolder.trim()} onClick={() => saveToMine(savePick, newFolder.trim())} style={{ border: "none", background: newFolder.trim() ? "#D9412B" : "#cfc8ba", color: "#fff", borderRadius: 0, padding: "0 20px", fontWeight: 600, fontSize: "0.85rem", cursor: newFolder.trim() ? "pointer" : "default" }}>Add</button>
             </div>
             <button onClick={() => { setSavePick(null); setNewFolder(""); }} className="btn-outline">Cancel</button>
           </div>
@@ -5445,14 +5445,14 @@ function PeopleScreen({ user, onSavePlan, onShareSaved }) {
         <div className="section-title">People</div>
         <p className="section-sub">Connect with friends, then send each other lists and itineraries.</p>
       </div>
-      {msg && <div style={{ margin: "0 1.5rem 0.75rem", background: "#eef3d8", color: "#4B342F", borderRadius: 12, padding: "10px 12px", fontSize: "0.82rem" }}>{msg}</div>}
+      {msg && <div style={{ margin: "0 1.5rem 0.75rem", background: "#eef3d8", color: "#4B342F", borderRadius: 0, padding: "10px 12px", fontSize: "0.82rem" }}>{msg}</div>}
 
       {/* Friends first — the heart of the tab */}
       <div style={{ padding: "0 1.5rem 1rem" }}>
         <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: "1.05rem", color: "#14140F", margin: "0.25rem 0 0.6rem" }}>Friends ({connections.length})</div>
         {connections.length === 0 && <div style={{ fontSize: "0.82rem", color: "#7a7062" }}>No friends yet — tap &ldquo;Connect with a friend&rdquo; below.</div>}
         {connections.length === 0 && !peopleTipDismissed && (
-          <div style={{ background: "#F1EDE4", border: "1px solid rgba(20,20,15,.13)", borderRadius: 14, padding: "12px 14px", marginTop: 10, position: "relative" }}>
+          <div style={{ background: "#F1EDE4", border: "1px solid rgba(20,20,15,.13)", borderRadius: 0, padding: "12px 14px", marginTop: 10, position: "relative" }}>
             <button onClick={() => { localStorage.setItem("cl_seen_people_tip", "1"); setPeopleTipDismissed(true); }} style={{ position: "absolute", top: 8, right: 10, border: "none", background: "none", color: "#7a7062", fontSize: "1rem", cursor: "pointer", lineHeight: 1 }}>&times;</button>
             <div style={{ fontSize: "0.82rem", color: "#6b5e4e", lineHeight: 1.5, paddingRight: 16 }}>Connect with friends by swapping your 4-letter word code. Once connected, you can share lists and spots with each other.</div>
           </div>
@@ -5472,19 +5472,19 @@ function PeopleScreen({ user, onSavePlan, onShareSaved }) {
       {/* Connect — collapsed to a single row until tapped */}
       <div style={{ padding: "0 1.5rem 1rem" }}>
         {!showConnect ? (
-          <button data-tour="invite" onClick={() => setShowConnect(true)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, background: "#fff", border: "1px solid rgba(20,20,15,.13)", borderRadius: 16, padding: "14px 16px", cursor: "pointer" }}>
+          <button data-tour="invite" onClick={() => setShowConnect(true)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, background: "#fff", border: "1px solid rgba(20,20,15,.13)", borderRadius: 0, padding: "14px 16px", cursor: "pointer" }}>
             <span style={{ fontSize: "1.1rem" }}>🤝</span>
             <span style={{ flex: 1, textAlign: "left", fontSize: "0.9rem", fontWeight: 600, color: "#14140F" }}>Connect with a friend</span>
             <span style={{ color: "#c9bfae", fontSize: "1.2rem" }}>›</span>
           </button>
         ) : (
-          <div data-tour="invite" style={{ background: "#fff", border: "1px solid rgba(20,20,15,.13)", borderRadius: 16, padding: "1rem" }}>
+          <div data-tour="invite" style={{ background: "#fff", border: "1px solid rgba(20,20,15,.13)", borderRadius: 0, padding: "1rem" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
               <div style={{ fontWeight: 600, color: "#14140F" }}>Connect with a friend</div>
               <button onClick={() => setShowConnect(false)} style={{ border: "none", background: "none", color: "#7a7062", fontSize: "0.8rem", cursor: "pointer" }}>Hide</button>
             </div>
             <div style={{ fontSize: "0.76rem", color: "#7a7062", marginBottom: 10 }}>Both got the app? Swap words. Tell your friend your word, or enter theirs.</div>
-            <div style={{ background: "#F1EDE4", borderRadius: 12, padding: "14px", textAlign: "center" }}>
+            <div style={{ background: "#F1EDE4", borderRadius: 0, padding: "14px", textAlign: "center" }}>
               <div style={{ fontSize: "0.66rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#7a7062", fontWeight: 700, marginBottom: 5 }}>Your word</div>
               <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: "2.2rem", letterSpacing: "0.18em", color: "#14140F", lineHeight: 1, paddingLeft: "0.18em" }}>{myCode || "····"}</div>
               <button className="btn-outline" style={{ marginTop: 12, padding: "8px 22px", fontSize: "0.8rem", width: "auto" }} disabled={!myCode} onClick={() => { navigator.clipboard?.writeText(myCode); setCodeCopied(true); setTimeout(() => setCodeCopied(false), 2000); }}>{codeCopied ? "✓ Copied" : "Copy word"}</button>
@@ -5492,7 +5492,7 @@ function PeopleScreen({ user, onSavePlan, onShareSaved }) {
             <div style={{ fontSize: "0.76rem", color: "#6b5e4e", margin: "12px 0 8px" }}>Have your friend's word? Enter it:</div>
             <div style={{ display: "flex", gap: 8 }}>
               <input value={codeInput} onChange={e => setCodeInput(e.target.value.toUpperCase().replace(/[^A-Z]/g, ""))} placeholder="e.g. BLUE" maxLength={4} className="input-field" style={{ flex: 1, textTransform: "uppercase", letterSpacing: "0.14em", fontWeight: 600 }} />
-              <button onClick={connectByCode} disabled={connecting || codeInput.trim().length !== 4} style={{ border: "none", background: codeInput.trim().length === 4 ? "#D9412B" : "#cfc8ba", color: "#fff", borderRadius: 10, padding: "0 18px", fontWeight: 600, fontSize: "0.82rem", cursor: codeInput.trim().length === 4 ? "pointer" : "default" }}>{connecting ? "…" : "Connect"}</button>
+              <button onClick={connectByCode} disabled={connecting || codeInput.trim().length !== 4} style={{ border: "none", background: codeInput.trim().length === 4 ? "#D9412B" : "#cfc8ba", color: "#fff", borderRadius: 0, padding: "0 18px", fontWeight: 600, fontSize: "0.82rem", cursor: codeInput.trim().length === 4 ? "pointer" : "default" }}>{connecting ? "…" : "Connect"}</button>
             </div>
             <div style={{ height: 1, background: "rgba(20,20,15,.13)", margin: "14px 0" }} />
             <div style={{ fontSize: "0.76rem", color: "#7a7062", marginBottom: 8 }}>Not on the app yet? Send them an invite link:</div>
@@ -5510,8 +5510,8 @@ function PeopleScreen({ user, onSavePlan, onShareSaved }) {
         <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: "1.05rem", color: "#14140F", margin: "0.25rem 0 0.6rem" }}>Shared with you ({shares.length})</div>
         {shares.length === 0 && <div style={{ fontSize: "0.82rem", color: "#7a7062" }}>Nothing yet. When a friend sends you a list or itinerary, it shows here.</div>}
         {shares.map(s => (
-          <div key={s.id} onClick={() => setViewing(s)} style={{ display: "flex", alignItems: "center", gap: 12, padding: 12, background: "#fff", border: "1px solid rgba(20,20,15,.13)", borderRadius: 14, marginBottom: 10, cursor: "pointer", opacity: s.seen ? 0.7 : 1 }}>
-            <div style={{ width: 40, height: 40, borderRadius: 10, background: s.kind === "plan" ? "#4B342F" : "#D9412B", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.1rem", flexShrink: 0 }}>{s.kind === "plan" ? "🗺️" : "📋"}</div>
+          <div key={s.id} onClick={() => setViewing(s)} style={{ display: "flex", alignItems: "center", gap: 12, padding: 12, background: "#fff", border: "1px solid rgba(20,20,15,.13)", borderRadius: 0, marginBottom: 10, cursor: "pointer", opacity: s.seen ? 0.7 : 1 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 0, background: s.kind === "plan" ? "#4B342F" : "#D9412B", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.1rem", flexShrink: 0 }}>{s.kind === "plan" ? "🗺️" : "📋"}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: "0.88rem", fontWeight: 600, color: "#14140F" }}>{s.title || (s.kind === "plan" ? "An itinerary" : "A list")}</div>
               <div style={{ fontSize: "0.72rem", color: "#7a7062" }}>from {nameOf(s.from)} · {s.kind === "plan" ? "itinerary" : "list"}{s.seen ? " · saved" : ""}</div>
@@ -5583,9 +5583,9 @@ function AppProductTour({ steps, step, onNext, onBack, onDone, onSkip }) {
   }, [s.selector, step]);
 
   const pad = 6;
-  const hole = rect && { position: "fixed", top: rect.t - pad, left: rect.l - pad, width: rect.w + pad * 2, height: rect.h + pad * 2, borderRadius: 14, boxShadow: "0 0 0 9999px rgba(20,18,14,0.66)", border: "2px solid #DFEF87", pointerEvents: "none", zIndex: 3001, transition: "top 0.25s ease, left 0.25s ease, width 0.25s ease, height 0.25s ease" };
+  const hole = rect && { position: "fixed", top: rect.t - pad, left: rect.l - pad, width: rect.w + pad * 2, height: rect.h + pad * 2, borderRadius: 0, boxShadow: "0 0 0 9999px rgba(20,18,14,0.66)", border: "2px solid #DFEF87", pointerEvents: "none", zIndex: 3001, transition: "top 0.25s ease, left 0.25s ease, width 0.25s ease, height 0.25s ease" };
   const below = !rect || (rect.t + rect.h / 2) < window.innerHeight * 0.52;
-  const tip = { position: "fixed", left: 12, right: 12, maxWidth: 400, margin: "0 auto", background: "#fff", borderRadius: 16, padding: "16px 16px 14px", boxShadow: "0 12px 40px rgba(0,0,0,0.3)", zIndex: 3002, pointerEvents: "auto", ...(rect ? (below ? { top: Math.min(rect.t + rect.h + pad + 12, window.innerHeight - 230) } : { bottom: window.innerHeight - rect.t + pad + 12 }) : { top: "42%" }) };
+  const tip = { position: "fixed", left: 12, right: 12, maxWidth: 400, margin: "0 auto", background: "#fff", borderRadius: 0, padding: "16px 16px 14px", boxShadow: "0 12px 40px rgba(0,0,0,0.3)", zIndex: 3002, pointerEvents: "auto", ...(rect ? (below ? { top: Math.min(rect.t + rect.h + pad + 12, window.innerHeight - 230) } : { bottom: window.innerHeight - rect.t + pad + 12 }) : { top: "42%" }) };
   const btn = { border: "none", borderRadius: 100, padding: "9px 18px", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer" };
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 3000 }}>
@@ -6117,7 +6117,7 @@ export default function App() {
         {/* Always mounted so an in-progress screenshot parse keeps running + persists when you switch tabs */}
         <div style={{ display: activeTab === "saved" ? "block" : "none" }}>
           {showStarter && (
-            <div style={{ margin: "1rem 1.5rem 0", background: "#eef3d8", border: "1px solid #dfe8be", borderRadius: 14, padding: "12px 14px", display: "flex", gap: 10, alignItems: "flex-start" }}>
+            <div style={{ margin: "1rem 1.5rem 0", background: "#eef3d8", border: "1px solid #dfe8be", borderRadius: 0, padding: "12px 14px", display: "flex", gap: 10, alignItems: "flex-start" }}>
               <span style={{ fontSize: "1.1rem" }}>✦</span>
               <div style={{ flex: 1, fontSize: "0.82rem", color: "#4B342F", lineHeight: 1.45 }}><strong>Based on what you liked.</strong> Here's your starter board — add more anytime with the + button.</div>
               <button onClick={() => setShowStarter(false)} style={{ border: "none", background: "none", color: "#7a7062", cursor: "pointer", fontSize: "1.1rem", lineHeight: 1 }}>×</button>
@@ -6130,7 +6130,7 @@ export default function App() {
         {!showQuiz && !showResult && !showViewingPlan && (
           <button className="capture-fab" aria-label="Save a place"
             onClick={() => { setActiveTab("saved"); setQuizStep(-1); setViewingPlan(null); setCaptureSignal(n => n + 1); }}>
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
+            +
           </button>
         )}
 
