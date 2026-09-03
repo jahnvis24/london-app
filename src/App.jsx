@@ -534,20 +534,20 @@ const styles = `
   .stat-lbl { font-size: 9px; color: rgba(20,20,15,.45); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; }
 
   .stops-wrap { padding: 1.25rem 1.5rem; }
-  .stop { border-top: 1px solid rgba(20,20,15,.13); margin-bottom: 0; background: transparent; overflow: hidden; animation: fadeUp 0.3s ease; }
-  .stop-inner { padding: 1.1rem; }
-  .stop-top { display: flex; gap: 10px; align-items: flex-start; }
-  .stop-emoji-wrap { width: 44px; height: 44px; border-radius: 0; background: #F1EDE4; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; flex-shrink: 0; }
+  .stop { border: 1px solid rgba(20,20,15,.13); border-radius: 16px; margin-bottom: 14px; background: #fff; overflow: hidden; animation: fadeUp 0.3s ease; box-shadow: 0 2px 8px rgba(20,20,15,.04); }
+  .stop-inner { padding: 16px 16px 10px; }
+  .stop-top { display: flex; gap: 12px; align-items: flex-start; }
+  .stop-emoji-wrap { width: 48px; height: 48px; border-radius: 12px; background: #F1EDE4; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; flex-shrink: 0; }
   .stop-body { flex: 1; min-width: 0; }
-  .stop-meta { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
-  .stop-time { font-size: 10px; font-weight: 500; color: #D9412B; text-transform: uppercase; letter-spacing: 0.06em; }
-  .stop-type { font-size: 9px; color: rgba(20,20,15,.42); text-transform: uppercase; letter-spacing: 0.06em; }
+  .stop-meta { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+  .stop-time { font-size: 11px; font-weight: 600; color: #D9412B; text-transform: uppercase; letter-spacing: 0.06em; }
+  .stop-type { font-size: 10px; color: rgba(20,20,15,.42); text-transform: uppercase; letter-spacing: 0.06em; }
   .stop-dot { width: 3px; height: 3px; border-radius: 50%; background: rgba(20,20,15,.18); }
-  .stop-name { font-family: 'Instrument Serif', Georgia, serif; font-size: 1.05rem; color: #14140F; margin-bottom: 4px; line-height: 1.2; }
-  .stop-hook { font-size: 12px; color: rgba(20,20,15,.55); line-height: 1.45; }
-  .stop-footer { display: flex; align-items: center; justify-content: space-between; padding: 0.6rem 1.1rem 0.75rem; border-top: 1px solid rgba(20,20,15,.13); margin-top: 0.75rem; min-height: 44px; }
-  .stop-pills-row { display: flex; gap: 5px; flex-wrap: nowrap; overflow: hidden; flex: 1; min-width: 0; }
-  .stop-pill { font-size: 10px; padding: 3px 8px; border-radius: 100px; background: #F1EDE4; color: rgba(20,20,15,.55); }
+  .stop-name { font-family: 'Instrument Serif', Georgia, serif; font-size: 20px; color: #14140F; margin-bottom: 5px; line-height: 1.2; }
+  .stop-hook { font-size: 13px; color: rgba(20,20,15,.55); line-height: 1.5; }
+  .stop-footer { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px 12px; border-top: 1px solid rgba(20,20,15,.08); margin-top: 10px; min-height: 44px; }
+  .stop-pills-row { display: flex; gap: 6px; flex-wrap: nowrap; overflow: hidden; flex: 1; min-width: 0; }
+  .stop-pill { font-size: 11px; padding: 4px 10px; border-radius: 100px; background: #F1EDE4; color: rgba(20,20,15,.55); }
   .stop-booking { font-size: 10px; color: rgba(20,20,15,.45); }
   .why-fit { padding: 0 1.1rem 0.75rem; font-size: 11px; color: rgba(20,20,15,.45); font-style: italic; line-height: 1.4; border-top: 1px solid rgba(20,20,15,.13); padding-top: 0.55rem; }
   .transit { display: flex; align-items: center; gap: 8px; padding: 0 0.5rem; margin-bottom: 10px; color: rgba(20,20,15,.42); font-size: 11px; }
@@ -1394,6 +1394,19 @@ function MyPlansScreen({ plans, onViewPlan, onNewPlan, onBarCrawl, onSchedule, d
           );
         })}
       </div>
+    </div>
+  );
+}
+
+function PlanDetailView({ plan, onClose, onNewPlan, dbVenues, onUpdateResult, onShare, onRate, onSchedule }) {
+  const swipeRef = useSwipeRight(onClose);
+  return (
+    <div ref={swipeRef} style={{ position: "fixed", inset: 0, zIndex: 1200, background: "#FAF7F2", overflowY: "auto", animation: "screenIn .32s cubic-bezier(.2,.9,.3,1)" }}>
+      <div style={{ position: "sticky", top: 0, zIndex: 10, background: "#FAF7F2", padding: "14px 22px", display: "flex", alignItems: "center", gap: 12, borderBottom: "1px solid rgba(20,20,15,.1)" }}>
+        <button onClick={onClose} style={{ width: 36, height: 36, border: "1px solid rgba(20,20,15,.18)", background: "none", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, cursor: "pointer" }}>←</button>
+        <div style={{ flex: 1, fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 19, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{plan.result?.title || "Your plan"}</div>
+      </div>
+      <ResultScreen result={plan.result} times={plan.times} ans={plan.ans} onRestart={onClose} onNewPlan={onNewPlan} dbVenues={dbVenues} onUpdateResult={onUpdateResult} onShare={onShare} onRate={onRate} scheduledDate={plan.scheduledDate} onSchedule={onSchedule} />
     </div>
   );
 }
@@ -6241,9 +6254,16 @@ export default function App() {
 
         {activeTab === "plans" && !showViewingPlan && <MyPlansScreen plans={plans} dbVenues={dbVenues} onViewPlan={(plan) => setViewingPlan(plan)} onNewPlan={() => { setActiveTab("home"); startQuiz(); }} onBarCrawl={() => setBarCrawl({ seed: [] })} onSchedule={(i, date) => setPlans(prev => { const u = prev.map((p, idx) => idx === i ? { ...p, scheduledDate: date || null } : p); localStorage.setItem("cl_plans", JSON.stringify(u.slice(0, 20))); return u; })} />}
         {showViewingPlan && (
-          <DraggableSheet onClose={() => setViewingPlan(null)}>
-            <ResultScreen result={viewingPlan.result} times={viewingPlan.times} ans={viewingPlan.ans} onRestart={() => setViewingPlan(null)} onNewPlan={() => { setViewingPlan(null); setActiveTab("home"); startQuiz(); }} dbVenues={dbVenues} onUpdateResult={(r) => setViewingPlan(p => ({ ...p, result: r }))} onShare={setShareItem} onRate={() => setRatingPlan(viewingPlan)} scheduledDate={viewingPlan.scheduledDate} onSchedule={(date) => { setPlans(prev => { const u = prev.map(x => x.id === viewingPlan.id ? { ...x, scheduledDate: date || null } : x); localStorage.setItem("cl_plans", JSON.stringify(u.slice(0, 20))); return u; }); goToCalendar("It's on your calendar! 📅"); }} />
-          </DraggableSheet>
+          <PlanDetailView
+            plan={viewingPlan}
+            onClose={() => setViewingPlan(null)}
+            onNewPlan={() => { setViewingPlan(null); setActiveTab("home"); startQuiz(); }}
+            dbVenues={dbVenues}
+            onUpdateResult={(r) => setViewingPlan(p => ({ ...p, result: r }))}
+            onShare={setShareItem}
+            onRate={() => setRatingPlan(viewingPlan)}
+            onSchedule={(date) => { setPlans(prev => { const u = prev.map(x => x.id === viewingPlan.id ? { ...x, scheduledDate: date || null } : x); localStorage.setItem("cl_plans", JSON.stringify(u.slice(0, 20))); return u; }); goToCalendar("It's on your calendar! 📅"); }}
+          />
         )}
 
         {activeTab === "discover" && <DiscoverScreen preferences={preferences} dbVenues={dbVenues} onStart={startQuiz} onOpenSpot={setDiscoverSpot} />}
