@@ -1288,8 +1288,9 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
             {onSchedule && <button onClick={() => onSchedule(new Date().toISOString().slice(0, 10))} style={{ padding: 14, background: "#D9412B", color: "#FAF7F2", border: "none", textAlign: "center", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>Schedule this plan</button>}
             {onShare && <button onClick={() => onShare({ kind: "plan", title: result.title || "Curated plan", payload: { plan: result, times } })} style={{ padding: 14, border: "1px solid #0F6B63", background: "none", color: "#0F6B63", textAlign: "center", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>Share with friends</button>}
           </div>
-          <div style={{ padding: "9px 22px 1rem" }}>
-            <button onClick={() => { const stops = result.stops || []; if (!stops.length) return; const o = encodeURIComponent(stops[0].name + " London"); const d = encodeURIComponent(stops[stops.length - 1].name + " London"); const w = stops.slice(1, -1).map(s => encodeURIComponent(s.name + " London")).join("|"); window.open(`https://www.google.com/maps/dir/?api=1&origin=${o}&destination=${d}${w ? `&waypoints=${w}` : ""}&travelmode=walking`, "_blank"); }} style={{ width: "100%", padding: 14, border: "1px solid rgba(20,20,15,.16)", background: "none", textAlign: "center", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>Open route in Maps</button>
+          <div style={{ padding: "9px 22px 0" }}>
+            <button style={{ width: "100%", padding: 14, border: "1px solid rgba(20,20,15,.16)", background: "none", textAlign: "center", fontSize: 12.5, fontWeight: 600, cursor: "pointer", marginBottom: 9 }}>Swap a stop</button>
+            {onRate && <button onClick={onRate} style={{ width: "100%", padding: 14, background: "none", border: "none", textAlign: "center", fontSize: 12, fontWeight: 600, color: "rgba(20,20,15,.5)", textDecoration: "underline", cursor: "pointer" }}>Rate this night</button>}
           </div>
         </div>
       )}
@@ -1340,7 +1341,7 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
   );
 }
 
-function MyPlansScreen({ plans, onViewPlan, onNewPlan, onSchedule, dbVenues }) {
+function MyPlansScreen({ plans, onViewPlan, onNewPlan, onBarCrawl, onSchedule, dbVenues }) {
   const photoFor = (name) => { if (!name || !dbVenues) return null; const v = dbVenues.find(x => x.name && x.name.toLowerCase() === String(name).toLowerCase()); return v?.photo_url || null; };
   const upcoming = plans.filter(p => p.scheduledDate).length;
   const shared = plans.filter(p => p.ans?.savedVenues?.length).length;
@@ -1350,7 +1351,10 @@ function MyPlansScreen({ plans, onViewPlan, onNewPlan, onSchedule, dbVenues }) {
     <div style={{ animation: "screenIn .32s cubic-bezier(.2,.9,.3,1)" }}>
       <div style={{ padding: "0 22px 4px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 40, lineHeight: 1, letterSpacing: "-0.015em" }}>Plans</div>
-        <button onClick={onNewPlan} style={{ padding: "9px 14px", background: "#D9412B", color: "#FAF7F2", border: "none", fontSize: 11.5, fontWeight: 600, cursor: "pointer" }}>+ New plan</button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={onNewPlan} style={{ padding: "9px 14px", background: "#D9412B", color: "#FAF7F2", border: "none", fontSize: 11.5, fontWeight: 600, cursor: "pointer" }}>+ New plan</button>
+          {onBarCrawl && <button onClick={onBarCrawl} style={{ padding: "9px 14px", border: "1px solid #0F6B63", color: "#0F6B63", background: "none", fontSize: 11.5, fontWeight: 600, cursor: "pointer" }}>+ Bar crawl</button>}
+        </div>
       </div>
       <div className="empty-state">
         <div className="empty-icon">🗺️</div>
@@ -1363,7 +1367,10 @@ function MyPlansScreen({ plans, onViewPlan, onNewPlan, onSchedule, dbVenues }) {
     <div style={{ animation: "screenIn .32s cubic-bezier(.2,.9,.3,1)" }}>
       <div style={{ padding: "0 22px 4px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 40, lineHeight: 1, letterSpacing: "-0.015em" }}>Plans</div>
-        <button data-tour="plan-cta" onClick={onNewPlan} style={{ padding: "9px 14px", background: "#D9412B", color: "#FAF7F2", border: "none", fontSize: 11.5, fontWeight: 600, cursor: "pointer" }}>+ New plan</button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button data-tour="plan-cta" onClick={onNewPlan} style={{ padding: "9px 14px", background: "#D9412B", color: "#FAF7F2", border: "none", fontSize: 11.5, fontWeight: 600, cursor: "pointer" }}>+ New plan</button>
+          {onBarCrawl && <button onClick={onBarCrawl} style={{ padding: "9px 14px", border: "1px solid #0F6B63", color: "#0F6B63", background: "none", fontSize: 11.5, fontWeight: 600, cursor: "pointer" }}>+ Bar crawl</button>}
+        </div>
       </div>
       <div style={{ padding: "0 22px 20px", fontSize: 10, fontWeight: 500, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(20,20,15,.42)" }}>{summary}</div>
       <div style={{ padding: "0 22px" }}>
@@ -6014,7 +6021,7 @@ export default function App() {
         {showQuiz && <QuizScreen step={quizStep} ans={ans} times={times} setTimes={setTimes} onToggle={toggle} onNext={nextStep} onBack={prevStep} onGenerate={generate} loading={loading} loadIdx={loadIdx} error={error} onExit={() => { setQuizStep(-1); setActiveTab("plans"); }} />}
         {showResult && <ResultScreen result={result} times={times} ans={ans} onRestart={resetToHome} onNewPlan={startQuiz} dbVenues={dbVenues} onUpdateResult={setResult} onShare={setShareItem} onRate={() => plans[0] && setRatingPlan(plans[0])} scheduledDate={plans[0]?.scheduledDate} onSchedule={(date) => { if (!plans[0]) return; schedulePlanAt(0, date); goToCalendar("It's on your calendar! 📅"); }} />}
 
-        {activeTab === "plans" && !showViewingPlan && <MyPlansScreen plans={plans} dbVenues={dbVenues} onViewPlan={(plan) => setViewingPlan(plan)} onNewPlan={() => { setActiveTab("home"); startQuiz(); }} onSchedule={(i, date) => setPlans(prev => { const u = prev.map((p, idx) => idx === i ? { ...p, scheduledDate: date || null } : p); localStorage.setItem("cl_plans", JSON.stringify(u.slice(0, 20))); return u; })} />}
+        {activeTab === "plans" && !showViewingPlan && <MyPlansScreen plans={plans} dbVenues={dbVenues} onViewPlan={(plan) => setViewingPlan(plan)} onNewPlan={() => { setActiveTab("home"); startQuiz(); }} onBarCrawl={() => setBarCrawl({ seed: [] })} onSchedule={(i, date) => setPlans(prev => { const u = prev.map((p, idx) => idx === i ? { ...p, scheduledDate: date || null } : p); localStorage.setItem("cl_plans", JSON.stringify(u.slice(0, 20))); return u; })} />}
         {showViewingPlan && (
           <DraggableSheet onClose={() => setViewingPlan(null)}>
             <ResultScreen result={viewingPlan.result} times={viewingPlan.times} ans={viewingPlan.ans} onRestart={() => setViewingPlan(null)} onNewPlan={() => { setViewingPlan(null); setActiveTab("home"); startQuiz(); }} dbVenues={dbVenues} onUpdateResult={(r) => setViewingPlan(p => ({ ...p, result: r }))} onShare={setShareItem} onRate={() => setRatingPlan(viewingPlan)} scheduledDate={viewingPlan.scheduledDate} onSchedule={(date) => { setPlans(prev => { const u = prev.map(x => x.id === viewingPlan.id ? { ...x, scheduledDate: date || null } : x); localStorage.setItem("cl_plans", JSON.stringify(u.slice(0, 20))); return u; }); goToCalendar("It's on your calendar! 📅"); }} />

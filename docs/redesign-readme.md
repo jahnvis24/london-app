@@ -1,4 +1,3 @@
-# Handoff: Curated – Visual & IA Redesign
-
-Saved from Claude Design README for implementation reference.
-See the full spec in conversation context.
+# Redesign reference saved from Claude Design — see conversation for full spec
+# Updated README covers 25 screens (including onboarding, bar crawl quiz, share modal, rating prompt)
+# HTML prototype saved separately
