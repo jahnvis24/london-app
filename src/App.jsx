@@ -5405,101 +5405,81 @@ function PeopleScreen({ user, onSavePlan, onShareSaved }) {
 
   if (loading) return <div style={{ paddingTop: "2rem" }}><SkeletonList count={5} /></div>;
 
+  const [pTab, setPTab] = useState("lists");
+
   return (
-    <div>
-      <div className="section-pad" style={{ paddingBottom: "0.5rem" }}>
-        <div className="section-title">People</div>
-        <p className="section-sub">Connect with friends, then send each other lists and itineraries.</p>
+    <div style={{ animation: "screenIn .32s cubic-bezier(.2,.9,.3,1)" }}>
+      <div style={{ padding: "0 22px 4px" }}>
+        <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 40, lineHeight: 1, letterSpacing: "-0.015em" }}>People</div>
       </div>
-      {msg && <div style={{ margin: "0 1.5rem 0.75rem", background: "#eef3d8", color: "#4B342F", borderRadius: 0, padding: "10px 12px", fontSize: "0.82rem" }}>{msg}</div>}
+      <div style={{ padding: "0 22px 18px", fontSize: 10, fontWeight: 500, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(20,20,15,.42)" }}>{connections.length} friend{connections.length !== 1 ? "s" : ""} · {shares.filter(s => !s.seen).length} new</div>
 
-      {/* Friends first — the heart of the tab */}
-      <div style={{ padding: "0 1.5rem 1rem" }}>
-        <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: "1.05rem", color: "#14140F", margin: "0.25rem 0 0.6rem" }}>Friends ({connections.length})</div>
-        {connections.length === 0 && <div style={{ fontSize: "0.82rem", color: "#7a7062" }}>No friends yet — tap &ldquo;Connect with a friend&rdquo; below.</div>}
-        {connections.length === 0 && !peopleTipDismissed && (
-          <div style={{ background: "#F1EDE4", border: "1px solid rgba(20,20,15,.13)", borderRadius: 0, padding: "12px 14px", marginTop: 10, position: "relative" }}>
-            <button onClick={() => { localStorage.setItem("cl_seen_people_tip", "1"); setPeopleTipDismissed(true); }} style={{ position: "absolute", top: 8, right: 10, border: "none", background: "none", color: "#7a7062", fontSize: "1rem", cursor: "pointer", lineHeight: 1 }}>&times;</button>
-            <div style={{ fontSize: "0.82rem", color: "#6b5e4e", lineHeight: 1.5, paddingRight: 16 }}>Connect with friends by swapping your 4-letter word code. Once connected, you can share lists and spots with each other.</div>
+      <div style={{ display: "flex", gap: 7, padding: "0 22px 20px" }}>
+        <button onClick={() => setPTab("lists")} style={{ padding: "7px 14px", borderRadius: 100, background: pTab === "lists" ? "#14140F" : "transparent", color: pTab === "lists" ? "#FAF7F2" : "rgba(20,20,15,.55)", border: pTab === "lists" ? "none" : "1px solid rgba(20,20,15,.16)", fontSize: 11.5, fontWeight: 600, cursor: "pointer", transition: "all .2s" }}>Bucket lists</button>
+        <button onClick={() => setPTab("friends")} style={{ padding: "7px 14px", borderRadius: 100, background: pTab === "friends" ? "#14140F" : "transparent", color: pTab === "friends" ? "#FAF7F2" : "rgba(20,20,15,.55)", border: pTab === "friends" ? "none" : "1px solid rgba(20,20,15,.16)", fontSize: 11.5, fontWeight: 600, cursor: "pointer", transition: "all .2s" }}>Friends</button>
+      </div>
+
+      {msg && <div style={{ margin: "0 22px 12px", background: "#F1EDE4", color: "#14140F", padding: "10px 12px", fontSize: 12 }}>{msg}</div>}
+
+      {pTab === "lists" && <div data-tour="shared-lists"><SharedListsSection user={user} /></div>}
+
+      {pTab === "friends" && (
+        <div style={{ padding: "0 22px" }}>
+          <div style={{ padding: 16, background: "#14140F", color: "#FAF7F2", display: "flex", alignItems: "center", gap: 14, marginBottom: 18 }}>
+            <div>
+              <div style={{ fontSize: 8.5, fontWeight: 500, letterSpacing: "0.16em", textTransform: "uppercase", opacity: 0.55 }}>Your friend code</div>
+              <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 34, letterSpacing: "0.16em", marginTop: 4 }}>{myCode || "····"}</div>
+            </div>
+            <div style={{ flex: 1 }} />
+            <button onClick={() => setShowConnect(true)} style={{ padding: "10px 15px", background: "#D9412B", color: "#FAF7F2", border: "none", fontSize: 11.5, fontWeight: 600, cursor: "pointer" }}>Add friend</button>
           </div>
-        )}
-        {connections.length > 0 && <div style={{ fontSize: "0.72rem", color: "#b3a892", marginBottom: 8 }}>Tap a friend to see their profile & saves.</div>}
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+
           {connections.map(c => (
-            <button key={c.id} onClick={() => setViewFriend(c)} style={{ display: "flex", alignItems: "center", gap: 8, background: "#fff", border: "1px solid rgba(20,20,15,.13)", borderRadius: 100, padding: "6px 12px 6px 6px", cursor: "pointer" }}>
-              <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#D9412B", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 600, fontSize: "0.8rem", overflow: "hidden" }}>{c.avatar_url ? <img src={c.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : nameOf(c).charAt(0).toUpperCase()}</div>
-              <span style={{ fontSize: "0.8rem", color: "#14140F" }}>{nameOf(c)}</span>
-              <span style={{ color: "#c9bfae", fontSize: "1rem" }}>›</span>
-            </button>
+            <div key={c.id} onClick={() => setViewFriend(c)} style={{ display: "flex", alignItems: "center", gap: 13, padding: "14px 0", borderTop: "1px solid rgba(20,20,15,.13)", cursor: "pointer" }}>
+              <div style={{ width: 44, height: 44, borderRadius: "50%", background: "#D9412B", color: "#FAF7F2", flex: "none", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 19 }}>{c.avatar_url ? <img src={c.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} /> : nameOf(c).charAt(0).toUpperCase()}</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 20 }}>{nameOf(c)}</div>
+                <div style={{ fontSize: 8.5, fontWeight: 500, letterSpacing: "0.13em", textTransform: "uppercase", color: "rgba(20,20,15,.45)", marginTop: 4 }}>Tap to see saves</div>
+              </div>
+              <div style={{ color: "rgba(20,20,15,.3)", fontSize: 18 }}>›</div>
+            </div>
           ))}
+          {connections.length === 0 && <div style={{ fontSize: 13, color: "rgba(20,20,15,.5)", paddingTop: 8 }}>No friends yet — share your code to connect.</div>}
         </div>
-      </div>
+      )}
 
-      {/* Connect — collapsed to a single row until tapped */}
-      <div style={{ padding: "0 1.5rem 1rem" }}>
-        {!showConnect ? (
-          <button data-tour="invite" onClick={() => setShowConnect(true)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, background: "#fff", border: "1px solid rgba(20,20,15,.13)", borderRadius: 0, padding: "14px 16px", cursor: "pointer" }}>
-            <span style={{ fontSize: "1.1rem" }}>🤝</span>
-            <span style={{ flex: 1, textAlign: "left", fontSize: "0.9rem", fontWeight: 600, color: "#14140F" }}>Connect with a friend</span>
-            <span style={{ color: "#c9bfae", fontSize: "1.2rem" }}>›</span>
-          </button>
-        ) : (
-          <div data-tour="invite" style={{ background: "#fff", border: "1px solid rgba(20,20,15,.13)", borderRadius: 0, padding: "1rem" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-              <div style={{ fontWeight: 600, color: "#14140F" }}>Connect with a friend</div>
-              <button onClick={() => setShowConnect(false)} style={{ border: "none", background: "none", color: "#7a7062", fontSize: "0.8rem", cursor: "pointer" }}>Hide</button>
+      {showConnect && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 1100 }}>
+          <div onClick={() => setShowConnect(false)} style={{ position: "absolute", inset: 0, background: "rgba(20,20,15,.5)" }} />
+          <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, background: "#FAF7F2", borderRadius: "20px 20px 0 0", padding: "14px 22px 34px", animation: "sheetUp .36s cubic-bezier(.2,.95,.25,1)", boxShadow: "0 -14px 40px rgba(20,20,15,.25)" }}>
+            <div style={{ width: 36, height: 3, background: "rgba(20,20,15,.2)", margin: "0 auto 18px" }} />
+            <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 32, lineHeight: 1, letterSpacing: "-0.015em", marginBottom: 8 }}>Add a friend</div>
+            <div style={{ fontSize: 13, color: "rgba(20,20,15,.55)", marginBottom: 18 }}>Four letters, no usernames. Swap codes and you'll see each other's saves.</div>
+            <div style={{ display: "flex", gap: 8, marginBottom: 11 }}>
+              {[0, 1, 2, 3].map(i => (
+                <div key={i} style={{ flex: 1, height: 62, border: `1px solid ${codeInput.length === i ? "#D9412B" : "rgba(20,20,15,.18)"}`, background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 28 }}>{codeInput[i] || "·"}</div>
+              ))}
             </div>
-            <div style={{ fontSize: "0.76rem", color: "#7a7062", marginBottom: 10 }}>Both got the app? Swap words. Tell your friend your word, or enter theirs.</div>
-            <div style={{ background: "#F1EDE4", borderRadius: 0, padding: "14px", textAlign: "center" }}>
-              <div style={{ fontSize: "0.66rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#7a7062", fontWeight: 700, marginBottom: 5 }}>Your word</div>
-              <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: "2.2rem", letterSpacing: "0.18em", color: "#14140F", lineHeight: 1, paddingLeft: "0.18em" }}>{myCode || "····"}</div>
-              <button className="btn-outline" style={{ marginTop: 12, padding: "8px 22px", fontSize: "0.8rem", width: "auto" }} disabled={!myCode} onClick={() => { navigator.clipboard?.writeText(myCode); setCodeCopied(true); setTimeout(() => setCodeCopied(false), 2000); }}>{codeCopied ? "✓ Copied" : "Copy word"}</button>
-            </div>
-            <div style={{ fontSize: "0.76rem", color: "#6b5e4e", margin: "12px 0 8px" }}>Have your friend's word? Enter it:</div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <input value={codeInput} onChange={e => setCodeInput(e.target.value.toUpperCase().replace(/[^A-Z]/g, ""))} placeholder="e.g. BLUE" maxLength={4} className="input-field" style={{ flex: 1, textTransform: "uppercase", letterSpacing: "0.14em", fontWeight: 600 }} />
-              <button onClick={connectByCode} disabled={connecting || codeInput.trim().length !== 4} style={{ border: "none", background: codeInput.trim().length === 4 ? "#D9412B" : "#cfc8ba", color: "#fff", borderRadius: 0, padding: "0 18px", fontWeight: 600, fontSize: "0.82rem", cursor: codeInput.trim().length === 4 ? "pointer" : "default" }}>{connecting ? "…" : "Connect"}</button>
-            </div>
-            <div style={{ height: 1, background: "rgba(20,20,15,.13)", margin: "14px 0" }} />
-            <div style={{ fontSize: "0.76rem", color: "#7a7062", marginBottom: 8 }}>Not on the app yet? Send them an invite link:</div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button className="btn-outline" style={{ marginTop: 0, flex: 1 }} onClick={() => { navigator.clipboard?.writeText(inviteLink); setCopied(true); setTimeout(() => setCopied(false), 2000); }}>{copied ? "✓ Copied" : "🔗 Copy link"}</button>
-              <button className="btn-outline" style={{ marginTop: 0, flex: 1 }} onClick={() => { if (navigator.share) navigator.share({ title: "Connect on Curated", url: inviteLink }); else window.open(`https://wa.me/?text=${encodeURIComponent("Connect with me on Curated: " + inviteLink)}`); }}>📤 Share</button>
-            </div>
+            <input value={codeInput} onChange={e => setCodeInput(e.target.value.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 4))} style={{ position: "absolute", opacity: 0, width: 1, height: 1 }} autoFocus />
+            <button onClick={connectByCode} disabled={connecting || codeInput.length !== 4} style={{ width: "100%", padding: 15, background: "#D9412B", color: "#FAF7F2", border: "none", fontSize: 14, fontWeight: 600, cursor: "pointer", marginBottom: 10 }}>{connecting ? "Connecting…" : "Connect"}</button>
+            <button onClick={() => { navigator.clipboard?.writeText(inviteLink); setCopied(true); setTimeout(() => setCopied(false), 2000); }} style={{ width: "100%", padding: 15, border: "1px solid #0F6B63", background: "none", color: "#0F6B63", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>{copied ? "✓ Copied" : "Share my code instead"}</button>
           </div>
-        )}
-      </div>
-
-      <div data-tour="shared-lists"><SharedListsSection user={user} /></div>
-
-      <div style={{ padding: "0 1.5rem 1rem" }}>
-        <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: "1.05rem", color: "#14140F", margin: "0.25rem 0 0.6rem" }}>Shared with you ({shares.length})</div>
-        {shares.length === 0 && <div style={{ fontSize: "0.82rem", color: "#7a7062" }}>Nothing yet. When a friend sends you a list or itinerary, it shows here.</div>}
-        {shares.map(s => (
-          <div key={s.id} onClick={() => setViewing(s)} style={{ display: "flex", alignItems: "center", gap: 12, padding: 12, background: "#fff", border: "1px solid rgba(20,20,15,.13)", borderRadius: 0, marginBottom: 10, cursor: "pointer", opacity: s.seen ? 0.7 : 1 }}>
-            <div style={{ width: 40, height: 40, borderRadius: 0, background: s.kind === "plan" ? "#4B342F" : "#D9412B", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.1rem", flexShrink: 0 }}>{s.kind === "plan" ? "🗺️" : "📋"}</div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: "0.88rem", fontWeight: 600, color: "#14140F" }}>{s.title || (s.kind === "plan" ? "An itinerary" : "A list")}</div>
-              <div style={{ fontSize: "0.72rem", color: "#7a7062" }}>from {nameOf(s.from)} · {s.kind === "plan" ? "itinerary" : "list"}{s.seen ? " · saved" : ""}</div>
-            </div>
-            {!s.seen && <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#DD4124" }} />}
-          </div>
-        ))}
-      </div>
+        </div>
+      )}
 
       {viewFriend && <FriendProfile user={user} friend={viewFriend} onClose={() => setViewFriend(null)} />}
 
       {viewing && (
         <div onClick={() => setViewing(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.42)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 1100, animation: "fadeIn 0.2s" }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: "22px 22px 0 0", padding: "1.25rem", paddingBottom: "calc(1.25rem + env(safe-area-inset-bottom))", width: "100%", maxWidth: 420, maxHeight: "70vh", overflowY: "auto", animation: "cardIn 0.25s ease" }}>
-            <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: "1.1rem", color: "#14140F", marginBottom: 2 }}>{viewing.title}</div>
-            <div style={{ fontSize: "0.74rem", color: "#7a7062", marginBottom: 12 }}>from {nameOf(viewing.from)}</div>
+          <div onClick={e => e.stopPropagation()} style={{ background: "#FAF7F2", borderRadius: "22px 22px 0 0", padding: "1.25rem", paddingBottom: "calc(1.25rem + env(safe-area-inset-bottom))", width: "100%", maxWidth: 420, maxHeight: "70vh", overflowY: "auto", animation: "cardIn 0.25s ease" }}>
+            <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 21, color: "#14140F", marginBottom: 2 }}>{viewing.title}</div>
+            <div style={{ fontSize: 8.5, fontWeight: 500, letterSpacing: "0.13em", textTransform: "uppercase", color: "rgba(20,20,15,.45)", marginBottom: 12 }}>from {nameOf(viewing.from)}</div>
             {viewing.kind === "plan" ? (
-              <div style={{ fontSize: "0.82rem", color: "#6b5e4e" }}>{(viewing.payload?.plan?.stops || []).length} stops · {viewing.payload?.plan?.tagline || ""}</div>
+              <div style={{ fontSize: 13, color: "rgba(20,20,15,.6)" }}>{(viewing.payload?.plan?.stops || []).length} stops · {viewing.payload?.plan?.tagline || ""}</div>
             ) : (
-              <div style={{ fontSize: "0.82rem", color: "#6b5e4e" }}>{(viewing.payload?.spots || []).length} spots: {(viewing.payload?.spots || []).slice(0, 6).map(s => s.name).join(", ")}{(viewing.payload?.spots || []).length > 6 ? "…" : ""}</div>
+              <div style={{ fontSize: 13, color: "rgba(20,20,15,.6)" }}>{(viewing.payload?.spots || []).length} spots: {(viewing.payload?.spots || []).slice(0, 6).map(s => s.name).join(", ")}{(viewing.payload?.spots || []).length > 6 ? "…" : ""}</div>
             )}
-            <button className="btn btn-teal" style={{ marginTop: 14 }} onClick={() => saveShare(viewing)}>{viewing.kind === "plan" ? "Save to My Plans" : "Save to my lists"} ✦</button>
+            <button className="btn btn-teal" style={{ marginTop: 14 }} onClick={() => saveShare(viewing)}>{viewing.kind === "plan" ? "Save to My Plans" : "Save to my lists"}</button>
             <button className="btn-outline" onClick={() => setViewing(null)}>Close</button>
           </div>
         </div>
