@@ -4185,21 +4185,13 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
 // Splash / value prop — one screen, one CTA. Warm, editorial, type-led (no imagery).
 function Splash({ onStart }) {
   return (
-    <div style={{ minHeight: "100vh", background: "#ffffff", display: "flex", flexDirection: "column", justifyContent: "space-between", padding: "4.5rem 2rem 2.5rem", maxWidth: 420, margin: "0 auto", textAlign: "center" }}>
-      <div>
-        <div style={{ fontSize: "0.68rem", letterSpacing: "0.26em", textTransform: "uppercase", color: "#a3865f", fontWeight: 600, marginBottom: 30 }}>Saved · Sorted · Planned</div>
-        <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontWeight: 700, fontSize: "3.4rem", lineHeight: 1, color: "#D9412B", marginBottom: 26 }}>Curated</div>
-        <h1 style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: "2.6rem", lineHeight: 1.14, color: "#33281c", fontWeight: 700, margin: 0 }}>
-          Everything you save,<br />in one <em style={{ fontStyle: "italic", color: "#b5563b" }}>beautiful</em> place.
-        </h1>
+    <div style={{ minHeight: "100vh", background: "#14140F", color: "#FAF7F2", display: "flex", flexDirection: "column", maxWidth: 420, margin: "0 auto", animation: "screenIn .4s cubic-bezier(.2,.9,.3,1)" }}>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, padding: "0 40px", textAlign: "center" }}>
+        <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 54, lineHeight: 1, letterSpacing: "-0.02em" }}>Curated</div>
+        <div style={{ fontSize: 9.5, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(250,247,242,.55)" }}>Your saved places, actually planned</div>
       </div>
-
-      <div>
-        <div style={{ width: 46, height: 2, background: "#d8c4a4", margin: "0 auto 20px" }} />
-        <p style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: "1.05rem", color: "#6b5a44", lineHeight: 1.6, margin: "0 auto 34px", maxWidth: 330 }}>
-          The spots you love on Instagram, TikTok and in your screenshots — gathered onto one board, then turned into real plans.
-        </p>
-        <button onClick={onStart} style={{ width: "100%", padding: "16px", borderRadius: 100, border: "none", background: "#33281c", color: "#f3e9d9", fontSize: "1rem", fontWeight: 700, fontFamily: "inherit", cursor: "pointer", letterSpacing: "0.01em" }}>Get started</button>
+      <div style={{ padding: "0 28px 54px" }}>
+        <button onClick={onStart} style={{ width: "100%", padding: 16, background: "#D9412B", color: "#FAF7F2", border: "none", fontSize: 14, fontWeight: 600, cursor: "pointer", transition: "transform .18s" }}>Get started</button>
       </div>
     </div>
   );
@@ -4255,47 +4247,36 @@ function LoginScreen({ onLogin }) {
   const inputStyle = { width: "100%", padding: "13px 15px", borderRadius: 0, border: "1.5px solid rgba(20,20,15,.18)", background: "#fff", color: "#14140F", fontFamily: "inherit", fontSize: "0.92rem", boxSizing: "border-box", textAlign: "center" };
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#ffffff", padding: "2rem" }}>
-      <div style={{ maxWidth: 360, width: "100%", textAlign: "center" }}>
-        <div style={{ fontSize: "2.5rem", marginBottom: "0.5rem" }}>✦</div>
-        <h1 style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: "2rem", color: "#14140F", marginBottom: "0.5rem" }}>Curated</h1>
-        <p style={{ fontSize: "0.85rem", color: "#6b5e4e", lineHeight: 1.5, marginBottom: "2rem" }}>Save the places you love, then turn them into plans. Sign in to get started.</p>
-        {error && <div className="err" style={{ marginBottom: "1rem" }}>{error}</div>}
-        <button
-          onClick={signInWithGoogle}
-          disabled={loading}
-          style={{ width: "100%", padding: "14px 20px", borderRadius: 100, border: "1.5px solid rgba(20,20,15,.18)", background: "#fff", color: "#14140F", fontFamily: "inherit", fontSize: "0.9rem", fontWeight: 500, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, transition: "all 0.15s" }}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-          {loading ? "Signing in..." : "Continue with Google"}
+    <div style={{ minHeight: "100vh", background: "#14140F", color: "#FAF7F2", display: "flex", flexDirection: "column", justifyContent: "center", padding: "0 28px", maxWidth: 420, margin: "0 auto", animation: "screenIn .32s cubic-bezier(.2,.9,.3,1)" }}>
+      <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 38, lineHeight: 1.05, letterSpacing: "-0.015em", marginBottom: 8 }}>Welcome back</div>
+      <div style={{ fontSize: 13, color: "rgba(250,247,242,.55)", marginBottom: 30 }}>Sign in to sync your saves and plans.</div>
+      {error && <div style={{ marginBottom: 12, padding: "10px 12px", background: "rgba(217,65,43,.2)", color: "#D9412B", fontSize: 12 }}>{error}</div>}
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <button onClick={signInWithGoogle} disabled={loading} style={{ width: "100%", padding: 15, background: "#FAF7F2", color: "#14140F", border: "none", fontSize: 13.5, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
+          <svg width="16" height="16" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+          {loading ? "Signing in…" : "Continue with Google"}
         </button>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "1.25rem 0" }}>
-          <div style={{ flex: 1, height: 1, background: "#eee7db" }} />
-          <span style={{ fontSize: "0.72rem", color: "#8a7e6e" }}>or</span>
-          <div style={{ flex: 1, height: 1, background: "#eee7db" }} />
-        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "8px 0", color: "rgba(250,247,242,.35)", fontSize: 9, fontWeight: 500, letterSpacing: "0.13em", textTransform: "uppercase" }}><div style={{ flex: 1, height: 1, background: "rgba(250,247,242,.15)" }} />or<div style={{ flex: 1, height: 1, background: "rgba(250,247,242,.15)" }} /></div>
 
         {stage === "email" ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <input type="email" inputMode="email" autoComplete="email" placeholder="you@email.com" value={email} onChange={e => setEmail(e.target.value)} onKeyDown={e => e.key === "Enter" && sendCode()} style={inputStyle} />
-            <button onClick={() => sendCode()} disabled={otpBusy} style={{ width: "100%", padding: "13px", borderRadius: 100, border: "none", background: "#D9412B", color: "#fff", fontFamily: "inherit", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer" }}>{otpBusy ? "Sending…" : "Email me a code"}</button>
+            <input type="email" inputMode="email" autoComplete="email" placeholder="you@email.com" value={email} onChange={e => setEmail(e.target.value)} onKeyDown={e => e.key === "Enter" && sendCode()} style={{ ...inputStyle, background: "transparent", color: "#FAF7F2", border: "1px solid rgba(250,247,242,.2)" }} />
+            <button onClick={() => sendCode()} disabled={otpBusy} style={{ width: "100%", padding: 15, border: "1px solid #D9412B", background: "none", color: "#D9412B", fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}>{otpBusy ? "Sending…" : "Continue with email"}</button>
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <div style={{ fontSize: "0.78rem", color: "#6b5e4e" }}>We sent a 6-digit code to <strong>{email}</strong>.</div>
-            <div style={{ fontSize: "0.72rem", color: "#7a7062", lineHeight: 1.4 }}>Type the 6 digits below — <strong>not</strong> any link in the email. Use the newest email if you asked more than once.</div>
-            <input inputMode="numeric" autoComplete="one-time-code" maxLength={6} placeholder="• • • • • •" value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, ""))} onKeyDown={e => e.key === "Enter" && verifyCode()} style={{ ...inputStyle, letterSpacing: "0.4em", fontSize: "1.2rem", fontWeight: 600 }} />
-            <button onClick={verifyCode} disabled={otpBusy} style={{ width: "100%", padding: "13px", borderRadius: 100, border: "none", background: "#D9412B", color: "#fff", fontFamily: "inherit", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer" }}>{otpBusy ? "Verifying…" : "Verify & sign in"}</button>
-            {resent && <div style={{ fontSize: "0.74rem", color: "#D9412B", fontWeight: 600 }}>✓ New code sent — check your inbox.</div>}
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.74rem" }}>
-              <button onClick={() => { setStage("email"); setOtp(""); setError(null); }} style={{ border: "none", background: "none", color: "#7a7062", cursor: "pointer" }}>← Change email</button>
-              <button onClick={() => sendCode(true)} disabled={otpBusy || cooldown > 0} style={{ border: "none", background: "none", color: cooldown > 0 ? "#c9bfae" : "#D9412B", fontWeight: 600, cursor: cooldown > 0 ? "default" : "pointer" }}>{cooldown > 0 ? `Resend in ${cooldown}s` : "Resend code"}</button>
+            <div style={{ fontSize: 13, color: "rgba(250,247,242,.55)" }}>We sent a 6-digit code to <strong style={{ color: "#FAF7F2" }}>{email}</strong>.</div>
+            <input inputMode="numeric" autoComplete="one-time-code" maxLength={6} placeholder="• • • • • •" value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, ""))} onKeyDown={e => e.key === "Enter" && verifyCode()} style={{ ...inputStyle, background: "transparent", color: "#FAF7F2", border: "1px solid rgba(250,247,242,.2)", letterSpacing: "0.4em", fontSize: 20, fontWeight: 600, textAlign: "center" }} />
+            <button onClick={verifyCode} disabled={otpBusy} style={{ width: "100%", padding: 15, background: "#D9412B", color: "#FAF7F2", border: "none", fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}>{otpBusy ? "Verifying…" : "Verify & sign in"}</button>
+            {resent && <div style={{ fontSize: 12, color: "#D9412B", fontWeight: 600 }}>✓ New code sent</div>}
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11 }}>
+              <button onClick={() => { setStage("email"); setOtp(""); setError(null); }} style={{ border: "none", background: "none", color: "rgba(250,247,242,.5)", cursor: "pointer" }}>← Change email</button>
+              <button onClick={() => sendCode(true)} disabled={otpBusy || cooldown > 0} style={{ border: "none", background: "none", color: cooldown > 0 ? "rgba(250,247,242,.3)" : "#D9412B", fontWeight: 600, cursor: cooldown > 0 ? "default" : "pointer" }}>{cooldown > 0 ? `Resend in ${cooldown}s` : "Resend code"}</button>
             </div>
           </div>
         )}
-
-        <p style={{ fontSize: "0.72rem", color: "#8a7e6e", marginTop: "1.5rem", lineHeight: 1.5 }}>Invite-only beta. You need an invite to access Curated.</p>
       </div>
     </div>
   );
@@ -4519,45 +4500,58 @@ function RatingPrompt({ plan, user, onDismiss, onSubmit }) {
     onSubmit();
   }
 
+  const [done, setDone] = useState(false);
+
+  async function submitAndShow() {
+    await submit();
+    setDone(true);
+    setTimeout(() => { onSubmit(); }, 1600);
+  }
+
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.42)", zIndex: 1100, display: "flex", alignItems: "flex-end", justifyContent: "center", animation: "fadeIn 0.2s" }}>
-      <div style={{ background: "#fff", borderRadius: "22px 22px 0 0", maxWidth: 420, width: "100%", maxHeight: "85vh", overflow: "auto", padding: "1.5rem", paddingBottom: "calc(1.5rem + env(safe-area-inset-bottom))", animation: "cardIn 0.25s ease" }}>
-        <div style={{ fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#D9412B", fontWeight: 500, marginBottom: "0.5rem" }}>How was it?</div>
-        <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: "1.3rem", color: "#14140F", marginBottom: "0.25rem" }}>{plan.result.title}</div>
-        <div style={{ fontSize: "0.78rem", color: "#7a7062", marginBottom: "1.25rem" }}>{plan.savedAt}</div>
+    <div style={{ position: "fixed", inset: 0, zIndex: 1100 }}>
+      <div onClick={onDismiss} style={{ position: "absolute", inset: 0, background: "rgba(20,20,15,.5)" }} />
+      <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, background: "#FAF7F2", borderRadius: "20px 20px 0 0", padding: "14px 22px 34px", animation: "sheetUp .36s cubic-bezier(.2,.95,.25,1)", boxShadow: "0 -14px 40px rgba(20,20,15,.25)", maxHeight: "78%", overflowY: "auto" }}>
+        <div style={{ width: 36, height: 3, background: "rgba(20,20,15,.2)", margin: "0 auto 18px" }} />
 
-        <div style={{ marginBottom: "1.25rem" }}>
-          <div style={{ fontSize: "0.75rem", fontWeight: 500, color: "#4a4438", marginBottom: "0.5rem" }}>Overall rating</div>
-          <div style={{ display: "flex", gap: 6 }}>
-            {[1,2,3,4,5].map(n => (
-              <button key={n} onClick={() => setOverall(n)} style={{ width: 36, height: 36, borderRadius: "50%", border: "1.5px solid", borderColor: overall >= n ? "#D9412B" : "rgba(20,20,15,.18)", background: overall >= n ? "#D9412B" : "#fff", color: overall >= n ? "#fff" : "#7a7062", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>{n}</button>
-            ))}
-          </div>
-        </div>
+        {!done ? (
+          <div>
+            <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 30, lineHeight: 1.05, letterSpacing: "-0.015em", marginBottom: 6 }}>How was {plan.result.title}?</div>
+            <div style={{ fontSize: 13, color: "rgba(20,20,15,.55)", marginBottom: 16 }}>Rate the night, then each stop if you like.</div>
 
-        <div style={{ marginBottom: "1.25rem" }}>
-          <div style={{ fontSize: "0.75rem", fontWeight: 500, color: "#4a4438", marginBottom: "0.5rem" }}>Rate each stop</div>
-          {(plan.result.stops || []).map((stop, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.4rem 0", borderBottom: "1px solid rgba(20,20,15,.13)" }}>
-              <span style={{ fontSize: "0.8rem", color: "#14140F", flex: 1 }}>{stop.emoji} {stop.name}</span>
-              <div style={{ display: "flex", gap: 3 }}>
-                {[1,2,3,4,5].map(n => (
-                  <button key={n} onClick={() => rateStop(stop.name, n)} style={{ width: 24, height: 24, borderRadius: "50%", border: "1px solid", borderColor: (stopRatings[stop.name] || 0) >= n ? "#D9412B" : "rgba(20,20,15,.13)", background: (stopRatings[stop.name] || 0) >= n ? "#eef3d8" : "#fff", color: (stopRatings[stop.name] || 0) >= n ? "#D9412B" : "#8a7e6e", fontSize: "0.6rem", cursor: "pointer", fontFamily: "inherit" }}>{n}</button>
-                ))}
-              </div>
+            <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+              {[1,2,3,4,5].map(n => (
+                <button key={n} onClick={() => setOverall(n)} style={{ flex: 1, height: 40, border: `1px solid ${overall >= n ? "#D9412B" : "rgba(20,20,15,.18)"}`, background: overall >= n ? "#D9412B" : "transparent", color: overall >= n ? "#FAF7F2" : "rgba(20,20,15,.5)", fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 18, cursor: "pointer", transition: "all .2s" }}>{n}</button>
+              ))}
             </div>
-          ))}
-        </div>
 
-        <div style={{ marginBottom: "1.25rem" }}>
-          <div style={{ fontSize: "0.75rem", fontWeight: 500, color: "#4a4438", marginBottom: "0.5rem" }}>Any notes? (optional)</div>
-          <textarea className="input-field" value={comment} onChange={e => setComment(e.target.value)} placeholder="What stood out? What would you change?" style={{ minHeight: 60 }} />
-        </div>
+            <div style={{ fontSize: 8.5, fontWeight: 500, letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(20,20,15,.45)", marginBottom: 10 }}>Rate each stop</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
+              {(plan.result.stops || []).map((stop, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ flex: 1, fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 17 }}>{stop.name}</div>
+                  <div style={{ display: "flex", gap: 4 }}>
+                    {[1,2,3,4,5].map(n => (
+                      <div key={n} onClick={() => rateStop(stop.name, n)} style={{ width: 22, height: 22, borderRadius: "50%", border: `1px solid ${(stopRatings[stop.name] || 0) >= n ? "#D9412B" : "rgba(20,20,15,.22)"}`, background: (stopRatings[stop.name] || 0) >= n ? "#D9412B" : "transparent", cursor: "pointer", transition: "all .2s" }} />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
 
-        <button className="btn btn-teal" onClick={submit} disabled={overall === 0 || submitting}>
-          {submitting ? "Saving..." : "Submit review"}
-        </button>
-        <button className="btn-outline" onClick={onDismiss} style={{ marginTop: "0.5rem" }}>Skip for now</button>
+            <div style={{ padding: "13px 14px", border: "1px solid rgba(20,20,15,.16)", fontSize: 13, lineHeight: 1.4, color: "rgba(20,20,15,.4)", marginBottom: 16 }}>
+              <textarea value={comment} onChange={e => setComment(e.target.value)} placeholder="Add a note for next time…" style={{ width: "100%", border: "none", background: "transparent", fontSize: 13, color: "#14140F", resize: "none", outline: "none", fontFamily: "inherit", minHeight: 40 }} />
+            </div>
+
+            <button onClick={submitAndShow} disabled={overall === 0 || submitting} style={{ width: "100%", padding: 16, background: "#D9412B", color: "#FAF7F2", border: "none", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>{submitting ? "Saving…" : "Submit review"}</button>
+          </div>
+        ) : (
+          <div style={{ textAlign: "center", padding: "20px 0 8px", animation: "pop .38s cubic-bezier(.2,1.3,.35,1)" }}>
+            <div style={{ width: 60, height: 60, borderRadius: "50%", background: "#0F6B63", color: "#FAF7F2", margin: "0 auto 16px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26 }}>✓</div>
+            <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 30, letterSpacing: "-0.015em" }}>Thanks</div>
+            <div style={{ fontSize: 9.5, fontWeight: 500, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(20,20,15,.48)", marginTop: 9 }}>Your rating updates the map for next time</div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -4646,23 +4640,56 @@ function ShareModal({ user, item, onClose, showToast }) {
     } catch (e) { showToast("Couldn't send: " + e.message); setSending(false); }
   }
 
+  const [selected, setSelected] = useState({});
+  const [copied, setCopied] = useState(false);
+  const shareLink = `https://london-app.vercel.app/?plan=${item.title?.replace(/\s/g, "-") || "share"}`;
+
+  async function sendToSelected() {
+    const ids = Object.keys(selected).filter(k => selected[k]);
+    if (!ids.length) { showToast("Select at least one friend"); return; }
+    setSending(true);
+    try {
+      for (const id of ids) {
+        await supabase.from("shares").insert({ from_user: user.id, to_user: id, kind: item.kind, title: item.title, payload: item.payload });
+      }
+      showToast(`Sent to ${ids.length} friend${ids.length > 1 ? "s" : ""} ✓`);
+      onClose();
+    } catch (e) { showToast("Couldn't send: " + e.message); setSending(false); }
+  }
+
   return (
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 1100, animation: "fadeIn 0.2s" }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: "1.25rem 1.25rem 1.5rem", width: "100%", maxWidth: 420, maxHeight: "70vh", overflowY: "auto", animation: "cardIn 0.25s ease" }}>
-        <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: "1.1rem", color: "#14140F" }}>Send to a friend</div>
-        <div style={{ fontSize: "0.78rem", color: "#7a7062", marginBottom: 12 }}>{item.kind === "plan" ? "Itinerary" : "List"}: {item.title}</div>
-        {loading && <div style={{ fontSize: "0.85rem", color: "#7a7062" }}>Loading…</div>}
-        {!loading && people.length === 0 && (
-          <div style={{ fontSize: "0.85rem", color: "#6b5e4e", lineHeight: 1.5 }}>You're not connected with anyone yet. Open the <strong>People</strong> tab → share your invite link, and once a friend opens it you can send them things here.</div>
+    <div style={{ position: "fixed", inset: 0, zIndex: 1100 }}>
+      <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(20,20,15,.5)" }} />
+      <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, background: "#FAF7F2", borderRadius: "20px 20px 0 0", padding: "14px 22px 34px", animation: "sheetUp .36s cubic-bezier(.2,.95,.25,1)", boxShadow: "0 -14px 40px rgba(20,20,15,.25)" }}>
+        <div style={{ width: 36, height: 3, background: "rgba(20,20,15,.2)", margin: "0 auto 18px" }} />
+        <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 30, lineHeight: 1, letterSpacing: "-0.015em", marginBottom: 6 }}>Share {item.title}</div>
+        <div style={{ fontSize: 13, color: "rgba(20,20,15,.55)", marginBottom: 18 }}>Send it to friends on Curated, or copy the link.</div>
+
+        {loading && <div style={{ fontSize: 13, color: "rgba(20,20,15,.45)", marginBottom: 18 }}>Loading friends…</div>}
+        {!loading && people.length > 0 && (
+          <div style={{ display: "flex", gap: 14, marginBottom: 18 }}>
+            {people.map((p, i) => {
+              const sel = !!selected[p.id];
+              const colors = ["#D9412B", "#0F6B63", "#8A7B5C", "#D9412B"];
+              const color = colors[i % colors.length];
+              return (
+                <div key={p.id} onClick={() => setSelected(s => ({ ...s, [p.id]: !s[p.id] }))} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, cursor: "pointer" }}>
+                  <div style={{ width: 48, height: 48, borderRadius: "50%", background: sel ? color : "transparent", color: sel ? "#FAF7F2" : "#14140F", border: `2px solid ${sel ? color : "rgba(20,20,15,.2)"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 600, transition: "all .18s", overflow: "hidden" }}>
+                    {p.avatar_url ? <img src={p.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : nameOf(p).charAt(0).toUpperCase()}
+                  </div>
+                  <div style={{ fontSize: 8, fontWeight: 500, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(20,20,15,.5)" }}>{nameOf(p).split(" ")[0]}</div>
+                </div>
+              );
+            })}
+          </div>
         )}
-        {people.map(p => (
-          <button key={p.id} disabled={sending} onClick={() => send(p.id)} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", padding: "10px 12px", borderRadius: 0, border: "1px solid rgba(20,20,15,.13)", background: "#fff", cursor: "pointer", marginBottom: 8 }}>
-            <div style={{ width: 34, height: 34, borderRadius: "50%", background: "#D9412B", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 600, flexShrink: 0, overflow: "hidden" }}>{p.avatar_url ? <img src={p.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : nameOf(p).charAt(0).toUpperCase()}</div>
-            <span style={{ fontSize: "0.88rem", color: "#14140F", fontWeight: 500 }}>{nameOf(p)}</span>
-            <span style={{ marginLeft: "auto", fontSize: "0.78rem", color: "#D9412B", fontWeight: 600 }}>Send →</span>
-          </button>
-        ))}
-        <button onClick={onClose} style={{ display: "block", width: "100%", textAlign: "center", padding: "10px", borderRadius: 0, border: "none", background: "#F1EDE4", cursor: "pointer", fontSize: "0.8rem", color: "#6b5e4e", marginTop: 4 }}>Cancel</button>
+
+        <div style={{ display: "flex", gap: 8, alignItems: "center", padding: "12px 14px", background: "#fff", border: "1px solid rgba(20,20,15,.14)", marginBottom: 11 }}>
+          <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.05em", color: "rgba(20,20,15,.4)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{shareLink}</div>
+          <button onClick={() => { navigator.clipboard?.writeText(shareLink); setCopied(true); setTimeout(() => setCopied(false), 2000); }} style={{ padding: "8px 15px", background: "#14140F", color: "#FAF7F2", border: "none", fontSize: 11.5, fontWeight: 600, cursor: "pointer" }}>{copied ? "Copied" : "Copy"}</button>
+        </div>
+
+        <button onClick={sendToSelected} disabled={sending} style={{ width: "100%", padding: 15, background: "#D9412B", color: "#FAF7F2", border: "none", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>{sending ? "Sending…" : "Send"}</button>
       </div>
     </div>
   );
