@@ -2034,79 +2034,36 @@ function MeScreen({ user, preferences, setPreferences, isAdmin, onBadgeUpdate, a
     </div>
   );
 
-  const row = { display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", padding: "14px 16px", background: "#fff", border: "1px solid rgba(20,20,15,.13)", borderRadius: 0, marginBottom: 10, cursor: "pointer" };
-
   return (
-    <div>
-      <div className="section-pad" style={{ paddingBottom: "0.5rem" }}>
-        <div className="section-title">Me</div>
-      </div>
-      <div style={{ padding: "0 1.5rem 1.25rem", display: "flex", alignItems: "center", gap: 14 }}>
-        <div style={{ width: 56, height: 56, borderRadius: "50%", background: "#D9412B", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: "1.4rem", overflow: "hidden", flexShrink: 0 }}>{avatar ? <img src={avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : displayName.charAt(0).toUpperCase()}</div>
+    <div style={{ animation: "screenIn .32s cubic-bezier(.2,.9,.3,1)" }}>
+      <div style={{ padding: "0 22px 24px", display: "flex", alignItems: "center", gap: 15 }}>
+        <div style={{ width: 66, height: 66, borderRadius: "50%", background: "#14140F", color: "#FAF7F2", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: "1.6rem", overflow: "hidden", flexShrink: 0 }}>{avatar ? <img src={avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : displayName.charAt(0).toUpperCase()}</div>
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: "1.3rem", color: "#14140F", lineHeight: 1.1 }}>{displayName}</div>
-          {user?.email && <div style={{ fontSize: "0.78rem", color: "#7a7062", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{user.email}</div>}
+          <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 34, lineHeight: 1, letterSpacing: "-0.015em" }}>{displayName}</div>
+          <div style={{ fontSize: 9.5, fontWeight: 500, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(20,20,15,.42)", marginTop: 7 }}>Code · {user?.user_metadata?.friend_code || "····"}</div>
         </div>
       </div>
-      <div style={{ padding: "0 1.5rem 2rem" }}>
-        {onStartTour && (
-          <button style={row} onClick={onStartTour}>
-            <span style={{ fontSize: "1.1rem", width: 24, textAlign: "center" }}>🧭</span>
-            <span style={{ flex: 1 }}><span style={{ display: "block", fontSize: "0.9rem", fontWeight: 600, color: "#14140F" }}>Take a tour</span><span style={{ display: "block", fontSize: "0.74rem", color: "#7a7062" }}>A quick walkthrough of everything the app does</span></span>
-            <span style={{ color: "#c9bfae", fontSize: "1.2rem" }}>›</span>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 1, background: "rgba(20,20,15,.13)", margin: "0 22px 24px", borderTop: "1px solid rgba(20,20,15,.13)", borderBottom: "1px solid rgba(20,20,15,.13)" }}>
+        <div style={{ padding: "14px 12px", background: "#FAF7F2" }}><div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 30 }}>–</div><div style={{ fontSize: 8.5, fontWeight: 500, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(20,20,15,.42)", marginTop: 4 }}>Saved</div></div>
+        <div style={{ padding: "14px 12px", background: "#0F6B63", color: "#FAF7F2" }}><div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 30 }}>–</div><div style={{ fontSize: 8.5, fontWeight: 500, letterSpacing: "0.14em", textTransform: "uppercase", opacity: 0.75, marginTop: 4 }}>Visited</div></div>
+        <div style={{ padding: "14px 12px", background: "#D9412B", color: "#FAF7F2" }}><div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 30 }}>–</div><div style={{ fontSize: 8.5, fontWeight: 500, letterSpacing: "0.14em", textTransform: "uppercase", opacity: 0.75, marginTop: 4 }}>Plans</div></div>
+      </div>
+
+      <div style={{ padding: "0 22px", display: "flex", flexDirection: "column" }}>
+        {[
+          { label: "Preferences", hint: "Taste, price, areas", action: () => setView("prefs") },
+          { label: "Tune my picks", hint: "Swipe game", action: onStartTour },
+          ...(isAdmin ? [{ label: "Admin", hint: adminBadge > 0 ? `${adminBadge} pending` : "", action: () => setView("admin") }] : []),
+          { label: "Account", hint: "", action: () => {} },
+          { label: "Sign out", hint: "", fg: "#D9412B", action: () => supabase.auth.signOut() },
+        ].map((r, i) => (
+          <button key={i} onClick={r.action} style={{ display: "flex", alignItems: "center", gap: 13, padding: "16px 0", borderBottom: "1px solid rgba(20,20,15,.11)", cursor: "pointer", background: "none", border: "none", borderBottom: "1px solid rgba(20,20,15,.11)", width: "100%", textAlign: "left" }}>
+            <div style={{ flex: 1, fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 19, color: r.fg || "#14140F" }}>{r.label}</div>
+            {r.hint && <div style={{ fontSize: 8.5, fontWeight: 500, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(20,20,15,.38)" }}>{r.hint}</div>}
+            {r.label !== "Sign out" && <div style={{ color: "rgba(20,20,15,.28)", fontSize: 16 }}>›</div>}
           </button>
-        )}
-        {onStartImportTour && (
-          <button style={row} onClick={onStartImportTour}>
-            <span style={{ fontSize: "1.1rem", width: 24, textAlign: "center" }}>✋</span>
-            <span style={{ flex: 1 }}><span style={{ display: "block", fontSize: "0.9rem", fontWeight: 600, color: "#14140F" }}>Try it yourself</span><span style={{ display: "block", fontSize: "0.74rem", color: "#7a7062" }}>Add your first save, hands-on — learn by doing</span></span>
-            <span style={{ color: "#c9bfae", fontSize: "1.2rem" }}>›</span>
-          </button>
-        )}
-        <button style={row} onClick={() => setView("prefs")}>
-          <span style={{ fontSize: "1.1rem", width: 24, textAlign: "center" }}>🎯</span>
-          <span style={{ flex: 1 }}><span style={{ display: "block", fontSize: "0.9rem", fontWeight: 600, color: "#14140F" }}>For me</span><span style={{ display: "block", fontSize: "0.74rem", color: "#7a7062" }}>Tune your Discover feed</span></span>
-          <span style={{ color: "#c9bfae", fontSize: "1.2rem" }}>›</span>
-        </button>
-        {isAdmin && (
-          <button style={row} onClick={() => setView("admin")}>
-            <span style={{ fontSize: "1.1rem", width: 24, textAlign: "center" }}>⚙️</span>
-            <span style={{ flex: 1 }}><span style={{ display: "block", fontSize: "0.9rem", fontWeight: 600, color: "#14140F" }}>Admin</span><span style={{ display: "block", fontSize: "0.74rem", color: "#7a7062" }}>Approve & manage venues</span></span>
-            {adminBadge > 0 && <span style={{ background: "#DD4124", color: "#fff", borderRadius: 100, fontSize: "0.66rem", fontWeight: 700, padding: "2px 7px" }}>{adminBadge}</span>}
-            <span style={{ color: "#c9bfae", fontSize: "1.2rem" }}>›</span>
-          </button>
-        )}
-        <button style={row} onClick={async () => {
-          try {
-            const r = await fetch("/api/gdpr", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "export", user_id: user.id }) });
-            const j = await r.json();
-            if (!j.found) { alert("No data found."); return; }
-            const blob = new Blob([JSON.stringify(j.data, null, 2)], { type: "application/json" });
-            const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "curated-data-export.json"; a.click();
-          } catch (e) { alert("Export failed: " + e.message); }
-        }}>
-          <span style={{ fontSize: "1.1rem", width: 24, textAlign: "center" }}>📦</span>
-          <span style={{ flex: 1 }}><span style={{ display: "block", fontSize: "0.9rem", fontWeight: 600, color: "#14140F" }}>Export my data</span><span style={{ display: "block", fontSize: "0.74rem", color: "#7a7062" }}>Download all your data as JSON</span></span>
-          <span style={{ color: "#c9bfae", fontSize: "1.2rem" }}>›</span>
-        </button>
-        <button style={row} onClick={async () => {
-          if (!window.confirm("Are you sure you want to delete your account? This will permanently remove all your data and cannot be undone.")) return;
-          if (!window.confirm("This is irreversible. All your saves, plans, connections, and bucket lists will be deleted forever. Proceed?")) return;
-          try {
-            await fetch("/api/gdpr", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "delete", user_id: user.id }) });
-            await supabase.auth.signOut();
-            localStorage.clear();
-            alert("Your account and all data have been deleted.");
-          } catch (e) { alert("Delete failed: " + e.message); }
-        }}>
-          <span style={{ fontSize: "1.1rem", width: 24, textAlign: "center" }}>🗑️</span>
-          <span style={{ flex: 1 }}><span style={{ display: "block", fontSize: "0.9rem", fontWeight: 600, color: "#DD4124" }}>Delete my account</span><span style={{ display: "block", fontSize: "0.74rem", color: "#7a7062" }}>Permanently delete all your data</span></span>
-          <span style={{ color: "#c9bfae", fontSize: "1.2rem" }}>›</span>
-        </button>
-        <button style={row} onClick={() => supabase.auth.signOut()}>
-          <span style={{ fontSize: "1.1rem", width: 24, textAlign: "center" }}>↪</span>
-          <span style={{ flex: 1, fontSize: "0.9rem", fontWeight: 600, color: "#DD4124" }}>Sign out</span>
-        </button>
+        ))}
       </div>
     </div>
   );
@@ -3770,36 +3727,35 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
         <div onClick={() => !parsing && !saving && setCaptureOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.42)", zIndex: 1400, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
           <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 420, background: "#fff", borderRadius: "22px 22px 0 0", padding: "22px 20px calc(22px + env(safe-area-inset-bottom))", maxHeight: "92vh", overflowY: "auto" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-              <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: "1.5rem", color: "#14140F" }}>Save a place</div>
+              <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 32, lineHeight: 1, letterSpacing: "-0.015em", color: "#14140F" }}>Drop a link</div>
               <button onClick={() => setCaptureOpen(false)} style={{ border: "none", background: "none", fontSize: "1.25rem", color: "#7a7062", cursor: "pointer", lineHeight: 1 }}>✕</button>
             </div>
 
             {!captureTab ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 14 }}>
-                <div style={{ fontSize: "0.82rem", color: "#6b5e4e" }}>Paste a link or upload a screenshot — we'll figure out the rest.</div>
-                <input className="input-field" type="text" placeholder="Paste a TikTok, Instagram or Google Maps link…" value={textInput} onChange={e => { setTextInput(e.target.value); setError(null); }} />
-                <button className="btn btn-teal" disabled={parsing || saving || !textInput.trim()} onClick={() => {
-                  const t = textInput.trim(); let mt = "tiktok";
-                  if (/instagram\.com/i.test(t)) mt = "instagram";
-                  else if (/maps\.app\.goo\.gl|google\.[a-z.]+\/maps|goo\.gl\/maps/i.test(t)) mt = /\/maps\/.*list|@.*data/i.test(t) ? "mapslist" : "maps";
-                  else if (!/https?:\/\//i.test(t)) { setMName(t); setTextInput(""); setCaptureTab("manual"); return; }
-                  handleParse(undefined, mt);
-                }}>{parsing ? "Parsing…" : "Save this ✦"}</button>
-
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <div style={{ flex: 1, height: 1, background: "rgba(20,20,15,.13)" }} />
-                  <span style={{ fontSize: "0.72rem", color: "#7a7062" }}>or</span>
-                  <div style={{ flex: 1, height: 1, background: "rgba(20,20,15,.13)" }} />
+                <div style={{ fontSize: 13, color: "rgba(20,20,15,.55)" }}>TikTok, Reel, Maps link or a screenshot. We'll work out the venue.</div>
+                <div style={{ display: "flex", gap: 8, alignItems: "center", padding: "12px 14px", background: "#fff", border: "1px solid rgba(20,20,15,.14)" }}>
+                  <input type="text" placeholder="https://vm.tiktok.com/ZGe…" value={textInput} onChange={e => { setTextInput(e.target.value); setError(null); }} style={{ flex: 1, border: "none", background: "none", fontSize: 10, fontWeight: 500, letterSpacing: "0.08em", color: "rgba(20,20,15,.4)", outline: "none" }} />
+                  <button disabled={parsing || saving || !textInput.trim()} onClick={() => {
+                    const t = textInput.trim(); let mt = "tiktok";
+                    if (/instagram\.com/i.test(t)) mt = "instagram";
+                    else if (/maps\.app\.goo\.gl|google\.[a-z.]+\/maps|goo\.gl\/maps/i.test(t)) mt = /\/maps\/.*list|@.*data/i.test(t) ? "mapslist" : "maps";
+                    else if (!/https?:\/\//i.test(t)) { setMName(t); setTextInput(""); setCaptureTab("manual"); return; }
+                    handleParse(undefined, mt);
+                  }} style={{ padding: "8px 15px", background: "#D9412B", color: "#FAF7F2", border: "none", fontSize: 11.5, fontWeight: 600, cursor: "pointer" }}>{parsing ? "…" : "Paste"}</button>
                 </div>
-
-                <label style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "14px 16px", border: "1.5px dashed rgba(20,20,15,.18)", borderRadius: 0, cursor: parsing ? "default" : "pointer", textAlign: "center" }}>
-                  <span style={{ fontSize: "1.1rem" }}>📷</span>
-                  <span style={{ fontSize: "0.88rem", color: "#14140F", fontWeight: 500 }}>{parsing ? "Reading…" : "Upload a screenshot"}</span>
-                  <input type="file" accept="image/*" multiple style={{ display: "none" }} disabled={parsing || saving}
-                    onChange={e => { const f = [...e.target.files]; e.target.value = ""; if (f.length) handleParse(f, "screenshot"); }} />
-                </label>
-
-                <button onClick={() => { setCaptureTab("manual"); setError(null); }} style={{ border: "none", background: "none", fontSize: "0.8rem", color: "#D9412B", fontWeight: 600, cursor: "pointer", padding: 0 }}>or type a name manually →</button>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9 }}>
+                  <label style={{ padding: 15, background: "#0F6B63", color: "#FAF7F2", cursor: parsing ? "default" : "pointer" }}>
+                    <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 20 }}>Screenshot</div>
+                    <div style={{ fontSize: 8.5, fontWeight: 500, letterSpacing: "0.14em", textTransform: "uppercase", opacity: 0.55, marginTop: 4 }}>From camera roll</div>
+                    <input type="file" accept="image/*" multiple style={{ display: "none" }} disabled={parsing || saving}
+                      onChange={e => { const f = [...e.target.files]; e.target.value = ""; if (f.length) handleParse(f, "screenshot"); }} />
+                  </label>
+                  <button onClick={() => { setCaptureTab("manual"); setError(null); }} style={{ padding: 15, border: "1px solid rgba(20,20,15,.16)", background: "none", cursor: "pointer", textAlign: "left" }}>
+                    <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 20 }}>Type it</div>
+                    <div style={{ fontSize: 8.5, fontWeight: 500, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(20,20,15,.42)", marginTop: 4 }}>Name and area</div>
+                  </button>
+                </div>
 
                 {(parsing || saving) && parseStatus && <div style={{ fontSize: "0.78rem", color: "#D9412B", marginTop: 4 }}>{parseStatus}</div>}
                 {error && <div className="err" style={{ marginTop: 4 }}>{error}</div>}
