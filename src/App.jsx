@@ -3950,19 +3950,34 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
                 const fg = f === "Cafés" ? "#14140F" : "#FAF7F2";
                 return (
                   <div key={f} data-tour={fi === 0 ? "saves-list-card" : undefined} onClick={() => setOpenFolder(f)} style={{ cursor: "pointer" }}>
-                    <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gridTemplateRows: "1fr 1fr", gap: 2, height: 118 }}>
-                      <div style={{ gridRow: "span 2", background: "repeating-linear-gradient(115deg,#EFEAE0 0 9px,#E7E1D5 9px 18px)", position: "relative", overflow: "hidden" }}>
-                        {items[0]?.photo_url && <img src={items[0].photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
-                        <div style={{ position: "absolute", left: 7, top: 7, width: 20, height: 20, background: tint, color: fg, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 12 }}>{f.charAt(0)}</div>
-                      </div>
-                      <div style={{ background: "repeating-linear-gradient(115deg,#EAE4D9 0 9px,#E2DBCD 9px 18px)", overflow: "hidden" }}>
-                        {items[1]?.photo_url && <img src={items[1].photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
-                      </div>
-                      <div style={{ background: "repeating-linear-gradient(115deg,#F2EEE5 0 9px,#EAE4D9 9px 18px)", position: "relative", overflow: "hidden" }}>
-                        {items[2]?.photo_url && <img src={items[2].photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
-                        {items.length > 3 && <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 500, color: "rgba(20,20,15,.4)", background: "rgba(250,247,242,.7)" }}>+{items.length - 3}</div>}
-                      </div>
-                    </div>
+                    {(() => {
+                      const photos = items.filter(s => s.photo_url).map(s => s.photo_url);
+                      const ph = { width: "100%", height: "100%", objectFit: "cover", display: "block" };
+                      if (photos.length === 0) return (
+                        <div style={{ height: 118, background: tint, display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
+                          <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 36, color: fg }}>{f.charAt(0)}</div>
+                        </div>
+                      );
+                      if (photos.length === 1) return (
+                        <div style={{ height: 118, position: "relative", overflow: "hidden" }}>
+                          <img src={photos[0]} alt="" style={ph} />
+                          <div style={{ position: "absolute", left: 7, top: 7, width: 20, height: 20, background: tint, color: fg, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 12 }}>{f.charAt(0)}</div>
+                        </div>
+                      );
+                      if (photos.length === 2) return (
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2, height: 118 }}>
+                          <div style={{ position: "relative", overflow: "hidden" }}><img src={photos[0]} alt="" style={ph} /><div style={{ position: "absolute", left: 7, top: 7, width: 20, height: 20, background: tint, color: fg, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 12 }}>{f.charAt(0)}</div></div>
+                          <div style={{ overflow: "hidden" }}><img src={photos[1]} alt="" style={ph} /></div>
+                        </div>
+                      );
+                      return (
+                        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gridTemplateRows: "1fr 1fr", gap: 2, height: 118 }}>
+                          <div style={{ gridRow: "span 2", position: "relative", overflow: "hidden" }}><img src={photos[0]} alt="" style={ph} /><div style={{ position: "absolute", left: 7, top: 7, width: 20, height: 20, background: tint, color: fg, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 12 }}>{f.charAt(0)}</div></div>
+                          <div style={{ overflow: "hidden" }}><img src={photos[1]} alt="" style={ph} /></div>
+                          <div style={{ position: "relative", overflow: "hidden" }}><img src={photos[2]} alt="" style={ph} />{items.length > 3 && <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 500, color: "rgba(20,20,15,.4)", background: "rgba(250,247,242,.7)" }}>+{items.length - 3}</div>}</div>
+                        </div>
+                      );
+                    })()}
                     <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 19, lineHeight: 1.1, marginTop: 9 }}>{f}</div>
                     <div style={{ fontSize: 8.5, fontWeight: 500, letterSpacing: "0.13em", textTransform: "uppercase", color: "rgba(20,20,15,.45)", marginTop: 4 }}>{items.length} spot{items.length !== 1 ? "s" : ""}</div>
                   </div>
