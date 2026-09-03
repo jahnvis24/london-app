@@ -470,7 +470,7 @@ const styles = `
   .nav-tab { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0; border: none; background: none; cursor: pointer; gap: 7px; transition: all 0.2s; }
   .nav-tab-icon { display: flex; align-items: center; justify-content: center; line-height: 1; transition: all 0.2s; color: rgba(20,20,15,.38); width: 16px; height: 16px; }
   .nav-tab.active .nav-tab-icon { color: #14140F; background: none; }
-  .nav-tab-label { font-size: 8.5px; font-weight: 600; letter-spacing: 0.11em; color: rgba(20,20,15,.38); text-transform: uppercase; transition: color 0.2s; }
+  .nav-tab-label { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 8.5px; font-weight: 600; letter-spacing: 0.11em; color: rgba(20,20,15,.38); text-transform: uppercase; transition: color 0.2s; }
   .nav-tab.active .nav-tab-label { color: #14140F; }
   .nav-tab-dot { display: none; }
   .capture-fab { position: fixed; z-index: 110; bottom: calc(98px + env(safe-area-inset-bottom)); right: max(20px, calc(50% - 210px + 20px)); width: 56px; height: 56px; border-radius: 50%; border: none; background: #D9412B; color: #FAF7F2; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 8px 22px rgba(217,65,43,.4); transition: transform 0.34s cubic-bezier(.3,1.3,.4,1); font: 200 30px 'Instrument Serif', Georgia, serif; }
