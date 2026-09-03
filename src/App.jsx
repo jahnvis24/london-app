@@ -2257,13 +2257,13 @@ function blip(freq = 660) {
 // Simple flat line icons for the bottom nav (inherit colour via currentColor).
 const NAV_ICON_PATHS = {
   home: '<path d="M12 3l2.2 6.8H21l-5.4 4 2.1 6.7L12 16.4 6.3 20.5l2.1-6.7-5.4-4h6.8z"/>',
-  plans: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/>',
-  saved: '<path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>',
-  discover: '<circle cx="12" cy="12" r="9" fill="none"/><circle cx="12" cy="12" r="2"/>',
+  plans: '<line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/>',
+  saved: '<rect x="4" y="4" width="16" height="16"/>',
+  discover: '<circle cx="12" cy="12" r="9"/>',
   prefs: '<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8z"/>',
   add: '<path d="M12 5v14M5 12h14"/>',
-  people: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
-  me: '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="10" r="3"/><path d="M6.5 18.5a6 6 0 0 1 11 0"/>',
+  people: '<circle cx="9" cy="10" r="6"/><circle cx="16" cy="14" r="6"/>',
+  me: '<circle cx="12" cy="8" r="4"/><path d="M4 22c0-4.4 3.6-8 8-8s8 3.6 8 8"/>',
   admin: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
 };
 function NavIcon({ id }) {
@@ -5615,7 +5615,7 @@ export default function App() {
   const [shareItem, setShareItem] = useState(null); // { kind, title, payload } -> ShareModal
   const [barCrawl, setBarCrawl] = useState(null);   // { seed: [...] } -> BarCrawlQuiz
   const [pendingGen, setPendingGen] = useState(false); // fire generate() after ans/times state commits
-  const [activeTab, setActiveTab] = useState("saved"); // Saves is the landing tab (first tab)
+  const [activeTab, setActiveTab] = useState("discover"); // Discover is the landing tab
   const [meOpen, setMeOpen] = useState(false);
   const [discoverSpot, setDiscoverSpot] = useState(null);
   const [tourStep, setTourStep] = useState(-1); // -1 = off; guided product tour (Me → "Take a tour")
@@ -5960,10 +5960,11 @@ export default function App() {
   const showViewingPlan = activeTab === "plans" && viewingPlan;
 
   const TABS = [
-    { id: "saved", label: "Saves", icon: "📌" },
-    { id: "plans", label: "Plans", icon: "📋" },
-    { id: "discover", label: "Discover", icon: "🧭" },
-    { id: "people", label: "People", icon: "👥", badge: peopleBadge },
+    { id: "discover", label: "Discover", icon: "discover" },
+    { id: "saved", label: "Saves", icon: "saved" },
+    { id: "plans", label: "Plans", icon: "plans" },
+    { id: "people", label: "People", icon: "people", badge: peopleBadge },
+    { id: "me", label: "Me", icon: "me", badge: isAdmin ? adminBadge : 0 },
   ];
 
   // Stash link params on first load BEFORE they're lost — Google OAuth redirects back
@@ -6094,11 +6095,8 @@ export default function App() {
       <style>{styles}</style>
       <div className="app">
         <div className={"toast" + (toast.show ? " show" : "")}>{toast.msg}</div>
-        {!showQuiz && !showResult && !showViewingPlan && (
-          <button className="profile-btn" aria-label="Profile & settings" onClick={() => setMeOpen(true)}>
-            {user?.user_metadata?.avatar_url ? <img src={user.user_metadata.avatar_url} alt="" /> : (user?.user_metadata?.full_name || user?.email || "U").charAt(0).toUpperCase()}
-            {isAdmin && adminBadge > 0 && <span style={{ position: "absolute", top: -2, right: -2, background: "#DD4124", color: "#fff", borderRadius: "50%", fontSize: "0.45rem", width: 12, height: 12, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>{adminBadge}</span>}
-          </button>
+        {false && ( // Profile button removed — Me is now a tab
+          <span></span>
         )}
         {ratingPlan && <RatingPrompt plan={ratingPlan} user={user} onDismiss={() => { const reviewed = JSON.parse(localStorage.getItem("cl_reviewed") || "[]"); reviewed.push(ratingPlan.id); localStorage.setItem("cl_reviewed", JSON.stringify(reviewed)); setRatingPlan(null); }} onSubmit={() => { setRatingPlan(null); showToast("Thanks for your review!"); }} />}
 
@@ -6127,17 +6125,7 @@ export default function App() {
           )}
           <SavedScreen user={user} visible={activeTab === "saved"} tourWantsSpot={tourStep === 1 || tourStep === 2} replayImportSignal={importSignal} dbVenues={dbVenues} openSignal={captureSignal} calendarSignal={calSignal} onShare={setShareItem} onBuildPlan={(saves) => { setResult(null); setError(null); setViewingPlan(null); setActiveTab("home"); setAns({ savedVenues: saves }); setQuizStep(0); }} onBarCrawl={(seed) => setBarCrawl({ seed: seed || [] })} />
         </div>
-        {meOpen && (
-          <div className="me-overlay" onClick={() => setMeOpen(false)}>
-            <div className="me-sheet" onClick={e => e.stopPropagation()}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "18px 20px 0" }}>
-                <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: "1.4rem", color: "#14140F" }}>Me</div>
-                <button onClick={() => setMeOpen(false)} style={{ border: "none", background: "none", fontSize: "1.25rem", color: "#7a7062", cursor: "pointer", lineHeight: 1 }}>✕</button>
-              </div>
-              <MeScreen user={user} preferences={preferences} setPreferences={setPreferences} isAdmin={isAdmin} onBadgeUpdate={setAdminBadge} adminBadge={adminBadge} onStartTour={() => { setMeOpen(false); setTourStep(0); }} onStartImportTour={() => { setMeOpen(false); setTourStep(-1); setActiveTab("saved"); setImportSignal(n => n + 1); }} />
-            </div>
-          </div>
-        )}
+        {activeTab === "me" && <MeScreen user={user} preferences={preferences} setPreferences={setPreferences} isAdmin={isAdmin} onBadgeUpdate={setAdminBadge} adminBadge={adminBadge} onStartTour={() => setTourStep(0)} onStartImportTour={() => { setTourStep(-1); setActiveTab("saved"); setImportSignal(n => n + 1); }} />}
 
         {!showQuiz && !showResult && !showViewingPlan && (
           <button className="capture-fab" aria-label="Save a place"
