@@ -1249,66 +1249,36 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
               <div key={i} className="stat"><div className="stat-val">{v}</div><div className="stat-lbl">{l}</div></div>
             ))}
           </div>
-          <div className="stops-wrap">
+          <div style={{ padding: "0 22px" }}>
             {(result.stops || []).map((stop, idx) => (
               <div key={idx + "-" + stop.name}>
-                <div className="stop" style={{ ...(stop._saved ? { outline: "2px solid #D9412B", outlineOffset: -2, borderRadius: 0 } : {}), animation: swappingIdx === idx ? "cardSwap 0.25s ease" : undefined }}>
-                  <div className="stop-inner" onClick={() => { setSwappingIdx(null); setAlternatives([]); window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(stop.name + " London")}`, "_blank"); }} style={{ cursor: "pointer" }}>
-                    <div className="stop-top">
-                      <div className="stop-emoji-wrap">{stop.emoji}</div>
-                      <div className="stop-body">
-                        <div className="stop-meta">
-                          <span className="stop-time">{stop.time}</span>
-                          <span className="stop-dot" />
-                          <span className="stop-type">{stop.type}</span>
-                          {stop.google_rating && <><span className="stop-dot" /><span style={{ fontSize: "0.68rem", fontWeight: 700, color: "#14140F", letterSpacing: "0.02em" }}>⭐ {stop.google_rating}</span></>}
-                        </div>
-                        <div className="stop-name">{stop.name}</div>
-                        <div className="stop-hook">{stop.hook}</div>
-                      </div>
-                    </div>
+                <div onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(stop.name + " London")}`, "_blank")} style={{ display: "flex", gap: 13, alignItems: "flex-start", padding: "14px 0", borderTop: "1px solid rgba(20,20,15,.13)", cursor: "pointer", animation: swappingIdx === idx ? "cardSwap 0.25s ease" : undefined }}>
+                  <div style={{ width: 30, flex: "none" }}>
+                    <div style={{ fontSize: 9, fontWeight: 500, letterSpacing: "0.1em", color: "rgba(20,20,15,.45)" }}>{stop.time}</div>
+                    <div style={{ width: 26, height: 26, borderRadius: "50%", background: "#14140F", color: "#FAF7F2", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 14, marginTop: 6 }}>{idx + 1}</div>
                   </div>
-                  <div className="stop-footer">
-                    <div className="stop-pills-row">
-                      {stop._saved && <span className="stop-pill" style={{ background: "#eef3d8", color: "#D9412B", fontWeight: 700 }}>★ Your saved spot</span>}
-                      {stop.price_range && <span className="stop-pill">💰 {stop.price_range}</span>}
-                      {stop.area && <span className="stop-pill">📍 {stop.area}</span>}
-                      {stop.plant_friendly && <span className="stop-pill" style={{ background: "#ecfdf5", color: "#059669" }}>🌱 Plant-friendly</span>}
-                      {stop.celebrity_tags && [...new Set(stop.celebrity_tags)].map((celeb, ci) => (
-                        <span key={ci} className="stop-pill" style={{ background: "#f3e8ff", color: "#7c3aed" }}>💫 {celeb}'s fav</span>
-                      ))}
-                    </div>
-                    <button onClick={() => findAlternatives(idx)} style={{ border: "none", background: "#D9412B", color: "#fff", fontSize: "0.72rem", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", padding: "5px 12px", borderRadius: 100, flexShrink: 0, whiteSpace: "nowrap" }}>↻ Swap</button>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 21 }}>{stop.name}</div>
+                    <div style={{ fontSize: 8.5, fontWeight: 500, letterSpacing: "0.13em", textTransform: "uppercase", color: "rgba(20,20,15,.45)", marginTop: 4 }}>{[stop.area, stop.type, stop.price_range].filter(Boolean).join(" · ")}</div>
                   </div>
-                  {swappingIdx === idx && alternatives.length === 0 && (
-                    <div style={{ padding: "0.5rem 1.1rem", borderTop: "1px solid rgba(20,20,15,.13)", fontSize: "0.75rem", color: "#7a7062" }}>No alternatives found for this stop.</div>
-                  )}
-                  {stop.why_it_fits && <div className="why-fit">↳ {stop.why_it_fits}</div>}
+                  <div style={{ width: 52, height: 52, flex: "none", background: "#F1EDE4", overflow: "hidden" }}>
+                    {stop.photo_url && <img src={stop.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+                  </div>
                 </div>
                 {stop.travel_to_next && idx < (result.stops || []).length - 1 && (
-                  <div className="transit">↓ {stop.travel_to_next}</div>
+                  <div style={{ fontSize: 8.5, fontWeight: 500, letterSpacing: "0.13em", textTransform: "uppercase", color: "#0F6B63", paddingLeft: 43 }}>{stop.travel_to_next}</div>
                 )}
               </div>
             ))}
           </div>
           {result.extend_the_night && <div className="night-box"><div className="night-box-label">Extend the night</div><div className="night-box-text">🌙 {result.extend_the_night}</div></div>}
           {result.local_tip && <div className="tip-box"><div className="tip-label">Local tip</div><div className="tip-text">🗣️ {result.local_tip}</div></div>}
-          <div style={{ padding: "0 1.5rem 1rem" }}>
-            <button className="btn btn-teal" onClick={() => {
-              const stops = result.stops || [];
-              if (stops.length === 0) return;
-              const origin = encodeURIComponent(stops[0].name + " London");
-              const dest = encodeURIComponent(stops[stops.length - 1].name + " London");
-              const waypoints = stops.slice(1, -1).map(s => encodeURIComponent(s.name + " London")).join("|");
-              const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}${waypoints ? `&waypoints=${waypoints}` : ""}&travelmode=walking`;
-              window.open(url, "_blank");
-            }}>
-              🗺️ Create Google Maps route
-            </button>
-            {onRate && <button className="btn-outline" onClick={onRate}>★ Rate this plan</button>}
-            {onShare && <button className="btn-outline" onClick={() => onShare({ kind: "plan", title: result.title || "Curated plan", payload: { plan: result, times } })}>📨 Send to a friend (in app)</button>}
-            <button className="btn-outline" onClick={() => { setView("social"); ensureShared(); }}>🔗 Share via link</button>
-            <button className="btn-outline" onClick={onRestart}>↺ Plan a different day</button>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9, padding: "20px 22px 0" }}>
+            {onSchedule && <button onClick={() => onSchedule(new Date().toISOString().slice(0, 10))} style={{ padding: 14, background: "#D9412B", color: "#FAF7F2", border: "none", textAlign: "center", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>Schedule this plan</button>}
+            {onShare && <button onClick={() => onShare({ kind: "plan", title: result.title || "Curated plan", payload: { plan: result, times } })} style={{ padding: 14, border: "1px solid #0F6B63", background: "none", color: "#0F6B63", textAlign: "center", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>Share with friends</button>}
+          </div>
+          <div style={{ padding: "9px 22px 1rem" }}>
+            <button onClick={() => { const stops = result.stops || []; if (!stops.length) return; const o = encodeURIComponent(stops[0].name + " London"); const d = encodeURIComponent(stops[stops.length - 1].name + " London"); const w = stops.slice(1, -1).map(s => encodeURIComponent(s.name + " London")).join("|"); window.open(`https://www.google.com/maps/dir/?api=1&origin=${o}&destination=${d}${w ? `&waypoints=${w}` : ""}&travelmode=walking`, "_blank"); }} style={{ width: "100%", padding: 14, border: "1px solid rgba(20,20,15,.16)", background: "none", textAlign: "center", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>Open route in Maps</button>
           </div>
         </div>
       )}
@@ -1360,54 +1330,50 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
 }
 
 function MyPlansScreen({ plans, onViewPlan, onNewPlan, onSchedule, dbVenues }) {
-  const photoFor = (name) => { if (!name || !dbVenues) return null; const v = dbVenues.find(x => x.name && x.name.toLowerCase() === String(name).toLowerCase()); return v?.photo_url || null; };
-  const Header = (
-    <div style={{ padding: "1.75rem 1.5rem 0.5rem", textAlign: "center" }}>
-      <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: "2rem", color: "#14140F", lineHeight: 1.05 }}>Itineraries</div>
-      <div style={{ fontSize: "0.86rem", color: "#7a7062", marginTop: 5 }}>Turn your saved spots into plans you'll actually do.</div>
-      <button data-tour="plan-cta" onClick={onNewPlan} style={{ width: "100%", marginTop: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "#D9412B", color: "#fff", border: "none", borderRadius: 0, padding: "15px", fontSize: "0.95rem", fontWeight: 600, cursor: "pointer", boxShadow: "0 3px 12px rgba(114,106,78,0.28)" }}>✦ Plan my day or night</button>
-    </div>
-  );
-  const CalIcon = <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>;
+  const upcoming = plans.filter(p => p.scheduledDate).length;
+  const shared = plans.filter(p => p.ans?.savedVenues?.length).length;
+  const summary = [upcoming && `${upcoming} upcoming`, shared && `${shared} shared`, plans.filter(p => !p.scheduledDate).length && `${plans.filter(p => !p.scheduledDate).length} draft`].filter(Boolean).join(" · ") || `${plans.length} plan${plans.length !== 1 ? "s" : ""}`;
 
   if (plans.length === 0) return (
-    <div>
-      {Header}
+    <div style={{ animation: "screenIn .32s cubic-bezier(.2,.9,.3,1)" }}>
+      <div style={{ padding: "0 22px 4px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 40, lineHeight: 1, letterSpacing: "-0.015em" }}>Plans</div>
+        <button onClick={onNewPlan} style={{ padding: "9px 14px", background: "#D9412B", color: "#FAF7F2", border: "none", fontSize: 11.5, fontWeight: 600, cursor: "pointer" }}>+ New plan</button>
+      </div>
       <div className="empty-state">
         <div className="empty-icon">🗺️</div>
         <div className="empty-title">No plans yet</div>
         <div className="empty-sub">Answer 5 quick questions and get a personalised London itinerary.</div>
-        <button className="btn btn-teal" style={{ maxWidth: 220, margin: "0 auto" }} onClick={onNewPlan}>Plan my day or night ✦</button>
       </div>
     </div>
   );
   return (
-    <div>
-      {Header}
-      <div style={{ padding: "0.75rem 1.5rem 1.5rem", display: "grid", gap: 16 }}>
+    <div style={{ animation: "screenIn .32s cubic-bezier(.2,.9,.3,1)" }}>
+      <div style={{ padding: "0 22px 4px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 40, lineHeight: 1, letterSpacing: "-0.015em" }}>Plans</div>
+        <button data-tour="plan-cta" onClick={onNewPlan} style={{ padding: "9px 14px", background: "#D9412B", color: "#FAF7F2", border: "none", fontSize: 11.5, fontWeight: 600, cursor: "pointer" }}>+ New plan</button>
+      </div>
+      <div style={{ padding: "0 22px 20px", fontSize: 10, fontWeight: 500, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(20,20,15,.42)" }}>{summary}</div>
+      <div style={{ padding: "0 22px" }}>
         {plans.map((plan, i) => {
           const stops = plan.result.stops || [];
-          const cover = stops.map(s => s.photo_url || photoFor(s.name)).find(Boolean);
+          const tint = plan.scheduledDate ? "#D9412B" : plan.ans?._barCrawl ? "#0F6B63" : "rgba(20,20,15,.35)";
+          const tag = plan.scheduledDate ? `Scheduled ${new Date(plan.scheduledDate).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}` : plan.ans?._barCrawl ? "Bar crawl" : "Draft";
           return (
-            <div key={i} onClick={() => onViewPlan(plan)} style={{ borderRadius: 0, overflow: "hidden", cursor: "pointer", background: "#fff", boxShadow: "0 4px 16px rgba(0,0,0,0.12)" }}>
-              <div style={{ position: "relative", height: 200, background: cover ? "#222" : "linear-gradient(135deg, #4B342F, #9B892F)" }}>
-                {cover && <img src={cover} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />}
-                <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 35%, rgba(0,0,0,0.72))" }} />
-                <div style={{ position: "absolute", left: 18, right: 18, bottom: 16 }}>
-                  <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: "1.6rem", color: "#fff", lineHeight: 1.1, textShadow: "0 2px 12px rgba(0,0,0,0.55)" }}>{plan.result.title}</div>
-                  {plan.result.tagline && <div style={{ fontSize: "0.82rem", color: "rgba(255,255,255,0.88)", marginTop: 5 }}>{plan.result.tagline}</div>}
+            <div key={i} onClick={() => onViewPlan(plan)} style={{ padding: "16px 0", borderTop: "1px solid rgba(20,20,15,.13)", cursor: "pointer" }}>
+              <div style={{ display: "flex", gap: 13, alignItems: "flex-start" }}>
+                <div style={{ width: 64, height: 64, flex: "none", position: "relative", background: "#F1EDE4", border: "1px solid rgba(20,20,15,.1)", overflow: "hidden" }}>
+                  <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(rgba(20,20,15,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(20,20,15,.07) 1px,transparent 1px)", backgroundSize: "16px 16px" }} />
+                  <div style={{ position: "absolute", left: "22%", top: "30%", width: 6, height: 6, borderRadius: "50%", background: tint }} />
+                  <div style={{ position: "absolute", left: "52%", top: "48%", width: 6, height: 6, borderRadius: "50%", background: tint }} />
+                  <div style={{ position: "absolute", left: "34%", top: "72%", width: 6, height: 6, borderRadius: "50%", background: tint }} />
                 </div>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: "0.8rem", color: "#6b5e4e" }}>
-                  {CalIcon}{plan.savedAt} · {stops.length} stop{stops.length !== 1 ? "s" : ""}
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 21 }}>{plan.result.title}</div>
+                  <div style={{ fontSize: 8.5, fontWeight: 500, letterSpacing: "0.13em", textTransform: "uppercase", color: "rgba(20,20,15,.45)", marginTop: 5 }}>{stops.length} stop{stops.length !== 1 ? "s" : ""} · {plan.savedAt}</div>
+                  <div style={{ display: "inline-block", marginTop: 9, padding: "4px 9px", background: tint, color: "#FAF7F2", fontSize: 8, fontWeight: 600, letterSpacing: "0.13em", textTransform: "uppercase" }}>{tag}</div>
                 </div>
-                {onSchedule ? (
-                  <label onClick={(e) => e.stopPropagation()} style={{ display: "inline-flex", alignItems: "center", gap: 5, position: "relative", fontSize: "0.76rem", fontWeight: 600, color: plan.scheduledDate ? "#D9412B" : "#7a7062", cursor: "pointer" }}>
-                    📅 {plan.scheduledDate ? new Date(plan.scheduledDate).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "Schedule"}
-                    <input type="date" value={plan.scheduledDate || ""} onChange={(e) => onSchedule(i, e.target.value)} onClick={(e) => e.stopPropagation()} style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer", width: "100%" }} />
-                  </label>
-                ) : <span style={{ fontSize: "1.15rem", color: "#14140F" }}>→</span>}
+                <div style={{ color: "rgba(20,20,15,.3)", fontSize: 18 }}>›</div>
               </div>
             </div>
           );
