@@ -3013,6 +3013,7 @@ function SavedScreen({ user, onBuildPlan, onShare, onBarCrawl, openSignal, calen
   const [focusSpot, setFocusSpot] = useState(null); // tapping a list card pans the map to it
   const folderSwipeRef = useSwipeRight(() => { setOpenFolder(null); setFocusSpot(null); });
   const [mapCat, setMapCat] = useState(""); // Map tab: "" = all, else a category scope
+  const [mapListFilter, setMapListFilter] = useState(""); // Map tab: "" = all lists, else a folder name
 
   // Collapse the capture controls whenever the user switches Folders/Map/Calendar.
   useEffect(() => { setCaptureOpen(false); }, [savedView]);
@@ -3707,7 +3708,8 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
   const existingFolders = folderNames;
   const folderSaves = openFolder ? (grouped[openFolder] || []) : [];
   const mapCats = [...new Set(saves.filter(s => s.lat && s.lng).map(s => normaliseCategory(s.category)))].sort();
-  const scopeSaves = mapCat ? saves.filter(s => normaliseCategory(s.category) === mapCat) : saves;
+  const mapBaseSaves = mapListFilter ? saves.filter(s => (s.folder || folderFor(s.category)) === mapListFilter) : saves;
+  const scopeSaves = mapCat ? mapBaseSaves.filter(s => normaliseCategory(s.category) === mapCat) : mapBaseSaves;
 
   // Shared "scoped" view: a sticky map of the given spots + the spots listed below
   // (tap a card to pan the map). Used for both an open list and a Map-tab category.
@@ -3894,16 +3896,33 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
       <div ref={tourListRef} style={{ padding: "0 0.75rem 1rem" }}>
         {saves.length > 0 && savedView === "map" && (
           <>
-            <button onClick={() => setSavedView("folders")} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "#14140F", fontSize: 13, fontWeight: 600, cursor: "pointer", padding: "0 0 10px" }}>← Close map</button>
-            <div style={{ position: "sticky", top: 0, zIndex: 1 }}>
-              <SpotsMap key="maptab" saves={saves} focusSpot={focusSpot} onCategory={setMapCat} />
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 0 10px" }}>
+              <button onClick={() => { setSavedView("folders"); setMapListFilter(""); setMapCat(""); }} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "#14140F", fontSize: 13, fontWeight: 600, cursor: "pointer", padding: 0 }}>← Close map</button>
+              {folderNames.length > 1 && (
+                <select value={mapListFilter} onChange={e => { setMapListFilter(e.target.value); setMapCat(""); }} style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 13, border: "1px solid rgba(20,20,15,.18)", background: "#FAF7F2", color: "#14140F", padding: "6px 10px", outline: "none", maxWidth: 160, cursor: "pointer" }}>
+                  <option value="">All lists</option>
+                  {folderNames.map(f => <option key={f} value={f}>{f}</option>)}
+                </select>
+              )}
             </div>
-            {mapCat && renderSheet(scopeSaves, (
+            <div style={{ position: "sticky", top: 0, zIndex: 1 }}>
+              <SpotsMap key={`maptab-${mapListFilter}`} saves={mapBaseSaves} focusSpot={focusSpot} onCategory={setMapCat} />
+            </div>
+            {renderSheet(scopeSaves, (
               <div style={{ padding: "0 14px 12px" }}>
-                <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 14, color: "#14140F", marginBottom: ((mapCat === "bar" || mapCat === "nightlife") || scopeSaves.length > 1) ? 8 : 0 }}>{CAT_LABEL[mapCat] || cap(mapCat)} <span style={{ fontSize: 11, color: "rgba(20,20,15,.45)" }}>· {scopeSaves.length}</span></div>
-                {(mapCat === "bar" || mapCat === "nightlife")
-                  ? <button onClick={() => onBarCrawl(scopeSaves)} style={{ width: "100%", border: "none", background: "#D9412B", color: "#fff", borderRadius: 100, padding: "10px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>🍸 Planning a bar crawl? Tap here!</button>
-                  : (scopeSaves.length > 1 && <button onClick={() => onBuildPlan(scopeSaves)} style={{ width: "100%", border: "none", background: "#D9412B", color: "#fff", borderRadius: 100, padding: "10px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>✦ Build a plan from these</button>)}
+                {mapCat ? (
+                  <>
+                    <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 14, color: "#14140F", marginBottom: ((mapCat === "bar" || mapCat === "nightlife") || scopeSaves.length > 1) ? 8 : 0 }}>{CAT_LABEL[mapCat] || cap(mapCat)} <span style={{ fontSize: 11, color: "rgba(20,20,15,.45)" }}>· {scopeSaves.length}</span></div>
+                    {(mapCat === "bar" || mapCat === "nightlife")
+                      ? <button onClick={() => onBarCrawl(scopeSaves)} style={{ width: "100%", border: "none", background: "#D9412B", color: "#fff", borderRadius: 100, padding: "10px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>🍸 Planning a bar crawl? Tap here!</button>
+                      : (scopeSaves.length > 1 && <button onClick={() => onBuildPlan(scopeSaves)} style={{ width: "100%", border: "none", background: "#D9412B", color: "#fff", borderRadius: 100, padding: "10px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>✦ Build a plan from these</button>)}
+                  </>
+                ) : (
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 14, color: "#14140F" }}>All spots <span style={{ fontSize: 11, color: "rgba(20,20,15,.45)" }}>· {scopeSaves.filter(s => s.lat && s.lng).length}</span></div>
+                    {scopeSaves.length > 1 && <button onClick={() => onBuildPlan(scopeSaves)} style={{ border: "none", background: "#D9412B", color: "#fff", borderRadius: 100, padding: "8px 14px", fontSize: 10, fontWeight: 600, cursor: "pointer" }}>✦ Build a plan</button>}
+                  </div>
+                )}
               </div>
             ))}
           </>
@@ -3948,38 +3967,39 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
                 const tints = { "Restaurants": "#D9412B", "Bars": "#0F6B63", "Cafés": "#EFEAE0", "Date night": "#0F6B63" };
                 const tint = tints[f] || "#D9412B";
                 const fg = f === "Cafés" ? "#14140F" : "#FAF7F2";
+                const cardH = 158;
                 return (
                   <div key={f} data-tour={fi === 0 ? "saves-list-card" : undefined} onClick={() => setOpenFolder(f)} style={{ cursor: "pointer" }}>
                     {(() => {
                       const photos = items.filter(s => s.photo_url).map(s => s.photo_url);
                       const ph = { width: "100%", height: "100%", objectFit: "cover", display: "block" };
                       if (photos.length === 0) return (
-                        <div style={{ height: 118, background: tint, display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
-                          <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 36, color: fg }}>{f.charAt(0)}</div>
+                        <div style={{ height: cardH, background: tint, display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
+                          <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 42, color: fg }}>{f.charAt(0)}</div>
                         </div>
                       );
                       if (photos.length === 1) return (
-                        <div style={{ height: 118, position: "relative", overflow: "hidden" }}>
+                        <div style={{ height: cardH, position: "relative", overflow: "hidden" }}>
                           <img src={photos[0]} alt="" style={ph} />
-                          <div style={{ position: "absolute", left: 7, top: 7, width: 20, height: 20, background: tint, color: fg, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 12 }}>{f.charAt(0)}</div>
+                          <div style={{ position: "absolute", left: 7, top: 7, width: 22, height: 22, background: tint, color: fg, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 13 }}>{f.charAt(0)}</div>
                         </div>
                       );
                       if (photos.length === 2) return (
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2, height: 118 }}>
-                          <div style={{ position: "relative", overflow: "hidden" }}><img src={photos[0]} alt="" style={ph} /><div style={{ position: "absolute", left: 7, top: 7, width: 20, height: 20, background: tint, color: fg, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 12 }}>{f.charAt(0)}</div></div>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2, height: cardH }}>
+                          <div style={{ position: "relative", overflow: "hidden" }}><img src={photos[0]} alt="" style={ph} /><div style={{ position: "absolute", left: 7, top: 7, width: 22, height: 22, background: tint, color: fg, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 13 }}>{f.charAt(0)}</div></div>
                           <div style={{ overflow: "hidden" }}><img src={photos[1]} alt="" style={ph} /></div>
                         </div>
                       );
                       return (
-                        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gridTemplateRows: "1fr 1fr", gap: 2, height: 118 }}>
-                          <div style={{ gridRow: "span 2", position: "relative", overflow: "hidden" }}><img src={photos[0]} alt="" style={ph} /><div style={{ position: "absolute", left: 7, top: 7, width: 20, height: 20, background: tint, color: fg, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 12 }}>{f.charAt(0)}</div></div>
+                        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gridTemplateRows: "1fr 1fr", gap: 2, height: cardH }}>
+                          <div style={{ gridRow: "span 2", position: "relative", overflow: "hidden" }}><img src={photos[0]} alt="" style={ph} /><div style={{ position: "absolute", left: 7, top: 7, width: 22, height: 22, background: tint, color: fg, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 13 }}>{f.charAt(0)}</div></div>
                           <div style={{ overflow: "hidden" }}><img src={photos[1]} alt="" style={ph} /></div>
-                          <div style={{ position: "relative", overflow: "hidden" }}><img src={photos[2]} alt="" style={ph} />{items.length > 3 && <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 500, color: "rgba(20,20,15,.4)", background: "rgba(250,247,242,.7)" }}>+{items.length - 3}</div>}</div>
+                          <div style={{ position: "relative", overflow: "hidden" }}><img src={photos[2]} alt="" style={ph} />{items.length > 3 && <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 500, color: "rgba(20,20,15,.4)", background: "rgba(250,247,242,.7)" }}>+{items.length - 3}</div>}</div>
                         </div>
                       );
                     })()}
-                    <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 19, lineHeight: 1.1, marginTop: 9 }}>{f}</div>
-                    <div style={{ fontSize: 8.5, fontWeight: 500, letterSpacing: "0.13em", textTransform: "uppercase", color: "rgba(20,20,15,.45)", marginTop: 4 }}>{items.length} spot{items.length !== 1 ? "s" : ""}</div>
+                    <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 21, lineHeight: 1.1, marginTop: 10 }}>{f}</div>
+                    <div style={{ fontSize: 9, fontWeight: 500, letterSpacing: "0.13em", textTransform: "uppercase", color: "rgba(20,20,15,.45)", marginTop: 4 }}>{items.length} spot{items.length !== 1 ? "s" : ""}</div>
                   </div>
                 );
               })}
@@ -4012,8 +4032,32 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
         )}
         {saves.length > 0 && savedView === "folders" && openFolder && (
           <div ref={folderSwipeRef} style={{ background: "#FAF7F2", minHeight: "60vh", animation: "screenIn .32s cubic-bezier(.2,.9,.3,1)" }}>
-            <div onClick={() => { setOpenFolder(null); setFocusSpot(null); }} style={{ margin: "0 0 16px", width: 36, height: 36, border: "1px solid rgba(20,20,15,.18)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, cursor: "pointer" }}>←</div>
-            <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 40, lineHeight: 1, letterSpacing: "-0.015em", marginBottom: 4 }}>{openFolder}</div>
+            {menuFolder && <div onClick={() => setMenuFolder(null)} style={{ position: "fixed", inset: 0, zIndex: 15 }} />}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "0 0 16px" }}>
+              <div onClick={() => { setOpenFolder(null); setFocusSpot(null); }} style={{ width: 36, height: 36, border: "1px solid rgba(20,20,15,.18)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, cursor: "pointer" }}>←</div>
+              <div onClick={() => setMenuFolder(menuFolder === openFolder ? null : openFolder)} style={{ width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, cursor: "pointer", color: "rgba(20,20,15,.5)", position: "relative" }}>
+                ···
+                {menuFolder === openFolder && (
+                  <div onClick={e => e.stopPropagation()} style={{ position: "absolute", top: 40, right: 0, background: "#FAF7F2", border: "1px solid rgba(20,20,15,.12)", boxShadow: "0 8px 24px rgba(20,20,15,.12)", minWidth: 160, zIndex: 20, animation: "fadeIn .15s" }}>
+                    <div onClick={() => renameFolder(openFolder)} style={{ padding: "13px 16px", fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", gap: 10, borderBottom: "1px solid rgba(20,20,15,.08)" }}>
+                      <span style={{ fontSize: 15 }}>✏️</span> Rename list
+                    </div>
+                    <div onClick={() => deleteFolder(openFolder)} style={{ padding: "13px 16px", fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", gap: 10, color: "#D9412B" }}>
+                      <span style={{ fontSize: 15 }}>🗑️</span> Delete list
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            {renamingFolder === openFolder ? (
+              <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
+                <input autoFocus value={renameDraft} onChange={e => setRenameDraft(e.target.value)} onKeyDown={e => e.key === "Enter" && confirmRename(openFolder)} style={{ flex: 1, fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 32, lineHeight: 1, border: "none", borderBottom: "2px solid #14140F", background: "transparent", outline: "none", padding: "4px 0" }} />
+                <button onClick={() => confirmRename(openFolder)} style={{ padding: "8px 16px", background: "#14140F", color: "#FAF7F2", border: "none", fontSize: 12, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", cursor: "pointer" }}>Save</button>
+                <button onClick={() => { setRenamingFolder(null); setRenameDraft(""); }} style={{ padding: "8px 12px", background: "transparent", border: "1px solid rgba(20,20,15,.18)", fontSize: 12, cursor: "pointer" }}>✕</button>
+              </div>
+            ) : (
+              <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 40, lineHeight: 1, letterSpacing: "-0.015em", marginBottom: 4 }}>{openFolder}</div>
+            )}
             <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(20,20,15,.42)", marginBottom: 18 }}>{folderSaves.length} spot{folderSaves.length !== 1 ? "s" : ""}</div>
 
             {folderSaves.length > 0 && folderSaves.some(s => s.lat && s.lng) && (
