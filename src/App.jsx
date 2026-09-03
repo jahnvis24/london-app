@@ -2052,7 +2052,26 @@ function MeScreen({ user, preferences, setPreferences, isAdmin, onBadgeUpdate, a
   return (
     <div style={{ animation: "screenIn .32s cubic-bezier(.2,.9,.3,1)" }}>
       <div style={{ padding: "0 22px 24px", display: "flex", alignItems: "center", gap: 15 }}>
-        <div style={{ width: 66, height: 66, borderRadius: "50%", background: "#14140F", color: "#FAF7F2", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: "1.6rem", overflow: "hidden", flexShrink: 0 }}>{avatar ? <img src={avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : displayName.charAt(0).toUpperCase()}</div>
+        <label style={{ width: 66, height: 66, borderRadius: "50%", background: "#14140F", color: "#FAF7F2", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: "1.6rem", overflow: "hidden", flexShrink: 0, cursor: "pointer", position: "relative" }}>
+          {avatar ? <img src={avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : displayName.charAt(0).toUpperCase()}
+          <div style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "rgba(0,0,0,0.3)", display: "flex", alignItems: "center", justifyContent: "center", opacity: 0, transition: "opacity .2s" }} onMouseEnter={e => e.currentTarget.style.opacity = 1} onMouseLeave={e => e.currentTarget.style.opacity = 0}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: "#FAF7F2" }}>Edit</span>
+          </div>
+          <input type="file" accept="image/*" style={{ display: "none" }} onChange={async (e) => {
+            const file = e.target.files?.[0]; if (!file) return;
+            try {
+              const ext = file.name.split(".").pop() || "jpg";
+              const path = `avatars/${user.id}.${ext}`;
+              await supabase.storage.from("avatars").upload(path, file, { upsert: true });
+              const { data } = supabase.storage.from("avatars").getPublicUrl(path);
+              if (data?.publicUrl) {
+                await supabase.auth.updateUser({ data: { avatar_url: data.publicUrl + "?t=" + Date.now() } });
+                await supabase.from("profiles").update({ avatar_url: data.publicUrl }).eq("id", user.id);
+                window.location.reload();
+              }
+            } catch (err) { alert("Upload failed: " + err.message); }
+          }} />
+        </label>
         <div style={{ minWidth: 0 }}>
           <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 34, lineHeight: 1, letterSpacing: "-0.015em" }}>{displayName}</div>
           <div style={{ fontSize: 9.5, fontWeight: 500, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(20,20,15,.42)", marginTop: 7 }}>Code · {user?.user_metadata?.friend_code || "····"}</div>
@@ -3977,26 +3996,65 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
           </>
         )}
         {saves.length > 0 && savedView === "folders" && openFolder && (
-          <div ref={folderSwipeRef} style={{ background: "#FAF7F2", minHeight: "60vh" }}>
-            <button className="btn-ghost" onClick={() => { setOpenFolder(null); setFocusSpot(null); }} style={{ marginBottom: "0.75rem" }}>← All lists</button>
+          <div ref={folderSwipeRef} style={{ background: "#FAF7F2", minHeight: "60vh", animation: "screenIn .32s cubic-bezier(.2,.9,.3,1)" }}>
+            <div onClick={() => { setOpenFolder(null); setFocusSpot(null); }} style={{ margin: "0 0 16px", width: 36, height: 36, border: "1px solid rgba(20,20,15,.18)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, cursor: "pointer" }}>←</div>
+            <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 40, lineHeight: 1, letterSpacing: "-0.015em", marginBottom: 4 }}>{openFolder}</div>
+            <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(20,20,15,.42)", marginBottom: 18 }}>{folderSaves.length} spot{folderSaves.length !== 1 ? "s" : ""}</div>
+
             {folderSaves.length > 0 && folderSaves.some(s => s.lat && s.lng) && (
-              <SpotsMap key={"peek-" + openFolder} saves={folderSaves} listName={openFolder} peek peekHeight={120} onExpand={() => setSavedView("map")} />
+              <div onClick={() => setSavedView("map")} style={{ margin: "0 0 18px", height: 142, overflow: "hidden", position: "relative", background: "#F1EDE4", border: "1px solid rgba(20,20,15,.1)", cursor: "pointer" }}>
+                <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(rgba(20,20,15,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(20,20,15,.07) 1px,transparent 1px)", backgroundSize: "32px 32px" }} />
+                {folderSaves.filter(s => s.lat && s.lng).slice(0, 5).map((s, i) => (
+                  <div key={i} style={{ position: "absolute", left: `${18 + i * 15}%`, top: `${30 + (i % 3) * 20}%`, width: 10, height: 10, borderRadius: "50%", background: "#D9412B", boxShadow: i === 0 ? "0 0 0 5px rgba(217,65,43,.16)" : "none" }} />
+                ))}
+                <div style={{ position: "absolute", left: 13, bottom: 12, fontSize: 9, fontWeight: 500, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(20,20,15,.5)" }}>{openFolder} on the map</div>
+                <div style={{ position: "absolute", right: 11, bottom: 10, padding: "7px 13px", background: "#14140F", color: "#FAF7F2", fontSize: 11, fontWeight: 600 }}>Open ›</div>
+              </div>
             )}
-            {folderSaves.length === 0 && <div style={{ fontSize: "0.8rem", color: "#7a7062" }}>No spots in this list yet — pick it as the list when you save something.</div>}
-            {folderSaves.length > 0 && renderSheet(folderSaves, (
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0 14px 8px" }}>
-                <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: "0.9rem", color: "#14140F", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{openFolder} <span style={{ fontSize: "0.76rem", color: "#7a7062" }}>· {folderSaves.length} place{folderSaves.length !== 1 ? "s" : ""}</span></div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  {onShare && <button onClick={() => onShare({ kind: "list", title: openFolder, payload: { name: openFolder, spots: folderSaves.map(({ id, user_id, created_at, status, ...rest }) => rest) } })} style={{ fontSize: "0.74rem", padding: "6px 12px", borderRadius: 100, border: "none", background: "#D9412B", color: "#fff", fontWeight: 600, cursor: "pointer" }}>Send</button>}
-                  <button onClick={() => renameFolder(openFolder)} style={{ fontSize: "0.74rem", padding: "6px 12px", borderRadius: 100, border: "1.5px solid rgba(20,20,15,.13)", background: "#fff", color: "#6b5e4e", fontWeight: 500, cursor: "pointer" }}>✎ Rename</button>
+
+            {folderSaves.length > 0 && (
+              <div onClick={() => onBuildPlan(folderSaves)} style={{ margin: "0 0 18px", padding: 14, background: "#0F6B63", color: "#FAF7F2", display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
+                <div style={{ flex: 1, fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 19, lineHeight: 1.15 }}>Route these into one evening</div>
+                <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.13em", textTransform: "uppercase", whiteSpace: "nowrap" }}>Build →</div>
+              </div>
+            )}
+
+            {folderSaves.length === 0 && <div style={{ fontSize: 13, color: "rgba(20,20,15,.5)" }}>No spots in this list yet.</div>}
+
+            {folderSaves.length > 0 && (
+              <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 12 }}>
+                  {folderSaves.filter((_, i) => i % 2 === 0).map(s => {
+                    const h = [150, 196, 168, 180][folderSaves.indexOf(s) % 4];
+                    return (
+                      <div key={s.id} onClick={() => setDetailSpot(s)} style={{ position: "relative", height: h, background: "repeating-linear-gradient(115deg,#EFEAE0 0 9px,#E7E1D5 9px 18px)", cursor: "pointer", overflow: "hidden" }}>
+                        {s.photo_url && <img src={s.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+                        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 52%, rgba(20,20,15,.8))" }} />
+                        <div style={{ position: "absolute", left: 10, right: 10, bottom: 10 }}>
+                          <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 17, lineHeight: 1, color: "#FAF7F2" }}>{s.name}</div>
+                          <div style={{ fontSize: 8, fontWeight: 500, letterSpacing: "0.13em", textTransform: "uppercase", color: "rgba(250,247,242,.65)", marginTop: 4 }}>{[s.area, s.price].filter(Boolean).join(" · ")}</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 12 }}>
+                  {folderSaves.filter((_, i) => i % 2 === 1).map(s => {
+                    const h = [192, 148, 176, 160][folderSaves.indexOf(s) % 4];
+                    return (
+                      <div key={s.id} onClick={() => setDetailSpot(s)} style={{ position: "relative", height: h, background: "repeating-linear-gradient(115deg,#EFEAE0 0 9px,#E7E1D5 9px 18px)", cursor: "pointer", overflow: "hidden" }}>
+                        {s.photo_url && <img src={s.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+                        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 52%, rgba(20,20,15,.8))" }} />
+                        <div style={{ position: "absolute", left: 10, right: 10, bottom: 10 }}>
+                          <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 17, lineHeight: 1, color: "#FAF7F2" }}>{s.name}</div>
+                          <div style={{ fontSize: 8, fontWeight: 500, letterSpacing: "0.13em", textTransform: "uppercase", color: "rgba(250,247,242,.65)", marginTop: 4 }}>{[s.area, s.price].filter(Boolean).join(" · ")}</div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
-            ))}
-            {folderSaves.length > 0 && /\b(bar|bars|pub|pubs|drink|drinks|cocktail|cocktails|wine|beer|nightlife|booze|happy ?hour|night out)\b/i.test(openFolder || "") && (
-              <button className="btn btn-teal" style={{ marginTop: "0.25rem" }} onClick={() => onBarCrawl(folderSaves)}>🍸 Planning a bar crawl? Tap here!</button>
             )}
-            {folderSaves.length > 0 && <button className="btn btn-teal" style={{ marginTop: "0.25rem" }} onClick={() => onBuildPlan(folderSaves)}>Build plan from {openFolder} ✦</button>}
-            {folderSaves.length > 0 && <button className="btn-outline" style={{ marginTop: "0.5rem" }} onClick={() => { setDiscoverSeed(folderSaves); setDiscoverMode(true); }}>Find similar spots →</button>}
           </div>
         )}
         {saves.length === 0 && preview.length === 0 && (
@@ -4769,13 +4827,13 @@ function SharedListsSection({ user }) {
     setSaving(false);
   }
 
+  const [blLayout, setBlLayout] = useState("list");
+
   return (
-    <div style={{ padding: "0 1.5rem 1rem" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "0.25rem 0 0.15rem" }}>
-        <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: "1.05rem", color: "#14140F" }}>Bucket lists</div>
-        <button onClick={() => setCreating(v => !v)} style={slPill}>+ New list</button>
+    <div style={{ padding: "0 22px 1rem" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 7, margin: "0 0 12px" }}>
+        <button onClick={() => setCreating(v => !v)} style={{ padding: "14px", border: "1px dashed rgba(20,20,15,.25)", background: "none", textAlign: "center", fontSize: 12, fontWeight: 600, color: "rgba(20,20,15,.5)", cursor: "pointer", flex: 1 }}>+ Start a new bucket list</button>
       </div>
-      <div style={{ marginBottom: 12 }} />
 
       {creating && (
         <div style={{ background: "#fff", border: "1px solid rgba(20,20,15,.13)", borderRadius: 0, padding: "0.9rem", marginBottom: 12 }}>
