@@ -1252,21 +1252,32 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
           <div style={{ padding: "0 22px" }}>
             {(result.stops || []).map((stop, idx) => (
               <div key={idx + "-" + stop.name}>
-                <div onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(stop.name + " London")}`, "_blank")} style={{ display: "flex", gap: 13, alignItems: "flex-start", padding: "14px 0", borderTop: "1px solid rgba(20,20,15,.13)", cursor: "pointer", animation: swappingIdx === idx ? "cardSwap 0.25s ease" : undefined }}>
-                  <div style={{ width: 30, flex: "none" }}>
-                    <div style={{ fontSize: 9, fontWeight: 500, letterSpacing: "0.1em", color: "rgba(20,20,15,.45)" }}>{stop.time}</div>
-                    <div style={{ width: 26, height: 26, borderRadius: "50%", background: "#14140F", color: "#FAF7F2", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 14, marginTop: 6 }}>{idx + 1}</div>
+                <div className="stop" style={{ animation: swappingIdx === idx ? "cardSwap 0.25s ease" : undefined }}>
+                  <div className="stop-inner" onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(stop.name + " London")}`, "_blank")} style={{ cursor: "pointer" }}>
+                    <div className="stop-top">
+                      <div className="stop-emoji-wrap">{stop.emoji}</div>
+                      <div className="stop-body">
+                        <div className="stop-meta">
+                          <span className="stop-time">{stop.time}</span>
+                          <span className="stop-dot" />
+                          <span className="stop-type">{stop.type}</span>
+                          {stop.google_rating && <><span className="stop-dot" /><span style={{ fontSize: 9, fontWeight: 700, color: "#14140F" }}>⭐ {stop.google_rating}</span></>}
+                        </div>
+                        <div className="stop-name">{stop.name}</div>
+                        <div className="stop-hook">{stop.hook}</div>
+                      </div>
+                    </div>
                   </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 21 }}>{stop.name}</div>
-                    <div style={{ fontSize: 8.5, fontWeight: 500, letterSpacing: "0.13em", textTransform: "uppercase", color: "rgba(20,20,15,.45)", marginTop: 4 }}>{[stop.area, stop.type, stop.price_range].filter(Boolean).join(" · ")}</div>
-                  </div>
-                  <div style={{ width: 52, height: 52, flex: "none", background: "#F1EDE4", overflow: "hidden" }}>
-                    {stop.photo_url && <img src={stop.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+                  <div className="stop-footer">
+                    <div className="stop-pills-row">
+                      {stop.price_range && <span className="stop-pill">💰 {stop.price_range}</span>}
+                      {stop.area && <span className="stop-pill">📍 {stop.area}</span>}
+                    </div>
+                    <button onClick={() => findAlternatives(idx)} style={{ border: "none", background: "#D9412B", color: "#FAF7F2", fontSize: 9, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", padding: "5px 12px", borderRadius: 100, flexShrink: 0, whiteSpace: "nowrap" }}>↻ Swap</button>
                   </div>
                 </div>
                 {stop.travel_to_next && idx < (result.stops || []).length - 1 && (
-                  <div style={{ fontSize: 8.5, fontWeight: 500, letterSpacing: "0.13em", textTransform: "uppercase", color: "#0F6B63", paddingLeft: 43 }}>{stop.travel_to_next}</div>
+                  <div style={{ fontSize: 8.5, fontWeight: 500, letterSpacing: "0.13em", textTransform: "uppercase", color: "#0F6B63", padding: "4px 0 10px", marginLeft: 22 }}>{stop.travel_to_next}</div>
                 )}
               </div>
             ))}
@@ -1330,6 +1341,7 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
 }
 
 function MyPlansScreen({ plans, onViewPlan, onNewPlan, onSchedule, dbVenues }) {
+  const photoFor = (name) => { if (!name || !dbVenues) return null; const v = dbVenues.find(x => x.name && x.name.toLowerCase() === String(name).toLowerCase()); return v?.photo_url || null; };
   const upcoming = plans.filter(p => p.scheduledDate).length;
   const shared = plans.filter(p => p.ans?.savedVenues?.length).length;
   const summary = [upcoming && `${upcoming} upcoming`, shared && `${shared} shared`, plans.filter(p => !p.scheduledDate).length && `${plans.filter(p => !p.scheduledDate).length} draft`].filter(Boolean).join(" · ") || `${plans.length} plan${plans.length !== 1 ? "s" : ""}`;
@@ -1357,23 +1369,19 @@ function MyPlansScreen({ plans, onViewPlan, onNewPlan, onSchedule, dbVenues }) {
       <div style={{ padding: "0 22px" }}>
         {plans.map((plan, i) => {
           const stops = plan.result.stops || [];
+          const cover = stops.map(s => s.photo_url || photoFor(s.name)).find(Boolean);
           const tint = plan.scheduledDate ? "#D9412B" : plan.ans?._barCrawl ? "#0F6B63" : "rgba(20,20,15,.35)";
           const tag = plan.scheduledDate ? `Scheduled ${new Date(plan.scheduledDate).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}` : plan.ans?._barCrawl ? "Bar crawl" : "Draft";
           return (
-            <div key={i} onClick={() => onViewPlan(plan)} style={{ padding: "16px 0", borderTop: "1px solid rgba(20,20,15,.13)", cursor: "pointer" }}>
-              <div style={{ display: "flex", gap: 13, alignItems: "flex-start" }}>
-                <div style={{ width: 64, height: 64, flex: "none", position: "relative", background: "#F1EDE4", border: "1px solid rgba(20,20,15,.1)", overflow: "hidden" }}>
-                  <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(rgba(20,20,15,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(20,20,15,.07) 1px,transparent 1px)", backgroundSize: "16px 16px" }} />
-                  <div style={{ position: "absolute", left: "22%", top: "30%", width: 6, height: 6, borderRadius: "50%", background: tint }} />
-                  <div style={{ position: "absolute", left: "52%", top: "48%", width: 6, height: 6, borderRadius: "50%", background: tint }} />
-                  <div style={{ position: "absolute", left: "34%", top: "72%", width: 6, height: 6, borderRadius: "50%", background: tint }} />
+            <div key={i} onClick={() => onViewPlan(plan)} style={{ marginBottom: 16, cursor: "pointer", overflow: "hidden" }}>
+              <div style={{ position: "relative", height: 180, background: cover ? "#14140F" : "linear-gradient(135deg, #14140F, #D9412B)" }}>
+                {cover && <img src={cover} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />}
+                <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 35%, rgba(20,20,15,.82))" }} />
+                <div style={{ position: "absolute", top: 12, left: 12, padding: "4px 9px", background: tint, color: "#FAF7F2", fontSize: 8, fontWeight: 600, letterSpacing: "0.13em", textTransform: "uppercase" }}>{tag}</div>
+                <div style={{ position: "absolute", left: 14, right: 14, bottom: 14 }}>
+                  <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 26, color: "#FAF7F2", lineHeight: 1.1, textShadow: "0 2px 8px rgba(0,0,0,0.5)" }}>{plan.result.title}</div>
+                  <div style={{ fontSize: 8.5, fontWeight: 500, letterSpacing: "0.13em", textTransform: "uppercase", color: "rgba(250,247,242,.68)", marginTop: 6 }}>{stops.length} stop{stops.length !== 1 ? "s" : ""} · {plan.savedAt}</div>
                 </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 21 }}>{plan.result.title}</div>
-                  <div style={{ fontSize: 8.5, fontWeight: 500, letterSpacing: "0.13em", textTransform: "uppercase", color: "rgba(20,20,15,.45)", marginTop: 5 }}>{stops.length} stop{stops.length !== 1 ? "s" : ""} · {plan.savedAt}</div>
-                  <div style={{ display: "inline-block", marginTop: 9, padding: "4px 9px", background: tint, color: "#FAF7F2", fontSize: 8, fontWeight: 600, letterSpacing: "0.13em", textTransform: "uppercase" }}>{tag}</div>
-                </div>
-                <div style={{ color: "rgba(20,20,15,.3)", fontSize: 18 }}>›</div>
               </div>
             </div>
           );
@@ -5359,9 +5367,9 @@ function PeopleScreen({ user, onSavePlan, onShareSaved }) {
     } catch (e) { setMsg("Couldn't save: " + e.message); }
   }
 
-  if (loading) return <div style={{ paddingTop: "2rem" }}><SkeletonList count={5} /></div>;
-
   const [pTab, setPTab] = useState("lists");
+
+  if (loading) return <div style={{ paddingTop: "2rem" }}><SkeletonList count={5} /></div>;
 
   return (
     <div style={{ animation: "screenIn .32s cubic-bezier(.2,.9,.3,1)" }}>
