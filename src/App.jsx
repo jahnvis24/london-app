@@ -2380,13 +2380,14 @@ function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan, user, onSpotUpdate
     return href ? <a href={href} target="_blank" rel="noreferrer" style={style}>{children}</a> : <button onClick={onClick} style={{ ...style, width: "100%" }}>{children}</button>;
   };
   return (
-    <div style={{ position: "fixed", inset: 0, background: "#FAF7F2", zIndex: 1200, overflowY: "auto", animation: "screenIn .32s cubic-bezier(.2,.9,.3,1)", paddingBottom: 150 }}>
+    <div ref={scrimRef} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.42)", zIndex: 1200, display: "flex", alignItems: "flex-end", justifyContent: "center", animation: "fadeIn 0.2s" }}><div ref={sheetRef} style={{ width: "100%", maxWidth: 420, background: "#FAF7F2", borderRadius: "22px 22px 0 0", maxHeight: "95vh", overflowY: "auto", animation: "cardIn 0.25s ease", paddingBottom: 120 }}>
+      <div style={{ display: "flex", justifyContent: "center", padding: "8px 0 0" }}><div style={{ width: 36, height: 4, borderRadius: 2, background: "rgba(20,20,15,.18)" }} /></div>
       <div style={{ position: "relative", height: 290, background: photos.length ? "#F1EDE4" : (CAT_COLOURS[cat] || "#D9412B") }}>
         <div style={{ display: "flex", height: "100%", overflowX: "auto", scrollSnapType: "x mandatory" }}>
           {photos.map((p, i) => <img key={i} src={p} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", flexShrink: 0, scrollSnapAlign: "start" }} />)}
         </div>
         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 45%, rgba(20,20,15,.86))" }} />
-        <button onClick={onClose} style={{ position: "absolute", top: 60, left: 20, width: 36, height: 36, border: "none", background: "#FAF7F2", cursor: "pointer", fontSize: 17, display: "flex", alignItems: "center", justifyContent: "center" }}>←</button>
+        <button onClick={onClose} style={{ position: "absolute", top: 14, left: 20, width: 36, height: 36, border: "none", background: "#FAF7F2", cursor: "pointer", fontSize: 17, display: "flex", alignItems: "center", justifyContent: "center" }}>←</button>
         {photos.length > 1 && <div style={{ position: "absolute", top: 60, right: 20, padding: "4px 9px", background: "rgba(20,20,15,.55)", color: "#FAF7F2", fontSize: 8.5, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase" }}>📷 {photos.length}</div>}
         <div style={{ position: "absolute", left: 22, right: 22, bottom: 18 }}>
           {agg.count > 0 && <div style={{ fontSize: 9, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase", color: "#F0A28E", marginBottom: 7 }}>Rated by {agg.count} {agg.count === 1 ? "person" : "people"}</div>}
@@ -2449,7 +2450,7 @@ function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan, user, onSpotUpdate
           {spot.source_type && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, fontWeight: 500, letterSpacing: "0.14em", textTransform: "uppercase" }}><span style={{ color: "rgba(20,20,15,.45)" }}>Saved from</span><span>{spot.source_type === "tiktok" ? "TikTok" : spot.source_type === "instagram" ? "Instagram" : spot.source_type === "screenshot" ? "Screenshot" : cap(spot.source_type || "")}</span></div>}
         </div>
       </div>
-    </div>
+    </div></div>
   );
 }
 
