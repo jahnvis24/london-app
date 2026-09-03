@@ -2034,7 +2034,47 @@ function PreferencesScreen({ preferences, setPreferences, user }) {
 function MeScreen({ user, preferences, setPreferences, isAdmin, onBadgeUpdate, adminBadge, onStartTour, onStartImportTour }) {
   const [view, setView] = useState(null); // null | "prefs" | "admin"
   const displayName = user?.user_metadata?.full_name || (user?.email ? user.email.split("@")[0] : "You");
-  const avatar = user?.user_metadata?.avatar_url;
+  const [avatar, setAvatar] = useState(() => user?.user_metadata?.avatar_url || "");
+  const [avatarPreview, setAvatarPreview] = useState(null); // { url, file }
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef(null);
+
+  async function handleAvatarFile(e) {
+    const file = e.target.files?.[0];
+    if (e.target) e.target.value = "";
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    setAvatarPreview({ url, file });
+  }
+
+  async function confirmAvatar() {
+    if (!avatarPreview) return;
+    setUploading(true);
+    try {
+      const canvas = document.createElement("canvas");
+      const size = 512;
+      canvas.width = size; canvas.height = size;
+      const ctx = canvas.getContext("2d");
+      const img = await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = avatarPreview.url; });
+      const min = Math.min(img.width, img.height);
+      const sx = (img.width - min) / 2, sy = (img.height - min) / 2;
+      ctx.drawImage(img, sx, sy, min, min, 0, 0, size, size);
+      const blob = await new Promise(r => canvas.toBlob(r, "image/jpeg", 0.85));
+      const path = `avatars/${user.id}.jpg`;
+      const { error: upErr } = await supabase.storage.from("avatars").upload(path, blob, { upsert: true, contentType: "image/jpeg" });
+      if (upErr) throw upErr;
+      const { data } = supabase.storage.from("avatars").getPublicUrl(path);
+      const publicUrl = data?.publicUrl;
+      if (!publicUrl) throw new Error("Could not get public URL");
+      const urlWithBust = publicUrl + "?t=" + Date.now();
+      await supabase.auth.updateUser({ data: { avatar_url: urlWithBust } });
+      await supabase.from("profiles").update({ avatar_url: publicUrl }).eq("id", user.id);
+      setAvatar(urlWithBust);
+      setAvatarPreview(null);
+    } catch (err) {
+      alert("Upload failed — make sure the 'avatars' storage bucket exists in Supabase and is set to public.\n\n" + err.message);
+    } finally { setUploading(false); }
+  }
 
   if (view === "prefs") return (
     <div>
@@ -2051,27 +2091,38 @@ function MeScreen({ user, preferences, setPreferences, isAdmin, onBadgeUpdate, a
 
   return (
     <div style={{ animation: "screenIn .32s cubic-bezier(.2,.9,.3,1)" }}>
-      <div style={{ padding: "0 22px 24px", display: "flex", alignItems: "center", gap: 15 }}>
-        <label style={{ width: 66, height: 66, borderRadius: "50%", background: "#14140F", color: "#FAF7F2", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: "1.6rem", overflow: "hidden", flexShrink: 0, cursor: "pointer", position: "relative" }}>
-          {avatar ? <img src={avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : displayName.charAt(0).toUpperCase()}
-          <div style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "rgba(0,0,0,0.3)", display: "flex", alignItems: "center", justifyContent: "center", opacity: 0, transition: "opacity .2s" }} onMouseEnter={e => e.currentTarget.style.opacity = 1} onMouseLeave={e => e.currentTarget.style.opacity = 0}>
-            <span style={{ fontSize: 11, fontWeight: 600, color: "#FAF7F2" }}>Edit</span>
+      <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleAvatarFile} />
+
+      {avatarPreview && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 2000, background: "#14140F", display: "flex", flexDirection: "column", animation: "fadeIn .2s" }}>
+          <div style={{ padding: "16px 22px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <button onClick={() => setAvatarPreview(null)} style={{ background: "none", border: "none", color: "#FAF7F2", fontSize: 15, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
+            <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(250,247,242,.55)" }}>Profile photo</div>
+            <div style={{ width: 50 }} />
           </div>
-          <input type="file" accept="image/*" style={{ display: "none" }} onChange={async (e) => {
-            const file = e.target.files?.[0]; if (!file) return;
-            try {
-              const ext = file.name.split(".").pop() || "jpg";
-              const path = `avatars/${user.id}.${ext}`;
-              await supabase.storage.from("avatars").upload(path, file, { upsert: true });
-              const { data } = supabase.storage.from("avatars").getPublicUrl(path);
-              if (data?.publicUrl) {
-                await supabase.auth.updateUser({ data: { avatar_url: data.publicUrl + "?t=" + Date.now() } });
-                await supabase.from("profiles").update({ avatar_url: data.publicUrl }).eq("id", user.id);
-                window.location.reload();
-              }
-            } catch (err) { alert("Upload failed: " + err.message); }
-          }} />
-        </label>
+          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 32 }}>
+            <div style={{ width: "min(280px, 70vw)", height: "min(280px, 70vw)", borderRadius: "50%", overflow: "hidden", border: "3px solid rgba(250,247,242,.2)" }}>
+              <img src={avatarPreview.url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            </div>
+          </div>
+          <div style={{ padding: "0 22px 40px", display: "flex", flexDirection: "column", gap: 10 }}>
+            <button onClick={confirmAvatar} disabled={uploading} style={{ width: "100%", padding: 15, background: "#0F6B63", color: "#FAF7F2", border: "none", fontSize: 14, fontWeight: 600, cursor: uploading ? "wait" : "pointer", opacity: uploading ? 0.6 : 1 }}>
+              {uploading ? "Uploading..." : "Use photo"}
+            </button>
+            <button onClick={() => fileRef.current?.click()} style={{ width: "100%", padding: 13, background: "transparent", color: "rgba(250,247,242,.7)", border: "1px solid rgba(250,247,242,.18)", fontSize: 13, fontWeight: 500, cursor: "pointer" }}>
+              Choose a different photo
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div style={{ padding: "0 22px 24px", display: "flex", alignItems: "center", gap: 15 }}>
+        <div onClick={() => fileRef.current?.click()} style={{ width: 66, height: 66, borderRadius: "50%", background: "#14140F", color: "#FAF7F2", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: "1.6rem", overflow: "hidden", flexShrink: 0, cursor: "pointer", position: "relative" }}>
+          {avatar ? <img src={avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : displayName.charAt(0).toUpperCase()}
+          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "rgba(0,0,0,0.5)", padding: "3px 0", textAlign: "center" }}>
+            <span style={{ fontSize: 8, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "#FAF7F2" }}>Edit</span>
+          </div>
+        </div>
         <div style={{ minWidth: 0 }}>
           <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 34, lineHeight: 1, letterSpacing: "-0.015em" }}>{displayName}</div>
           <div style={{ fontSize: 9.5, fontWeight: 500, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(20,20,15,.42)", marginTop: 7 }}>Code · {user?.user_metadata?.friend_code || "····"}</div>
