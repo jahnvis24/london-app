@@ -4579,37 +4579,27 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
             {folderSaves.length === 0 && <div style={{ fontSize: 13, color: "rgba(20,20,15,.5)" }}>No spots in this list yet.</div>}
 
             {folderSaves.length > 0 && (
-              <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 12 }}>
-                  {folderSaves.filter((_, i) => i % 2 === 0).map(s => {
-                    const h = [150, 196, 168, 180][folderSaves.indexOf(s) % 4];
-                    return (
-                      <div key={s.id} onClick={() => setDetailSpot(s)} style={{ position: "relative", height: h, background: "repeating-linear-gradient(115deg,#EFEAE0 0 9px,#E7E1D5 9px 18px)", cursor: "pointer", overflow: "hidden" }}>
-                        {s.photo_url && <img src={s.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
-                        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 52%, rgba(20,20,15,.8))" }} />
-                        <div style={{ position: "absolute", left: 10, right: 10, bottom: 10 }}>
-                          <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 17, lineHeight: 1, color: "#FAF7F2" }}>{s.name}</div>
-                          <div style={{ fontSize: 8, fontWeight: 500, letterSpacing: "0.13em", textTransform: "uppercase", color: "rgba(250,247,242,.65)", marginTop: 4 }}>{[s.area, s.price].filter(Boolean).join(" · ")}</div>
-                        </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                {folderSaves.map(s => (
+                  <div key={s.id} onClick={() => setDetailSpot(s)} style={{ borderRadius: 14, overflow: "hidden", background: "#fff", border: "1px solid rgba(20,20,15,.08)", boxShadow: "0 2px 8px rgba(20,20,15,.04)", cursor: "pointer" }}>
+                    <div style={{ position: "relative", height: 200, background: "#F1EDE4" }}>
+                      {s.photo_url && <img src={s.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+                      <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 45%, rgba(20,20,15,.82))" }} />
+                      <div style={{ position: "absolute", left: 14, right: 14, bottom: 14 }}>
+                        <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 24, lineHeight: 1.05, color: "#FAF7F2", fontStyle: "italic" }}>{s.name}</div>
                       </div>
-                    );
-                  })}
-                </div>
-                <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 12 }}>
-                  {folderSaves.filter((_, i) => i % 2 === 1).map(s => {
-                    const h = [192, 148, 176, 160][folderSaves.indexOf(s) % 4];
-                    return (
-                      <div key={s.id} onClick={() => setDetailSpot(s)} style={{ position: "relative", height: h, background: "repeating-linear-gradient(115deg,#EFEAE0 0 9px,#E7E1D5 9px 18px)", cursor: "pointer", overflow: "hidden" }}>
-                        {s.photo_url && <img src={s.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
-                        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 52%, rgba(20,20,15,.8))" }} />
-                        <div style={{ position: "absolute", left: 10, right: 10, bottom: 10 }}>
-                          <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 17, lineHeight: 1, color: "#FAF7F2" }}>{s.name}</div>
-                          <div style={{ fontSize: 8, fontWeight: 500, letterSpacing: "0.13em", textTransform: "uppercase", color: "rgba(250,247,242,.65)", marginTop: 4 }}>{[s.area, s.price].filter(Boolean).join(" · ")}</div>
-                        </div>
+                    </div>
+                    <div style={{ padding: "12px 14px" }}>
+                      <div style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif", fontSize: 11, fontWeight: 500, letterSpacing: "0.06em", textTransform: "uppercase", color: "rgba(20,20,15,.4)", display: "flex", alignItems: "center", gap: 5 }}>
+                        {s.area && <span>{s.area.toUpperCase()}</span>}
+                        {s.area && s.price && <span style={{ color: "rgba(20,20,15,.2)" }}>·</span>}
+                        {s.price && <span>{priceToPounds(s.price) || s.price}</span>}
+                        {s.google_rating && <><span style={{ color: "rgba(20,20,15,.2)" }}>·</span><span style={{ color: "#D4CFC4" }}>★</span> <span>{s.google_rating}</span></>}
                       </div>
-                    );
-                  })}
-                </div>
+                      {s.comment && <div style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif", fontSize: 12, lineHeight: 1.4, color: "rgba(20,20,15,.45)", marginTop: 6, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{s.comment}</div>}
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
