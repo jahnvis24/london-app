@@ -1576,6 +1576,20 @@ function SwipeDeck({ venues, preferences, onClose, onSave, onOpenSpot }) {
   );
 }
 
+function priceToPounds(p) {
+  if (!p) return null;
+  const s = String(p).toLowerCase();
+  if (/free|£0/i.test(s)) return "FREE";
+  if (/high|£££|expensive|premium|splurge|£[4-9]\d|£[1-9]\d\d/i.test(s)) return "£££";
+  if (/mid|££|moderate|£[2-3]\d/i.test(s)) return "££";
+  if (/low|£$|budget|cheap|under|£[0-1]?\d(?!\d)/i.test(s)) return "£";
+  const count = (s.match(/£/g) || []).length;
+  if (count >= 3) return "£££";
+  if (count === 2) return "££";
+  if (count === 1) return "£";
+  return p;
+}
+
 function DiscoverScreen({ preferences, dbVenues, onStart, onOpenSpot }) {
   const [chip, setChip] = useState("All");
   const [swipeDeck, setSwipeDeck] = useState(false);
@@ -1663,45 +1677,52 @@ function DiscoverScreen({ preferences, dbVenues, onStart, onOpenSpot }) {
         <div style={{ fontSize: 9.5, fontWeight: 500, letterSpacing: "0.14em", textTransform: "uppercase", color: "#D9412B", cursor: "pointer" }}>See all</div>
       </div>
       <div style={{ display: "flex", gap: 12, padding: "0 22px 26px", overflowX: "auto", scrollbarWidth: "none" }}>
-        {(filtered.length ? filtered : trending).slice(0, 4).map(v => (
-          <div key={v.id} onClick={() => onOpenSpot && onOpenSpot(v)} style={{ flex: "none", width: 160, cursor: "pointer" }}>
-            <div style={{ position: "relative", height: 206, overflow: "hidden", background: "#F1EDE4" }}>
-              {v.photo_url && <img src={v.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
-              <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 46%, rgba(20,20,15,.82))" }} />
-              {v.celebrity_tags?.length > 0 && <div style={{ position: "absolute", top: 10, left: 10, padding: "4px 9px", background: "#0F6B63", color: "#FAF7F2", fontSize: 8.5, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase" }}>{v.celebrity_tags[0]}'s pick</div>}
-              {!v.celebrity_tags?.length && v.google_rating >= 4.5 && <div style={{ position: "absolute", top: 10, left: 10, padding: "4px 9px", background: "#D9412B", color: "#FAF7F2", fontSize: 8.5, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase" }}>Trending</div>}
-              {!v.celebrity_tags?.length && v.google_rating < 4.5 && <div style={{ position: "absolute", top: 10, left: 10, padding: "4px 9px", background: "#14140F", color: "#FAF7F2", fontSize: 8.5, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase" }}>New</div>}
-              <div style={{ position: "absolute", left: 12, right: 12, bottom: 12 }}>
-                <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 21, lineHeight: 1, color: "#FAF7F2" }}>{v.name}</div>
-                <div style={{ fontSize: 8.5, fontWeight: 500, letterSpacing: "0.13em", textTransform: "uppercase", color: "rgba(250,247,242,.68)", marginTop: 6 }}>{[v.area, v.price, v.google_rating ? `${v.google_rating}` : null].filter(Boolean).join(" · ")}</div>
+        {(filtered.length ? filtered : trending).slice(0, 4).map(v => {
+          const pounds = priceToPounds(v.price);
+          return (
+            <div key={v.id} onClick={() => onOpenSpot && onOpenSpot(v)} style={{ flex: "none", width: 160, cursor: "pointer" }}>
+              <div style={{ position: "relative", height: 206, overflow: "hidden", background: "#F1EDE4" }}>
+                {v.photo_url && <img src={v.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+                <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 46%, rgba(20,20,15,.82))" }} />
+                {v.celebrity_tags?.length > 0 && <div style={{ position: "absolute", top: 12, left: 0, padding: "5px 10px", background: "#0F6B63", color: "#FAF7F2", fontSize: 8, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase" }}>{v.celebrity_tags[0]}'s pick</div>}
+                {!v.celebrity_tags?.length && v.google_rating >= 4.5 && <div style={{ position: "absolute", top: 12, left: 0, padding: "5px 10px", background: "#D9412B", color: "#FAF7F2", fontSize: 8, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase" }}>Trending</div>}
+                {!v.celebrity_tags?.length && v.google_rating < 4.5 && <div style={{ position: "absolute", top: 12, left: 0, padding: "5px 10px", background: "#14140F", color: "#FAF7F2", fontSize: 8, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase" }}>New</div>}
+                <div style={{ position: "absolute", left: 12, right: 12, bottom: 12 }}>
+                  <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 21, lineHeight: 1.05, color: "#FAF7F2" }}>{v.name}</div>
+                  <div style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif", fontSize: 10, fontWeight: 500, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(250,247,242,.6)", marginTop: 6 }}>{[v.area, pounds].filter(Boolean).join(" · ")}</div>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {forYou.length > 0 && (
         <div style={{ padding: "0 22px" }}>
-          <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 26, lineHeight: 1.15, marginBottom: 18 }}>Because you like {topCat ? `${topCat[0]}s` : "these"}</div>
-          {forYou.slice(0, 6).map((v, vi) => (
-            <div key={v.id} onClick={() => onOpenSpot && onOpenSpot(v)} style={{ padding: "16px 0", borderTop: vi === 0 ? "none" : "1px solid rgba(20,20,15,.1)", display: "flex", gap: 14, alignItems: "flex-start", cursor: "pointer" }}>
-              <div style={{ width: 90, height: 90, flex: "none", overflow: "hidden", borderRadius: 6, background: "#F1EDE4" }}>
-                {v.photo_url && <img src={v.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
-              </div>
-              <div style={{ flex: 1, minWidth: 0, paddingTop: 2 }}>
-                <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 22, lineHeight: 1.1, marginBottom: 5 }}>{v.name}</div>
-                <div style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif", fontSize: 11, fontWeight: 500, letterSpacing: "0.06em", textTransform: "uppercase", color: "rgba(20,20,15,.42)", marginBottom: 8, display: "flex", alignItems: "center", gap: 4 }}>
-                  {v.area && <span>{v.area.toUpperCase()}</span>}
-                  {v.area && v.price && <span style={{ color: "rgba(20,20,15,.25)" }}>·</span>}
-                  {v.price && <span>{v.price}</span>}
-                  {(v.area || v.price) && v.google_rating && <span style={{ color: "rgba(20,20,15,.25)" }}>·</span>}
-                  {v.google_rating && <><span style={{ fontSize: 10 }}>⭐</span> <span>{v.google_rating}</span></>}
+          <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 26, lineHeight: 1.15, paddingBottom: 14, borderBottom: "1px solid rgba(20,20,15,.18)" }}>Because you like {topCat ? `${topCat[0]}s` : "these"}</div>
+          {forYou.slice(0, 6).map((v, vi) => {
+            const pounds = priceToPounds(v.price);
+            const desc = v.comment ? (v.comment.endsWith(".") ? v.comment : v.comment + ".") : null;
+            return (
+              <div key={v.id} onClick={() => onOpenSpot && onOpenSpot(v)} style={{ padding: "16px 0", borderBottom: "1px solid rgba(20,20,15,.18)", display: "flex", gap: 14, alignItems: "flex-start", cursor: "pointer" }}>
+                <div style={{ width: 90, height: 90, flex: "none", overflow: "hidden", borderRadius: 6, background: "#F1EDE4" }}>
+                  {v.photo_url && <img src={v.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
                 </div>
-                {v.comment && <div style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif", fontSize: 14, lineHeight: 1.45, color: "rgba(20,20,15,.55)", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{v.comment}</div>}
+                <div style={{ flex: 1, minWidth: 0, paddingTop: 2 }}>
+                  <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 22, lineHeight: 1.1, marginBottom: 5 }}>{v.name}</div>
+                  <div style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif", fontSize: 11, fontWeight: 500, letterSpacing: "0.06em", textTransform: "uppercase", color: "rgba(20,20,15,.42)", marginBottom: 8, display: "flex", alignItems: "center", gap: 5 }}>
+                    {v.area && <span>{v.area.toUpperCase()}</span>}
+                    {v.area && pounds && <span style={{ color: "rgba(20,20,15,.22)" }}>·</span>}
+                    {pounds && <span>{pounds}</span>}
+                    {(v.area || pounds) && v.google_rating && <span style={{ color: "rgba(20,20,15,.22)" }}>·</span>}
+                    {v.google_rating && <><span style={{ color: "#D4CFC4", fontSize: 11 }}>★</span> <span>{v.google_rating}</span></>}
+                  </div>
+                  {desc && <div style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif", fontSize: 12, lineHeight: 1.45, color: "rgba(20,20,15,.5)", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{desc}</div>}
+                </div>
+                <div onClick={(e) => { e.stopPropagation(); }} style={{ width: 38, height: 38, flex: "none", borderRadius: "50%", border: "1.5px solid rgba(20,20,15,.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, color: "rgba(20,20,15,.35)", cursor: "pointer", marginTop: 4 }}>+</div>
               </div>
-              <div onClick={(e) => { e.stopPropagation(); }} style={{ width: 38, height: 38, flex: "none", borderRadius: "50%", border: "1.5px solid rgba(20,20,15,.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, color: "rgba(20,20,15,.4)", cursor: "pointer", marginTop: 4 }}>+</div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
