@@ -3924,7 +3924,14 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
   // Screenshot/TikTok/IG already have _previewImage; this fills in Google-photo
   // sources (Maps links, bulk names) by uploading the place photo to Blob now.
   async function withPreviewPhoto(d) {
-    if (!d._previewImage && d.google_place_id) {
+    if (d.google_place_id) {
+      try {
+        const r = await fetch("/api/saved-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool: "image", place_id: d.google_place_id }) });
+        const j = await r.json();
+        if (j.found && j.url) { d.photo_url = j.url; d._previewImage = j.url; return d; }
+      } catch {}
+    }
+    if (!d._previewImage) {
       const url = await resolvePhoto(d);
       if (url) { d.photo_url = url; d._previewImage = url; }
     }
