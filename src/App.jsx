@@ -3365,6 +3365,7 @@ function SavedScreen({ user, onBuildPlan, onShare, onBarCrawl, openSignal, calen
   const [preview, setPreview] = useState([]); // normalized venue drafts awaiting save
   const [saving, setSaving] = useState(false);
   const [successVenue, setSuccessVenue] = useState(null);
+  const [infoToast, setInfoToast] = useState(null);
   const [openFolder, setOpenFolder] = useState(null);
   const [saveFolder, setSaveFolder] = useState(""); // "" = auto by category, "__new__" = create new
   const [newFolder, setNewFolder] = useState("");
@@ -3861,7 +3862,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
       setTextInput("");
       setParseStatus("");
       setCaptureOpen(false); // close the modal; the review list shows on the Saves screen
-      if (dupCount) setError(prev => `${prev ? prev + " " : ""}Heads up: ${dupCount} of these ${dupCount === 1 ? "is" : "are"} already in your saves (marked below).`);
+      if (dupCount) { setInfoToast(`${dupCount} already in your saves — marked below`); setTimeout(() => setInfoToast(null), 3500); }
       notify("Parsing done ✦", `${drafts.length} spot${drafts.length !== 1 ? "s" : ""} ready to review`);
     } catch (e) {
       console.error("[handleParse]", e);
@@ -3981,7 +3982,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
       const msg = savedCount === 1 ? toSave[0].name : `${savedCount} spots`;
       showSuccess(msg);
       notify("Saved to your collection ✨", savedCount === 1 ? `${toSave[0].name} added` : `${savedCount} spots added`);
-      if (skipped) setError(`${skipped} duplicate${skipped > 1 ? "s" : ""} skipped — already in your saves.`);
+      if (skipped) { setInfoToast(`${skipped} already saved — skipped`); setTimeout(() => setInfoToast(null), 3500); }
       await loadSaves();
     } catch (e) {
       console.error("[saveAll]", e);
@@ -4612,6 +4613,10 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
           </div>
         )}
       </div>
+
+      {infoToast && (
+        <div style={{ position: "fixed", top: 48, left: "50%", transform: "translateX(-50%)", zIndex: 2000, padding: "10px 20px", background: "#14140F", color: "#FAF7F2", borderRadius: 100, fontSize: 13, fontWeight: 500, boxShadow: "0 4px 16px rgba(0,0,0,.18)", animation: "fadeIn .2s", whiteSpace: "nowrap" }}>{infoToast}</div>
+      )}
 
       {successVenue && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, animation: "fadeIn 0.2s" }}>
