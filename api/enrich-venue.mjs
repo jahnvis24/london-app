@@ -151,11 +151,12 @@ export default async function handler(req, res) {
     return data.places?.[0] || null;
   }
 
+  const { category } = req.body;
   try {
     let place = await searchPlaces(`${name} ${area || ''} London`);
-    if (!place && area) {
-      place = await searchPlaces(`${name} London`);
-    }
+    if (!place && area) place = await searchPlaces(`${name} London`);
+    if (!place && category) place = await searchPlaces(`${name} ${category} London`);
+    if (!place) place = await searchPlaces(name);
 
     if (!place) return res.status(200).json({ found: false, message: 'No matching place found on Google' });
 

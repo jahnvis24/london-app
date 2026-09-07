@@ -3621,9 +3621,9 @@ function SavedScreen({ user, onBuildPlan, onShare, onBarCrawl, openSignal, calen
 }
 If multiple distinct venues are present, return a JSON array of such objects.`;
 
-  async function enrich(name, area) {
+  async function enrich(name, area, category) {
     try {
-      const r = await fetch("/api/enrich-venue", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, area }) });
+      const r = await fetch("/api/enrich-venue", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, area, category }) });
       return await r.json();
     } catch { return { found: false }; }
   }
@@ -3672,7 +3672,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
     const drafts = [];
     for (const p of items) {
       if (!p?.name) continue;
-      const g = await enrich(p.name, p.area);
+      const g = await enrich(p.name, p.area, p.category);
       drafts.push(buildDraft(p, g, extra));
     }
     return drafts;
@@ -3752,7 +3752,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
           if (!p?.name) continue;
           setParseStatus(`Looking up "${p.name}" on Google...`);
           let g = null;
-          try { g = await enrich(p.name, p.area); } catch (e) { /* keep without Google */ }
+          try { g = await enrich(p.name, p.area, p.category); } catch (e) { /* keep without Google */ }
           drafts.push(buildDraft(p, g, { source_type: "screenshot", source_url: null, _screenshot_b64: isSingleVenue ? base64 : null }));
         }
       } catch (e) {
