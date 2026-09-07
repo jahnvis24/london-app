@@ -4465,18 +4465,30 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
             {menuFolder && <div onClick={() => setMenuFolder(null)} style={{ position: "fixed", inset: 0, zIndex: 15 }} />}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "0 0 16px" }}>
               <div onClick={() => { setOpenFolder(null); setFocusSpot(null); }} style={{ width: 36, height: 36, border: "1px solid rgba(20,20,15,.18)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, cursor: "pointer" }}>←</div>
-              <div onClick={() => setMenuFolder(menuFolder === openFolder ? null : openFolder)} style={{ width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, cursor: "pointer", color: "rgba(20,20,15,.5)", position: "relative" }}>
-                ···
-                {menuFolder === openFolder && (
-                  <div onClick={e => e.stopPropagation()} style={{ position: "absolute", top: 40, right: 0, background: "#FAF7F2", border: "1px solid rgba(20,20,15,.12)", boxShadow: "0 8px 24px rgba(20,20,15,.12)", minWidth: 160, zIndex: 20, animation: "fadeIn .15s" }}>
-                    <div onClick={() => renameFolder(openFolder)} style={{ padding: "13px 16px", fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", gap: 10, borderBottom: "1px solid rgba(20,20,15,.08)" }}>
-                      <span style={{ fontSize: 15 }}>✏️</span> Rename list
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div onClick={() => {
+                  const spots = folderSaves.map(s => `${s.name}${s.area ? ` — ${s.area}` : ""}`).join("\n");
+                  const text = `${openFolder}\n${folderSaves.length} spots\n\n${spots}`;
+                  if (navigator.share) navigator.share({ title: openFolder, text }).catch(() => {});
+                  else { navigator.clipboard.writeText(text); }
+                }} style={{ width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "rgba(20,20,15,.45)" }}>
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+                </div>
+                <div onClick={() => setMenuFolder(menuFolder === openFolder ? null : openFolder)} style={{ width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "rgba(20,20,15,.45)", position: "relative" }}>
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+                  {menuFolder === openFolder && (
+                    <div onClick={e => e.stopPropagation()} style={{ position: "absolute", top: 42, right: 0, background: "#FAF7F2", border: "1px solid rgba(20,20,15,.1)", borderRadius: 12, boxShadow: "0 8px 28px rgba(20,20,15,.14)", minWidth: 180, zIndex: 20, animation: "fadeIn .15s", overflow: "hidden" }}>
+                      <div onClick={() => renameFolder(openFolder)} style={{ padding: "14px 16px", fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", gap: 11, borderBottom: "1px solid rgba(20,20,15,.06)" }}>
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="rgba(20,20,15,.5)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        Rename list
+                      </div>
+                      <div onClick={() => deleteFolder(openFolder)} style={{ padding: "14px 16px", fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", gap: 11, color: "#D9412B" }}>
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#D9412B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                        Delete list
+                      </div>
                     </div>
-                    <div onClick={() => deleteFolder(openFolder)} style={{ padding: "13px 16px", fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", gap: 10, color: "#D9412B" }}>
-                      <span style={{ fontSize: 15 }}>🗑️</span> Delete list
-                    </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             </div>
             {renamingFolder === openFolder ? (
