@@ -4304,30 +4304,66 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
       )}
 
       {preview.length > 0 && (
-        <div style={{ padding: "0 1.5rem 1rem" }}>
-          <div style={{ fontSize: 9.5, textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(20,20,15,.45)", marginBottom: 8, fontWeight: 500 }}>{preview.length} to review — check, then save</div>
-          {preview.map((v, i) => <VenueCard key={i} v={v} draft onRemove={() => removeDraft(i)} />)}
-          <div style={{ margin: "10px 0" }}>
-            <div style={{ fontSize: 9.5, color: "rgba(20,20,15,.55)", marginBottom: 4 }}>Save to list</div>
-            <select ref={tourSelRef} value={saveFolder} onChange={e => { setSaveFolder(e.target.value); if (tourStep === 1) setTourStep(2); }} className="input-field" style={{ padding: "10px 12px" }}>
-              <option value="">Auto — by category</option>
-              {existingFolders.map(f => <option key={f} value={f}>{f}</option>)}
-              <option value="__new__">+ Create new list…</option>
-            </select>
-            {saveFolder === "__new__" && (
-              <input className="input-field" style={{ marginTop: 6 }} placeholder="New list name" value={newFolder} onChange={e => setNewFolder(e.target.value)} />
+        <div style={{ position: "fixed", inset: 0, zIndex: 1200, background: "#FAF7F2", overflowY: "auto", animation: "screenIn .32s cubic-bezier(.2,.9,.3,1)" }}>
+          <div style={{ position: "sticky", top: 0, zIndex: 10, background: "#FAF7F2", padding: "14px 22px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid rgba(20,20,15,.1)" }}>
+            <button onClick={() => setPreview([])} style={{ width: 36, height: 36, border: "1px solid rgba(20,20,15,.18)", background: "none", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, cursor: "pointer" }}>←</button>
+            <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 19 }}>{preview.length} spot{preview.length !== 1 ? "s" : ""} found</div>
+            <div style={{ width: 36 }} />
+          </div>
+          <div style={{ padding: "18px 22px 120px" }}>
+            {preview.map((v, i) => {
+              const cat = (v.category || "experience").toLowerCase();
+              const photoSrc = v.photo_url || v._previewImage;
+              return (
+                <div key={i} style={{ marginBottom: 18, background: "#fff", borderRadius: 14, border: "1px solid rgba(20,20,15,.1)", overflow: "hidden", boxShadow: "0 2px 8px rgba(20,20,15,.04)" }}>
+                  <div style={{ position: "relative", height: 200, background: "#F1EDE4" }}>
+                    {photoSrc && <img src={photoSrc} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+                    <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 50%, rgba(20,20,15,.8))" }} />
+                    <button onClick={() => removeDraft(i)} style={{ position: "absolute", top: 12, right: 12, width: 32, height: 32, borderRadius: "50%", border: "none", background: "rgba(20,20,15,.35)", backdropFilter: "blur(8px)", color: "#FAF7F2", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+                    {v._dup && <div style={{ position: "absolute", top: 12, left: 12, padding: "4px 10px", borderRadius: 100, background: "#DD4124", color: "#fff", fontSize: 10, fontWeight: 600 }}>Already saved</div>}
+                    <div style={{ position: "absolute", left: 16, right: 16, bottom: 14 }}>
+                      <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 26, lineHeight: 1, color: "#FAF7F2", fontStyle: "italic" }}>{v.name}</div>
+                    </div>
+                  </div>
+                  <div style={{ padding: "14px 16px" }}>
+                    <div style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif", fontSize: 11, fontWeight: 500, letterSpacing: "0.06em", textTransform: "uppercase", color: "rgba(20,20,15,.4)", marginBottom: 8, display: "flex", alignItems: "center", gap: 5 }}>
+                      {v.area && <span>{v.area.toUpperCase()}</span>}
+                      {v.area && v.price && <span style={{ color: "rgba(20,20,15,.2)" }}>·</span>}
+                      {v.price && <span>{priceToPounds(v.price) || v.price}</span>}
+                      {v.google_rating && <><span style={{ color: "rgba(20,20,15,.2)" }}>·</span><span style={{ color: "#D4CFC4" }}>★</span> <span>{v.google_rating}</span></>}
+                      {v._google_found && <><span style={{ color: "rgba(20,20,15,.2)" }}>·</span><span style={{ color: "#0F6B63" }}>✓</span></>}
+                    </div>
+                    {v.comment && <div style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif", fontSize: 13, lineHeight: 1.45, color: "rgba(20,20,15,.5)", marginBottom: 10 }}>{v.comment}</div>}
+                    {v.vibe_tags?.length > 0 && (
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 8 }}>
+                        {v.vibe_tags.slice(0, 4).map((t, j) => <span key={j} style={{ fontSize: 11, background: "#F1EDE4", color: "rgba(20,20,15,.5)", padding: "3px 9px", borderRadius: 100 }}>{String(t).replace(/_/g, " ")}</span>)}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+
+            <div style={{ marginTop: 8 }}>
+              <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(20,20,15,.4)", marginBottom: 6 }}>Save to list</div>
+              <select ref={tourSelRef} value={saveFolder} onChange={e => { setSaveFolder(e.target.value); if (tourStep === 1) setTourStep(2); }} className="input-field" style={{ padding: "10px 12px" }}>
+                <option value="">Auto — by category</option>
+                {existingFolders.map(f => <option key={f} value={f}>{f}</option>)}
+                <option value="__new__">+ Create new list…</option>
+              </select>
+              {saveFolder === "__new__" && (
+                <input className="input-field" style={{ marginTop: 6 }} placeholder="New list name" value={newFolder} onChange={e => setNewFolder(e.target.value)} />
+              )}
+            </div>
+            {preview.some(d => d._dup) && (
+              <div style={{ fontSize: 11, color: "#DD4124", marginTop: 10 }}>
+                {preview.filter(d => d._dup).length} duplicate{preview.filter(d => d._dup).length > 1 ? "s" : ""} will be skipped.
+              </div>
             )}
           </div>
-          <div style={{ margin: "10px 0" }}>
-            <div style={{ fontSize: 9.5, color: "rgba(20,20,15,.55)", marginBottom: 4 }}>Any context? <span style={{ color: "rgba(20,20,15,.45)" }}>(optional)</span></div>
-            <input className="input-field" type="text" placeholder="e.g. for date nights, when parents visit, Friday lunch spot" value={saveNote} onChange={e => setSaveNote(e.target.value)} style={{ padding: "10px 12px" }} />
+          <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, padding: "16px 22px calc(16px + env(safe-area-inset-bottom))", background: "#FAF7F2", borderTop: "1px solid rgba(20,20,15,.1)", zIndex: 11 }}>
+            <button ref={tourSaveRef} className="btn btn-teal" onClick={saveAll} disabled={saving || (saveFolder === "__new__" && !newFolder.trim()) || preview.every(d => d._dup)} style={{ width: "100%", padding: 16, fontSize: 14, fontWeight: 600 }}>{saving ? "Saving..." : `Save ${preview.filter(d => !d._dup).length} spot${preview.filter(d => !d._dup).length !== 1 ? "s" : ""} ✦`}</button>
           </div>
-          {preview.some(d => d._dup) && (
-            <div style={{ fontSize: 10, color: "#DD4124", marginBottom: 8 }}>
-              {preview.filter(d => d._dup).length} duplicate{preview.filter(d => d._dup).length > 1 ? "s" : ""} will be skipped (already in your saves).
-            </div>
-          )}
-          <button ref={tourSaveRef} className="btn btn-teal" onClick={saveAll} disabled={saving || (saveFolder === "__new__" && !newFolder.trim()) || preview.every(d => d._dup)} style={{ marginTop: 4 }}>{saving ? "Saving..." : `Save ${preview.filter(d => !d._dup).length} spot${preview.filter(d => !d._dup).length !== 1 ? "s" : ""}${saveFolder && saveFolder !== "__new__" ? ` to ${saveFolder}` : ""} ✦`}</button>
         </div>
       )}
 
