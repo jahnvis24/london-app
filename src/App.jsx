@@ -1420,9 +1420,22 @@ function SwipeDeck({ venues, preferences, onClose, onSave, onOpenSpot }) {
   const dragRef = useRef(null);
   const startRef = useRef(null);
   const posRef = useRef({ x: 0, y: 0 });
+  const hiResCache = useRef({});
+  const [hiResPhotos, setHiResPhotos] = useState({});
 
   const current = deck[0];
   const next = deck[1];
+
+  useEffect(() => {
+    [current, next].filter(Boolean).forEach(v => {
+      if (!v.google_place_id || hiResCache.current[v.id]) return;
+      hiResCache.current[v.id] = true;
+      fetch("/api/saved-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool: "photos", place_id: v.google_place_id }) })
+        .then(r => r.json()).then(j => { if (j.found && j.urls?.[0]) setHiResPhotos(prev => ({ ...prev, [v.id]: j.urls[0] })); }).catch(() => {});
+    });
+  }, [current?.id, next?.id]);
+
+  const photoFor = (v) => hiResPhotos[v.id] || v.photo_url;
 
   function tasteMatches(v) {
     if (!preferences?.length) return 0;
@@ -1514,13 +1527,13 @@ function SwipeDeck({ venues, preferences, onClose, onSave, onOpenSpot }) {
       <div style={{ flex: 1, position: "relative", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 22px" }}>
         {next && (
           <div style={{ position: "absolute", width: "calc(100% - 56px)", maxWidth: 360, aspectRatio: "3/4", borderRadius: 16, overflow: "hidden", background: "#F1EDE4", transform: "scale(0.95) translateY(10px)", opacity: 0.6, boxShadow: "0 4px 20px rgba(0,0,0,.08)" }}>
-            {next.photo_url && <img src={next.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+            {photoFor(next) && <img src={photoFor(next)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
           </div>
         )}
 
         <div ref={dragRef} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
           style={{ position: "relative", width: "100%", maxWidth: 360, aspectRatio: "3/4", borderRadius: 16, overflow: "hidden", background: "#F1EDE4", boxShadow: "0 8px 32px rgba(0,0,0,.12)", cursor: "grab", touchAction: "none" }}>
-          {current.photo_url && <img src={current.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none" }} />}
+          {photoFor(current) && <img src={photoFor(current)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none" }} />}
           <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 40%, rgba(20,20,15,.88))" }} />
 
           <div className="stamp-save" style={{ position: "absolute", top: 30, right: 22, padding: "8px 18px", border: "3px solid #0F6B63", borderRadius: 8, color: "#0F6B63", fontSize: 28, fontWeight: 800, letterSpacing: "0.05em", transform: "rotate(12deg)", opacity: 0, transition: "opacity .1s", pointerEvents: "none" }}>SAVE</div>
