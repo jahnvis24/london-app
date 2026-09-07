@@ -1411,8 +1411,161 @@ function PlanDetailView({ plan, onClose, onNewPlan, dbVenues, onUpdateResult, on
   );
 }
 
+function SwipeDeck({ venues, preferences, onClose, onSave, onOpenSpot }) {
+  const [deck, setDeck] = useState(() => [...venues]);
+  const [gone, setGone] = useState([]);
+  const [lastAction, setLastAction] = useState(null);
+  const [savedCount, setSavedCount] = useState(0);
+  const [skippedCount, setSkippedCount] = useState(0);
+  const dragRef = useRef(null);
+  const startRef = useRef(null);
+  const posRef = useRef({ x: 0, y: 0 });
+
+  const current = deck[0];
+  const next = deck[1];
+
+  function tasteMatches(v) {
+    if (!preferences?.length) return 0;
+    const prefs = preferences.map(p => p.toLowerCase());
+    let matches = 0;
+    if (prefs.includes(v.category)) matches++;
+    (v.vibe_tags || []).forEach(t => { if (prefs.some(p => p.includes(t) || t.includes(p))) matches++; });
+    if (v.area && prefs.some(p => v.area.toLowerCase().includes(p))) matches++;
+    return matches;
+  }
+
+  function dismiss(dir) {
+    if (!current) return;
+    const saved = dir === "right";
+    setGone(prev => [{ venue: current, action: saved ? "save" : "skip" }, ...prev]);
+    setDeck(prev => prev.slice(1));
+    if (saved) { setSavedCount(n => n + 1); onSave && onSave(current); }
+    else setSkippedCount(n => n + 1);
+    setLastAction(saved ? "save" : "skip");
+  }
+
+  function undo() {
+    if (!gone.length) return;
+    const last = gone[0];
+    setGone(prev => prev.slice(1));
+    setDeck(prev => [last.venue, ...prev]);
+    if (last.action === "save") setSavedCount(n => Math.max(0, n - 1));
+    else setSkippedCount(n => Math.max(0, n - 1));
+    setLastAction(null);
+  }
+
+  const onTouchStart = (e) => {
+    const t = e.touches[0];
+    startRef.current = { x: t.clientX, y: t.clientY, time: Date.now() };
+    posRef.current = { x: 0, y: 0 };
+  };
+  const onTouchMove = (e) => {
+    if (!startRef.current || !dragRef.current) return;
+    const t = e.touches[0];
+    const dx = t.clientX - startRef.current.x;
+    const dy = t.clientY - startRef.current.y;
+    posRef.current = { x: dx, y: dy };
+    const rotate = dx * 0.08;
+    dragRef.current.style.transform = `translate(${dx}px, ${dy}px) rotate(${rotate}deg)`;
+    dragRef.current.style.transition = "none";
+    const stampSave = dragRef.current.querySelector(".stamp-save");
+    const stampNope = dragRef.current.querySelector(".stamp-nope");
+    if (stampSave) stampSave.style.opacity = Math.min(1, Math.max(0, dx / 100));
+    if (stampNope) stampNope.style.opacity = Math.min(1, Math.max(0, -dx / 100));
+  };
+  const onTouchEnd = () => {
+    if (!dragRef.current) return;
+    const { x } = posRef.current;
+    if (Math.abs(x) > 90) {
+      const dir = x > 0 ? "right" : "left";
+      const flyX = x > 0 ? 500 : -500;
+      dragRef.current.style.transition = "transform 0.35s ease";
+      dragRef.current.style.transform = `translate(${flyX}px, ${posRef.current.y}px) rotate(${flyX * 0.08}deg)`;
+      setTimeout(() => dismiss(dir), 300);
+    } else {
+      dragRef.current.style.transition = "transform 0.3s cubic-bezier(.2,.9,.3,1)";
+      dragRef.current.style.transform = "translate(0,0) rotate(0)";
+      const stampSave = dragRef.current.querySelector(".stamp-save");
+      const stampNope = dragRef.current.querySelector(".stamp-nope");
+      if (stampSave) stampSave.style.opacity = 0;
+      if (stampNope) stampNope.style.opacity = 0;
+    }
+    startRef.current = null;
+  };
+
+  const matches = current ? tasteMatches(current) : 0;
+
+  if (!current) return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 1300, background: "#FAF7F2", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", animation: "fadeIn .2s" }}>
+      <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 32, textAlign: "center", marginBottom: 12 }}>You've seen them all!</div>
+      <div style={{ fontSize: 14, color: "rgba(20,20,15,.5)", textAlign: "center", marginBottom: 24 }}>{savedCount} saved · {skippedCount} skipped</div>
+      <button onClick={onClose} style={{ padding: "14px 32px", background: "#D9412B", color: "#FAF7F2", border: "none", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Back to Discover</button>
+    </div>
+  );
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 1300, background: "#FAF7F2", display: "flex", flexDirection: "column", animation: "fadeIn .2s" }}>
+      <div style={{ padding: "14px 22px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 15, fontWeight: 600, cursor: "pointer", color: "#14140F" }}>← Back</button>
+        <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 22, fontStyle: "italic" }}>Discover</div>
+        <div style={{ width: 50 }} />
+      </div>
+
+      <div style={{ flex: 1, position: "relative", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 22px" }}>
+        {next && (
+          <div style={{ position: "absolute", width: "calc(100% - 56px)", maxWidth: 360, aspectRatio: "3/4", borderRadius: 16, overflow: "hidden", background: "#F1EDE4", transform: "scale(0.95) translateY(10px)", opacity: 0.6, boxShadow: "0 4px 20px rgba(0,0,0,.08)" }}>
+            {next.photo_url && <img src={next.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+          </div>
+        )}
+
+        <div ref={dragRef} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
+          style={{ position: "relative", width: "100%", maxWidth: 360, aspectRatio: "3/4", borderRadius: 16, overflow: "hidden", background: "#F1EDE4", boxShadow: "0 8px 32px rgba(0,0,0,.12)", cursor: "grab", touchAction: "none" }}>
+          {current.photo_url && <img src={current.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none" }} />}
+          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 40%, rgba(20,20,15,.88))" }} />
+
+          <div className="stamp-save" style={{ position: "absolute", top: 30, right: 22, padding: "8px 18px", border: "3px solid #0F6B63", borderRadius: 8, color: "#0F6B63", fontSize: 28, fontWeight: 800, letterSpacing: "0.05em", transform: "rotate(12deg)", opacity: 0, transition: "opacity .1s", pointerEvents: "none" }}>SAVE</div>
+          <div className="stamp-nope" style={{ position: "absolute", top: 30, left: 22, padding: "8px 18px", border: "3px solid #D9412B", borderRadius: 8, color: "#D9412B", fontSize: 28, fontWeight: 800, letterSpacing: "0.05em", transform: "rotate(-12deg)", opacity: 0, transition: "opacity .1s", pointerEvents: "none" }}>NOPE</div>
+
+          {matches > 0 && (
+            <div style={{ position: "absolute", top: 16, right: 16, padding: "6px 12px", background: "rgba(15,107,99,.85)", color: "#FAF7F2", borderRadius: 100, fontSize: 11, fontWeight: 600, display: "flex", alignItems: "center", gap: 5, backdropFilter: "blur(8px)" }}>
+              ✓ {matches} taste match{matches > 1 ? "es" : ""}
+            </div>
+          )}
+
+          <div onClick={() => onOpenSpot && onOpenSpot(current)} style={{ position: "absolute", left: 0, right: 0, bottom: 0, padding: "0 22px 22px", cursor: "pointer" }}>
+            <div style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif", fontSize: 11, fontWeight: 500, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(250,247,242,.6)", marginBottom: 6 }}>{[current.category?.toUpperCase(), current.area?.toUpperCase()].filter(Boolean).join(" · ")}</div>
+            <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 32, lineHeight: 1, color: "#FAF7F2", marginBottom: 6 }}>{current.name}</div>
+            <div style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif", fontSize: 11, color: "rgba(250,247,242,.6)", display: "flex", alignItems: "center", gap: 4 }}>
+              {current.google_rating && <><span>⭐</span> <span>{current.google_rating}</span></>}
+              {current.google_rating && current.price && <span style={{ margin: "0 2px" }}>·</span>}
+              {current.price && <span>{current.price}</span>}
+            </div>
+            {current.comment && <div style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif", fontSize: 14, lineHeight: 1.45, color: "rgba(250,247,242,.75)", marginTop: 8, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{current.comment}</div>}
+            {current.vibe_tags?.length > 0 && (
+              <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
+                {current.vibe_tags.slice(0, 3).map((t, i) => (
+                  <span key={i} style={{ padding: "4px 10px", borderRadius: 100, border: "1px solid rgba(250,247,242,.25)", fontSize: 11, color: "rgba(250,247,242,.7)" }}>{t}</span>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div style={{ padding: "20px 0 36px", display: "flex", justifyContent: "center", alignItems: "center", gap: 20 }}>
+        <button onClick={() => dismiss("left")} style={{ width: 54, height: 54, borderRadius: "50%", border: "2px solid #D9412B", background: "#FAF7F2", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, cursor: "pointer", color: "#D9412B", boxShadow: "0 2px 8px rgba(0,0,0,.06)" }}>✕</button>
+        <button onClick={undo} disabled={!gone.length} style={{ width: 42, height: 42, borderRadius: "50%", border: "1.5px solid rgba(20,20,15,.2)", background: "#FAF7F2", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, cursor: gone.length ? "pointer" : "default", color: gone.length ? "#14140F" : "rgba(20,20,15,.2)", boxShadow: "0 2px 8px rgba(0,0,0,.04)" }}>↩</button>
+        <button onClick={() => dismiss("right")} style={{ width: 60, height: 60, borderRadius: "50%", border: "none", background: "#D9412B", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, cursor: "pointer", color: "#FAF7F2", boxShadow: "0 4px 12px rgba(217,65,43,.25)" }}>♥</button>
+      </div>
+
+      <div style={{ textAlign: "center", paddingBottom: 16, fontSize: 12, color: "rgba(20,20,15,.4)" }}>{savedCount} saved · {skippedCount} skipped · drag the card or tap to decide</div>
+    </div>
+  );
+}
+
 function DiscoverScreen({ preferences, dbVenues, onStart, onOpenSpot }) {
   const [chip, setChip] = useState("All");
+  const [swipeDeck, setSwipeDeck] = useState(false);
   const CHIPS = ["All", "East", "Date night", "Cheap eats", "Bars", "Culture", "Celebrity picks"];
 
   const today = new Date().toISOString().split("T")[0];
@@ -1468,6 +1621,24 @@ function DiscoverScreen({ preferences, dbVenues, onStart, onOpenSpot }) {
         </div>
       )}
 
+      {swipeDeck && (
+        <SwipeDeck
+          venues={dbVenues.filter(v => !v.is_event && v.photo_url && v.google_rating >= 4.0).sort(() => 0.5 - Math.random()).slice(0, 30)}
+          preferences={preferences}
+          onClose={() => setSwipeDeck(false)}
+          onOpenSpot={onOpenSpot}
+        />
+      )}
+
+      <div onClick={() => setSwipeDeck(true)} style={{ margin: "0 22px 18px", padding: "16px 18px", background: "#14140F", color: "#FAF7F2", cursor: "pointer", borderRadius: 14, display: "flex", alignItems: "center", gap: 14 }}>
+        <div style={{ width: 46, height: 46, borderRadius: 12, background: "#D9412B", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>♥</div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 19, lineHeight: 1.1 }}>Swipe to discover</div>
+          <div style={{ fontSize: 11, color: "rgba(250,247,242,.5)", marginTop: 3 }}>Personalised picks matched to your taste</div>
+        </div>
+        <div style={{ fontSize: 14, color: "rgba(250,247,242,.4)" }}>›</div>
+      </div>
+
       <div style={{ display: "flex", gap: 7, padding: "0 22px 20px", overflowX: "auto", scrollbarWidth: "none" }}>
         {CHIPS.map(c => (
           <button key={c} onClick={() => setChip(c)} className={`filter-chip ${chip === c ? "sel" : ""}`}>{c}</button>
@@ -1497,23 +1668,28 @@ function DiscoverScreen({ preferences, dbVenues, onStart, onOpenSpot }) {
       </div>
 
       {forYou.length > 0 && (
-        <>
-          <div style={{ padding: "0 22px 4px", fontSize: 9.5, fontWeight: 500, letterSpacing: "0.16em", textTransform: "uppercase", color: "#0F6B63" }}>For you</div>
-          <div style={{ padding: "0 22px 12px", fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 22 }}>{forYouLabel}</div>
-          {forYou.slice(0, 3).map(v => (
-            <div key={v.id} onClick={() => onOpenSpot && onOpenSpot(v)} style={{ margin: "0 22px", paddingTop: 15, borderTop: "1px solid rgba(20,20,15,.13)", display: "flex", gap: 13, alignItems: "center", cursor: "pointer" }}>
-              <div style={{ width: 76, height: 76, flex: "none", overflow: "hidden", background: "#F1EDE4" }}>
+        <div style={{ padding: "0 22px" }}>
+          <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 26, lineHeight: 1.15, marginBottom: 18 }}>Because you like {topCat ? `${topCat[0]}s` : "these"}</div>
+          {forYou.slice(0, 6).map((v, vi) => (
+            <div key={v.id} onClick={() => onOpenSpot && onOpenSpot(v)} style={{ padding: "16px 0", borderTop: vi === 0 ? "none" : "1px solid rgba(20,20,15,.1)", display: "flex", gap: 14, alignItems: "flex-start", cursor: "pointer" }}>
+              <div style={{ width: 90, height: 90, flex: "none", overflow: "hidden", borderRadius: 6, background: "#F1EDE4" }}>
                 {v.photo_url && <img src={v.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
               </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 21 }}>{v.name}</div>
-                <div style={{ fontSize: 8.5, fontWeight: 500, letterSpacing: "0.13em", textTransform: "uppercase", color: "rgba(20,20,15,.45)", marginTop: 5 }}>{[v.area, v.price, v.google_rating ? `${v.google_rating}` : null].filter(Boolean).join(" · ")}</div>
-                {v.comment && <div style={{ fontSize: 12, color: "rgba(20,20,15,.6)", marginTop: 6 }}>{v.comment.length > 60 ? v.comment.slice(0, 60) + "…" : v.comment}</div>}
+              <div style={{ flex: 1, minWidth: 0, paddingTop: 2 }}>
+                <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 22, lineHeight: 1.1, marginBottom: 5 }}>{v.name}</div>
+                <div style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif", fontSize: 11, fontWeight: 500, letterSpacing: "0.06em", textTransform: "uppercase", color: "rgba(20,20,15,.42)", marginBottom: 8, display: "flex", alignItems: "center", gap: 4 }}>
+                  {v.area && <span>{v.area.toUpperCase()}</span>}
+                  {v.area && v.price && <span style={{ color: "rgba(20,20,15,.25)" }}>·</span>}
+                  {v.price && <span>{v.price}</span>}
+                  {(v.area || v.price) && v.google_rating && <span style={{ color: "rgba(20,20,15,.25)" }}>·</span>}
+                  {v.google_rating && <><span style={{ fontSize: 10 }}>⭐</span> <span>{v.google_rating}</span></>}
+                </div>
+                {v.comment && <div style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif", fontSize: 14, lineHeight: 1.45, color: "rgba(20,20,15,.55)", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{v.comment}</div>}
               </div>
-              <div onClick={(e) => { e.stopPropagation(); }} style={{ width: 38, height: 38, flex: "none", borderRadius: "50%", border: "1.5px solid #14140F", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, cursor: "pointer", transition: "all .2s" }}>+</div>
+              <div onClick={(e) => { e.stopPropagation(); }} style={{ width: 38, height: 38, flex: "none", borderRadius: "50%", border: "1.5px solid rgba(20,20,15,.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, color: "rgba(20,20,15,.4)", cursor: "pointer", marginTop: 4 }}>+</div>
             </div>
           ))}
-        </>
+        </div>
       )}
     </div>
   );
@@ -2045,21 +2221,60 @@ function PreferencesScreen({ preferences, setPreferences, user }) {
 
 // Profile / settings hub — folds in "For me" (prefs) and Admin so they're off the nav bar.
 function MeScreen({ user, preferences, setPreferences, isAdmin, onBadgeUpdate, adminBadge, onStartTour, onStartImportTour }) {
-  const [view, setView] = useState(null); // null | "prefs" | "admin"
+  const [view, setView] = useState(null);
+  const [viewFriend, setViewFriend] = useState(null);
   const displayName = user?.user_metadata?.full_name || (user?.email ? user.email.split("@")[0] : "You");
   const [avatar, setAvatar] = useState(() => user?.user_metadata?.avatar_url || "");
-  const [avatarPreview, setAvatarPreview] = useState(null); // { url, file }
+  const [avatarPreview, setAvatarPreview] = useState(null);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef(null);
+  const [stats, setStats] = useState({ saved: 0, visited: 0, friends: 0 });
+  const [friends, setFriends] = useState([]);
+  const [bucketLists, setBucketLists] = useState([]);
+  const nameOf = (p) => p?.name || p?.email?.split("@")[0] || "?";
+
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      const [{ count: savedCount }, { count: visitedCount }, conRes, blRes] = await Promise.all([
+        supabase.from("experiences").select("*", { count: "exact", head: true }).eq("user_id", user.id),
+        supabase.from("experiences").select("*", { count: "exact", head: true }).eq("user_id", user.id).not("visit_date", "is", null),
+        supabase.from("connections").select("*").or(`user_a.eq.${user.id},user_b.eq.${user.id}`),
+        supabase.from("shared_lists").select("id,name,emoji"),
+      ]);
+      const otherIds = (conRes.data || []).map(c => c.user_a === user.id ? c.user_b : c.user_a);
+      let prof = [];
+      if (otherIds.length) {
+        const { data } = await supabase.from("profiles").select("id,name,avatar_url,email,friend_code").in("id", otherIds);
+        prof = data || [];
+      }
+      const blIds = (blRes.data || []).map(b => b.id);
+      let blItems = [];
+      if (blIds.length) {
+        const { data } = await supabase.from("shared_list_items").select("list_id,done");
+        blItems = data || [];
+      }
+      let blMembers = [];
+      if (blIds.length) {
+        const { data } = await supabase.from("shared_list_members").select("list_id,user_id");
+        blMembers = data || [];
+      }
+      setStats({ saved: savedCount || 0, visited: visitedCount || 0, friends: otherIds.length });
+      setFriends(prof);
+      setBucketLists((blRes.data || []).map(b => {
+        const items = blItems.filter(it => it.list_id === b.id);
+        const members = blMembers.filter(m => m.list_id === b.id);
+        return { ...b, total: items.length, done: items.filter(it => it.done).length, memberCount: members.length };
+      }));
+    })();
+  }, [user]);
 
   async function handleAvatarFile(e) {
     const file = e.target.files?.[0];
     if (e.target) e.target.value = "";
     if (!file) return;
-    const url = URL.createObjectURL(file);
-    setAvatarPreview({ url, file });
+    setAvatarPreview({ url: URL.createObjectURL(file), file });
   }
-
   async function confirmAvatar() {
     if (!avatarPreview) return;
     setUploading(true);
@@ -2070,18 +2285,16 @@ function MeScreen({ user, preferences, setPreferences, isAdmin, onBadgeUpdate, a
       const ctx = canvas.getContext("2d");
       const img = await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = avatarPreview.url; });
       const min = Math.min(img.width, img.height);
-      const sx = (img.width - min) / 2, sy = (img.height - min) / 2;
-      ctx.drawImage(img, sx, sy, min, min, 0, 0, size, size);
+      ctx.drawImage(img, (img.width - min) / 2, (img.height - min) / 2, min, min, 0, 0, size, size);
       const blob = await new Promise(r => canvas.toBlob(r, "image/jpeg", 0.85));
       const path = `avatars/${user.id}.jpg`;
       const { error: upErr } = await supabase.storage.from("avatars").upload(path, blob, { upsert: true, contentType: "image/jpeg" });
       if (upErr) throw upErr;
       const { data } = supabase.storage.from("avatars").getPublicUrl(path);
-      const publicUrl = data?.publicUrl;
-      if (!publicUrl) throw new Error("Could not get public URL");
-      const urlWithBust = publicUrl + "?t=" + Date.now();
+      if (!data?.publicUrl) throw new Error("Could not get public URL");
+      const urlWithBust = data.publicUrl + "?t=" + Date.now();
       await supabase.auth.updateUser({ data: { avatar_url: urlWithBust } });
-      await supabase.from("profiles").update({ avatar_url: publicUrl }).eq("id", user.id);
+      await supabase.from("profiles").update({ avatar_url: data.publicUrl }).eq("id", user.id);
       setAvatar(urlWithBust);
       setAvatarPreview(null);
     } catch (err) {
@@ -2101,6 +2314,15 @@ function MeScreen({ user, preferences, setPreferences, isAdmin, onBadgeUpdate, a
       <AdminScreen onBadgeUpdate={onBadgeUpdate} />
     </div>
   );
+
+  const tasteChips = [];
+  if (preferences) {
+    const p = preferences;
+    if (p.vibes?.length) tasteChips.push(...p.vibes.slice(0, 3));
+    if (p.areas?.length) tasteChips.push(...p.areas.slice(0, 2));
+    if (p.budget) tasteChips.push(p.budget === "low" ? "£ Budget" : p.budget === "mid" ? "££ Middle ground" : "£££ Splurge");
+    if (p.group) tasteChips.push(p.group);
+  }
 
   return (
     <div style={{ animation: "screenIn .32s cubic-bezier(.2,.9,.3,1)" }}>
@@ -2129,40 +2351,109 @@ function MeScreen({ user, preferences, setPreferences, isAdmin, onBadgeUpdate, a
         </div>
       )}
 
-      <div style={{ padding: "0 22px 24px", display: "flex", alignItems: "center", gap: 15 }}>
-        <div onClick={() => fileRef.current?.click()} style={{ width: 66, height: 66, borderRadius: "50%", background: "#14140F", color: "#FAF7F2", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: "1.6rem", overflow: "hidden", flexShrink: 0, cursor: "pointer", position: "relative" }}>
+      {/* Header: code + name */}
+      <div style={{ padding: "0 22px 20px" }}>
+        <div style={{ fontSize: 9.5, fontWeight: 500, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(20,20,15,.42)", marginBottom: 4 }}>Code · {user?.user_metadata?.friend_code || "····"}</div>
+        <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 40, lineHeight: 1, letterSpacing: "-0.02em" }}>{displayName}</div>
+      </div>
+
+      {/* Stats row */}
+      <div style={{ margin: "0 22px 22px", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+        {[
+          { val: stats.saved, label: "Saved", bg: "#FAF7F2", border: "1px solid rgba(20,20,15,.13)" },
+          { val: stats.visited, label: "Visited", bg: "#FAF7F2", border: "1px solid rgba(20,20,15,.13)" },
+          { val: stats.friends, label: "Friends", bg: "#FAF7F2", border: "1px solid rgba(20,20,15,.13)" },
+        ].map((s, i) => (
+          <div key={i} style={{ padding: "16px 12px", background: s.bg, border: s.border, borderRadius: 14, textAlign: "center" }}>
+            <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 30, color: "#14140F" }}>{s.val}</div>
+            <div style={{ fontSize: 9, fontWeight: 500, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(20,20,15,.42)", marginTop: 3 }}>{s.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Your taste */}
+      {tasteChips.length > 0 && (
+        <div style={{ padding: "0 22px 22px" }}>
+          <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 21, marginBottom: 10 }}>Your taste</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {tasteChips.map((c, i) => (
+              <div key={i} style={{ padding: "7px 14px", borderRadius: 100, border: "1px solid rgba(20,20,15,.16)", fontSize: 13, color: "#14140F" }}>{c}</div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Avatar (tappable) + edit */}
+      <div style={{ padding: "0 22px 22px", display: "flex", alignItems: "center", gap: 14 }}>
+        <div onClick={() => fileRef.current?.click()} style={{ width: 72, height: 72, borderRadius: "50%", background: "#14140F", color: "#FAF7F2", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 28, overflow: "hidden", flexShrink: 0, cursor: "pointer", position: "relative" }}>
           {avatar ? <img src={avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : displayName.charAt(0).toUpperCase()}
           <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "rgba(0,0,0,0.5)", padding: "3px 0", textAlign: "center" }}>
             <span style={{ fontSize: 8, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "#FAF7F2" }}>Edit</span>
           </div>
         </div>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 34, lineHeight: 1, letterSpacing: "-0.015em" }}>{displayName}</div>
-          <div style={{ fontSize: 9.5, fontWeight: 500, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(20,20,15,.42)", marginTop: 7 }}>Code · {user?.user_metadata?.friend_code || "····"}</div>
+        <div style={{ fontSize: 12, color: "rgba(20,20,15,.5)", lineHeight: 1.4 }}>Tap to update your profile photo.<br />Visible to your friends.</div>
+      </div>
+
+      {/* Friends — horizontal scroll */}
+      {friends.length > 0 && (
+        <div style={{ padding: "0 0 22px" }}>
+          <div style={{ padding: "0 22px 10px", fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 21 }}>Friends</div>
+          <div style={{ display: "flex", gap: 16, overflowX: "auto", padding: "0 22px", scrollbarWidth: "none" }}>
+            {friends.map(f => (
+              <div key={f.id} onClick={() => setViewFriend(f)} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, minWidth: 72, cursor: "pointer" }}>
+                <div style={{ width: 64, height: 64, borderRadius: "50%", background: "#5B6D4F", color: "#FAF7F2", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", overflow: "hidden", border: "3px solid #FAF7F2", boxShadow: "0 2px 8px rgba(0,0,0,.08)" }}>
+                  {f.avatar_url ? <img src={f.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : (f.friend_code || nameOf(f).charAt(0))}
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 500, color: "#14140F", textAlign: "center", maxWidth: 72, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nameOf(f).split(" ")[0]}</div>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 1, background: "rgba(20,20,15,.13)", margin: "0 22px 24px", borderTop: "1px solid rgba(20,20,15,.13)", borderBottom: "1px solid rgba(20,20,15,.13)" }}>
-        <div style={{ padding: "14px 12px", background: "#FAF7F2" }}><div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 30 }}>–</div><div style={{ fontSize: 8.5, fontWeight: 500, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(20,20,15,.42)", marginTop: 4 }}>Saved</div></div>
-        <div style={{ padding: "14px 12px", background: "#0F6B63", color: "#FAF7F2" }}><div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 30 }}>–</div><div style={{ fontSize: 8.5, fontWeight: 500, letterSpacing: "0.14em", textTransform: "uppercase", opacity: 0.75, marginTop: 4 }}>Visited</div></div>
-        <div style={{ padding: "14px 12px", background: "#D9412B", color: "#FAF7F2" }}><div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 30 }}>–</div><div style={{ fontSize: 8.5, fontWeight: 500, letterSpacing: "0.14em", textTransform: "uppercase", opacity: 0.75, marginTop: 4 }}>Plans</div></div>
-      </div>
+      {/* Shared bucket lists */}
+      {bucketLists.length > 0 && (
+        <div style={{ padding: "0 22px 22px" }}>
+          <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 21, marginBottom: 10 }}>Shared bucket lists</div>
+          {bucketLists.map(b => (
+            <div key={b.id} style={{ padding: "14px 16px", background: "#fff", borderRadius: 14, border: "1px solid rgba(20,20,15,.1)", marginBottom: 10 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 18 }}>{b.emoji || "📋"} {b.name}</div>
+                <div style={{ fontSize: 11, color: "rgba(20,20,15,.45)" }}>{b.memberCount} {b.memberCount === 1 ? "person" : "people"}</div>
+              </div>
+              {b.total > 0 && (
+                <>
+                  <div style={{ height: 6, borderRadius: 3, background: "rgba(20,20,15,.08)", overflow: "hidden" }}>
+                    <div style={{ height: "100%", borderRadius: 3, background: "#5B6D4F", width: `${Math.round((b.done / b.total) * 100)}%`, transition: "width .3s" }} />
+                  </div>
+                  <div style={{ fontSize: 11, color: "rgba(20,20,15,.42)", marginTop: 5 }}>{b.done} of {b.total} ticked off</div>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
+      {/* Menu items */}
       <div style={{ padding: "0 22px", display: "flex", flexDirection: "column" }}>
         {[
-          { label: "Preferences", hint: "Taste, price, areas", action: () => setView("prefs") },
-          { label: "Tune my picks", hint: "Swipe game", action: onStartTour },
-          ...(isAdmin ? [{ label: "Admin", hint: adminBadge > 0 ? `${adminBadge} pending` : "", action: () => setView("admin") }] : []),
-          { label: "Account", hint: "", action: () => {} },
-          { label: "Sign out", hint: "", fg: "#D9412B", action: () => supabase.auth.signOut() },
+          { icon: "⚙️", label: "Taste preferences", action: () => setView("prefs") },
+          { icon: "📤", label: "Export my data", action: () => {} },
+          { icon: "🗑️", label: "Delete account", action: () => {}, fg: "#D9412B" },
+          { icon: "🔄", label: "Retake the personalisation quiz", action: onStartTour },
+          ...(isAdmin ? [{ icon: "🔧", label: "Admin", hint: adminBadge > 0 ? `${adminBadge} pending` : "", action: () => setView("admin") }] : []),
+          { icon: "👋", label: "Sign out", fg: "#D9412B", action: () => supabase.auth.signOut() },
         ].map((r, i) => (
-          <button key={i} onClick={r.action} style={{ display: "flex", alignItems: "center", gap: 13, padding: "16px 0", borderBottom: "1px solid rgba(20,20,15,.11)", cursor: "pointer", background: "none", border: "none", borderBottom: "1px solid rgba(20,20,15,.11)", width: "100%", textAlign: "left" }}>
-            <div style={{ flex: 1, fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 19, color: r.fg || "#14140F" }}>{r.label}</div>
+          <button key={i} onClick={r.action} style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px 0", borderBottom: "1px solid rgba(20,20,15,.08)", cursor: "pointer", background: "none", border: "none", borderBottom: "1px solid rgba(20,20,15,.08)", width: "100%", textAlign: "left" }}>
+            <span style={{ fontSize: 16, width: 22, textAlign: "center", flexShrink: 0 }}>{r.icon}</span>
+            <div style={{ flex: 1, fontSize: 15, fontWeight: 500, color: r.fg || "#14140F" }}>{r.label}</div>
             {r.hint && <div style={{ fontSize: 8.5, fontWeight: 500, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(20,20,15,.38)" }}>{r.hint}</div>}
-            {r.label !== "Sign out" && <div style={{ color: "rgba(20,20,15,.28)", fontSize: 16 }}>›</div>}
+            <div style={{ color: "rgba(20,20,15,.2)", fontSize: 16 }}>›</div>
           </button>
         ))}
       </div>
+      <div style={{ height: 40 }} />
+      {viewFriend && <FriendProfile user={user} friend={viewFriend} onClose={() => setViewFriend(null)} />}
     </div>
   );
 }
