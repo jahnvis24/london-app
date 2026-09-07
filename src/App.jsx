@@ -2725,99 +2725,124 @@ function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan, user, onSpotUpdate
     const style = { display: "block", textAlign: "center", padding: "12px", borderRadius: 0, fontSize: 13, fontWeight: 600, marginBottom: 8, cursor: "pointer", textDecoration: "none", border: primary ? "none" : "1.5px solid rgba(20,20,15,.18)", background: primary ? "#D9412B" : "#fff", color: primary ? "#fff" : "#4a4438" };
     return href ? <a href={href} target="_blank" rel="noreferrer" style={style}>{children}</a> : <button onClick={onClick} style={{ ...style, width: "100%" }}>{children}</button>;
   };
+  const sf = { fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" };
   const SOURCE_LABEL = { tiktok: "saved via TikTok", instagram: "saved via Instagram", screenshot: "saved via screenshot", maps: "saved via Maps", manual: "added manually" };
+  const pounds = priceToPounds(spot.price);
+  const iconStyle = { width: 22, height: 22, display: "inline-block", verticalAlign: "middle", fill: "none", stroke: "#5B6D4F", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round" };
+  const tabBtnStyle = { display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "16px 10px", background: "#FAF7F2", borderRadius: 14, border: "none", cursor: "pointer", flex: 1, boxShadow: "0 2px 8px rgba(20,20,15,.06)" };
   return (
     <div ref={swipeRef} style={{ position: "fixed", inset: 0, zIndex: 1200, background: "#FAF7F2", overflowY: "auto", animation: "screenIn .32s cubic-bezier(.2,.9,.3,1)" }}>
-      <div style={{ position: "relative", height: 360, background: photos.length ? "#F1EDE4" : (CAT_COLOURS[cat] || "#D9412B") }}>
-        <div style={{ display: "flex", height: "100%", overflowX: "auto", scrollSnapType: "x mandatory" }}>
+      {/* Photo hero — fills top, swipeable */}
+      <div style={{ position: "relative", height: 380, background: photos.length ? "#14140F" : (CAT_COLOURS[cat] || "#D9412B") }}>
+        <div style={{ display: "flex", height: "100%", overflowX: "auto", scrollSnapType: "x mandatory", scrollbarWidth: "none" }}>
           {photos.map((p, i) => <img key={i} src={p} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", flexShrink: 0, scrollSnapAlign: "start" }} />)}
         </div>
         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 40%, rgba(20,20,15,.88))" }} />
-        <button onClick={onClose} style={{ position: "absolute", top: 16, left: 20, width: 40, height: 40, borderRadius: "50%", border: "none", background: "rgba(20,20,15,.4)", backdropFilter: "blur(8px)", cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center", color: "#FAF7F2" }}>←</button>
-        {photos.length > 1 && <div style={{ position: "absolute", top: 18, right: 20, padding: "5px 10px", background: "rgba(20,20,15,.45)", backdropFilter: "blur(8px)", color: "#FAF7F2", fontSize: 9, fontWeight: 600, borderRadius: 100, letterSpacing: "0.08em", textTransform: "uppercase" }}>📷 {photos.length}</div>}
+        <button onClick={onClose} style={{ position: "absolute", top: 16, left: 20, width: 40, height: 40, borderRadius: "50%", border: "none", background: "rgba(20,20,15,.35)", backdropFilter: "blur(8px)", cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center", color: "#FAF7F2" }}>←</button>
+        {photos.length > 1 && <div style={{ position: "absolute", bottom: 80, right: 22, ...sf, fontSize: 9, fontWeight: 600, letterSpacing: "0.08em", color: "rgba(250,247,242,.5)" }}>{photos.length} photos · swipe →</div>}
         <div style={{ position: "absolute", left: 22, right: 22, bottom: 20 }}>
-          <div style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif", fontSize: 11, fontWeight: 500, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(250,247,242,.6)", marginBottom: 8 }}>{[cap(cat), spot.area].filter(Boolean).join(" · ")}</div>
+          <div style={{ ...sf, fontSize: 11, fontWeight: 500, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(250,247,242,.55)", marginBottom: 8 }}>{[cap(cat), spot.area].filter(Boolean).join(" · ")}</div>
           <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 42, lineHeight: 0.95, color: "#FAF7F2", letterSpacing: "-0.02em", fontStyle: "italic" }}>{spot.name}</div>
         </div>
       </div>
 
-      <div style={{ padding: "18px 22px 0" }}>
+      <div style={{ padding: "16px 22px 0" }}>
         {/* Meta: rating, price, source */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
-          {spot.google_rating && <span style={{ fontSize: 14, fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>⭐ {spot.google_rating}</span>}
-          {spot.price && <span style={{ fontSize: 14, color: "rgba(20,20,15,.55)" }}>{spot.price}</span>}
-          {spot.source_type && <span style={{ fontSize: 11, padding: "4px 10px", borderRadius: 100, background: "#F1EDE4", color: "rgba(20,20,15,.55)" }}>{SOURCE_LABEL[spot.source_type] || `saved via ${spot.source_type}`}</span>}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
+          {spot.google_rating && <span style={{ ...sf, fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}><span style={{ color: "#D4CFC4", fontSize: 14 }}>★</span> {spot.google_rating}</span>}
+          {pounds && <span style={{ ...sf, fontSize: 13, color: "rgba(20,20,15,.5)" }}>{pounds}</span>}
+          {spot.source_type && <span style={{ ...sf, fontSize: 11, padding: "3px 10px", borderRadius: 100, background: "#F1EDE4", color: "rgba(20,20,15,.5)" }}>{SOURCE_LABEL[spot.source_type] || `saved via ${spot.source_type}`}</span>}
         </div>
 
         {/* Description */}
-        <div style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif", fontSize: 13.5, lineHeight: 1.5, color: "rgba(20,20,15,.55)", marginBottom: 20 }}>{spot.comment || "No description yet."}</div>
+        <div style={{ ...sf, fontSize: 13.5, lineHeight: 1.5, color: "rgba(20,20,15,.5)", marginBottom: 16 }}>{spot.comment || "No description yet."}</div>
 
         {/* Vibe tags */}
         {spot.vibe_tags?.length > 0 && (
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
+          <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginBottom: 18 }}>
             {spot.vibe_tags.map((t, i) => (
-              <span key={i} style={{ padding: "6px 14px", borderRadius: 100, border: "1px solid rgba(20,20,15,.14)", fontSize: 13, color: "rgba(20,20,15,.6)" }}>{t}</span>
+              <span key={i} style={{ ...sf, padding: "5px 13px", borderRadius: 100, border: "1px solid rgba(20,20,15,.12)", fontSize: 12, color: "rgba(20,20,15,.55)" }}>{t}</span>
             ))}
           </div>
         )}
 
-        {/* Address & hours */}
+        {/* Action tabs: Book, Directions, Schedule, Share */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8, marginBottom: 18 }}>
+          <div onClick={() => { if (bookUrl) window.open(bookUrl, "_blank"); }} style={tabBtnStyle}>
+            <svg viewBox="0 0 24 24" style={iconStyle}><path d="M3 2v7c0 1.1.9 2 2 2h4c1.1 0 2-.9 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2l-5 5-5-5v13a4 4 0 004 4h2a4 4 0 004-4z"/></svg>
+            <span style={{ ...sf, fontSize: 11, fontWeight: 600, color: "#14140F" }}>Book</span>
+          </div>
+          <a href={googleMapsUrl(spot)} target="_blank" rel="noreferrer" style={{ ...tabBtnStyle, textDecoration: "none" }}>
+            <svg viewBox="0 0 24 24" style={iconStyle}><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>
+            <span style={{ ...sf, fontSize: 11, fontWeight: 600, color: "#14140F" }}>Directions</span>
+          </a>
+          <div onClick={() => {}} style={tabBtnStyle}>
+            <svg viewBox="0 0 24 24" style={iconStyle}><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/></svg>
+            <span style={{ ...sf, fontSize: 11, fontWeight: 600, color: "#14140F" }}>Schedule</span>
+          </div>
+          <div onClick={() => {}} style={tabBtnStyle}>
+            <svg viewBox="0 0 24 24" style={iconStyle}><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.59 13.51l6.83 3.98"/><path d="M15.41 6.51l-6.82 3.98"/></svg>
+            <span style={{ ...sf, fontSize: 11, fontWeight: 600, color: "#14140F" }}>Share</span>
+          </div>
+        </div>
+
+        {/* Address & hours — clean line icons */}
         {(spot.address || spot.opening_hours) && (
           <div style={{ padding: "14px 16px", borderRadius: 14, border: "1px solid rgba(20,20,15,.1)", marginBottom: 18 }}>
-            {spot.address && <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 14, color: "rgba(20,20,15,.6)", marginBottom: spot.opening_hours ? 10 : 0 }}><span style={{ fontSize: 16 }}>📍</span> {spot.address}</div>}
-            {spot.opening_hours && <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 14, color: "rgba(20,20,15,.6)" }}><span style={{ fontSize: 16 }}>🕐</span> {spot.opening_hours}</div>}
+            {spot.address && (
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 12, ...sf, fontSize: 13, color: "rgba(20,20,15,.55)", marginBottom: spot.opening_hours ? 12 : 0 }}>
+                <svg viewBox="0 0 24 24" style={{ ...iconStyle, width: 20, height: 20, flexShrink: 0, marginTop: 1 }}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                <span>{spot.address}</span>
+              </div>
+            )}
+            {spot.opening_hours && (
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 12, ...sf, fontSize: 13, color: "rgba(20,20,15,.55)" }}>
+                <svg viewBox="0 0 24 24" style={{ ...iconStyle, width: 20, height: 20, flexShrink: 0, marginTop: 1 }}><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                <span>{spot.opening_hours}</span>
+              </div>
+            )}
           </div>
         )}
 
-        {/* CTA buttons */}
-        <div style={{ display: "grid", gridTemplateColumns: onMakePlan ? "1fr 1fr" : "1fr", gap: 10, marginBottom: 14 }}>
-          {onMakePlan && <button onClick={() => onMakePlan(spot)} style={{ padding: 15, background: "#D9412B", color: "#FAF7F2", border: "none", fontSize: 13.5, fontWeight: 600, cursor: "pointer", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>✦ Plan around this</button>}
-          {onAddToBucketList && <button onClick={() => onAddToBucketList(spot)} style={{ padding: 15, border: "1.5px solid rgba(20,20,15,.16)", background: "#FAF7F2", fontSize: 13.5, fontWeight: 600, cursor: "pointer", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>📋 Add to a list</button>}
+        {/* CTA buttons: Plan + Save */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 18 }}>
+          {onMakePlan && <button onClick={() => onMakePlan(spot)} style={{ ...sf, padding: 15, background: "#D9412B", color: "#FAF7F2", border: "none", fontSize: 13, fontWeight: 600, cursor: "pointer", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>✦ Plan around this</button>}
+          {onSaveToBoard && !savedToBoard ? (
+            <button onClick={onSaveToBoard} style={{ ...sf, padding: 15, border: "1.5px solid rgba(20,20,15,.16)", background: "#FAF7F2", fontSize: 13, fontWeight: 600, cursor: "pointer", borderRadius: 10 }}>+ Add to saves</button>
+          ) : onAddToBucketList ? (
+            <button onClick={() => onAddToBucketList(spot)} style={{ ...sf, padding: 15, border: "1.5px solid rgba(20,20,15,.16)", background: "#FAF7F2", fontSize: 13, fontWeight: 600, cursor: "pointer", borderRadius: 10 }}>Add to a list</button>
+          ) : (
+            <div style={{ ...sf, padding: 15, background: "#F1EDE4", borderRadius: 10, fontSize: 13, fontWeight: 600, color: "rgba(20,20,15,.4)", textAlign: "center" }}>{savedToBoard ? "✓ Saved" : "Saved"}</div>
+          )}
         </div>
 
-        {spot.user_id || spot.folder || (!readOnly && !onSaveToBoard) ? null : (
-          <button onClick={onSaveToBoard} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 9, width: "100%", padding: "14px", background: "#14140F", color: "#FAF7F2", border: "none", marginBottom: 14, cursor: "pointer", fontSize: 13.5, fontWeight: 600, borderRadius: 10 }}>
-            {savedToBoard ? "✓ Saved to your board" : "+ Save this spot"}
-          </button>
-        )}
-
-        <div data-tour="spot-book" onClick={() => { if (bookUrl) window.open(bookUrl, "_blank"); }} style={{ padding: 15, background: "#D9412B", color: "#FAF7F2", textAlign: "center", fontSize: 13.5, fontWeight: 600, cursor: "pointer", marginBottom: 9, borderRadius: 10 }}>{spot.website ? "Book a table" : "Open in Google Maps"}</div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-          <a href={googleMapsUrl(spot)} target="_blank" rel="noreferrer" style={{ padding: 12, border: "1px solid rgba(20,20,15,.16)", textAlign: "center", fontSize: 11.5, fontWeight: 600, textDecoration: "none", color: "#14140F", borderRadius: 8 }}>Directions</a>
-          <button onClick={() => {}} style={{ padding: 12, border: "1px solid rgba(20,20,15,.16)", background: "none", textAlign: "center", fontSize: 11.5, fontWeight: 600, cursor: "pointer", borderRadius: 8 }}>Schedule</button>
-          <button onClick={() => {}} style={{ padding: 12, border: "1px solid rgba(20,20,15,.16)", background: "none", textAlign: "center", fontSize: 11.5, fontWeight: 600, cursor: "pointer", borderRadius: 8 }}>Share</button>
-        </div>
-
-        <div data-tour="spot-rating" style={{ marginTop: 20, padding: 16, border: "1px solid rgba(20,20,15,.14)" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 12 }}>
-            <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 21 }}>Been? Rate it</div>
-            <div style={{ fontSize: 8.5, fontWeight: 500, letterSpacing: "0.13em", textTransform: "uppercase", color: "rgba(20,20,15,.42)" }}>{myStars ? `You rated it ${myStars}` : "Not rated yet"}</div>
+        {/* Been here? — matches screenshot */}
+        <div data-tour="spot-rating" style={{ padding: 18, borderRadius: 14, background: "#FAF7F2", border: "1px solid rgba(20,20,15,.1)", boxShadow: "0 2px 8px rgba(20,20,15,.04)", marginBottom: 18 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+            <div>
+              <div style={{ ...sf, fontSize: 15, fontWeight: 700, color: "#14140F", marginBottom: 2 }}>Been here?</div>
+              <div style={{ ...sf, fontSize: 12, color: "rgba(20,20,15,.42)" }}>Mark it off and keep your own verdict.</div>
+            </div>
+            <div style={{ ...sf, padding: "5px 12px", borderRadius: 100, border: "1px solid rgba(20,20,15,.14)", fontSize: 12, fontWeight: 500, color: "rgba(20,20,15,.5)", display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}>✓ Not yet</div>
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 14 }}>
             {[1, 2, 3, 4, 5].map(n => (
-              <button key={n} onClick={() => rate(n)} style={{ flex: 1, height: 38, border: `1px solid ${myStars >= n ? "#D9412B" : "rgba(20,20,15,.18)"}`, background: myStars >= n ? "#D9412B" : "transparent", color: myStars >= n ? "#FAF7F2" : "rgba(20,20,15,.5)", fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 17, cursor: "pointer", transition: "all .2s" }}>{n}</button>
+              <span key={n} onClick={() => rate(n)} style={{ fontSize: 28, cursor: "pointer", color: myStars >= n ? "#C8A96E" : "#E0D9CC", transition: "color .15s" }}>★</span>
             ))}
+            <span style={{ ...sf, fontSize: 12, color: "rgba(20,20,15,.38)", marginLeft: 6 }}>{myStars ? `You rated it ${myStars}` : "Tap to rate"}</span>
           </div>
+
+          {/* Notes — matches screenshot */}
+          {!readOnly && (
+            <textarea value={note} onChange={e => setNote(e.target.value)} onBlur={saveNote} placeholder="Notes — what to order, who to bring, where to sit..." style={{ ...sf, width: "100%", border: "none", background: "#F1EDE4", borderRadius: 12, padding: "14px 16px", fontSize: 13, lineHeight: 1.5, color: "rgba(20,20,15,.65)", resize: "vertical", minHeight: 56, outline: "none", boxSizing: "border-box" }} rows={2} />
+          )}
         </div>
 
         {agg.count > 0 && (
-          <div style={{ marginTop: 20, paddingTop: 16, borderTop: "1px solid rgba(20,20,15,.13)" }}>
-            <div style={{ fontSize: 8.5, fontWeight: 500, letterSpacing: "0.16em", textTransform: "uppercase", color: "#0F6B63", marginBottom: 11 }}>Community ratings</div>
-            <div style={{ fontSize: 13, lineHeight: 1.4, color: "rgba(20,20,15,.6)" }}>Average rating: <span style={{ color: "#14140F" }}>{agg.avg?.toFixed(1)}</span> from {agg.count} {agg.count === 1 ? "review" : "reviews"}.</div>
-          </div>
+          <div style={{ ...sf, fontSize: 12, color: "rgba(20,20,15,.42)", marginBottom: 18 }}>Community average: <span style={{ color: "#14140F", fontWeight: 600 }}>{agg.avg?.toFixed(1)}</span> from {agg.count} {agg.count === 1 ? "review" : "reviews"}</div>
         )}
 
-        {!readOnly && (
-          <div style={{ marginTop: 20, padding: 15, background: "#F1EDE4", borderLeft: "3px solid #0F6B63" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
-              <div style={{ fontSize: 8.5, fontWeight: 500, letterSpacing: "0.16em", textTransform: "uppercase", color: "#0F6B63" }}>Your note</div>
-              <button onClick={saveNote} style={{ border: "none", background: "none", fontSize: 8.5, fontWeight: 600, letterSpacing: "0.13em", textTransform: "uppercase", color: "rgba(20,20,15,.45)", cursor: "pointer" }}>{savedNote ? "✓ Saved" : "Save"}</button>
-            </div>
-            <textarea value={note} onChange={e => setNote(e.target.value)} placeholder="Ask for the anchovy one. Go before 7." style={{ width: "100%", border: "none", background: "transparent", fontSize: 14, color: "rgba(20,20,15,.72)", resize: "vertical", minHeight: 40, outline: "none", fontFamily: "inherit" }} rows={2} />
-          </div>
-        )}
-
-        <div style={{ height: 120 }} />
+        <div style={{ height: 100 }} />
       </div>
     </div>
   );
