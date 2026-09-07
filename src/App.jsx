@@ -2015,8 +2015,8 @@ Each object must have this exact structure:
               )}
               <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "0.5rem", gap: 8 }}>
                 <div className="preview-title" style={{ marginBottom: 0 }}>{venue.validated_name || venue.name || "Unknown venue"}</div>
-                <div style={{ fontSize: 9, padding: "2px 8px", borderRadius: 100, background: venue._google_found ? "#eef3d8" : "#F1EDE4", color: venue._google_found ? "#D9412B" : "#7a7062", fontWeight: 500, whiteSpace: "nowrap", flexShrink: 0 }}>
-                  {venue._google_found ? "✓ Google verified" : "⚠ Not on Google"}
+                <div style={{ fontSize: 9, padding: "2px 8px", borderRadius: 100, background: venue._google_found ? "#eef3d8" : "#F1EDE4", color: venue._google_found ? "#0F6B63" : "rgba(20,20,15,.4)", fontWeight: 500, whiteSpace: "nowrap", flexShrink: 0 }}>
+                  {venue._google_found ? "✓ Verified" : "Added from screenshot"}
                 </div>
               </div>
               {[
@@ -4126,7 +4126,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
             {googleMapsUrl(v) && <a href={googleMapsUrl(v)} target="_blank" rel="noreferrer" style={{ fontSize: 9.5, color: "#D9412B", fontWeight: 500 }}>📍 Maps</a>}
             {onMove && <button onClick={onMove} style={{ border: "none", background: "none", padding: 0, fontSize: 9.5, color: "rgba(20,20,15,.55)", fontWeight: 500, cursor: "pointer" }}>↪ Move</button>}
             {draft && v._dup && <span style={{ fontSize: 9, color: "#fff", background: "#DD4124", padding: "2px 7px", borderRadius: 100, fontWeight: 600 }}>Already saved</span>}
-            {draft && !v._google_found && <span style={{ fontSize: 9, color: "#c98a3a" }}>⚠ not on Google</span>}
+            {draft && !v._google_found && <span style={{ fontSize: 9, color: "rgba(20,20,15,.35)" }}>Manual entry</span>}
           </div>
         </div>
       </div>
