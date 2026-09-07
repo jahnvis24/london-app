@@ -3713,7 +3713,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
 
   async function parseScreenshots(files) {
     const drafts = [];
-    let n = 0, failed = 0;
+    let n = 0, failed = 0, lastErr = "";
     // Process each image independently so one unreadable/odd screenshot can't
     // abort the whole batch (supports 50+ uploads).
     for (const file of files) {
@@ -3742,10 +3742,11 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
           }
           break;
         }
-        if (data.error) { failed++; continue; }
+        if (data.error) { console.error("[screenshot] API error:", JSON.stringify(data.error)); failed++; lastErr = data.error?.message || "API error"; continue; }
         const t = (data.content?.find(b => b.type === "text")?.text || "");
+        console.log("[screenshot] Claude response:", t.slice(0, 500));
         const raw = safeJsonParse(t);
-        if (!raw) { failed++; continue; }
+        if (!raw) { console.error("[screenshot] JSON parse failed. Raw:", t.slice(0, 300)); failed++; lastErr = "Couldn't parse AI response"; continue; }
         const items = Array.isArray(raw) ? raw : [raw];
         const isSingleVenue = items.filter(p => p?.name).length === 1;
         for (const p of items) {
@@ -3760,7 +3761,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
         failed++;
       }
     }
-    if (failed) setError(prev => `${failed} screenshot${failed !== 1 ? "s" : ""} couldn't be read and ${failed !== 1 ? "were" : "was"} skipped.${prev ? " " + prev : ""}`);
+    if (failed) setError(prev => `${failed} screenshot${failed !== 1 ? "s" : ""} couldn't be read${lastErr ? ` (${lastErr})` : ""}.${prev ? " " + prev : ""}`);
     return drafts;
   }
 
@@ -3839,7 +3840,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
       } else {
         drafts = await parseMaps(textInput, false);
       }
-      if (!drafts.length) throw new Error("Nothing found to add. Try a clearer source.");
+      if (!drafts.length) throw new Error(mt === "screenshot" ? "Couldn't extract venues from this screenshot. Check the browser console for details." : "Nothing found to add. Try a clearer source.");
       setParseStatus("Fetching photos...");
       for (const d of drafts) await withPreviewPhoto(d);
       // Flag spots already in the user's saves (by Google place id, fuzzy name, or address).
