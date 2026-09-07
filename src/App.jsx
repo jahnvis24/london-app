@@ -2653,7 +2653,7 @@ function ListCover({ items, height = 200 }) {
 
 // Full detail view for a saved spot: About, Book/Website, Notes, Add to calendar.
 function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan, user, onSpotUpdate, readOnly, onSaveToBoard, savedToBoard, onAddToBucketList }) {
-  const { sheetRef, scrimRef } = useDragDismiss(onClose);
+  const swipeRef = useSwipeRight(onClose);
   const cat = normaliseCategory(spot.category);
   const [note, setNote] = useState(() => { if (spot.note != null) return spot.note; try { return localStorage.getItem("cl_note_" + spot.id) || ""; } catch { return ""; } });
   const [savedNote, setSavedNote] = useState(false);
@@ -2704,44 +2704,68 @@ function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan, user, onSpotUpdate
     const style = { display: "block", textAlign: "center", padding: "12px", borderRadius: 0, fontSize: 13, fontWeight: 600, marginBottom: 8, cursor: "pointer", textDecoration: "none", border: primary ? "none" : "1.5px solid rgba(20,20,15,.18)", background: primary ? "#D9412B" : "#fff", color: primary ? "#fff" : "#4a4438" };
     return href ? <a href={href} target="_blank" rel="noreferrer" style={style}>{children}</a> : <button onClick={onClick} style={{ ...style, width: "100%" }}>{children}</button>;
   };
+  const SOURCE_LABEL = { tiktok: "saved via TikTok", instagram: "saved via Instagram", screenshot: "saved via screenshot", maps: "saved via Maps", manual: "added manually" };
   return (
-    <div ref={scrimRef} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.42)", zIndex: 1200, display: "flex", alignItems: "flex-end", justifyContent: "center", animation: "fadeIn 0.2s" }}><div ref={sheetRef} style={{ width: "100%", maxWidth: 420, background: "#FAF7F2", borderRadius: "22px 22px 0 0", maxHeight: "95vh", overflowY: "auto", animation: "cardIn 0.25s ease", paddingBottom: 120 }}>
-      <div style={{ display: "flex", justifyContent: "center", padding: "8px 0 0" }}><div style={{ width: 36, height: 4, borderRadius: 2, background: "rgba(20,20,15,.18)" }} /></div>
-      <div style={{ position: "relative", height: 290, background: photos.length ? "#F1EDE4" : (CAT_COLOURS[cat] || "#D9412B") }}>
+    <div ref={swipeRef} style={{ position: "fixed", inset: 0, zIndex: 1200, background: "#FAF7F2", overflowY: "auto", animation: "screenIn .32s cubic-bezier(.2,.9,.3,1)" }}>
+      <div style={{ position: "relative", height: 360, background: photos.length ? "#F1EDE4" : (CAT_COLOURS[cat] || "#D9412B") }}>
         <div style={{ display: "flex", height: "100%", overflowX: "auto", scrollSnapType: "x mandatory" }}>
           {photos.map((p, i) => <img key={i} src={p} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", flexShrink: 0, scrollSnapAlign: "start" }} />)}
         </div>
-        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 45%, rgba(20,20,15,.86))" }} />
-        <button onClick={onClose} style={{ position: "absolute", top: 14, left: 20, width: 36, height: 36, border: "none", background: "#FAF7F2", cursor: "pointer", fontSize: 17, display: "flex", alignItems: "center", justifyContent: "center" }}>←</button>
-        {photos.length > 1 && <div style={{ position: "absolute", top: 14, right: 20, padding: "4px 9px", background: "rgba(20,20,15,.55)", color: "#FAF7F2", fontSize: 8.5, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase" }}>📷 {photos.length} · swipe</div>}
-        <div style={{ position: "absolute", left: 22, right: 22, bottom: 18 }}>
-          {agg.count > 0 && <div style={{ fontSize: 9, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase", color: "#F0A28E", marginBottom: 7 }}>Rated by {agg.count} {agg.count === 1 ? "person" : "people"}</div>}
-          <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 40, lineHeight: 0.95, color: "#FAF7F2", letterSpacing: "-0.02em" }}>{spot.name}</div>
-          <div style={{ fontSize: 9, fontWeight: 500, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(250,247,242,.7)", marginTop: 9 }}>{[cap(cat), spot.area, spot.price, spot.google_rating ? `${spot.google_rating}` : null].filter(Boolean).join(" · ")}</div>
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 40%, rgba(20,20,15,.88))" }} />
+        <button onClick={onClose} style={{ position: "absolute", top: 16, left: 20, width: 40, height: 40, borderRadius: "50%", border: "none", background: "rgba(20,20,15,.4)", backdropFilter: "blur(8px)", cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center", color: "#FAF7F2" }}>←</button>
+        {photos.length > 1 && <div style={{ position: "absolute", top: 18, right: 20, padding: "5px 10px", background: "rgba(20,20,15,.45)", backdropFilter: "blur(8px)", color: "#FAF7F2", fontSize: 9, fontWeight: 600, borderRadius: 100, letterSpacing: "0.08em", textTransform: "uppercase" }}>📷 {photos.length}</div>}
+        <div style={{ position: "absolute", left: 22, right: 22, bottom: 20 }}>
+          <div style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif", fontSize: 11, fontWeight: 500, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(250,247,242,.6)", marginBottom: 8 }}>{[cap(cat), spot.area].filter(Boolean).join(" · ")}</div>
+          <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 42, lineHeight: 0.95, color: "#FAF7F2", letterSpacing: "-0.02em", fontStyle: "italic" }}>{spot.name}</div>
         </div>
       </div>
 
       <div style={{ padding: "18px 22px 0" }}>
-        {spot.user_id || spot.folder || (!readOnly && !onSaveToBoard) ? (
-          <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "11px 13px", background: "#F1EDE4", borderLeft: "3px solid #0F6B63", marginBottom: 14 }}>
-            <div style={{ width: 18, height: 18, borderRadius: "50%", background: "#0F6B63", color: "#FAF7F2", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10 }}>✓</div>
-            <div style={{ flex: 1, fontSize: 9, fontWeight: 500, letterSpacing: "0.13em", textTransform: "uppercase", color: "rgba(20,20,15,.6)" }}>Saved in {spot.folder || (cat === "bar" ? "Bars" : cat === "restaurant" ? "Restaurants" : cat === "cafe" ? "Cafés" : cap(cat))}</div>
+        {/* Meta: rating, price, source */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+          {spot.google_rating && <span style={{ fontSize: 14, fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>⭐ {spot.google_rating}</span>}
+          {spot.price && <span style={{ fontSize: 14, color: "rgba(20,20,15,.55)" }}>{spot.price}</span>}
+          {spot.source_type && <span style={{ fontSize: 11, padding: "4px 10px", borderRadius: 100, background: "#F1EDE4", color: "rgba(20,20,15,.55)" }}>{SOURCE_LABEL[spot.source_type] || `saved via ${spot.source_type}`}</span>}
+        </div>
+
+        {/* Description */}
+        <div style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif", fontSize: 16, lineHeight: 1.55, color: "rgba(20,20,15,.65)", marginBottom: 20 }}>{spot.comment || "No description yet."}</div>
+
+        {/* Vibe tags */}
+        {spot.vibe_tags?.length > 0 && (
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
+            {spot.vibe_tags.map((t, i) => (
+              <span key={i} style={{ padding: "6px 14px", borderRadius: 100, border: "1px solid rgba(20,20,15,.14)", fontSize: 13, color: "rgba(20,20,15,.6)" }}>{t}</span>
+            ))}
           </div>
-        ) : (
-          <button onClick={onSaveToBoard} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "11px 13px", background: "#14140F", color: "#FAF7F2", border: "none", marginBottom: 14, cursor: "pointer", fontSize: 11.5, fontWeight: 600 }}>
-            <span style={{ fontSize: 16 }}>+</span>
-            <span>{savedToBoard ? "Saved ✓" : "Save this spot"}</span>
+        )}
+
+        {/* Address & hours */}
+        {(spot.address || spot.opening_hours) && (
+          <div style={{ padding: "14px 16px", borderRadius: 14, border: "1px solid rgba(20,20,15,.1)", marginBottom: 18 }}>
+            {spot.address && <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 14, color: "rgba(20,20,15,.6)", marginBottom: spot.opening_hours ? 10 : 0 }}><span style={{ fontSize: 16 }}>📍</span> {spot.address}</div>}
+            {spot.opening_hours && <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 14, color: "rgba(20,20,15,.6)" }}><span style={{ fontSize: 16 }}>🕐</span> {spot.opening_hours}</div>}
+          </div>
+        )}
+
+        {/* CTA buttons */}
+        <div style={{ display: "grid", gridTemplateColumns: onMakePlan ? "1fr 1fr" : "1fr", gap: 10, marginBottom: 14 }}>
+          {onMakePlan && <button onClick={() => onMakePlan(spot)} style={{ padding: 15, background: "#D9412B", color: "#FAF7F2", border: "none", fontSize: 13.5, fontWeight: 600, cursor: "pointer", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>✦ Plan around this</button>}
+          {onAddToBucketList && <button onClick={() => onAddToBucketList(spot)} style={{ padding: 15, border: "1.5px solid rgba(20,20,15,.16)", background: "#FAF7F2", fontSize: 13.5, fontWeight: 600, cursor: "pointer", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>📋 Add to a list</button>}
+        </div>
+
+        {spot.user_id || spot.folder || (!readOnly && !onSaveToBoard) ? null : (
+          <button onClick={onSaveToBoard} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 9, width: "100%", padding: "14px", background: "#14140F", color: "#FAF7F2", border: "none", marginBottom: 14, cursor: "pointer", fontSize: 13.5, fontWeight: 600, borderRadius: 10 }}>
+            {savedToBoard ? "✓ Saved to your board" : "+ Save this spot"}
           </button>
         )}
 
-        <div data-tour="spot-book" onClick={() => { if (bookUrl) window.open(bookUrl, "_blank"); }} style={{ padding: 15, background: "#D9412B", color: "#FAF7F2", textAlign: "center", fontSize: 13.5, fontWeight: 600, cursor: "pointer", marginBottom: 9 }}>{spot.website ? "Book a table" : "Open in Google Maps"}</div>
+        <div data-tour="spot-book" onClick={() => { if (bookUrl) window.open(bookUrl, "_blank"); }} style={{ padding: 15, background: "#D9412B", color: "#FAF7F2", textAlign: "center", fontSize: 13.5, fontWeight: 600, cursor: "pointer", marginBottom: 9, borderRadius: 10 }}>{spot.website ? "Book a table" : "Open in Google Maps"}</div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-          <a href={googleMapsUrl(spot)} target="_blank" rel="noreferrer" style={{ padding: 12, border: "1px solid rgba(20,20,15,.16)", textAlign: "center", fontSize: 11.5, fontWeight: 600, textDecoration: "none", color: "#14140F" }}>Directions</a>
-          <button onClick={() => {}} style={{ padding: 12, border: "1px solid rgba(20,20,15,.16)", background: "none", textAlign: "center", fontSize: 11.5, fontWeight: 600, cursor: "pointer" }}>Schedule</button>
-          <button onClick={() => {}} style={{ padding: 12, border: "1px solid rgba(20,20,15,.16)", background: "none", textAlign: "center", fontSize: 11.5, fontWeight: 600, cursor: "pointer" }}>Share</button>
+          <a href={googleMapsUrl(spot)} target="_blank" rel="noreferrer" style={{ padding: 12, border: "1px solid rgba(20,20,15,.16)", textAlign: "center", fontSize: 11.5, fontWeight: 600, textDecoration: "none", color: "#14140F", borderRadius: 8 }}>Directions</a>
+          <button onClick={() => {}} style={{ padding: 12, border: "1px solid rgba(20,20,15,.16)", background: "none", textAlign: "center", fontSize: 11.5, fontWeight: 600, cursor: "pointer", borderRadius: 8 }}>Schedule</button>
+          <button onClick={() => {}} style={{ padding: 12, border: "1px solid rgba(20,20,15,.16)", background: "none", textAlign: "center", fontSize: 11.5, fontWeight: 600, cursor: "pointer", borderRadius: 8 }}>Share</button>
         </div>
-
-        <div style={{ fontSize: 14, lineHeight: 1.5, color: "rgba(20,20,15,.7)", marginTop: 20 }}>{spot.comment || "No description yet."}</div>
 
         <div data-tour="spot-rating" style={{ marginTop: 20, padding: 16, border: "1px solid rgba(20,20,15,.14)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 12 }}>
@@ -2772,17 +2796,9 @@ function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan, user, onSpotUpdate
           </div>
         )}
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 9, marginTop: 14 }}>
-          {onAddToBucketList && <button onClick={() => onAddToBucketList(spot)} style={{ padding: 14, border: "1px solid #0F6B63", background: "none", color: "#0F6B63", textAlign: "center", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>Add to a bucket list</button>}
-          {onMakePlan && <button onClick={() => onMakePlan(spot)} style={{ padding: 14, border: "1px solid rgba(20,20,15,.18)", background: "none", textAlign: "center", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>Build a night around this</button>}
-        </div>
-
-        <div style={{ marginTop: 20, paddingTop: 16, borderTop: "1px solid rgba(20,20,15,.13)", display: "flex", flexDirection: "column", gap: 11 }}>
-          {spot.opening_hours?.[0] && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, fontWeight: 500, letterSpacing: "0.14em", textTransform: "uppercase" }}><span style={{ color: "rgba(20,20,15,.45)" }}>Open today</span><span>{spot.opening_hours[0]}</span></div>}
-          {spot.source_type && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, fontWeight: 500, letterSpacing: "0.14em", textTransform: "uppercase" }}><span style={{ color: "rgba(20,20,15,.45)" }}>Saved from</span><span>{spot.source_type === "tiktok" ? "TikTok" : spot.source_type === "instagram" ? "Instagram" : spot.source_type === "screenshot" ? "Screenshot" : cap(spot.source_type || "")}</span></div>}
-        </div>
+        <div style={{ height: 120 }} />
       </div>
-    </div></div>
+    </div>
   );
 }
 
