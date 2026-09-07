@@ -3754,7 +3754,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
           setParseStatus(`Looking up "${p.name}" on Google...`);
           let g = null;
           try { g = await enrich(p.name, p.area, p.category); } catch (e) { /* keep without Google */ }
-          drafts.push(buildDraft(p, g, { source_type: "screenshot", source_url: null, _screenshot_b64: isSingleVenue ? base64 : null }));
+          drafts.push(buildDraft(p, g, { source_type: "screenshot", source_url: null, _screenshot_b64: base64 }));
         }
       } catch (e) {
         console.error("[screenshot]", n, e);
