@@ -1749,7 +1749,7 @@ function TikTokParserScreen({ onSuccess }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "claude-sonnet-4-6",
+          model: "claude-haiku-4-5-20251001",
           max_tokens: 1500,
           messages: [{ role: "user", content: [
             { type: "image", source: { type: "base64", media_type: mediaType, data: base64 } },
@@ -3728,7 +3728,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
           const resp = await fetch("/api/claude", {
             method: "POST", headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              model: "claude-sonnet-4-6", max_tokens: 1500,
+              model: "claude-haiku-4-5-20251001", max_tokens: 1500,
               messages: [{ role: "user", content: [
                 { type: "image", source: { type: "base64", media_type: mediaType, data: base64 } },
                 { type: "text", text: `This is a screenshot about a London venue, event, or place. ${EXTRACT_SCHEMA}` },
@@ -5393,7 +5393,7 @@ function SharedListView({ list, user, onClose }) {
       const resp = await fetch("/api/claude", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "claude-sonnet-4-6", max_tokens: 1500,
+          model: "claude-haiku-4-5-20251001", max_tokens: 1500,
           messages: [{ role: "user", content: [
             { type: "image", source: { type: "base64", media_type: mediaType, data: base64 } },
             { type: "text", text: 'This is a screenshot about a London venue. Return ONLY valid JSON (no markdown): [{"name":"venue name","area":"neighbourhood","category":"restaurant|bar|cafe|experience|outdoor|museum|gallery|market|event|nightlife","price":"e.g. £20-30 or null","comment":"short description"}]' },
