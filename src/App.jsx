@@ -2729,7 +2729,7 @@ function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan, user, onSpotUpdate
         </div>
 
         {/* Description */}
-        <div style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif", fontSize: 16, lineHeight: 1.55, color: "rgba(20,20,15,.65)", marginBottom: 20 }}>{spot.comment || "No description yet."}</div>
+        <div style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif", fontSize: 13.5, lineHeight: 1.5, color: "rgba(20,20,15,.55)", marginBottom: 20 }}>{spot.comment || "No description yet."}</div>
 
         {/* Vibe tags */}
         {spot.vibe_tags?.length > 0 && (
