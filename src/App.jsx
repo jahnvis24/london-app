@@ -1418,9 +1418,11 @@ function SwipeDeck({ venues, preferences, onClose, onSave, onOpenSpot }) {
   const hiResCache = useRef({});
   const [hiResPhotos, setHiResPhotos] = useState({});
 
+  const [flipped, setFlipped] = useState(false);
   const current = deck[0];
   const next = deck[1];
 
+  useEffect(() => { setFlipped(false); }, [current?.id]);
   useEffect(() => {
     [current, next].filter(Boolean).forEach(v => {
       if (!v.google_place_id || hiResCache.current[v.id]) return;
@@ -1527,42 +1529,55 @@ function SwipeDeck({ venues, preferences, onClose, onSave, onOpenSpot }) {
         )}
 
         <div ref={dragRef} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
-          style={{ position: "relative", width: "100%", maxWidth: 360, aspectRatio: "3/4", borderRadius: 16, overflow: "hidden", background: "#F1EDE4", boxShadow: "0 8px 32px rgba(0,0,0,.12)", cursor: "grab", touchAction: "none" }}>
-          {photoFor(current) && <img src={photoFor(current)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none" }} />}
-          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 40%, rgba(20,20,15,.88))" }} />
-
-          <div className="stamp-save" style={{ position: "absolute", top: 30, right: 22, padding: "8px 18px", border: "3px solid #0F6B63", borderRadius: 8, color: "#0F6B63", fontSize: 28, fontWeight: 800, letterSpacing: "0.05em", transform: "rotate(12deg)", opacity: 0, transition: "opacity .1s", pointerEvents: "none" }}>SAVE</div>
-          <div className="stamp-nope" style={{ position: "absolute", top: 30, left: 22, padding: "8px 18px", border: "3px solid #D9412B", borderRadius: 8, color: "#D9412B", fontSize: 28, fontWeight: 800, letterSpacing: "0.05em", transform: "rotate(-12deg)", opacity: 0, transition: "opacity .1s", pointerEvents: "none" }}>NOPE</div>
-
-          {matches > 0 && (
-            <div style={{ position: "absolute", top: 16, right: 16, padding: "6px 12px", background: "rgba(15,107,99,.85)", color: "#FAF7F2", borderRadius: 100, fontSize: 11, fontWeight: 600, display: "flex", alignItems: "center", gap: 5, backdropFilter: "blur(8px)" }}>
-              ✓ {matches} taste match{matches > 1 ? "es" : ""}
-            </div>
-          )}
-
-          <div onClick={() => onOpenSpot && onOpenSpot(current)} style={{ position: "absolute", left: 0, right: 0, bottom: 0, padding: "0 22px 22px", cursor: "pointer" }}>
-            <div style={{ fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", fontSize: 11, fontWeight: 500, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(250,247,242,.6)", marginBottom: 6 }}>{[current.category?.toUpperCase(), current.area?.toUpperCase()].filter(Boolean).join(" · ")}</div>
-            <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 32, lineHeight: 1, color: "#FAF7F2", marginBottom: 6 }}>{current.name}</div>
-            <div style={{ fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", fontSize: 11, color: "rgba(250,247,242,.6)", display: "flex", alignItems: "center", gap: 4 }}>
-              {current.google_rating && <><span>⭐</span> <span>{current.google_rating}</span></>}
-              {current.google_rating && current.price && <span style={{ margin: "0 2px" }}>·</span>}
-              {current.price && <span>{current.price}</span>}
-            </div>
-            {current.comment && <div style={{ fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", fontSize: 14, lineHeight: 1.45, color: "rgba(250,247,242,.75)", marginTop: 8, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{current.comment}</div>}
-            {current.vibe_tags?.length > 0 && (
-              <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
-                {current.vibe_tags.slice(0, 3).map((t, i) => (
-                  <span key={i} style={{ padding: "4px 10px", borderRadius: 100, border: "1px solid rgba(250,247,242,.25)", fontSize: 11, color: "rgba(250,247,242,.7)" }}>{t}</span>
-                ))}
+          style={{ position: "relative", width: "100%", maxWidth: 360, aspectRatio: "3/4", perspective: 1000, cursor: "grab", touchAction: "none" }}>
+          <div onClick={() => { if (!posRef.current.x) setFlipped(f => !f); }} style={{ width: "100%", height: "100%", position: "relative", transformStyle: "preserve-3d", transition: "transform 0.5s ease", transform: flipped ? "rotateY(180deg)" : "rotateY(0)" }}>
+            {/* Front face */}
+            <div style={{ position: "absolute", inset: 0, backfaceVisibility: "hidden", borderRadius: 16, overflow: "hidden", background: "#F1EDE4", boxShadow: "0 8px 32px rgba(0,0,0,.12)" }}>
+              {photoFor(current) && <img src={photoFor(current)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none" }} />}
+              <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 40%, rgba(20,20,15,.88))" }} />
+              <div className="stamp-save" style={{ position: "absolute", top: 30, right: 22, padding: "8px 18px", border: "3px solid #0F6B63", borderRadius: 8, color: "#0F6B63", fontSize: 28, fontWeight: 800, letterSpacing: "0.05em", transform: "rotate(12deg)", opacity: 0, transition: "opacity .1s", pointerEvents: "none" }}>SAVE</div>
+              <div className="stamp-nope" style={{ position: "absolute", top: 30, left: 22, padding: "8px 18px", border: "3px solid #D9412B", borderRadius: 8, color: "#D9412B", fontSize: 28, fontWeight: 800, letterSpacing: "0.05em", transform: "rotate(-12deg)", opacity: 0, transition: "opacity .1s", pointerEvents: "none" }}>NOPE</div>
+              {matches > 0 && (
+                <div style={{ position: "absolute", top: 16, right: 16, padding: "6px 12px", background: "rgba(15,107,99,.85)", color: "#FAF7F2", borderRadius: 100, fontSize: 11, fontWeight: 600, display: "flex", alignItems: "center", gap: 5, backdropFilter: "blur(8px)", pointerEvents: "none" }}>
+                  ✓ {matches} taste match{matches > 1 ? "es" : ""}
+                </div>
+              )}
+              <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, padding: "0 22px 22px", pointerEvents: "none" }}>
+                <div style={{ fontSize: 11, fontWeight: 500, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(250,247,242,.6)", marginBottom: 6 }}>{[current.category?.toUpperCase(), current.area?.toUpperCase()].filter(Boolean).join(" · ")}</div>
+                <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 32, lineHeight: 1, color: "#FAF7F2", marginBottom: 6 }}>{current.name}</div>
+                <div style={{ fontSize: 11, color: "rgba(250,247,242,.6)", display: "flex", alignItems: "center", gap: 4 }}>
+                  {current.google_rating && <><span style={{ color: "#D4CFC4" }}>★</span> <span>{current.google_rating}</span></>}
+                  {current.google_rating && current.price && <span style={{ margin: "0 2px" }}>·</span>}
+                  {current.price && <span>{priceToPounds(current.price)}</span>}
+                </div>
+                {current.comment && <div style={{ fontSize: 13, lineHeight: 1.4, color: "rgba(250,247,242,.7)", marginTop: 8, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{current.comment}</div>}
               </div>
-            )}
+              <div style={{ position: "absolute", bottom: 10, left: "50%", transform: "translateX(-50%)", fontSize: 9, color: "rgba(250,247,242,.35)", pointerEvents: "none" }}>tap to flip</div>
+            </div>
+            {/* Back face — reviews */}
+            <div style={{ position: "absolute", inset: 0, backfaceVisibility: "hidden", transform: "rotateY(180deg)", borderRadius: 16, overflow: "hidden", background: "#FAF7F2", boxShadow: "0 8px 32px rgba(0,0,0,.12)", padding: "24px 20px", overflowY: "auto" }}>
+              <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 26, fontStyle: "italic", marginBottom: 4 }}>{current.name}</div>
+              <div style={{ fontSize: 11, color: "rgba(20,20,15,.4)", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 16 }}>{[current.area, priceToPounds(current.price)].filter(Boolean).join(" · ")}{current.google_rating ? ` · ★ ${current.google_rating}` : ""}</div>
+              {current.comment && <div style={{ fontSize: 13, lineHeight: 1.5, color: "rgba(20,20,15,.55)", marginBottom: 16, padding: "12px 14px", background: "#F1EDE4", borderRadius: 10 }}>{current.comment.endsWith(".") ? current.comment : current.comment + "."}</div>}
+              {current.google_review_count > 0 && <div style={{ fontSize: 11, fontWeight: 600, color: "rgba(20,20,15,.4)", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 10 }}>{current.google_review_count} Google reviews</div>}
+              {current.vibe_tags?.length > 0 && (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 16 }}>
+                  {current.vibe_tags.map((t, i) => <span key={i} style={{ padding: "5px 12px", borderRadius: 100, border: "1px solid rgba(20,20,15,.12)", fontSize: 11, color: "rgba(20,20,15,.55)" }}>{t}</span>)}
+                </div>
+              )}
+              {current.address && <div style={{ fontSize: 12, color: "rgba(20,20,15,.45)", marginBottom: 8, display: "flex", alignItems: "flex-start", gap: 8 }}><span style={{ color: "rgba(20,20,15,.3)", flexShrink: 0 }}>📍</span> {current.address}</div>}
+              {current.website && <a href={current.website} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: "#D9412B", fontWeight: 500 }}>Visit website →</a>}
+              <div style={{ position: "absolute", bottom: 10, left: "50%", transform: "translateX(-50%)", fontSize: 9, color: "rgba(20,20,15,.3)" }}>tap to flip back</div>
+            </div>
           </div>
         </div>
       </div>
 
       <div style={{ padding: "20px 0 36px", display: "flex", justifyContent: "center", alignItems: "center", gap: 20 }}>
         <button onClick={() => dismiss("left")} style={{ width: 54, height: 54, borderRadius: "50%", border: "2px solid #D9412B", background: "#FAF7F2", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, cursor: "pointer", color: "#D9412B", boxShadow: "0 2px 8px rgba(0,0,0,.06)" }}>✕</button>
-        <button onClick={undo} disabled={!gone.length} style={{ width: 42, height: 42, borderRadius: "50%", border: "1.5px solid rgba(20,20,15,.2)", background: "#FAF7F2", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, cursor: gone.length ? "pointer" : "default", color: gone.length ? "#14140F" : "rgba(20,20,15,.2)", boxShadow: "0 2px 8px rgba(0,0,0,.04)" }}>↩</button>
+        <button onClick={undo} disabled={!gone.length} style={{ width: 42, height: 42, borderRadius: "50%", border: "1.5px solid rgba(20,20,15,.15)", background: "#FAF7F2", display: "flex", alignItems: "center", justifyContent: "center", cursor: gone.length ? "pointer" : "default", boxShadow: "0 2px 8px rgba(0,0,0,.04)" }}>
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke={gone.length ? "#14140F" : "rgba(20,20,15,.2)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 10h13a4 4 0 010 8H7"/><path d="M7 6L3 10l4 4"/></svg>
+        </button>
         <button onClick={() => dismiss("right")} style={{ width: 60, height: 60, borderRadius: "50%", border: "none", background: "#D9412B", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, cursor: "pointer", color: "#FAF7F2", boxShadow: "0 4px 12px rgba(217,65,43,.25)" }}>♥</button>
       </div>
 
@@ -2752,7 +2767,11 @@ function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan, user, onSpotUpdate
         </div>
         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 40%, rgba(20,20,15,.88))", pointerEvents: "none", zIndex: 3 }} />
         <button onClick={onClose} style={{ position: "absolute", top: 16, left: 20, width: 40, height: 40, borderRadius: "50%", border: "none", background: "rgba(20,20,15,.35)", backdropFilter: "blur(8px)", cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center", color: "#FAF7F2", zIndex: 4 }}>←</button>
-        {photos.length > 1 && <div style={{ position: "absolute", bottom: 80, right: 22, color: "rgba(250,247,242,.45)", pointerEvents: "none", zIndex: 4, fontSize: 18 }}>›</div>}
+        {photos.length > 1 && (
+          <div style={{ position: "absolute", top: "50%", right: 14, transform: "translateY(-50%)", width: 36, height: 36, borderRadius: "50%", background: "rgba(250,247,242,.85)", display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none", zIndex: 4, boxShadow: "0 2px 8px rgba(0,0,0,.12)" }}>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#14140F" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+          </div>
+        )}
         <div style={{ position: "absolute", left: 22, right: 22, bottom: 20, pointerEvents: "none", zIndex: 4 }}>
           <div style={{ ...sf, fontSize: 11, fontWeight: 500, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(250,247,242,.55)", marginBottom: 8 }}>{[cap(cat), spot.area].filter(Boolean).join(" · ")}</div>
           <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 42, lineHeight: 0.95, color: "#FAF7F2", letterSpacing: "-0.02em", fontStyle: "italic" }}>{spot.name}</div>
