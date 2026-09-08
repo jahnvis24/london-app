@@ -3390,6 +3390,7 @@ function SavedScreen({ user, onBuildPlan, onShare, onBarCrawl, openSignal, calen
   const [listSearch, setListSearch] = useState("");
   const [bgParsing, setBgParsing] = useState(false);
   const [bgDone, setBgDone] = useState(false);
+  const [calendarPrompt, setCalendarPrompt] = useState(null); // { spots: [...] } after save
   const [newFolder, setNewFolder] = useState("");
   const [saveNote, setSaveNote] = useState("");
   const [savedView, setSavedView] = useState("folders"); // folders | list | map | calendar
@@ -4018,6 +4019,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
       showSuccess(msg);
       notify("Saved to your collection ✨", savedCount === 1 ? `${toSave[0].name} added` : `${savedCount} spots added`);
       if (skipped) { setInfoToast(`${skipped} already saved — skipped`); setTimeout(() => setInfoToast(null), 3500); }
+      setCalendarPrompt({ spots: toSave });
       await loadSaves();
     } catch (e) {
       console.error("[saveAll]", e);
@@ -4495,7 +4497,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
               )}
             </div>
             <div style={{ position: "sticky", top: 0, zIndex: 1 }}>
-              <SpotsMap key={`maptab-${mapListFilter}`} saves={mapBaseSaves} focusSpot={focusSpot} onCategory={setMapCat} />
+              <SpotsMap key={`maptab-${mapListFilter}-${mapCat}`} saves={scopeSaves} focusSpot={focusSpot} onCategory={setMapCat} />
             </div>
             {renderSheet(scopeSaves, (
               <div style={{ padding: "0 14px 12px" }}>
@@ -4602,7 +4604,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
                         <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gridTemplateRows: "1fr 1fr", gap: 2, height: cardH }}>
                           <div style={{ gridRow: "span 2", position: "relative", overflow: "hidden" }}><img src={photos[0]} alt="" style={ph} /><div style={{ position: "absolute", left: 7, top: 7, width: 22, height: 22, background: tint, color: fg, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 13 }}>{f.charAt(0)}</div></div>
                           <div style={{ overflow: "hidden" }}><img src={photos[1]} alt="" style={ph} /></div>
-                          <div style={{ position: "relative", overflow: "hidden" }}><img src={photos[2]} alt="" style={ph} />{items.length > 3 && <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 500, color: "rgba(20,20,15,.4)", background: "rgba(250,247,242,.7)" }}>+{items.length - 3}</div>}</div>
+                          <div style={{ overflow: "hidden" }}><img src={photos[2]} alt="" style={ph} /></div>
                         </div>
                       );
                     })()}
@@ -4753,6 +4755,25 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
             <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: "1.1rem", color: "#14140F", marginBottom: 6 }}>Saved!</div>
             <div style={{ fontSize: 13, color: "rgba(20,20,15,.55)" }}>{successVenue}</div>
             <div style={{ fontSize: 10, color: "rgba(20,20,15,.45)", marginTop: 4 }}>Added to your collection</div>
+          </div>
+        </div>
+      )}
+
+      {calendarPrompt && !successVenue && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.42)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100, animation: "fadeIn .2s" }}>
+          <div style={{ background: "#FAF7F2", borderRadius: 16, padding: "24px 22px", maxWidth: 300, width: "90%", textAlign: "center", animation: "popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)" }}>
+            <div style={{ fontSize: 28, marginBottom: 8 }}>📅</div>
+            <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 20, marginBottom: 4 }}>Add to calendar?</div>
+            <div style={{ fontSize: 12, color: "rgba(20,20,15,.45)", marginBottom: 18 }}>Schedule {calendarPrompt.spots.length === 1 ? calendarPrompt.spots[0].name : `${calendarPrompt.spots.length} spots`} for a date</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <button onClick={() => { setCalendarPrompt(null); setSavedView("calendar"); }} style={{ padding: 14, background: "#D9412B", color: "#FAF7F2", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Pick a date</button>
+              {calendarPrompt.spots.length === 1 && (() => {
+                const s = calendarPrompt.spots[0];
+                const p = new URLSearchParams({ action: "TEMPLATE", text: s.name || "Visit", details: s.comment || "", location: s.address || s.area || "London" });
+                return <a href={`https://calendar.google.com/calendar/render?${p.toString()}`} target="_blank" rel="noreferrer" onClick={() => setCalendarPrompt(null)} style={{ padding: 12, border: "1px solid rgba(20,20,15,.14)", borderRadius: 10, fontSize: 13, fontWeight: 500, color: "#14140F", textDecoration: "none", cursor: "pointer" }}>Add to Google Calendar</a>;
+              })()}
+              <button onClick={() => setCalendarPrompt(null)} style={{ padding: 10, background: "none", border: "none", fontSize: 13, color: "rgba(20,20,15,.4)", cursor: "pointer" }}>Not now</button>
+            </div>
           </div>
         </div>
       )}
