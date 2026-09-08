@@ -3038,16 +3038,6 @@ function SpotsMap({ saves, listName, focusSpot, onCategory, peek, peekHeight, on
         <div ref={mapRef} style={{ height: mapH, borderRadius: 0, overflow: "hidden", boxShadow: "0 4px 16px rgba(0,0,0,0.12)", display: loaded ? "block" : "none" }} />
         {loaded && <button onClick={resetView} title="Reset map" style={{ position: "absolute", top: 10, right: 10, zIndex: 470, width: 36, height: 36, borderRadius: "50%", border: "none", background: "#fff", boxShadow: "0 2px 8px rgba(0,0,0,0.22)", cursor: "pointer", fontSize: "1rem", lineHeight: 1 }}>⤢</button>}
 
-        {loaded && !listName && !selected && !sheetOpen && cats.length > 1 && (
-          <div style={{ position: "absolute", left: 0, right: 0, bottom: 10, zIndex: 450, display: "flex", gap: 8, padding: "0 10px", overflowX: "auto" }}>
-            <button onClick={() => { setFilter("all"); setSheetOpen(false); setSelected(null); onCategory && onCategory(""); }} style={{ fontSize: 10, padding: "7px 13px", borderRadius: 100, whiteSpace: "nowrap", cursor: "pointer", border: "none", boxShadow: "0 2px 8px rgba(0,0,0,0.18)", flexShrink: 0, background: filter === "all" ? "#14140F" : "#fff", color: filter === "all" ? "#fff" : "#14140F", fontWeight: filter === "all" ? 600 : 500 }}>All</button>
-            {cats.map(c => (
-              <button key={c} onClick={() => { const off = filter === c; setFilter(off ? "all" : c); setSelected(null); setSheetOpen(false); onCategory && onCategory(off ? "" : c); }} style={{ fontSize: 10, padding: "7px 13px", borderRadius: 100, whiteSpace: "nowrap", cursor: "pointer", border: "none", boxShadow: "0 2px 8px rgba(0,0,0,0.18)", flexShrink: 0, background: filter === c ? "#14140F" : "#fff", color: filter === c ? "#fff" : "#14140F", fontWeight: filter === c ? 600 : 500 }}>
-                {CAT_LABEL[c] || capitalise(c)}{filter === c ? " ✕" : ""}
-              </button>
-            ))}
-          </div>
-        )}
 
         {loaded && !listName && !onCategory && !selected && !sheetOpen && filter !== "all" && filteredPts.length > 0 && (
           <div
@@ -4208,10 +4198,6 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
           <div onClick={() => setDetailSpot(s)} style={{ cursor: "pointer" }}>
             <BigSpotCard s={s} photo={s.photo_url} />
           </div>
-          <div style={{ padding: "0 12px 12px", display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
-            <button onClick={() => onBuildPlan([s])} style={{ border: "none", background: "rgba(223,239,135,0.5)", color: "#4B342F", borderRadius: 100, padding: "7px 16px", fontSize: 10, fontWeight: 600, cursor: "pointer" }}>✦ Make a plan based on this</button>
-            <button onClick={() => setMovingSpot(s)} style={{ border: "1px solid rgba(20,20,15,.13)", background: "#fff", borderRadius: 100, padding: "7px 14px", fontSize: 10, color: "rgba(20,20,15,.55)", fontWeight: 500, cursor: "pointer" }}>Move</button>
-          </div>
         </div>
       ))}
     </div>
@@ -4550,7 +4536,26 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
             {saves.some(s => s.lat && s.lng) && (
               <SpotsMap key="peek" saves={saves} peek peekHeight={150} onExpand={() => setSavedView("map")} />
             )}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "0.5rem 0 0.75rem" }}>
+            {saves.length > 0 && (() => {
+              const recent = [...saves].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0)).slice(0, 8);
+              return recent.length > 0 ? (
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 22, marginBottom: 10 }}>Recently saved</div>
+                  <div style={{ display: "flex", gap: 10, overflowX: "auto", scrollbarWidth: "none", paddingBottom: 4 }}>
+                    {recent.map(s => (
+                      <div key={s.id} onClick={() => setDetailSpot(s)} style={{ flex: "none", width: 130, cursor: "pointer" }}>
+                        <div style={{ height: 130, borderRadius: 10, overflow: "hidden", background: "#F1EDE4" }}>
+                          {s.photo_url ? <img src={s.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>{CAT_EMOJI[normaliseCategory(s.category)] || "📍"}</div>}
+                        </div>
+                        <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 14, lineHeight: 1.15, marginTop: 6, color: "#14140F", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.name}</div>
+                        <div style={{ fontSize: 9, color: "rgba(20,20,15,.4)", marginTop: 2 }}>{s.area || cap(normaliseCategory(s.category))}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null;
+            })()}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "0 0 0.75rem" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
                 <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 22 }}>Your lists</div>
               </div>
