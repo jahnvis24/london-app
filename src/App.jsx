@@ -2336,9 +2336,9 @@ function MeScreen({ user, preferences, setPreferences, isAdmin, onBadgeUpdate, a
       ctx.drawImage(img, (img.width - min) / 2, (img.height - min) / 2, min, min, 0, 0, size, size);
       const blob = await new Promise(r => canvas.toBlob(r, "image/jpeg", 0.85));
       const path = `avatars/${user.id}.jpg`;
-      const { error: upErr } = await supabase.storage.from("avatars").upload(path, blob, { upsert: true, contentType: "image/jpeg" });
+      const { error: upErr } = await supabase.storage.from("Avatars").upload(path, blob, { upsert: true, contentType: "image/jpeg" });
       if (upErr) throw upErr;
-      const { data } = supabase.storage.from("avatars").getPublicUrl(path);
+      const { data } = supabase.storage.from("Avatars").getPublicUrl(path);
       if (!data?.publicUrl) throw new Error("Could not get public URL");
       const urlWithBust = data.publicUrl + "?t=" + Date.now();
       await supabase.auth.updateUser({ data: { avatar_url: urlWithBust } });
