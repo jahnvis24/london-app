@@ -422,11 +422,11 @@ async function fileToDownscaledBase64(file, maxDim = 1280, quality = 0.8) {
 
 // ── STYLES ───────────────────────────────────────────────────
 const styles = `
-  @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Instrument+Serif:ital@0;1&display=swap');
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
   button { color: #14140F; font-family: inherit; -webkit-tap-highlight-color: transparent; }
-  body { font-family: 'Instrument Serif', Georgia, serif; -webkit-font-smoothing: antialiased; background: #FAF7F2; color: #14140F; min-height: 100vh; overflow-x: hidden; }
+  body { font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; -webkit-font-smoothing: antialiased; background: #FAF7F2; color: #14140F; min-height: 100vh; overflow-x: hidden; }
   .app { max-width: 420px; margin: 0 auto; min-height: 100vh; background: #FAF7F2; padding-bottom: 88px; position: relative; }
   a { color: #D9412B; text-decoration: none; }
   :focus-visible { outline: 2px solid #D9412B; outline-offset: 2px; }
@@ -470,7 +470,7 @@ const styles = `
   .nav-tab { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0; border: none; background: none; cursor: pointer; gap: 7px; transition: all 0.2s; }
   .nav-tab-icon { display: flex; align-items: center; justify-content: center; line-height: 1; transition: all 0.2s; color: rgba(20,20,15,.38); width: 16px; height: 16px; }
   .nav-tab.active .nav-tab-icon { color: #14140F; background: none; }
-  .nav-tab-label { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 8.5px; font-weight: 600; letter-spacing: 0.11em; color: rgba(20,20,15,.38); text-transform: uppercase; transition: color 0.2s; }
+  .nav-tab-label { font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 8.5px; font-weight: 600; letter-spacing: 0.11em; color: rgba(20,20,15,.38); text-transform: uppercase; transition: color 0.2s; }
   .nav-tab.active .nav-tab-label { color: #14140F; }
   .nav-tab-dot { display: none; }
   .capture-fab { position: fixed; z-index: 110; bottom: calc(98px + env(safe-area-inset-bottom)); right: max(20px, calc(50% - 210px + 20px)); width: 56px; height: 56px; border-radius: 50%; border: none; background: #D9412B; color: #FAF7F2; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 8px 22px rgba(217,65,43,.4); transition: transform 0.34s cubic-bezier(.3,1.3,.4,1); font: 200 30px 'Instrument Serif', Georgia, serif; }
@@ -1546,14 +1546,14 @@ function SwipeDeck({ venues, preferences, onClose, onSave, onOpenSpot }) {
           )}
 
           <div onClick={() => onOpenSpot && onOpenSpot(current)} style={{ position: "absolute", left: 0, right: 0, bottom: 0, padding: "0 22px 22px", cursor: "pointer" }}>
-            <div style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif", fontSize: 11, fontWeight: 500, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(250,247,242,.6)", marginBottom: 6 }}>{[current.category?.toUpperCase(), current.area?.toUpperCase()].filter(Boolean).join(" · ")}</div>
+            <div style={{ fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", fontSize: 11, fontWeight: 500, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(250,247,242,.6)", marginBottom: 6 }}>{[current.category?.toUpperCase(), current.area?.toUpperCase()].filter(Boolean).join(" · ")}</div>
             <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 32, lineHeight: 1, color: "#FAF7F2", marginBottom: 6 }}>{current.name}</div>
-            <div style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif", fontSize: 11, color: "rgba(250,247,242,.6)", display: "flex", alignItems: "center", gap: 4 }}>
+            <div style={{ fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", fontSize: 11, color: "rgba(250,247,242,.6)", display: "flex", alignItems: "center", gap: 4 }}>
               {current.google_rating && <><span>⭐</span> <span>{current.google_rating}</span></>}
               {current.google_rating && current.price && <span style={{ margin: "0 2px" }}>·</span>}
               {current.price && <span>{current.price}</span>}
             </div>
-            {current.comment && <div style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif", fontSize: 14, lineHeight: 1.45, color: "rgba(250,247,242,.75)", marginTop: 8, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{current.comment}</div>}
+            {current.comment && <div style={{ fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", fontSize: 14, lineHeight: 1.45, color: "rgba(250,247,242,.75)", marginTop: 8, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{current.comment}</div>}
             {current.vibe_tags?.length > 0 && (
               <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
                 {current.vibe_tags.slice(0, 3).map((t, i) => (
@@ -1689,7 +1689,7 @@ function DiscoverScreen({ preferences, dbVenues, onStart, onOpenSpot }) {
                 {!v.celebrity_tags?.length && v.google_rating < 4.5 && <div style={{ position: "absolute", top: 12, left: 0, padding: "5px 10px", background: "#14140F", color: "#FAF7F2", fontSize: 8, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase" }}>New</div>}
                 <div style={{ position: "absolute", left: 12, right: 12, bottom: 12 }}>
                   <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 21, lineHeight: 1.05, color: "#FAF7F2" }}>{v.name}</div>
-                  <div style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif", fontSize: 10, fontWeight: 500, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(250,247,242,.6)", marginTop: 6 }}>{[v.area, pounds].filter(Boolean).join(" · ")}</div>
+                  <div style={{ fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", fontSize: 10, fontWeight: 500, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(250,247,242,.6)", marginTop: 6 }}>{[v.area, pounds].filter(Boolean).join(" · ")}</div>
                 </div>
               </div>
             </div>
@@ -1710,14 +1710,14 @@ function DiscoverScreen({ preferences, dbVenues, onStart, onOpenSpot }) {
                 </div>
                 <div style={{ flex: 1, minWidth: 0, paddingTop: 2 }}>
                   <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 22, lineHeight: 1.1, marginBottom: 5 }}>{v.name}</div>
-                  <div style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif", fontSize: 11, fontWeight: 500, letterSpacing: "0.06em", textTransform: "uppercase", color: "rgba(20,20,15,.42)", marginBottom: 8, display: "flex", alignItems: "center", gap: 5 }}>
+                  <div style={{ fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", fontSize: 11, fontWeight: 500, letterSpacing: "0.06em", textTransform: "uppercase", color: "rgba(20,20,15,.42)", marginBottom: 8, display: "flex", alignItems: "center", gap: 5 }}>
                     {v.area && <span>{v.area.toUpperCase()}</span>}
                     {v.area && pounds && <span style={{ color: "rgba(20,20,15,.22)" }}>·</span>}
                     {pounds && <span>{pounds}</span>}
                     {(v.area || pounds) && v.google_rating && <span style={{ color: "rgba(20,20,15,.22)" }}>·</span>}
                     {v.google_rating && <><span style={{ color: "#D4CFC4", fontSize: 11 }}>★</span> <span>{v.google_rating}</span></>}
                   </div>
-                  {desc && <div style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif", fontSize: 12, lineHeight: 1.45, color: "rgba(20,20,15,.5)", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{desc}</div>}
+                  {desc && <div style={{ fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", fontSize: 12, lineHeight: 1.45, color: "rgba(20,20,15,.5)", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{desc}</div>}
                 </div>
                 <div onClick={(e) => { e.stopPropagation(); }} style={{ width: 38, height: 38, flex: "none", borderRadius: "50%", border: "1.5px solid rgba(20,20,15,.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, color: "rgba(20,20,15,.35)", cursor: "pointer", marginTop: 4 }}>+</div>
               </div>
@@ -2725,7 +2725,7 @@ function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan, user, onSpotUpdate
     const style = { display: "block", textAlign: "center", padding: "12px", borderRadius: 0, fontSize: 13, fontWeight: 600, marginBottom: 8, cursor: "pointer", textDecoration: "none", border: primary ? "none" : "1.5px solid rgba(20,20,15,.18)", background: primary ? "#D9412B" : "#fff", color: primary ? "#fff" : "#4a4438" };
     return href ? <a href={href} target="_blank" rel="noreferrer" style={style}>{children}</a> : <button onClick={onClick} style={{ ...style, width: "100%" }}>{children}</button>;
   };
-  const sf = { fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" };
+  const sf = { fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" };
   const SOURCE_LABEL = { tiktok: "saved via TikTok", instagram: "saved via Instagram", screenshot: "saved via screenshot", maps: "saved via Maps", manual: "added manually" };
   const pounds = priceToPounds(spot.price);
   const iconStyle = { width: 22, height: 22, display: "inline-block", verticalAlign: "middle", fill: "none", stroke: "#5B6D4F", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round" };
@@ -4327,14 +4327,14 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
                     </div>
                   </div>
                   <div style={{ padding: "14px 16px" }}>
-                    <div style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif", fontSize: 11, fontWeight: 500, letterSpacing: "0.06em", textTransform: "uppercase", color: "rgba(20,20,15,.4)", marginBottom: 8, display: "flex", alignItems: "center", gap: 5 }}>
+                    <div style={{ fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", fontSize: 11, fontWeight: 500, letterSpacing: "0.06em", textTransform: "uppercase", color: "rgba(20,20,15,.4)", marginBottom: 8, display: "flex", alignItems: "center", gap: 5 }}>
                       {v.area && <span>{v.area.toUpperCase()}</span>}
                       {v.area && v.price && <span style={{ color: "rgba(20,20,15,.2)" }}>·</span>}
                       {v.price && <span>{priceToPounds(v.price) || v.price}</span>}
                       {v.google_rating && <><span style={{ color: "rgba(20,20,15,.2)" }}>·</span><span style={{ color: "#D4CFC4" }}>★</span> <span>{v.google_rating}</span></>}
                       {v._google_found && <><span style={{ color: "rgba(20,20,15,.2)" }}>·</span><span style={{ color: "#0F6B63" }}>✓</span></>}
                     </div>
-                    {v.comment && <div style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif", fontSize: 13, lineHeight: 1.45, color: "rgba(20,20,15,.5)", marginBottom: 10 }}>{v.comment}</div>}
+                    {v.comment && <div style={{ fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", fontSize: 13, lineHeight: 1.45, color: "rgba(20,20,15,.5)", marginBottom: 10 }}>{v.comment}</div>}
                     {v.vibe_tags?.length > 0 && (
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 8 }}>
                         {v.vibe_tags.slice(0, 4).map((t, j) => <span key={j} style={{ fontSize: 11, background: "#F1EDE4", color: "rgba(20,20,15,.5)", padding: "3px 9px", borderRadius: 100 }}>{String(t).replace(/_/g, " ")}</span>)}
@@ -4350,18 +4350,18 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
               <div ref={tourSelRef} style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
                 <div onClick={() => { setSaveFolder(""); if (tourStep === 1) setTourStep(2); }} style={{ padding: "14px 10px", borderRadius: 12, border: `1.5px solid ${saveFolder === "" ? "#0F6B63" : "rgba(20,20,15,.1)"}`, background: saveFolder === "" ? "rgba(15,107,99,.06)" : "#fff", cursor: "pointer", textAlign: "center" }}>
                   <div style={{ fontSize: 18, marginBottom: 4 }}>✦</div>
-                  <div style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif", fontSize: 11, fontWeight: 600, color: saveFolder === "" ? "#0F6B63" : "#14140F" }}>Auto</div>
+                  <div style={{ fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", fontSize: 11, fontWeight: 600, color: saveFolder === "" ? "#0F6B63" : "#14140F" }}>Auto</div>
                   <div style={{ fontSize: 9, color: "rgba(20,20,15,.35)", marginTop: 2 }}>By category</div>
                 </div>
                 {existingFolders.map(f => (
                   <div key={f} onClick={() => { setSaveFolder(f); if (tourStep === 1) setTourStep(2); }} style={{ padding: "14px 10px", borderRadius: 12, border: `1.5px solid ${saveFolder === f ? "#0F6B63" : "rgba(20,20,15,.1)"}`, background: saveFolder === f ? "rgba(15,107,99,.06)" : "#fff", cursor: "pointer", textAlign: "center", overflow: "hidden" }}>
                     <div style={{ fontSize: 18, marginBottom: 4 }}>{f === "Restaurants" ? "🍽️" : f === "Bars" ? "🍸" : f === "Cafés" ? "☕" : "📁"}</div>
-                    <div style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif", fontSize: 11, fontWeight: 600, color: saveFolder === f ? "#0F6B63" : "#14140F", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f}</div>
+                    <div style={{ fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", fontSize: 11, fontWeight: 600, color: saveFolder === f ? "#0F6B63" : "#14140F", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f}</div>
                   </div>
                 ))}
                 <div onClick={() => { setSaveFolder("__new__"); if (tourStep === 1) setTourStep(2); }} style={{ padding: "14px 10px", borderRadius: 12, border: `1.5px dashed ${saveFolder === "__new__" ? "#0F6B63" : "rgba(20,20,15,.18)"}`, background: saveFolder === "__new__" ? "rgba(15,107,99,.06)" : "transparent", cursor: "pointer", textAlign: "center" }}>
                   <div style={{ fontSize: 18, marginBottom: 4 }}>+</div>
-                  <div style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif", fontSize: 11, fontWeight: 600, color: saveFolder === "__new__" ? "#0F6B63" : "rgba(20,20,15,.45)" }}>New list</div>
+                  <div style={{ fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", fontSize: 11, fontWeight: 600, color: saveFolder === "__new__" ? "#0F6B63" : "rgba(20,20,15,.45)" }}>New list</div>
                 </div>
               </div>
               {saveFolder === "__new__" && (
@@ -4591,13 +4591,13 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
                       </div>
                     </div>
                     <div style={{ padding: "12px 14px" }}>
-                      <div style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif", fontSize: 11, fontWeight: 500, letterSpacing: "0.06em", textTransform: "uppercase", color: "rgba(20,20,15,.4)", display: "flex", alignItems: "center", gap: 5 }}>
+                      <div style={{ fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", fontSize: 11, fontWeight: 500, letterSpacing: "0.06em", textTransform: "uppercase", color: "rgba(20,20,15,.4)", display: "flex", alignItems: "center", gap: 5 }}>
                         {s.area && <span>{s.area.toUpperCase()}</span>}
                         {s.area && s.price && <span style={{ color: "rgba(20,20,15,.2)" }}>·</span>}
                         {s.price && <span>{priceToPounds(s.price) || s.price}</span>}
                         {s.google_rating && <><span style={{ color: "rgba(20,20,15,.2)" }}>·</span><span style={{ color: "#D4CFC4" }}>★</span> <span>{s.google_rating}</span></>}
                       </div>
-                      {s.comment && <div style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif", fontSize: 12, lineHeight: 1.4, color: "rgba(20,20,15,.45)", marginTop: 6, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{s.comment}</div>}
+                      {s.comment && <div style={{ fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", fontSize: 12, lineHeight: 1.4, color: "rgba(20,20,15,.45)", marginTop: 6, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{s.comment}</div>}
                     </div>
                   </div>
                 ))}
