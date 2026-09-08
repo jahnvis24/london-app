@@ -4574,9 +4574,9 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
             <div data-tour="saves-lists" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, animation: "screenIn .28s cubic-bezier(.2,.9,.3,1)" }}>
               {folderNames.map((f, fi) => {
                 const items = grouped[f] || [];
-                const tints = { "Restaurants": "#D9412B", "Bars": "#0F6B63", "Cafés": "#EFEAE0", "Date night": "#0F6B63" };
+                const tints = { "Restaurants": "#D9412B", "Bars": "#D9412B", "Cafés": "#D9412B", "Date night": "#D9412B" };
                 const tint = tints[f] || "#D9412B";
-                const fg = f === "Cafés" ? "#14140F" : "#FAF7F2";
+                const fg = "#FAF7F2";
                 const cardH = 158;
                 return (
                   <div key={f} data-tour={fi === 0 ? "saves-list-card" : undefined} onClick={() => setOpenFolder(f)} style={{ cursor: "pointer" }}>
@@ -4618,9 +4618,9 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
             <div data-tour="saves-lists" style={{ animation: "screenIn .28s cubic-bezier(.2,.9,.3,1)" }}>
               {folderNames.map((f, fi) => {
                 const items = grouped[f] || [];
-                const tints = { "Restaurants": "#D9412B", "Bars": "#0F6B63", "Cafés": "#EFEAE0", "Date night": "#0F6B63" };
+                const tints = { "Restaurants": "#D9412B", "Bars": "#D9412B", "Cafés": "#D9412B", "Date night": "#D9412B" };
                 const tint = tints[f] || "#D9412B";
-                const fg = f === "Cafés" ? "#14140F" : "#FAF7F2";
+                const fg = "#FAF7F2";
                 return (
                   <div key={f} onClick={() => setOpenFolder(f)} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 0", borderTop: "1px solid rgba(20,20,15,.13)", cursor: "pointer" }}>
                     <div style={{ width: 54, height: 54, flex: "none", background: tint, color: fg, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 22 }}>{f.charAt(0)}</div>
