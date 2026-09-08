@@ -2443,6 +2443,13 @@ function MeScreen({ user, preferences, setPreferences, isAdmin, onBadgeUpdate, a
       </div>
 
 
+      {/* Account details */}
+      <div style={{ margin: "0 22px 18px", padding: "14px 16px", background: "#F1EDE4", borderRadius: 12 }}>
+        <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(20,20,15,.35)", marginBottom: 8 }}>Account</div>
+        <div style={{ fontSize: 13, color: "#14140F", marginBottom: 4 }}>{user?.email || "No email"}</div>
+        <div style={{ fontSize: 11, color: "rgba(20,20,15,.35)" }}>Signed in via {user?.app_metadata?.provider === "google" ? "Google" : "email"}</div>
+      </div>
+
       {/* Menu items */}
       <div style={{ padding: "0 22px", display: "flex", flexDirection: "column" }}>
         {[
