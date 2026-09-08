@@ -3396,6 +3396,8 @@ function SavedScreen({ user, onBuildPlan, onShare, onBarCrawl, openSignal, calen
   const [infoToast, setInfoToast] = useState(null);
   const [openFolder, setOpenFolder] = useState(null);
   const [saveFolder, setSaveFolder] = useState(""); // "" = auto by category, "__new__" = create new
+  const [listPickerOpen, setListPickerOpen] = useState(false);
+  const [listSearch, setListSearch] = useState("");
   const [newFolder, setNewFolder] = useState("");
   const [saveNote, setSaveNote] = useState("");
   const [savedView, setSavedView] = useState("folders"); // folders | list | map | calendar
@@ -4407,38 +4409,70 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
               );
             })}
 
-            <div style={{ marginTop: 14 }}>
-              <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(20,20,15,.4)", marginBottom: 10 }}>Save to list</div>
-              <div ref={tourSelRef} style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-                <div onClick={() => { setSaveFolder(""); if (tourStep === 1) setTourStep(2); }} style={{ padding: "14px 10px", borderRadius: 12, border: `1.5px solid ${saveFolder === "" ? "#0F6B63" : "rgba(20,20,15,.1)"}`, background: saveFolder === "" ? "rgba(15,107,99,.06)" : "#fff", cursor: "pointer", textAlign: "center" }}>
-                  <div style={{ fontSize: 18, marginBottom: 4 }}>✦</div>
-                  <div style={{ fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", fontSize: 11, fontWeight: 600, color: saveFolder === "" ? "#0F6B63" : "#14140F" }}>Auto</div>
-                  <div style={{ fontSize: 9, color: "rgba(20,20,15,.35)", marginTop: 2 }}>By category</div>
-                </div>
-                {existingFolders.map(f => (
-                  <div key={f} onClick={() => { setSaveFolder(f); if (tourStep === 1) setTourStep(2); }} style={{ padding: "14px 10px", borderRadius: 12, border: `1.5px solid ${saveFolder === f ? "#0F6B63" : "rgba(20,20,15,.1)"}`, background: saveFolder === f ? "rgba(15,107,99,.06)" : "#fff", cursor: "pointer", textAlign: "center", overflow: "hidden" }}>
-                    <div style={{ fontSize: 18, marginBottom: 4 }}>{f === "Restaurants" ? "🍽️" : f === "Bars" ? "🍸" : f === "Cafés" ? "☕" : "📁"}</div>
-                    <div style={{ fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", fontSize: 11, fontWeight: 600, color: saveFolder === f ? "#0F6B63" : "#14140F", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f}</div>
-                  </div>
-                ))}
-                <div onClick={() => { setSaveFolder("__new__"); if (tourStep === 1) setTourStep(2); }} style={{ padding: "14px 10px", borderRadius: 12, border: `1.5px dashed ${saveFolder === "__new__" ? "#0F6B63" : "rgba(20,20,15,.18)"}`, background: saveFolder === "__new__" ? "rgba(15,107,99,.06)" : "transparent", cursor: "pointer", textAlign: "center" }}>
-                  <div style={{ fontSize: 18, marginBottom: 4 }}>+</div>
-                  <div style={{ fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", fontSize: 11, fontWeight: 600, color: saveFolder === "__new__" ? "#0F6B63" : "rgba(20,20,15,.45)" }}>New list</div>
-                </div>
-              </div>
-              {saveFolder === "__new__" && (
-                <input className="input-field" autoFocus style={{ marginTop: 8 }} placeholder="New list name" value={newFolder} onChange={e => setNewFolder(e.target.value)} />
-              )}
-            </div>
             {preview.some(d => d._dup) && (
               <div style={{ fontSize: 11, color: "#DD4124", marginTop: 10 }}>
                 {preview.filter(d => d._dup).length} duplicate{preview.filter(d => d._dup).length > 1 ? "s" : ""} will be skipped.
               </div>
             )}
           </div>
-          <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, padding: "16px 22px calc(16px + env(safe-area-inset-bottom))", background: "#FAF7F2", borderTop: "1px solid rgba(20,20,15,.1)", zIndex: 11 }}>
-            <button ref={tourSaveRef} className="btn btn-teal" onClick={saveAll} disabled={saving || (saveFolder === "__new__" && !newFolder.trim()) || preview.every(d => d._dup)} style={{ width: "100%", padding: 16, fontSize: 14, fontWeight: 600 }}>{saving ? "Saving..." : `Save ${preview.filter(d => !d._dup).length} spot${preview.filter(d => !d._dup).length !== 1 ? "s" : ""} ✦`}</button>
+          {/* Fixed bottom bar: save button */}
+          <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, padding: "12px 22px calc(12px + env(safe-area-inset-bottom))", background: "#FAF7F2", borderTop: "1px solid rgba(20,20,15,.1)", zIndex: 11, display: "flex", gap: 10 }}>
+            <button ref={tourSaveRef} onClick={() => setListPickerOpen(true)} style={{ flex: 1, padding: 16, background: "#D9412B", color: "#FAF7F2", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+              {saveFolder && saveFolder !== "__new__" ? `Save to ${saveFolder}` : "Save to list"}
+            </button>
           </div>
+
+          {/* Pinterest-style list picker */}
+          {listPickerOpen && (
+            <div style={{ position: "fixed", inset: 0, zIndex: 1300, background: "#FAF7F2", animation: "screenIn .25s cubic-bezier(.2,.9,.3,1)", display: "flex", flexDirection: "column" }}>
+              <div style={{ padding: "14px 22px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid rgba(20,20,15,.1)" }}>
+                <button onClick={() => setListPickerOpen(false)} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "#14140F" }}>✕</button>
+                <div style={{ fontSize: 15, fontWeight: 600, color: "#14140F" }}>Save to</div>
+                <div style={{ width: 24 }} />
+              </div>
+              <div style={{ padding: "12px 22px 8px" }}>
+                <input value={listSearch} onChange={e => setListSearch(e.target.value)} placeholder="Search" style={{ width: "100%", padding: "10px 14px", border: "1px solid rgba(20,20,15,.12)", borderRadius: 10, background: "#F1EDE4", fontSize: 13, outline: "none", boxSizing: "border-box" }} />
+              </div>
+              <div style={{ flex: 1, overflowY: "auto", padding: "4px 22px" }}>
+                {/* Auto option */}
+                <div onClick={() => { setSaveFolder(""); setListPickerOpen(false); saveAll(); }} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 0", borderBottom: "1px solid rgba(20,20,15,.06)", cursor: "pointer" }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 8, background: "#14140F", color: "#FAF7F2", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>✦</div>
+                  <div>
+                    <div style={{ fontSize: 15, fontWeight: 600, color: "#14140F" }}>Auto — by category</div>
+                    <div style={{ fontSize: 11, color: "rgba(20,20,15,.4)" }}>We'll sort them for you</div>
+                  </div>
+                </div>
+                {/* Your boards */}
+                {existingFolders.length > 0 && <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(20,20,15,.35)", padding: "16px 0 6px" }}>Your lists</div>}
+                {existingFolders.filter(f => !listSearch || f.toLowerCase().includes(listSearch.toLowerCase())).map(f => {
+                  const folderItems = grouped[f] || [];
+                  const thumb = folderItems.find(s => s.photo_url)?.photo_url;
+                  return (
+                    <div key={f} onClick={() => { setSaveFolder(f); setListPickerOpen(false); setListSearch(""); saveAll(); }} style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 0", borderBottom: "1px solid rgba(20,20,15,.06)", cursor: "pointer" }}>
+                      <div style={{ width: 44, height: 44, borderRadius: 8, background: "#F1EDE4", overflow: "hidden", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        {thumb ? <img src={thumb} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontSize: 18 }}>{f === "Restaurants" ? "🍽️" : f === "Bars" ? "🍸" : f === "Cafés" ? "☕" : "📁"}</span>}
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 15, fontWeight: 500, color: "#14140F" }}>{f}</div>
+                        <div style={{ fontSize: 11, color: "rgba(20,20,15,.35)" }}>{folderItems.length} spot{folderItems.length !== 1 ? "s" : ""}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {/* Create new board */}
+              <div style={{ padding: "12px 22px calc(12px + env(safe-area-inset-bottom))", borderTop: "1px solid rgba(20,20,15,.1)" }}>
+                {saveFolder === "__new__" ? (
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <input autoFocus value={newFolder} onChange={e => setNewFolder(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && newFolder.trim()) { setListPickerOpen(false); setListSearch(""); saveAll(); } }} placeholder="List name" style={{ flex: 1, padding: "12px 14px", border: "1px solid rgba(20,20,15,.14)", borderRadius: 10, fontSize: 14, outline: "none" }} />
+                    <button onClick={() => { if (newFolder.trim()) { setListPickerOpen(false); setListSearch(""); saveAll(); } }} style={{ padding: "12px 20px", background: "#D9412B", color: "#FAF7F2", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Save</button>
+                  </div>
+                ) : (
+                  <button onClick={() => setSaveFolder("__new__")} style={{ width: "100%", padding: 14, background: "#D9412B", color: "#FAF7F2", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Create new list</button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
