@@ -466,12 +466,12 @@ const styles = `
   .home-sub { font-size: 13px; color: rgba(20,20,15,.55); line-height: 1.5; position: relative; z-index: 1; max-width: 200px; }
   .home-cta { margin-top: 1.5rem; position: relative; z-index: 1; }
 
-  .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 420px; height: 88px; background: #14140F; border-top: none; display: flex; align-items: flex-start; padding: 13px 8px 0; z-index: 100; padding-bottom: env(safe-area-inset-bottom); }
+  .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 420px; height: 88px; background: rgba(250,247,242,.92); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); border-top: 1px solid rgba(20,20,15,.12); display: flex; align-items: flex-start; padding: 13px 8px 0; z-index: 100; padding-bottom: env(safe-area-inset-bottom); }
   .nav-tab { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0; border: none; background: none; cursor: pointer; gap: 7px; transition: all 0.2s; }
-  .nav-tab-icon { display: flex; align-items: center; justify-content: center; line-height: 1; transition: all 0.2s; color: rgba(250,247,242,.4); width: 16px; height: 16px; }
-  .nav-tab.active .nav-tab-icon { color: #FAF7F2; background: none; }
-  .nav-tab-label { font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 8.5px; font-weight: 600; letter-spacing: 0.11em; color: rgba(250,247,242,.4); text-transform: uppercase; transition: color 0.2s; }
-  .nav-tab.active .nav-tab-label { color: #FAF7F2; }
+  .nav-tab-icon { display: flex; align-items: center; justify-content: center; line-height: 1; transition: all 0.2s; color: rgba(20,20,15,.35); width: 16px; height: 16px; }
+  .nav-tab.active .nav-tab-icon { color: #14140F; background: none; }
+  .nav-tab-label { font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 8.5px; font-weight: 700; letter-spacing: 0.11em; color: rgba(20,20,15,.35); text-transform: uppercase; transition: color 0.2s; }
+  .nav-tab.active .nav-tab-label { color: #14140F; }
   .nav-tab-dot { display: none; }
   .capture-fab { position: fixed; z-index: 110; bottom: calc(98px + env(safe-area-inset-bottom)); right: max(20px, calc(50% - 210px + 20px)); width: 56px; height: 56px; border-radius: 50%; border: none; background: #D9412B; color: #FAF7F2; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 8px 22px rgba(217,65,43,.4); transition: transform 0.34s cubic-bezier(.3,1.3,.4,1); font: 200 30px 'Instrument Serif', Georgia, serif; }
   .capture-fab:active { transform: scale(0.92); }
@@ -727,23 +727,18 @@ function useSwipeRight(onBack) {
       const dx = e.touches[0].clientX - startX;
       const dy = Math.abs(e.touches[0].clientY - startY);
       if (dy > 60) { dragging = false; el.style.transform = ""; return; }
-      if (dx > 0) {
-        el.style.transform = `translateX(${dx}px)`;
-        el.style.opacity = Math.max(0.3, 1 - dx / 400);
-      }
+      if (dx > 0) el.style.transform = `translateX(${dx}px)`;
     };
     const onEnd = (e) => {
       if (!dragging) return;
       dragging = false;
       const dx = e.changedTouches[0].clientX - startX;
-      el.style.transition = "transform 0.25s ease, opacity 0.25s ease";
+      el.style.transition = "transform 0.25s ease";
       if (dx > 100) {
         el.style.transform = "translateX(110%)";
-        el.style.opacity = "0";
         setTimeout(onBack, 250);
       } else {
         el.style.transform = "translateX(0)";
-        el.style.opacity = "1";
       }
     };
     el.addEventListener("touchstart", onStart, { passive: true });
@@ -2765,15 +2760,15 @@ function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan, user, onSpotUpdate
       </div>
 
       <div style={{ padding: "16px 22px 0" }}>
-        {/* Meta: rating, price, source */}
+        {/* Community stats */}
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
-          {spot.google_rating && <span style={{ ...sf, fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}><span style={{ color: "#D4CFC4", fontSize: 14 }}>★</span> {spot.google_rating}</span>}
-          {pounds && <span style={{ ...sf, fontSize: 13, color: "rgba(20,20,15,.5)" }}>{pounds}</span>}
-          {spot.source_type && <span style={{ ...sf, fontSize: 11, padding: "3px 10px", borderRadius: 100, background: "#F1EDE4", color: "rgba(20,20,15,.5)" }}>{SOURCE_LABEL[spot.source_type] || `saved via ${spot.source_type}`}</span>}
+          {agg.count > 0 && <span style={{ ...sf, fontSize: 12, color: "rgba(20,20,15,.45)" }}>{agg.count} {agg.count === 1 ? "rating" : "ratings"}{agg.avg ? ` · ${agg.avg.toFixed(1)}` : ""}</span>}
+          {pounds && <span style={{ ...sf, fontSize: 12, color: "rgba(20,20,15,.45)" }}>{pounds}</span>}
+          {spot.source_type && <span style={{ ...sf, fontSize: 11, padding: "3px 10px", borderRadius: 100, background: "#F1EDE4", color: "rgba(20,20,15,.45)" }}>{SOURCE_LABEL[spot.source_type] || `saved via ${spot.source_type}`}</span>}
         </div>
 
-        {/* Description */}
-        <div style={{ ...sf, fontSize: 13.5, lineHeight: 1.5, color: "rgba(20,20,15,.5)", marginBottom: 16 }}>{spot.comment || "No description yet."}</div>
+        {/* Description — 2 lines, ends with full stop */}
+        <div style={{ ...sf, fontSize: 13.5, lineHeight: 1.5, color: "rgba(20,20,15,.5)", marginBottom: 16, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{(() => { const c = spot.comment || "No description yet."; return c.endsWith(".") ? c : c + "."; })()}</div>
 
         {/* Vibe tags */}
         {spot.vibe_tags?.length > 0 && (
@@ -2804,21 +2799,13 @@ function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan, user, onSpotUpdate
           </div>
         </div>
 
-        {/* Address & hours — clean line icons */}
-        {(spot.address || spot.opening_hours) && (
+        {/* Address — no timings */}
+        {spot.address && (
           <div style={{ padding: "14px 16px", borderRadius: 14, border: "1px solid rgba(20,20,15,.1)", marginBottom: 18 }}>
-            {spot.address && (
-              <div style={{ display: "flex", alignItems: "flex-start", gap: 12, ...sf, fontSize: 13, color: "rgba(20,20,15,.55)", marginBottom: spot.opening_hours ? 12 : 0 }}>
-                <svg viewBox="0 0 24 24" style={{ ...iconStyle, width: 20, height: 20, flexShrink: 0, marginTop: 1 }}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                <span>{spot.address}</span>
-              </div>
-            )}
-            {spot.opening_hours && (
-              <div style={{ display: "flex", alignItems: "flex-start", gap: 12, ...sf, fontSize: 13, color: "rgba(20,20,15,.55)" }}>
-                <svg viewBox="0 0 24 24" style={{ ...iconStyle, width: 20, height: 20, flexShrink: 0, marginTop: 1 }}><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-                <span>{spot.opening_hours}</span>
-              </div>
-            )}
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 12, ...sf, fontSize: 13, color: "rgba(20,20,15,.55)" }}>
+              <svg viewBox="0 0 24 24" style={{ ...iconStyle, width: 20, height: 20, flexShrink: 0, marginTop: 1 }}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              <span>{spot.address}</span>
+            </div>
           </div>
         )}
 
