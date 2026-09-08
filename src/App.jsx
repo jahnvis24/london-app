@@ -2346,7 +2346,7 @@ function MeScreen({ user, preferences, setPreferences, isAdmin, onBadgeUpdate, a
       setAvatar(urlWithBust);
       setAvatarPreview(null);
     } catch (err) {
-      alert("Upload failed — make sure the 'avatars' storage bucket exists in Supabase and is set to public.\n\n" + err.message);
+      setInfoToast("Photo upload failed — try again"); setTimeout(() => setInfoToast(null), 3500);
     } finally { setUploading(false); }
   }
 
@@ -2812,11 +2812,11 @@ function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan, user, onSpotUpdate
             <svg viewBox="0 0 24 24" style={iconStyle}><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>
             <span style={{ ...sf, fontSize: 11, fontWeight: 600, color: "#14140F" }}>Directions</span>
           </a>
-          <div onClick={() => {}} style={tabBtnStyle}>
+          <a href={gcalUrl} target="_blank" rel="noreferrer" style={{ ...tabBtnStyle, textDecoration: "none" }}>
             <svg viewBox="0 0 24 24" style={iconStyle}><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/></svg>
             <span style={{ ...sf, fontSize: 11, fontWeight: 600, color: "#14140F" }}>Schedule</span>
-          </div>
-          <div onClick={() => {}} style={tabBtnStyle}>
+          </a>
+          <div onClick={() => { const text = `${spot.name}${spot.area ? ` — ${spot.area}` : ""}${spot.comment ? `\n${spot.comment}` : ""}${googleMapsUrl(spot) ? `\n${googleMapsUrl(spot)}` : ""}`; if (navigator.share) navigator.share({ title: spot.name, text }).catch(() => {}); else { navigator.clipboard?.writeText(text); setInfoToast("Copied to clipboard"); setTimeout(() => setInfoToast(null), 2500); } }} style={tabBtnStyle}>
             <svg viewBox="0 0 24 24" style={iconStyle}><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.59 13.51l6.83 3.98"/><path d="M15.41 6.51l-6.82 3.98"/></svg>
             <span style={{ ...sf, fontSize: 11, fontWeight: 600, color: "#14140F" }}>Share</span>
           </div>
@@ -2851,7 +2851,7 @@ function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan, user, onSpotUpdate
               <div style={{ ...sf, fontSize: 15, fontWeight: 700, color: "#14140F", marginBottom: 2 }}>Been here?</div>
               <div style={{ ...sf, fontSize: 12, color: "rgba(20,20,15,.42)" }}>Mark it off and keep your own verdict.</div>
             </div>
-            <div style={{ ...sf, padding: "5px 12px", borderRadius: 100, border: "1px solid rgba(20,20,15,.14)", fontSize: 12, fontWeight: 500, color: "rgba(20,20,15,.5)", display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}>✓ Not yet</div>
+            <div onClick={() => { const now = visitDate ? "" : new Date().toISOString().slice(0, 10); setVisitDate(now); persist({ visit_date: now || null }, "cl_visit_" + spot.id, now); }} style={{ ...sf, padding: "5px 12px", borderRadius: 100, border: `1px solid ${visitDate ? "#0F6B63" : "rgba(20,20,15,.14)"}`, background: visitDate ? "rgba(15,107,99,.08)" : "transparent", fontSize: 12, fontWeight: 500, color: visitDate ? "#0F6B63" : "rgba(20,20,15,.5)", display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}>{visitDate ? "✓ Been" : "✓ Not yet"}</div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 14 }}>
             {[1, 2, 3, 4, 5].map(n => (
