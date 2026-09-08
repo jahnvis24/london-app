@@ -1453,6 +1453,7 @@ function SwipeDeck({ venues, preferences, onClose, onSave, onOpenSpot }) {
   function dismiss(dir) {
     if (!current) return;
     const saved = dir === "right";
+    haptic(saved ? [8, 20, 8] : 12);
     setGone(prev => [{ venue: current, action: saved ? "save" : "skip" }, ...prev]);
     setDeck(prev => prev.slice(1));
     if (saved) { setSavedCount(n => n + 1); onSave && onSave(current); }
@@ -1471,11 +1472,13 @@ function SwipeDeck({ venues, preferences, onClose, onSave, onOpenSpot }) {
   }
 
   const wasDragRef = useRef(false);
+  const thresholdRef = useRef(false);
   const onTouchStart = (e) => {
     const t = e.touches[0];
     startRef.current = { x: t.clientX, y: t.clientY, time: Date.now() };
     posRef.current = { x: 0, y: 0 };
     wasDragRef.current = false;
+    thresholdRef.current = false;
   };
   const onTouchMove = (e) => {
     if (!startRef.current || !dragRef.current) return;
@@ -1484,13 +1487,11 @@ function SwipeDeck({ venues, preferences, onClose, onSave, onOpenSpot }) {
     const dy = t.clientY - startRef.current.y;
     posRef.current = { x: dx, y: dy };
     if (Math.abs(dx) > 5 || Math.abs(dy) > 5) wasDragRef.current = true;
+    if (Math.abs(dx) > 90 && !thresholdRef.current) { thresholdRef.current = true; haptic(10); }
+    if (Math.abs(dx) < 90 && thresholdRef.current) thresholdRef.current = false;
     const rotate = dx * 0.08;
     dragRef.current.style.transform = `translate(${dx}px, ${dy}px) rotate(${rotate}deg)`;
     dragRef.current.style.transition = "none";
-    const stampSave = dragRef.current.querySelector(".stamp-save");
-    const stampNope = dragRef.current.querySelector(".stamp-nope");
-    if (stampSave) stampSave.style.opacity = Math.min(1, Math.max(0, dx / 100));
-    if (stampNope) stampNope.style.opacity = Math.min(1, Math.max(0, -dx / 100));
   };
   const onTouchEnd = () => {
     if (!dragRef.current) return;
@@ -1504,10 +1505,6 @@ function SwipeDeck({ venues, preferences, onClose, onSave, onOpenSpot }) {
     } else {
       dragRef.current.style.transition = "transform 0.3s cubic-bezier(.2,.9,.3,1)";
       dragRef.current.style.transform = "translate(0,0) rotate(0)";
-      const stampSave = dragRef.current.querySelector(".stamp-save");
-      const stampNope = dragRef.current.querySelector(".stamp-nope");
-      if (stampSave) stampSave.style.opacity = 0;
-      if (stampNope) stampNope.style.opacity = 0;
     }
     startRef.current = null;
   };
@@ -1544,8 +1541,6 @@ function SwipeDeck({ venues, preferences, onClose, onSave, onOpenSpot }) {
             <div style={{ position: "absolute", inset: 0, backfaceVisibility: "hidden", borderRadius: 16, overflow: "hidden", background: "#F1EDE4", boxShadow: "0 8px 32px rgba(0,0,0,.12)" }}>
               {photoFor(current) && <img src={photoFor(current)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none" }} />}
               <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 40%, rgba(20,20,15,.88))" }} />
-              <div className="stamp-save" style={{ position: "absolute", top: 30, right: 22, padding: "8px 18px", border: "3px solid #0F6B63", borderRadius: 8, color: "#0F6B63", fontSize: 28, fontWeight: 800, letterSpacing: "0.05em", transform: "rotate(12deg)", opacity: 0, transition: "opacity .1s", pointerEvents: "none" }}>SAVE</div>
-              <div className="stamp-nope" style={{ position: "absolute", top: 30, left: 22, padding: "8px 18px", border: "3px solid #D9412B", borderRadius: 8, color: "#D9412B", fontSize: 28, fontWeight: 800, letterSpacing: "0.05em", transform: "rotate(-12deg)", opacity: 0, transition: "opacity .1s", pointerEvents: "none" }}>NOPE</div>
               {matches > 0 && (
                 <div style={{ position: "absolute", top: 16, right: 16, padding: "6px 12px", background: "rgba(15,107,99,.85)", color: "#FAF7F2", borderRadius: 100, fontSize: 11, fontWeight: 600, display: "flex", alignItems: "center", gap: 5, backdropFilter: "blur(8px)", pointerEvents: "none" }}>
                   ✓ {matches} taste match{matches > 1 ? "es" : ""}
