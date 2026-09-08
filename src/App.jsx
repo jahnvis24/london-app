@@ -5817,8 +5817,7 @@ function SharedListView({ list, user, onClose }) {
                   <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", textShadow: "0 1px 6px rgba(0,0,0,0.5)", lineHeight: 1.2, textDecoration: it.done ? "line-through" : "none" }}>{it.name}</div>
                   {it.area && <div style={{ fontSize: 9, color: "rgba(255,255,255,0.82)", marginTop: 2 }}>{it.area}</div>}
                 </div>
-                {it.done && <div style={{ position: "absolute", top: 10, left: 10, width: 28, height: 28, borderRadius: "50%", background: "#D9412B", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, boxShadow: "0 2px 6px rgba(0,0,0,0.3)" }}>✓</div>}
-                <button onClick={(e) => { e.stopPropagation(); toggleDone(it); }} title={it.done ? "Un-tick" : "Tick off"} style={{ position: "absolute", top: 10, right: 10, width: 28, height: 28, borderRadius: "50%", border: it.done ? "none" : "2px solid rgba(255,255,255,0.8)", background: it.done ? "transparent" : "rgba(0,0,0,0.25)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 11, boxShadow: "0 1px 4px rgba(0,0,0,0.2)" }}>{it.done ? "" : "○"}</button>
+                <button onClick={(e) => { e.stopPropagation(); toggleDone(it); }} title={it.done ? "Un-tick" : "Tick off"} style={{ position: "absolute", top: 10, right: 10, width: 32, height: 32, borderRadius: "50%", border: it.done ? "none" : "2px solid rgba(255,255,255,0.8)", background: it.done ? "#D9412B" : "rgba(0,0,0,0.25)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 14, fontWeight: 700, boxShadow: "0 2px 6px rgba(0,0,0,0.25)" }}>{it.done ? "✓" : ""}</button>
                 <button onClick={(e) => { e.stopPropagation(); removeItem(it); }} title="Remove" style={{ position: "absolute", bottom: 10, right: 10, width: 24, height: 24, borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.85)", color: "#b0745a", cursor: "pointer", fontSize: 9.5, lineHeight: 1, boxShadow: "0 1px 4px rgba(0,0,0,0.15)" }}>✕</button>
               </div>
             ))}
@@ -5827,12 +5826,14 @@ function SharedListView({ list, user, onClose }) {
       </div>
 
       {detailItem && (
-        <SpotDetail
-          spot={detailItem}
-          user={user}
-          readOnly
-          onClose={() => setDetailItem(null)}
-        />
+        <div style={{ position: "fixed", inset: 0, zIndex: 1200 }}>
+          <SpotDetail
+            spot={detailItem}
+            user={user}
+            readOnly
+            onClose={() => setDetailItem(null)}
+          />
+        </div>
       )}
 
       {picker === "saves" && (
