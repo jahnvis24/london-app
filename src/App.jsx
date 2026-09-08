@@ -3724,11 +3724,11 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
     // abort the whole batch (supports 50+ uploads).
     for (const file of files) {
       n++;
-      setParseStatus(`Reading image ${n} of ${files.length}...`);
+      setParseStatus("Reading image...");
       try {
         const { base64, mediaType } = await fileToDownscaledBase64(file);
+        setParseStatus("Extracting venue...");
         let data, attempt = 0;
-        // Retry transient API errors (e.g. rate limits with many images).
         while (attempt < 3) {
           attempt++;
           const resp = await fetch("/api/claude", {
@@ -3757,7 +3757,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
         const isSingleVenue = items.filter(p => p?.name).length === 1;
         for (const p of items) {
           if (!p?.name) continue;
-          setParseStatus(`Looking up "${p.name}" on Google...`);
+          setParseStatus(`Google lookup: ${p.name}...`);
           let g = null;
           try { g = await enrich(p.name, p.area, p.category); } catch (e) { /* keep without Google */ }
           drafts.push(buildDraft(p, g, { source_type: "screenshot", source_url: null, _screenshot_b64: base64 }));
@@ -4212,40 +4212,74 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
 
       {!openFolder && captureOpen && (
         <div onClick={() => !parsing && !saving && setCaptureOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.42)", zIndex: 1400, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
-          <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 420, background: "#fff", borderRadius: "22px 22px 0 0", padding: "22px 20px calc(22px + env(safe-area-inset-bottom))", maxHeight: "92vh", overflowY: "auto" }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 420, background: "#FAF7F2", borderRadius: "22px 22px 0 0", padding: "22px 20px calc(22px + env(safe-area-inset-bottom))", maxHeight: "92vh", overflowY: "auto" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-              <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 32, lineHeight: 1, letterSpacing: "-0.015em", color: "#14140F" }}>Drop a link</div>
+              <div>
+                <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 28, lineHeight: 1, letterSpacing: "-0.015em", color: "#14140F" }}>Save a spot</div>
+                <div style={{ fontSize: 12, color: "rgba(20,20,15,.45)", marginTop: 6 }}>Screenshot a TikTok or Instagram post — we'll find the place.</div>
+              </div>
               <button onClick={() => setCaptureOpen(false)} style={{ border: "none", background: "none", fontSize: "1.25rem", color: "rgba(20,20,15,.45)", cursor: "pointer", lineHeight: 1 }}>✕</button>
             </div>
 
             {!captureTab ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 14 }}>
-                <div style={{ fontSize: 13, color: "rgba(20,20,15,.55)" }}>TikTok, Reel, Maps link or a screenshot. We'll work out the venue.</div>
-                <div style={{ display: "flex", gap: 8, alignItems: "center", padding: "12px 14px", background: "#fff", border: "1px solid rgba(20,20,15,.14)" }}>
-                  <input type="text" placeholder="https://vm.tiktok.com/ZGe…" value={textInput} onChange={e => { setTextInput(e.target.value); setError(null); }} style={{ flex: 1, border: "none", background: "none", fontSize: 10, fontWeight: 500, letterSpacing: "0.08em", color: "rgba(20,20,15,.4)", outline: "none" }} />
-                  <button disabled={parsing || saving || !textInput.trim()} onClick={() => {
-                    const t = textInput.trim(); let mt = "tiktok";
-                    if (/instagram\.com/i.test(t)) mt = "instagram";
-                    else if (/maps\.app\.goo\.gl|google\.[a-z.]+\/maps|goo\.gl\/maps/i.test(t)) mt = /\/maps\/.*list|@.*data/i.test(t) ? "mapslist" : "maps";
-                    else if (!/https?:\/\//i.test(t)) { setMName(t); setTextInput(""); setCaptureTab("manual"); return; }
-                    handleParse(undefined, mt);
-                  }} style={{ padding: "8px 15px", background: "#D9412B", color: "#FAF7F2", border: "none", fontSize: 11.5, fontWeight: 600, cursor: "pointer" }}>{parsing ? "…" : "Paste"}</button>
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9 }}>
-                  <label style={{ padding: 15, background: "#0F6B63", color: "#FAF7F2", cursor: parsing ? "default" : "pointer" }}>
-                    <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 20 }}>Screenshot</div>
-                    <div style={{ fontSize: 8.5, fontWeight: 500, letterSpacing: "0.14em", textTransform: "uppercase", opacity: 0.55, marginTop: 4 }}>From camera roll</div>
-                    <input type="file" accept="image/*" multiple style={{ display: "none" }} disabled={parsing || saving}
-                      onChange={e => { const f = [...e.target.files]; e.target.value = ""; if (f.length) handleParse(f, "screenshot"); }} />
-                  </label>
-                  <button onClick={() => { setCaptureTab("manual"); setError(null); }} style={{ padding: 15, border: "1px solid rgba(20,20,15,.16)", background: "none", cursor: "pointer", textAlign: "left" }}>
-                    <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 20 }}>Type it</div>
-                    <div style={{ fontSize: 8.5, fontWeight: 500, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(20,20,15,.42)", marginTop: 4 }}>Name and area</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 18 }}>
+                {/* Main CTA — Upload screenshot */}
+                <label style={{ display: "flex", alignItems: "center", gap: 14, padding: "18px 20px", background: "#D9412B", borderRadius: 16, cursor: parsing ? "default" : "pointer" }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(250,247,242,.2)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#FAF7F2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+                  </div>
+                  <div>
+                    <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 15, fontWeight: 600, color: "#FAF7F2" }}>Upload a screenshot</div>
+                    <div style={{ fontSize: 11, color: "rgba(250,247,242,.6)", marginTop: 2 }}>We'll read it and find the venue</div>
+                  </div>
+                  <input type="file" accept="image/*" multiple style={{ display: "none" }} disabled={parsing || saving}
+                    onChange={e => { const f = [...e.target.files]; e.target.value = ""; if (f.length) handleParse(f, "screenshot"); }} />
+                </label>
+
+                {/* Secondary buttons */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  <button onClick={() => { setCaptureTab("link"); setError(null); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", background: "#fff", borderRadius: 12, border: "1px solid rgba(20,20,15,.1)", cursor: "pointer" }}>
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="rgba(20,20,15,.4)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: "#14140F" }}>Paste a link</span>
+                  </button>
+                  <button onClick={() => { setCaptureTab("manual"); setError(null); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", background: "#fff", borderRadius: 12, border: "1px solid rgba(20,20,15,.1)", cursor: "pointer" }}>
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="rgba(20,20,15,.4)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: "#14140F" }}>Search manually</span>
                   </button>
                 </div>
 
-                {(parsing || saving) && parseStatus && <div style={{ fontSize: 12, color: "#D9412B", marginTop: 4 }}>{parseStatus}</div>}
                 {error && <div className="err" style={{ marginTop: 4 }}>{error}</div>}
+
+                {/* Step-by-step loading overlay */}
+                {parsing && (
+                  <div style={{ marginTop: 18, padding: "20px 18px", background: "#fff", borderRadius: 16, border: "1px solid rgba(20,20,15,.08)" }}>
+                    {[
+                      { key: "read", label: "Reading your screenshot..." },
+                      { key: "spot", label: "Spotting the place name..." },
+                      { key: "google", label: "Looking it up on Google Places..." },
+                      { key: "photo", label: "Pulling photos, hours and price..." },
+                    ].map((step, i) => {
+                      const status = parseStatus || "";
+                      const currentIdx = [/reading/i, /extract|venue/i, /google/i, /photo|fetching/i].findIndex(rx => rx.test(status));
+                      const done = i < currentIdx;
+                      const active = i === currentIdx;
+                      return (
+                        <div key={step.key} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: i < 3 ? 12 : 0, opacity: done || active ? 1 : 0.3 }}>
+                          {done ? (
+                            <span style={{ color: "#5B6D4F", fontSize: 14, width: 20, textAlign: "center" }}>✓</span>
+                          ) : active ? (
+                            <span style={{ width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                              <span style={{ width: 14, height: 14, border: "2px solid rgba(20,20,15,.15)", borderTopColor: "#5B6D4F", borderRadius: "50%", animation: "spin .7s linear infinite", display: "block" }} />
+                            </span>
+                          ) : (
+                            <span style={{ width: 20, textAlign: "center", color: "rgba(20,20,15,.2)", fontSize: 12 }}>○</span>
+                          )}
+                          <span style={{ fontSize: 13, fontWeight: done || active ? 500 : 400, color: done ? "#5B6D4F" : active ? "#14140F" : "rgba(20,20,15,.35)" }}>{step.label}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             ) : (
               <>
