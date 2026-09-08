@@ -466,12 +466,12 @@ const styles = `
   .home-sub { font-size: 13px; color: rgba(20,20,15,.55); line-height: 1.5; position: relative; z-index: 1; max-width: 200px; }
   .home-cta { margin-top: 1.5rem; position: relative; z-index: 1; }
 
-  .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 420px; height: 88px; background: rgba(250,247,242,.92); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); border-top: 1px solid rgba(20,20,15,.12); display: flex; align-items: flex-start; padding: 13px 8px 0; z-index: 100; padding-bottom: env(safe-area-inset-bottom); }
+  .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 420px; height: 88px; background: #14140F; border-top: none; display: flex; align-items: flex-start; padding: 13px 8px 0; z-index: 100; padding-bottom: env(safe-area-inset-bottom); }
   .nav-tab { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0; border: none; background: none; cursor: pointer; gap: 7px; transition: all 0.2s; }
-  .nav-tab-icon { display: flex; align-items: center; justify-content: center; line-height: 1; transition: all 0.2s; color: rgba(20,20,15,.38); width: 16px; height: 16px; }
-  .nav-tab.active .nav-tab-icon { color: #14140F; background: none; }
-  .nav-tab-label { font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 8.5px; font-weight: 600; letter-spacing: 0.11em; color: rgba(20,20,15,.38); text-transform: uppercase; transition: color 0.2s; }
-  .nav-tab.active .nav-tab-label { color: #14140F; }
+  .nav-tab-icon { display: flex; align-items: center; justify-content: center; line-height: 1; transition: all 0.2s; color: rgba(250,247,242,.4); width: 16px; height: 16px; }
+  .nav-tab.active .nav-tab-icon { color: #FAF7F2; background: none; }
+  .nav-tab-label { font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 8.5px; font-weight: 600; letter-spacing: 0.11em; color: rgba(250,247,242,.4); text-transform: uppercase; transition: color 0.2s; }
+  .nav-tab.active .nav-tab-label { color: #FAF7F2; }
   .nav-tab-dot { display: none; }
   .capture-fab { position: fixed; z-index: 110; bottom: calc(98px + env(safe-area-inset-bottom)); right: max(20px, calc(50% - 210px + 20px)); width: 56px; height: 56px; border-radius: 50%; border: none; background: #D9412B; color: #FAF7F2; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 8px 22px rgba(217,65,43,.4); transition: transform 0.34s cubic-bezier(.3,1.3,.4,1); font: 200 30px 'Instrument Serif', Georgia, serif; }
   .capture-fab:active { transform: scale(0.92); }
