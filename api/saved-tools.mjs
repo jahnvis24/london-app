@@ -99,34 +99,38 @@ async function handlePhotos(req, res) {
   const apiKey = process.env.GOOGLE_PLACES_KEY;
   if (!place_id) return res.status(400).json({ error: 'place_id required' });
   if (!apiKey) return res.status(500).json({ error: 'Google Places key not configured' });
-  const d = await fetch(`https://maps.googleapis.com/maps/api/place/details/json?place_id=${place_id}&fields=photos&key=${apiKey}`);
-  const dj = await d.json();
-  if (dj.status && dj.status !== "OK") {
-    return res.status(200).json({ found: false, urls: [], error: `Google Places: ${dj.status}${dj.error_message ? ' — ' + dj.error_message : ''}` });
-  }
-  const refs = (dj.result?.photos || []).slice(0, 8).map(p => p.photo_reference).filter(Boolean);
-  if (!refs.length) {
-    // Fallback: try the New Places API for photos
-    try {
-      const np = await fetch(`https://places.googleapis.com/v1/places/${place_id}`, {
-        headers: { 'X-Goog-Api-Key': apiKey, 'X-Goog-FieldMask': 'photos' }
-      });
-      const npj = await np.json();
-      const photoNames = (npj.photos || []).slice(0, 8).map(p => p.name).filter(Boolean);
-      const newUrls = photoNames.map(name => `https://places.googleapis.com/v1/${name}/media?maxWidthPx=900&key=${apiKey}`);
-      if (newUrls.length) return res.status(200).json({ found: true, urls: newUrls });
-    } catch (e) { /* fall through */ }
-    return res.status(200).json({ found: false, urls: [] });
-  }
-  const urls = [];
-  for (const ref of refs) {
-    try {
-      const r = await fetch(`https://maps.googleapis.com/maps/api/place/photo?maxwidth=900&photo_reference=${ref}&key=${apiKey}`, { redirect: 'manual' });
-      const loc = r.headers.get('location');
-      if (loc) urls.push(loc);
-    } catch (e) { /* skip */ }
-  }
-  return res.status(200).json({ found: urls.length > 0, urls });
+  // Primary: New Places API (works with all place IDs)
+  try {
+    const np = await fetch(`https://places.googleapis.com/v1/places/${place_id}`, {
+      headers: { 'X-Goog-Api-Key': apiKey, 'X-Goog-FieldMask': 'photos' }
+    });
+    const npj = await np.json();
+    const photoNames = (npj.photos || []).slice(0, 8).map(p => p.name).filter(Boolean);
+    if (photoNames.length) {
+      const urls = photoNames.map(name => `https://places.googleapis.com/v1/${name}/media?maxWidthPx=900&key=${apiKey}`);
+      return res.status(200).json({ found: true, urls });
+    }
+  } catch (e) { /* fall through to legacy */ }
+
+  // Fallback: Legacy Places API
+  try {
+    const d = await fetch(`https://maps.googleapis.com/maps/api/place/details/json?place_id=${place_id}&fields=photos&key=${apiKey}`);
+    const dj = await d.json();
+    if (dj.status === "OK") {
+      const refs = (dj.result?.photos || []).slice(0, 8).map(p => p.photo_reference).filter(Boolean);
+      const urls = [];
+      for (const ref of refs) {
+        try {
+          const r = await fetch(`https://maps.googleapis.com/maps/api/place/photo?maxwidth=900&photo_reference=${ref}&key=${apiKey}`, { redirect: 'manual' });
+          const loc = r.headers.get('location');
+          if (loc) urls.push(loc);
+        } catch (e) { /* skip */ }
+      }
+      if (urls.length) return res.status(200).json({ found: true, urls });
+    }
+  } catch (e) { /* skip */ }
+
+  return res.status(200).json({ found: false, urls: [] });
 }
 
 async function handleMaps(req, res) {
