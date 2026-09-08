@@ -2442,45 +2442,6 @@ function MeScreen({ user, preferences, setPreferences, isAdmin, onBadgeUpdate, a
         <div style={{ fontSize: 12, color: "rgba(20,20,15,.5)", lineHeight: 1.4 }}>Tap to update your profile photo.<br />Visible to your friends.</div>
       </div>
 
-      {/* Friends — horizontal scroll */}
-      {friends.length > 0 && (
-        <div style={{ padding: "0 0 22px" }}>
-          <div style={{ padding: "0 22px 10px", fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 21 }}>Friends</div>
-          <div style={{ display: "flex", gap: 16, overflowX: "auto", padding: "0 22px", scrollbarWidth: "none" }}>
-            {friends.map(f => (
-              <div key={f.id} onClick={() => setViewFriend(f)} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, minWidth: 72, cursor: "pointer" }}>
-                <div style={{ width: 64, height: 64, borderRadius: "50%", background: "#5B6D4F", color: "#FAF7F2", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", overflow: "hidden", border: "3px solid #FAF7F2", boxShadow: "0 2px 8px rgba(0,0,0,.08)" }}>
-                  {f.avatar_url ? <img src={f.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : (f.friend_code || nameOf(f).charAt(0))}
-                </div>
-                <div style={{ fontSize: 13, fontWeight: 500, color: "#14140F", textAlign: "center", maxWidth: 72, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nameOf(f).split(" ")[0]}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Shared bucket lists */}
-      {bucketLists.length > 0 && (
-        <div style={{ padding: "0 22px 22px" }}>
-          <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 21, marginBottom: 10 }}>Shared bucket lists</div>
-          {bucketLists.map(b => (
-            <div key={b.id} style={{ padding: "14px 16px", background: "#fff", borderRadius: 14, border: "1px solid rgba(20,20,15,.1)", marginBottom: 10 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 18 }}>{b.emoji || "📋"} {b.name}</div>
-                <div style={{ fontSize: 11, color: "rgba(20,20,15,.45)" }}>{b.memberCount} {b.memberCount === 1 ? "person" : "people"}</div>
-              </div>
-              {b.total > 0 && (
-                <>
-                  <div style={{ height: 6, borderRadius: 3, background: "rgba(20,20,15,.08)", overflow: "hidden" }}>
-                    <div style={{ height: "100%", borderRadius: 3, background: "#5B6D4F", width: `${Math.round((b.done / b.total) * 100)}%`, transition: "width .3s" }} />
-                  </div>
-                  <div style={{ fontSize: 11, color: "rgba(20,20,15,.42)", marginTop: 5 }}>{b.done} of {b.total} ticked off</div>
-                </>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
 
       {/* Menu items */}
       <div style={{ padding: "0 22px", display: "flex", flexDirection: "column" }}>
@@ -5768,7 +5729,7 @@ function SharedListView({ list, user, onClose }) {
         <button className="btn-ghost" onClick={onClose} style={{ marginBottom: "0.5rem" }}>← Back</button>
 
         <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "1rem 0 0.25rem" }}>
-          <div style={{ width: 48, height: 48, borderRadius: 0, background: "#F1EDE4", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", flexShrink: 0 }}>{list.emoji || "✨"}</div>
+          <div style={{ width: 48, height: 48, borderRadius: 0, background: "#F1EDE4", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", flexShrink: 0 }}>{list.emoji || "📋"}</div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: "1.4rem", color: "#14140F", lineHeight: 1.1 }}>{list.name}</div>
             <div style={{ fontSize: 11, color: "rgba(20,20,15,.45)", marginTop: 2 }}>{doneCount}/{items.length} ticked off</div>
@@ -6005,14 +5966,12 @@ function FriendProfile({ user, friend, onClose }) {
       <div style={{ maxWidth: 420, margin: "0 auto", padding: "1rem 1.5rem 6rem" }}>
         <button className="btn-ghost" onClick={openFolder ? () => setOpenFolder(null) : onClose} style={{ marginBottom: "0.5rem" }}>← {openFolder ? "Profile" : "Back"}</button>
 
-        {/* Instagram-style header */}
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: "1.25rem" }}>
-          <div style={{ width: 88, height: 88, borderRadius: "50%", background: "#D9412B", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: "2.2rem", overflow: "hidden", border: "3px solid #fff", boxShadow: "0 4px 16px rgba(0,0,0,0.12)" }}>{friend.avatar_url ? <img src={friend.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : nameOf(friend).charAt(0).toUpperCase()}</div>
-          <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: "1.5rem", color: "#14140F", marginTop: 10 }}>{nameOf(friend)}</div>
-          <div style={{ display: "flex", gap: 30, marginTop: 12 }}>
-            {stat(saves.length, "Saves")}
-            {stat(folderNames.length, "Lists")}
-            {stat(friendCount, "Friends")}
+        {/* Compact header */}
+        <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: "0.75rem", marginBottom: 8 }}>
+          <div style={{ width: 56, height: 56, borderRadius: "50%", background: "#D9412B", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 22, overflow: "hidden", flexShrink: 0, border: "2px solid #FAF7F2", boxShadow: "0 2px 8px rgba(0,0,0,.08)" }}>{friend.avatar_url ? <img src={friend.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : nameOf(friend).charAt(0).toUpperCase()}</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 26, lineHeight: 1, color: "#14140F" }}>{nameOf(friend)}</div>
+            <div style={{ fontSize: 11, color: "rgba(20,20,15,.4)", marginTop: 4 }}>{saves.length} saves · {folderNames.length} lists · {friendCount} friends</div>
           </div>
         </div>
 
@@ -6040,14 +5999,21 @@ function FriendProfile({ user, friend, onClose }) {
           <div style={{ marginTop: "1.25rem" }}>
             <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: "1.1rem", color: "#14140F", marginBottom: 12 }}>{openFolder} ({folderSaves.length})</div>
             {folderSaves.map(s => (
-              <div key={s.id} style={{ position: "relative", borderRadius: 0, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", border: "1px solid rgba(20,20,15,.13)", background: "#fff", marginBottom: 14 }}>
-                <div onClick={() => setDetailSpot(s)} style={{ cursor: "pointer" }}>
-                  <BigSpotCard s={s} photo={s.photo_url} />
+              <div key={s.id} onClick={() => setDetailSpot(s)} style={{ marginBottom: 14, borderRadius: 14, overflow: "hidden", background: "#fff", border: "1px solid rgba(20,20,15,.08)", boxShadow: "0 2px 8px rgba(20,20,15,.04)", cursor: "pointer" }}>
+                <div style={{ position: "relative", height: 200, background: "#F1EDE4" }}>
+                  {s.photo_url && <img src={s.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+                  <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 45%, rgba(20,20,15,.82))" }} />
+                  <div style={{ position: "absolute", left: 14, right: 14, bottom: 14 }}>
+                    <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 24, lineHeight: 1.05, color: "#FAF7F2", fontStyle: "italic" }}>{s.name}</div>
+                  </div>
                 </div>
-                <div style={{ padding: "0 12px 12px", display: "flex", justifyContent: "center" }}>
+                <div style={{ padding: "12px 14px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div style={{ fontSize: 11, fontWeight: 500, letterSpacing: "0.06em", textTransform: "uppercase", color: "rgba(20,20,15,.4)" }}>
+                    {[s.area, priceToPounds(s.price), s.google_rating ? `★ ${s.google_rating}` : null].filter(Boolean).join(" · ")}
+                  </div>
                   {isSaved(s)
-                    ? <span style={{ fontSize: 11, color: "#D9412B", fontWeight: 600, padding: "7px 16px" }}>✓ On your board</span>
-                    : <button disabled={busy} onClick={() => setSavePick(s)} style={{ border: "1.5px solid #D9412B", background: "#fff", color: "#D9412B", borderRadius: 100, padding: "7px 18px", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>＋ Save to my board</button>}
+                    ? <span style={{ fontSize: 11, color: "#0F6B63", fontWeight: 600 }}>✓ Saved</span>
+                    : <button disabled={busy} onClick={(e) => { e.stopPropagation(); setSavePick(s); }} style={{ border: "1.5px solid #D9412B", background: "#fff", color: "#D9412B", borderRadius: 100, padding: "6px 14px", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>+ Save</button>}
                 </div>
               </div>
             ))}
