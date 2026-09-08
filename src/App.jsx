@@ -1422,7 +1422,13 @@ function SwipeDeck({ venues, preferences, onClose, onSave, onOpenSpot }) {
   const current = deck[0];
   const next = deck[1];
 
-  useEffect(() => { setFlipped(false); }, [current?.id]);
+  useEffect(() => {
+    setFlipped(false);
+    if (dragRef.current) {
+      dragRef.current.style.transform = "";
+      dragRef.current.style.transition = "";
+    }
+  }, [current?.id]);
   useEffect(() => {
     [current, next].filter(Boolean).forEach(v => {
       if (!v.google_place_id || hiResCache.current[v.id]) return;
@@ -1464,10 +1470,12 @@ function SwipeDeck({ venues, preferences, onClose, onSave, onOpenSpot }) {
     setLastAction(null);
   }
 
+  const wasDragRef = useRef(false);
   const onTouchStart = (e) => {
     const t = e.touches[0];
     startRef.current = { x: t.clientX, y: t.clientY, time: Date.now() };
     posRef.current = { x: 0, y: 0 };
+    wasDragRef.current = false;
   };
   const onTouchMove = (e) => {
     if (!startRef.current || !dragRef.current) return;
@@ -1475,6 +1483,7 @@ function SwipeDeck({ venues, preferences, onClose, onSave, onOpenSpot }) {
     const dx = t.clientX - startRef.current.x;
     const dy = t.clientY - startRef.current.y;
     posRef.current = { x: dx, y: dy };
+    if (Math.abs(dx) > 5 || Math.abs(dy) > 5) wasDragRef.current = true;
     const rotate = dx * 0.08;
     dragRef.current.style.transform = `translate(${dx}px, ${dy}px) rotate(${rotate}deg)`;
     dragRef.current.style.transition = "none";
@@ -1530,7 +1539,7 @@ function SwipeDeck({ venues, preferences, onClose, onSave, onOpenSpot }) {
 
         <div ref={dragRef} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
           style={{ position: "relative", width: "100%", maxWidth: 360, aspectRatio: "3/4", perspective: 1000, cursor: "grab", touchAction: "none" }}>
-          <div onClick={() => { if (!posRef.current.x) setFlipped(f => !f); }} style={{ width: "100%", height: "100%", position: "relative", transformStyle: "preserve-3d", transition: "transform 0.5s ease", transform: flipped ? "rotateY(180deg)" : "rotateY(0)" }}>
+          <div onClick={() => { if (!wasDragRef.current) setFlipped(f => !f); }} style={{ width: "100%", height: "100%", position: "relative", transformStyle: "preserve-3d", transition: "transform 0.5s ease", transform: flipped ? "rotateY(180deg)" : "rotateY(0)" }}>
             {/* Front face */}
             <div style={{ position: "absolute", inset: 0, backfaceVisibility: "hidden", borderRadius: 16, overflow: "hidden", background: "#F1EDE4", boxShadow: "0 8px 32px rgba(0,0,0,.12)" }}>
               {photoFor(current) && <img src={photoFor(current)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none" }} />}
