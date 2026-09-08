@@ -2695,10 +2695,28 @@ function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan, user, onSpotUpdate
   const venueKey = spot.google_place_id || (spot.name || "").toLowerCase().trim();
   const [photos, setPhotos] = useState(spot.photo_url ? [spot.photo_url] : []);
   useEffect(() => {
-    if (!spot.google_place_id) return;
+    if (!spot.name) return;
     let active = true;
-    fetch("/api/saved-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool: "photos", place_id: spot.google_place_id }) })
-      .then(r => r.json()).then(j => { if (active && j.found) setPhotos(prev => [...new Set([...prev, ...j.urls])]); }).catch(() => {});
+    async function loadPhotos() {
+      let pid = spot.google_place_id;
+      if (pid) {
+        const r = await fetch("/api/saved-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool: "photos", place_id: pid }) });
+        const j = await r.json();
+        if (j.found && j.urls?.length) { if (active) setPhotos(prev => [...new Set([...prev, ...j.urls])]); return; }
+      }
+      // Place ID missing or stale — re-enrich by name to get a fresh one
+      try {
+        const e = await fetch("/api/enrich-venue", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: spot.name, area: spot.area }) });
+        const ej = await e.json();
+        if (ej.found && ej.google_place_id && ej.google_place_id !== pid) {
+          const r2 = await fetch("/api/saved-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool: "photos", place_id: ej.google_place_id }) });
+          const j2 = await r2.json();
+          if (active && j2.found && j2.urls?.length) setPhotos(prev => [...new Set([...prev, ...j2.urls])]);
+          if (spot.id && !readOnly) supabase.from("experiences").update({ google_place_id: ej.google_place_id }).eq("id", spot.id).then(() => {});
+        }
+      } catch (err) { /* best effort */ }
+    }
+    loadPhotos().catch(() => {});
     return () => { active = false; };
   }, []);
 
