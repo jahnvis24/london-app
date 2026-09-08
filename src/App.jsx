@@ -4422,13 +4422,17 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
       <div ref={tourListRef} style={{ padding: "0 0.75rem 1rem" }}>
         {saves.length > 0 && savedView === "map" && (
           <>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 0 10px" }}>
-              <button onClick={() => { setSavedView("folders"); setMapListFilter(""); setMapCat(""); }} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "#14140F", fontSize: 13, fontWeight: 600, cursor: "pointer", padding: 0 }}>← Close map</button>
-              {folderNames.length > 1 && (
-                <select value={mapListFilter} onChange={e => { setMapListFilter(e.target.value); setMapCat(""); }} style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 13, border: "1px solid rgba(20,20,15,.18)", background: "#FAF7F2", color: "#14140F", padding: "6px 10px", outline: "none", maxWidth: 160, cursor: "pointer" }}>
-                  <option value="">All lists</option>
-                  {folderNames.map(f => <option key={f} value={f}>{f}</option>)}
-                </select>
+            <div style={{ padding: "0 0 10px" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                <button onClick={() => { setSavedView("folders"); setMapListFilter(""); setMapCat(""); }} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "#14140F", fontSize: 13, fontWeight: 600, cursor: "pointer", padding: 0 }}>← Close map</button>
+              </div>
+              {mapCats.length > 1 && (
+                <div style={{ display: "flex", gap: 6, overflowX: "auto", scrollbarWidth: "none", paddingBottom: 2 }}>
+                  <button onClick={() => { setMapCat(""); setMapListFilter(""); }} style={{ padding: "7px 14px", borderRadius: 100, border: `1.5px solid ${!mapCat ? "#14140F" : "rgba(20,20,15,.14)"}`, background: !mapCat ? "#14140F" : "#FAF7F2", color: !mapCat ? "#FAF7F2" : "#14140F", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>All</button>
+                  {mapCats.map(c => (
+                    <button key={c} onClick={() => { setMapCat(mapCat === c ? "" : c); setMapListFilter(""); }} style={{ padding: "7px 14px", borderRadius: 100, border: `1.5px solid ${mapCat === c ? "#14140F" : "rgba(20,20,15,.14)"}`, background: mapCat === c ? "#14140F" : "#FAF7F2", color: mapCat === c ? "#FAF7F2" : "#14140F", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>{CAT_LABEL[c] || cap(c)}</button>
+                  ))}
+                </div>
               )}
             </div>
             <div style={{ position: "sticky", top: 0, zIndex: 1 }}>
