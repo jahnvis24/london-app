@@ -2752,13 +2752,13 @@ function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan, user, onSpotUpdate
     <div ref={swipeRef} style={{ position: "fixed", inset: 0, zIndex: 1200, background: "#FAF7F2", overflowY: "auto", animation: "screenIn .32s cubic-bezier(.2,.9,.3,1)" }}>
       {/* Photo hero — fills top, swipeable */}
       <div style={{ position: "relative", height: 380, background: photos.length ? "#14140F" : (CAT_COLOURS[cat] || "#D9412B") }}>
-        <div style={{ display: "flex", height: "100%", overflowX: "auto", scrollSnapType: "x mandatory", scrollbarWidth: "none" }}>
-          {photos.map((p, i) => <img key={i} src={p} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", flexShrink: 0, scrollSnapAlign: "start" }} />)}
+        <div style={{ display: "flex", height: "100%", overflowX: "auto", scrollSnapType: "x mandatory", scrollbarWidth: "none", WebkitOverflowScrolling: "touch", position: "relative", zIndex: 2 }}>
+          {photos.map((p, i) => <img key={i} src={p} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", flexShrink: 0, scrollSnapAlign: "start", pointerEvents: "none" }} />)}
         </div>
-        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 40%, rgba(20,20,15,.88))" }} />
-        <button onClick={onClose} style={{ position: "absolute", top: 16, left: 20, width: 40, height: 40, borderRadius: "50%", border: "none", background: "rgba(20,20,15,.35)", backdropFilter: "blur(8px)", cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center", color: "#FAF7F2" }}>←</button>
-        {photos.length > 1 && <div style={{ position: "absolute", bottom: 80, right: 22, ...sf, fontSize: 9, fontWeight: 600, letterSpacing: "0.08em", color: "rgba(250,247,242,.5)" }}>{photos.length} photos · swipe →</div>}
-        <div style={{ position: "absolute", left: 22, right: 22, bottom: 20 }}>
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 40%, rgba(20,20,15,.88))", pointerEvents: "none", zIndex: 3 }} />
+        <button onClick={onClose} style={{ position: "absolute", top: 16, left: 20, width: 40, height: 40, borderRadius: "50%", border: "none", background: "rgba(20,20,15,.35)", backdropFilter: "blur(8px)", cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center", color: "#FAF7F2", zIndex: 4 }}>←</button>
+        {photos.length > 1 && <div style={{ position: "absolute", bottom: 80, right: 22, ...sf, fontSize: 9, fontWeight: 600, letterSpacing: "0.08em", color: "rgba(250,247,242,.5)", pointerEvents: "none", zIndex: 4 }}>{photos.length} photos · swipe →</div>}
+        <div style={{ position: "absolute", left: 22, right: 22, bottom: 20, pointerEvents: "none", zIndex: 4 }}>
           <div style={{ ...sf, fontSize: 11, fontWeight: 500, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(250,247,242,.55)", marginBottom: 8 }}>{[cap(cat), spot.area].filter(Boolean).join(" · ")}</div>
           <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 42, lineHeight: 0.95, color: "#FAF7F2", letterSpacing: "-0.02em", fontStyle: "italic" }}>{spot.name}</div>
         </div>
