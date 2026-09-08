@@ -3059,7 +3059,7 @@ const CAL_TYPE = {
   plan:  { colour: "#4B342F", emoji: "🗺️", label: "Plan" },
   blist: { colour: "#D9412B", emoji: "✨", label: "Bucket list" },
 };
-function SpotsCalendar({ saves, user, onBuildPlan, onShare }) {
+function SpotsCalendar({ saves, user, onBuildPlan, onShare, plans: calPlans }) {
   const [monthOffset, setMonthOffset] = useState(0);
   const [selDay, setSelDay] = useState(null);
   const [blistItems, setBlistItems] = useState([]); // bucket-list items with a target date
@@ -3082,7 +3082,7 @@ function SpotsCalendar({ saves, user, onBuildPlan, onShare }) {
     return v ? { ...s, event_start: v, event_end: null, _type: "spot" } : null;
   }).filter(Boolean);
   // Source 3: itineraries you've scheduled to a date.
-  let storedPlans = []; try { storedPlans = JSON.parse(localStorage.getItem("cl_plans") || "[]"); } catch (e) {}
+  const storedPlans = calPlans || [];
   const planEvents = storedPlans.filter(p => p.scheduledDate).map(p => ({ id: "plan-" + (p.id || p.scheduledDate), name: p.result?.title || "Your plan", event_start: p.scheduledDate, _type: "plan", _stops: (p.result?.stops || []).length, _tagline: p.result?.tagline }));
   // Source 4: bucket-list items with a target date.
   const blistEvents = blistItems.map(b => ({ id: "blist-" + b.id, name: b.name, category: b.category, area: b.area, photo_url: b.photo_url, event_start: b.target_date, _type: "blist" }));
@@ -3127,7 +3127,9 @@ function SpotsCalendar({ saves, user, onBuildPlan, onShare }) {
       try { localStorage.removeItem("cl_visit_" + e.id); } catch (err) {}
       try { if (user?.id) await supabase.from("experiences").update({ visit_date: null }).eq("id", e.id).eq("user_id", user.id); } catch (err) {}
     } else if (e._type === "plan") {
-      try { const ps = JSON.parse(localStorage.getItem("cl_plans") || "[]"); const u = ps.map(p => ("plan-" + (p.id || p.scheduledDate)) === e.id ? { ...p, scheduledDate: null } : p); localStorage.setItem("cl_plans", JSON.stringify(u)); } catch (err) {}
+      const planId = e.id.replace("plan-", "");
+      setPlans(prev => prev.map(p => p.id === planId ? { ...p, scheduledDate: null } : p));
+      supabase.from("plans").update({ scheduled_date: null }).eq("id", planId).catch(() => {});
     } else if (e._type === "blist") {
       const realId = e.id.replace("blist-", "");
       setBlistItems(prev => prev.filter(b => b.id !== realId));
@@ -3152,7 +3154,7 @@ function SpotsCalendar({ saves, user, onBuildPlan, onShare }) {
 
   function shareEvent(e) {
     if (!onShare) return;
-    if (e._type === "plan") { try { const p = JSON.parse(localStorage.getItem("cl_plans") || "[]").find(x => ("plan-" + (x.id || x.scheduledDate)) === e.id); if (p) onShare({ kind: "plan", title: p.result?.title || "An itinerary", payload: { plan: p.result, times: p.times } }); } catch (err) {} }
+    if (e._type === "plan") { const p = storedPlans.find(x => ("plan-" + (x.id || x.scheduledDate)) === e.id); if (p) onShare({ kind: "plan", title: p.result?.title || "An itinerary", payload: { plan: p.result, times: p.times } }); }
     else { onShare({ kind: "list", title: e.name, payload: { name: e.name, spots: [{ name: e.name, category: e.category, area: e.area, address: e.address, photo_url: e.photo_url, google_place_id: e.google_place_id, lat: e.lat, lng: e.lng }] } }); }
   }
 
@@ -3340,7 +3342,7 @@ function TourSpotlight({ targetRef, step, last, onDone, onSkip }) {
   );
 }
 
-function SavedScreen({ user, onBuildPlan, onShare, onBarCrawl, openSignal, calendarSignal, visible, tourWantsSpot, replayImportSignal, dbVenues }) {
+function SavedScreen({ user, onBuildPlan, onShare, onBarCrawl, openSignal, calendarSignal, visible, tourWantsSpot, replayImportSignal, dbVenues, plans: parentPlans }) {
   const [saves, setSaves] = useState([]);
   const [loading, setLoading] = useState(true);
   const [mediaType, setMediaType] = useState("tiktok"); // tiktok | instagram | screenshot | maps | mapslist
@@ -4486,7 +4488,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
             ))}
           </>
         )}
-        {saves.length > 0 && savedView === "calendar" && <SpotsCalendar saves={saves} user={user} onBuildPlan={onBuildPlan} onShare={onShare} />}
+        {saves.length > 0 && savedView === "calendar" && <SpotsCalendar saves={saves} user={user} onBuildPlan={onBuildPlan} onShare={onShare} plans={parentPlans} />}
         {saves.length > 0 && savedView === "list" && (
           <div>
             {saves.map(s => (
@@ -6333,9 +6335,32 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [loadIdx, setLoadIdx] = useState(0);
   const [error, setError] = useState(null);
-  const [plans, setPlans] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("cl_plans") || "[]"); } catch { return []; }
-  });
+  const [plans, setPlans] = useState([]);
+  const plansLoadedRef = useRef(false);
+  useEffect(() => {
+    if (!user?.id || plansLoadedRef.current) return;
+    plansLoadedRef.current = true;
+    (async () => {
+      const { data } = await supabase.from("plans").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
+      const dbPlans = (data || []).map(p => ({ id: p.id, result: p.result, ans: p.ans, times: p.times, savedAt: p.saved_at, createdAt: p.created_at, scheduledDate: p.scheduled_date }));
+      // Migrate any localStorage plans that aren't in the DB yet
+      let localPlans = [];
+      try { localPlans = JSON.parse(localStorage.getItem("cl_plans") || "[]"); } catch {}
+      const dbIds = new Set(dbPlans.map(p => p.id));
+      const toMigrate = localPlans.filter(p => p.id && !dbIds.has(p.id));
+      if (toMigrate.length) {
+        for (const p of toMigrate) {
+          await supabase.from("plans").insert({ id: p.id, user_id: user.id, result: p.result, ans: p.ans, times: p.times, saved_at: p.savedAt, created_at: p.createdAt, scheduled_date: p.scheduledDate || null }).catch(() => {});
+        }
+        localStorage.removeItem("cl_plans");
+        const { data: fresh } = await supabase.from("plans").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
+        setPlans((fresh || []).map(p => ({ id: p.id, result: p.result, ans: p.ans, times: p.times, savedAt: p.saved_at, createdAt: p.created_at, scheduledDate: p.scheduled_date })));
+      } else {
+        if (localPlans.length) localStorage.removeItem("cl_plans");
+        setPlans(dbPlans);
+      }
+    })();
+  }, [user?.id]);
   const [viewingPlan, setViewingPlan] = useState(null);
   const [toast, setToast] = useState({ msg: "", show: false });
   const [ratingPlan, setRatingPlan] = useState(null);
@@ -6638,11 +6663,9 @@ export default function App() {
       setResult(finalResult);
       track("plan_generated", { stops: finalStops.length, vibes: ans.vibes, budget: ans.budget, area: ans.area, fromSaved: !!(ans.savedVenues?.length) });
       setQuizStep(QUESTIONS.length + 1);
-      setPlans(prev => {
-        const updated = [{ result: finalResult, ans: { ...ans }, times: { ...times }, savedAt: new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }), createdAt: Date.now(), id: generateId() }, ...prev];
-        localStorage.setItem("cl_plans", JSON.stringify(updated.slice(0, 20)));
-        return updated;
-      });
+      const newPlan = { result: finalResult, ans: { ...ans }, times: { ...times }, savedAt: new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }), createdAt: Date.now(), id: generateId() };
+      setPlans(prev => [newPlan, ...prev]);
+      supabase.from("plans").insert({ id: newPlan.id, user_id: user.id, result: newPlan.result, ans: newPlan.ans, times: newPlan.times, saved_at: newPlan.savedAt, created_at: newPlan.createdAt }).catch(() => {});
       showToast("Plan saved to My Plans");
     } catch (e) {
       setError(e.message?.includes("AI is taking a break") ? e.message : "Couldn't generate your plan — try again in a moment.");
@@ -6652,7 +6675,7 @@ export default function App() {
 
   function resetToHome() { setQuizStep(-1); setAns({}); setResult(null); setError(null); setViewingPlan(null); setActiveTab("plans"); }
   function goToCalendar(msg) { setViewingPlan(null); setActiveTab("saved"); setCalSignal(n => n + 1); if (msg) showToast(msg); }
-  function schedulePlanAt(idx, date) { setPlans(prev => { const u = prev.map((p, i) => i === idx ? { ...p, scheduledDate: date || null } : p); localStorage.setItem("cl_plans", JSON.stringify(u.slice(0, 20))); return u; }); }
+  function schedulePlanAt(idx, date) { setPlans(prev => { const u = prev.map((p, i) => { if (i === idx) { supabase.from("plans").update({ scheduled_date: date || null }).eq("id", p.id).catch(() => {}); return { ...p, scheduledDate: date || null }; } return p; }); return u; }); }
 
   const showQuiz = activeTab === "home" && quizStep >= 0 && quizStep <= QUESTIONS.length;
   const showResult = activeTab === "home" && quizStep === QUESTIONS.length + 1 && result;
@@ -6804,7 +6827,7 @@ export default function App() {
         {showQuiz && <QuizScreen step={quizStep} ans={ans} times={times} setTimes={setTimes} onToggle={toggle} onNext={nextStep} onBack={prevStep} onGenerate={generate} loading={loading} loadIdx={loadIdx} error={error} onExit={() => { setQuizStep(-1); setActiveTab("plans"); }} />}
         {showResult && <ResultScreen result={result} times={times} ans={ans} onRestart={resetToHome} onNewPlan={startQuiz} dbVenues={dbVenues} onUpdateResult={setResult} onShare={setShareItem} onRate={() => plans[0] && setRatingPlan(plans[0])} scheduledDate={plans[0]?.scheduledDate} onSchedule={(date) => { if (!plans[0]) return; schedulePlanAt(0, date); goToCalendar("It's on your calendar! 📅"); }} />}
 
-        {activeTab === "plans" && !showViewingPlan && <MyPlansScreen plans={plans} dbVenues={dbVenues} onViewPlan={(plan) => setViewingPlan(plan)} onNewPlan={() => { setActiveTab("home"); startQuiz(); }} onBarCrawl={() => setBarCrawl({ seed: [] })} onSchedule={(i, date) => setPlans(prev => { const u = prev.map((p, idx) => idx === i ? { ...p, scheduledDate: date || null } : p); localStorage.setItem("cl_plans", JSON.stringify(u.slice(0, 20))); return u; })} />}
+        {activeTab === "plans" && !showViewingPlan && <MyPlansScreen plans={plans} dbVenues={dbVenues} onViewPlan={(plan) => setViewingPlan(plan)} onNewPlan={() => { setActiveTab("home"); startQuiz(); }} onBarCrawl={() => setBarCrawl({ seed: [] })} onSchedule={(i, date) => schedulePlanAt(i, date)} />}
         {showViewingPlan && (
           <PlanDetailView
             plan={viewingPlan}
@@ -6814,13 +6837,13 @@ export default function App() {
             onUpdateResult={(r) => setViewingPlan(p => ({ ...p, result: r }))}
             onShare={setShareItem}
             onRate={() => setRatingPlan(viewingPlan)}
-            onSchedule={(date) => { setPlans(prev => { const u = prev.map(x => x.id === viewingPlan.id ? { ...x, scheduledDate: date || null } : x); localStorage.setItem("cl_plans", JSON.stringify(u.slice(0, 20))); return u; }); goToCalendar("It's on your calendar! 📅"); }}
+            onSchedule={(date) => { const idx = plans.findIndex(p => p.id === viewingPlan.id); if (idx >= 0) schedulePlanAt(idx, date); goToCalendar("It's on your calendar! 📅"); }}
           />
         )}
 
         {activeTab === "discover" && <DiscoverScreen preferences={preferences} dbVenues={dbVenues} onStart={startQuiz} onOpenSpot={setDiscoverSpot} />}
         {discoverSpot && <SpotDetail spot={discoverSpot} onClose={() => setDiscoverSpot(null)} user={user} onMakePlan={(s) => { setDiscoverSpot(null); setActiveTab("home"); setAns({ savedVenues: [s] }); setQuizStep(0); }} />}
-        {activeTab === "people" && <PeopleScreen user={user} onShareSaved={() => setPeopleBadge(n => Math.max(0, n - 1))} onSavePlan={(payload) => { const r = payload?.plan; if (!r) return; setPlans(prev => { const updated = [{ result: r, times: payload?.times || times, ans: {}, savedAt: new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }), createdAt: Date.now(), id: generateId() }, ...prev]; localStorage.setItem("cl_plans", JSON.stringify(updated.slice(0, 20))); return updated; }); }} />}
+        {activeTab === "people" && <PeopleScreen user={user} onShareSaved={() => setPeopleBadge(n => Math.max(0, n - 1))} onSavePlan={(payload) => { const r = payload?.plan; if (!r) return; const newPlan = { result: r, times: payload?.times || times, ans: {}, savedAt: new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }), createdAt: Date.now(), id: generateId() }; setPlans(prev => [newPlan, ...prev]); supabase.from("plans").insert({ id: newPlan.id, user_id: user.id, result: newPlan.result, ans: newPlan.ans, times: newPlan.times, saved_at: newPlan.savedAt, created_at: newPlan.createdAt }).catch(() => {}); }} />}
         {/* Always mounted so an in-progress screenshot parse keeps running + persists when you switch tabs */}
         <div style={{ display: activeTab === "saved" ? "block" : "none" }}>
           {showStarter && (
@@ -6830,7 +6853,7 @@ export default function App() {
               <button onClick={() => setShowStarter(false)} style={{ border: "none", background: "none", color: "rgba(20,20,15,.45)", cursor: "pointer", fontSize: "1.1rem", lineHeight: 1 }}>×</button>
             </div>
           )}
-          <SavedScreen user={user} visible={activeTab === "saved"} tourWantsSpot={tourStep === 1 || tourStep === 2} replayImportSignal={importSignal} dbVenues={dbVenues} openSignal={captureSignal} calendarSignal={calSignal} onShare={setShareItem} onBuildPlan={(saves) => { setResult(null); setError(null); setViewingPlan(null); setActiveTab("home"); setAns({ savedVenues: saves }); setQuizStep(0); }} onBarCrawl={(seed) => setBarCrawl({ seed: seed || [] })} />
+          <SavedScreen user={user} visible={activeTab === "saved"} tourWantsSpot={tourStep === 1 || tourStep === 2} replayImportSignal={importSignal} dbVenues={dbVenues} openSignal={captureSignal} calendarSignal={calSignal} onShare={setShareItem} plans={plans} onBuildPlan={(saves) => { setResult(null); setError(null); setViewingPlan(null); setActiveTab("home"); setAns({ savedVenues: saves }); setQuizStep(0); }} onBarCrawl={(seed) => setBarCrawl({ seed: seed || [] })} />
         </div>
         {activeTab === "me" && <MeScreen user={user} preferences={preferences} setPreferences={setPreferences} isAdmin={isAdmin} onBadgeUpdate={setAdminBadge} adminBadge={adminBadge} onStartTour={() => setTourStep(0)} onStartImportTour={() => { setTourStep(-1); setActiveTab("saved"); setImportSignal(n => n + 1); }} />}
 
