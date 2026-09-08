@@ -4378,11 +4378,11 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
               const cat = (v.category || "experience").toLowerCase();
               const photoSrc = v.photo_url || v._previewImage;
               return (
-                <div key={i} style={{ marginBottom: 18, background: "#fff", borderRadius: 14, border: "1px solid rgba(20,20,15,.1)", overflow: "hidden", boxShadow: "0 2px 8px rgba(20,20,15,.04)" }}>
+                <div key={i} onClick={() => setDetailSpot(v)} style={{ marginBottom: 18, background: "#fff", borderRadius: 14, border: "1px solid rgba(20,20,15,.1)", overflow: "hidden", boxShadow: "0 2px 8px rgba(20,20,15,.04)", cursor: "pointer" }}>
                   <div style={{ position: "relative", height: 200, background: "#F1EDE4" }}>
                     {photoSrc && <img src={photoSrc} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
                     <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 50%, rgba(20,20,15,.8))" }} />
-                    <button onClick={() => removeDraft(i)} style={{ position: "absolute", top: 12, right: 12, width: 32, height: 32, borderRadius: "50%", border: "none", background: "rgba(20,20,15,.35)", backdropFilter: "blur(8px)", color: "#FAF7F2", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+                    <button onClick={(e) => { e.stopPropagation(); removeDraft(i); }} style={{ position: "absolute", top: 12, right: 12, width: 32, height: 32, borderRadius: "50%", border: "none", background: "rgba(20,20,15,.35)", backdropFilter: "blur(8px)", color: "#FAF7F2", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
                     {v._dup && <div style={{ position: "absolute", top: 12, left: 12, padding: "4px 10px", borderRadius: 100, background: "#DD4124", color: "#fff", fontSize: 10, fontWeight: 600 }}>Already saved</div>}
                     <div style={{ position: "absolute", left: 16, right: 16, bottom: 14 }}>
                       <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 26, lineHeight: 1, color: "#FAF7F2", fontStyle: "italic" }}>{v.name}</div>
