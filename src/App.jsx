@@ -2757,7 +2757,7 @@ function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan, user, onSpotUpdate
         </div>
         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 40%, rgba(20,20,15,.88))", pointerEvents: "none", zIndex: 3 }} />
         <button onClick={onClose} style={{ position: "absolute", top: 16, left: 20, width: 40, height: 40, borderRadius: "50%", border: "none", background: "rgba(20,20,15,.35)", backdropFilter: "blur(8px)", cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center", color: "#FAF7F2", zIndex: 4 }}>←</button>
-        {photos.length > 1 && <div style={{ position: "absolute", bottom: 80, right: 22, ...sf, fontSize: 9, fontWeight: 600, letterSpacing: "0.08em", color: "rgba(250,247,242,.5)", pointerEvents: "none", zIndex: 4 }}>{photos.length} photos · swipe →</div>}
+        {photos.length > 1 && <div style={{ position: "absolute", bottom: 80, right: 22, color: "rgba(250,247,242,.45)", pointerEvents: "none", zIndex: 4, fontSize: 18 }}>›</div>}
         <div style={{ position: "absolute", left: 22, right: 22, bottom: 20, pointerEvents: "none", zIndex: 4 }}>
           <div style={{ ...sf, fontSize: 11, fontWeight: 500, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(250,247,242,.55)", marginBottom: 8 }}>{[cap(cat), spot.area].filter(Boolean).join(" · ")}</div>
           <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 42, lineHeight: 0.95, color: "#FAF7F2", letterSpacing: "-0.02em", fontStyle: "italic" }}>{spot.name}</div>
