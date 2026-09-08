@@ -3398,6 +3398,8 @@ function SavedScreen({ user, onBuildPlan, onShare, onBarCrawl, openSignal, calen
   const [saveFolder, setSaveFolder] = useState(""); // "" = auto by category, "__new__" = create new
   const [listPickerOpen, setListPickerOpen] = useState(false);
   const [listSearch, setListSearch] = useState("");
+  const [bgParsing, setBgParsing] = useState(false);
+  const [bgDone, setBgDone] = useState(false);
   const [newFolder, setNewFolder] = useState("");
   const [saveNote, setSaveNote] = useState("");
   const [savedView, setSavedView] = useState("folders"); // folders | list | map | calendar
@@ -3891,9 +3893,16 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
       setPreview(prev => [...prev, ...drafts]);
       setTextInput("");
       setParseStatus("");
-      setCaptureOpen(false); // close the modal; the review list shows on the Saves screen
-      if (dupCount) { setInfoToast(`${dupCount} already in your saves — marked below`); setTimeout(() => setInfoToast(null), 3500); }
-      notify("Parsing done ✦", `${drafts.length} spot${drafts.length !== 1 ? "s" : ""} ready to review`);
+      if (bgParsing) {
+        setBgParsing(false);
+        setBgDone(true);
+        haptic([8, 20, 8]);
+        notify("Parsing done ✦", `${drafts.length} spot${drafts.length !== 1 ? "s" : ""} ready to review`);
+      } else {
+        setCaptureOpen(false);
+        if (dupCount) { setInfoToast(`${dupCount} already in your saves — marked below`); setTimeout(() => setInfoToast(null), 3500); }
+        notify("Parsing done ✦", `${drafts.length} spot${drafts.length !== 1 ? "s" : ""} ready to review`);
+      }
     } catch (e) {
       console.error("[handleParse]", e);
       setError(e.message || "Couldn't parse that.");
@@ -3974,7 +3983,13 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
     ensureNotifyPermission();
     const toSave = preview.filter(d => !d._dup);
     const skipped = preview.length - toSave.length;
-    if (!toSave.length) { setError("All spots are already in your saves."); return; }
+    if (!toSave.length) {
+      setListPickerOpen(false);
+      setPreview([]);
+      setInfoToast("All spots already in your saves");
+      setTimeout(() => setInfoToast(null), 3500);
+      return;
+    }
     setSaving(true); setError(null);
     let savedCount = 0;
     try {
@@ -4008,7 +4023,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
       setParseStatus("");
       tourSavedRef.current = true;
       setPreview([]);
-      setSaveFolder(""); setNewFolder(""); setSaveNote(""); setCaptureOpen(false);
+      setSaveFolder(""); setNewFolder(""); setSaveNote(""); setCaptureOpen(false); setListPickerOpen(false); setListSearch("");
       const msg = savedCount === 1 ? toSave[0].name : `${savedCount} spots`;
       showSuccess(msg);
       notify("Saved to your collection ✨", savedCount === 1 ? `${toSave[0].name} added` : `${savedCount} spots added`);
@@ -4303,6 +4318,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
                         </div>
                       );
                     })}
+                    <button onClick={() => { setBgParsing(true); setCaptureOpen(false); }} style={{ width: "100%", marginTop: 14, padding: "12px", background: "none", border: "1px solid rgba(20,20,15,.14)", borderRadius: 10, fontSize: 13, fontWeight: 500, color: "rgba(20,20,15,.5)", cursor: "pointer" }}>Continue browsing — we'll notify you</button>
                   </div>
                 )}
               </div>
@@ -4716,6 +4732,13 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
 
       {infoToast && (
         <div style={{ position: "fixed", top: 48, left: "50%", transform: "translateX(-50%)", zIndex: 2000, padding: "10px 20px", background: "#14140F", color: "#FAF7F2", borderRadius: 100, fontSize: 13, fontWeight: 500, boxShadow: "0 4px 16px rgba(0,0,0,.18)", animation: "fadeIn .2s", whiteSpace: "nowrap" }}>{infoToast}</div>
+      )}
+
+      {bgDone && preview.length > 0 && (
+        <div onClick={() => { setBgDone(false); setActiveTab("saved"); }} style={{ position: "fixed", top: 48, left: "50%", transform: "translateX(-50%)", zIndex: 2000, padding: "10px 18px", background: "#0F6B63", color: "#FAF7F2", borderRadius: 14, fontSize: 13, fontWeight: 600, boxShadow: "0 6px 20px rgba(0,0,0,.2)", animation: "fadeIn .25s", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap" }}>
+          <span>✦ {preview.length} spot{preview.length !== 1 ? "s" : ""} found</span>
+          <span style={{ fontSize: 11, opacity: 0.7 }}>Tap to review</span>
+        </div>
       )}
 
       {successVenue && (
