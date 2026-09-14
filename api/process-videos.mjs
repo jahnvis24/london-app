@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { requireCron } from "./_auth.mjs";
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL,
@@ -176,6 +177,10 @@ export default async function handler(req, res) {
   if (req.method !== 'GET' && req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  // Cron-only: this job DELETES rows and spends Claude + Google credits.
+  // Previously a plain GET from anyone would trigger it.
+  if (!requireCron(req, res)) return;
 
   // Expire past events first
   const today = new Date().toISOString().split("T")[0];

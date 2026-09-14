@@ -1,4 +1,5 @@
 import { put } from '@vercel/blob';
+import { requireUser, applyCors } from './_auth.mjs';
 
 // Combined helper endpoint for the Saved tab (kept as one function to stay under
 // the Vercel Hobby 12-function limit). Dispatches on body.tool:
@@ -7,7 +8,15 @@ import { put } from '@vercel/blob';
 //   tool: "maps"  → resolve a Google Maps URL into one or more venues
 //         { url }
 export default async function handler(req, res) {
+  if (applyCors(req, res)) return;
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  // Writes to Blob storage and to `experiences` with the service key — must know
+  // who is calling.
+  const user = await requireUser(req, res);
+  if (!user) return;
+  req.__userId = user.id;   // handlers below use this for their own admin checks
+
   const tool = req.body?.tool;
   try {
     if (tool === 'image') return await handleImage(req, res);
@@ -185,6 +194,10 @@ async function handleFixPhotos(req, res) {
 
   const { createClient } = await import('@supabase/supabase-js');
   const sb = createClient(process.env.VITE_SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+
+  // Bulk-rewrites photo_url across the table with the service key — admins only.
+  const { data: prof } = await sb.from('profiles').select('is_admin').eq('id', req.__userId).single();
+  if (!prof?.is_admin) return res.status(403).json({ error: 'Admins only' });
 
   const { data: saves } = await sb
     .from("experiences")

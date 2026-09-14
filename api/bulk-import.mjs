@@ -1,21 +1,21 @@
 import { createClient } from "@supabase/supabase-js";
+import { requireUser, applyCors } from "./_auth.mjs";
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_KEY
 );
 
-const ADMIN_EMAIL = "jahnvisolanki2412@gmail.com";
-
 export default async function handler(req, res) {
+  if (applyCors(req, res)) return;
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  // Auth + admin check
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith('Bearer ')) return res.status(401).json({ error: 'Unauthorized' });
-  const { data: { user }, error: authError } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
-  if (authError || !user) return res.status(401).json({ error: 'Unauthorized' });
-  if (user.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Forbidden' });
+  // Admin check now reads profiles.is_admin rather than comparing a hardcoded
+  // email, so revoking admin is a DB update instead of a redeploy.
+  const user = await requireUser(req, res);
+  if (!user) return;
+  const { data: prof } = await supabase.from('profiles').select('is_admin').eq('id', user.id).single();
+  if (!prof?.is_admin) return res.status(403).json({ error: 'Forbidden' });
 
   const { venues } = req.body;
   if (!venues || !Array.isArray(venues)) return res.status(400).json({ error: 'venues array required' });

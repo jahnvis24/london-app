@@ -7,6 +7,26 @@ const supabase = createClient(
   import.meta.env.VITE_SUPABASE_ANON_KEY
 );
 
+// ── API AUTH ─────────────────────────────────────────────────
+// Every /api/* route now requires a Supabase JWT, so the serverless functions
+// can tell who is calling before spending Claude/Google credits or writing with
+// the service key. Attaching the token here — once, around fetch — keeps the
+// ~25 existing call sites unchanged and covers any added later.
+if (typeof window !== "undefined" && !window.__apiAuthPatched) {
+  window.__apiAuthPatched = true;
+  const nativeFetch = window.fetch.bind(window);
+  window.fetch = async (input, init = {}) => {
+    const url = typeof input === "string" ? input : input?.url || "";
+    if (!url.startsWith("/api/")) return nativeFetch(input, init);
+    let token = null;
+    try { token = (await supabase.auth.getSession()).data?.session?.access_token || null; } catch {}
+    if (!token) return nativeFetch(input, init);
+    const headers = new Headers(init.headers || (typeof input !== "string" ? input.headers : undefined));
+    if (!headers.has("Authorization")) headers.set("Authorization", `Bearer ${token}`);
+    return nativeFetch(input, { ...init, headers });
+  };
+}
+
 // ── ANALYTICS ────────────────────────────────────────────────
 function track(event, properties = {}) {
   const uid = supabase.auth.getUser?.()?.then?.(r => r.data?.user?.id);
@@ -339,9 +359,53 @@ const ALL_AREAS = Object.keys({
 const LOADS = ["Raiding our database...", "Matching your vibe to venues...", "Checking geographic flow...", "Building your perfect sequence...", "Final polish..."];
 
 const PREF_OPTIONS = ["Restaurants", "Bars", "Hidden gems", "Outdoor", "Culture", "Markets", "Events", "Late night", "Brunch", "Fine dining", "Plant based", "Arts & crafts", "Active"];
-const ADMIN_EMAIL = "jahnvisolanki2412@gmail.com";
+// Admin is now a database flag (profiles.is_admin) checked by RLS and the API
+// routes, not an email comparison in client code.
 
 function generateId() { return Math.random().toString(36).slice(2, 8).toUpperCase(); }
+
+// Share links are only as private as their id. Math.random() is not a CSPRNG and
+// 6 chars is enumerable, so public share tokens use crypto with 22 chars.
+function generateShareToken() {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+// ── CDN ASSETS ───────────────────────────────────────────────
+// Leaflet is fetched from unpkg at runtime, which means unpkg can execute code in
+// our page with access to the signed-in user's Supabase session. The pinned
+// subresource-integrity hashes make the browser reject any file that doesn't
+// match, so a compromised or swapped CDN build fails closed instead of running.
+const CDN_ASSETS = {
+  "leaflet-css":  { url: "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css",                             integrity: "sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" },
+  "leaflet-js":   { url: "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js",                              integrity: "sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH" },
+  "mcluster-css": { url: "https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css",         integrity: "sha384-pmjIAcz2bAn0xukfxADbZIb3t8oRT9Sv0rvO+BR5Csr6Dhqq+nZs59P0pPKQJkEV" },
+  "mcluster-js":  { url: "https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js",  integrity: "sha384-eXVCORTRlv4FUUgS/xmOyr66XBVraen8ATNLMESp92FKXLAMiKkerixTiBvXriZr" },
+};
+
+function loadCdnCss(id) {
+  if (document.getElementById(id)) return;
+  const { url, integrity } = CDN_ASSETS[id];
+  const l = document.createElement("link");
+  l.id = id; l.rel = "stylesheet"; l.href = url;
+  l.integrity = integrity; l.crossOrigin = "anonymous";
+  document.head.appendChild(l);
+}
+
+function loadCdnScript(id) {
+  return new Promise((resolve, reject) => {
+    let s = document.getElementById(id);
+    if (s) { if (s.dataset.loaded) resolve(); else s.addEventListener("load", () => resolve()); return; }
+    const { url, integrity } = CDN_ASSETS[id];
+    s = document.createElement("script");
+    s.id = id; s.src = url;
+    s.integrity = integrity; s.crossOrigin = "anonymous";
+    s.addEventListener("load", () => { s.dataset.loaded = "1"; resolve(); });
+    s.addEventListener("error", () => reject(new Error(`Failed to load ${id}`)));
+    document.head.appendChild(s);
+  });
+}
 
 async function callClaude(prompt, maxTokens = 1000) {
   let resp;
@@ -854,23 +918,14 @@ function MapPicker({ onPin, currentPin, compact }) {
   const mapHeight = compact ? 180 : 280;
 
   useEffect(() => {
-    if (!document.getElementById('leaflet-css')) {
-      const link = document.createElement('link');
-      link.id = 'leaflet-css';
-      link.rel = 'stylesheet';
-      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-      document.head.appendChild(link);
-    }
+    loadCdnCss('leaflet-css');
 
     if (window.L) {
       setLoaded(true);
       return;
     }
 
-    const script = document.createElement('script');
-    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-    script.onload = () => setLoaded(true);
-    document.head.appendChild(script);
+    loadCdnScript('leaflet-js').then(() => setLoaded(true)).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -1086,14 +1141,18 @@ function QuizScreen({ step, ans, times, setTimes, onToggle, onNext, onBack, onGe
 
 function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUpdateResult, onShare, onRate, onSchedule, scheduledDate }) {
   const [view, setView] = useState("plan");
-  const [shareId] = useState(generateId);
+  const [shareId] = useState(generateShareToken);
   const [copied, setCopied] = useState(false);
   const [sharing, setSharing] = useState(false);
 
-  // Persist the plan so anyone with the link can view it.
+  // Persist the plan so anyone with the link can view it. `owner` is required by
+  // RLS now, so only the creator can overwrite a share once it exists.
   async function ensureShared() {
     setSharing(true);
-    try { await supabase.from("shared_plans").upsert({ id: shareId, plan: result, times, title: result?.title || "Curated plan" }, { onConflict: "id" }); } catch (e) { console.error("[share]", e); }
+    try {
+      const uid = (await supabase.auth.getUser()).data?.user?.id || null;
+      await supabase.from("shared_plans").upsert({ id: shareId, owner: uid, plan: result, times, title: result?.title || "Curated plan" }, { onConflict: "id" });
+    } catch (e) { console.error("[share]", e); }
     setSharing(false);
     return shareId;
   }
@@ -2279,7 +2338,7 @@ function MeScreen({ user, preferences, setPreferences, isAdmin, onBadgeUpdate, a
   const [stats, setStats] = useState({ saved: 0, visited: 0, friends: 0 });
   const [friends, setFriends] = useState([]);
   const [bucketLists, setBucketLists] = useState([]);
-  const nameOf = (p) => p?.name || p?.email?.split("@")[0] || "?";
+  const nameOf = (p) => p?.name || "?";
 
   useEffect(() => {
     if (!user) return;
@@ -2293,7 +2352,7 @@ function MeScreen({ user, preferences, setPreferences, isAdmin, onBadgeUpdate, a
       const otherIds = (conRes.data || []).map(c => c.user_a === user.id ? c.user_b : c.user_a);
       let prof = [];
       if (otherIds.length) {
-        const { data } = await supabase.from("profiles").select("id,name,avatar_url,email,friend_code").in("id", otherIds);
+        const { data } = await supabase.from("profiles").select("id,name,avatar_url,friend_code").in("id", otherIds);
         prof = data || [];
       }
       const blIds = (blRes.data || []).map(b => b.id);
@@ -2885,19 +2944,11 @@ function SpotsMap({ saves, listName, focusSpot, onCategory, peek, peekHeight, on
 
   useEffect(() => {
     let cancelled = false;
-    const ensureCss = (id, href) => { if (!document.getElementById(id)) { const l = document.createElement("link"); l.id = id; l.rel = "stylesheet"; l.href = href; document.head.appendChild(l); } };
-    const ensureScript = (id, src) => new Promise((res) => {
-      let s = document.getElementById(id);
-      if (s) { if (s.dataset.loaded) res(); else s.addEventListener("load", () => res()); return; }
-      s = document.createElement("script"); s.id = id; s.src = src;
-      s.addEventListener("load", () => { s.dataset.loaded = "1"; res(); });
-      document.head.appendChild(s);
-    });
     (async () => {
-      ensureCss("leaflet-css", "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css");
-      ensureCss("mcluster-css", "https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css");
-      if (!window.L) await ensureScript("leaflet-js", "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js");
-      if (!window.L.markerClusterGroup) await ensureScript("mcluster-js", "https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js");
+      loadCdnCss("leaflet-css");
+      loadCdnCss("mcluster-css");
+      if (!window.L) await loadCdnScript("leaflet-js");
+      if (!window.L.markerClusterGroup) await loadCdnScript("mcluster-js");
       if (!cancelled) setLoaded(true);
     })();
     return () => { cancelled = true; };
@@ -5370,14 +5421,16 @@ function ShareModal({ user, item, onClose, showToast }) {
   const [people, setPeople] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
-  const nameOf = (p) => p?.name || (p?.email ? p.email.split("@")[0] : null) || "Friend";
+  // Other users' emails are no longer readable (RLS + profiles_public), so the
+  // fallback is a generic label rather than an email prefix.
+  const nameOf = (p) => p?.name || "Friend";
 
   useEffect(() => {
     (async () => {
       const { data: cons } = await supabase.from("connections").select("*").or(`user_a.eq.${user.id},user_b.eq.${user.id}`);
       const ids = (cons || []).map(c => (c.user_a === user.id ? c.user_b : c.user_a));
       let profs = [];
-      if (ids.length) { const { data } = await supabase.from("profiles").select("id,name,avatar_url,email").in("id", ids); profs = data || []; }
+      if (ids.length) { const { data } = await supabase.from("profiles").select("id,name,avatar_url").in("id", ids); profs = data || []; }
       setPeople(ids.map(id => profs.find(p => p.id === id) || { id }));
       setLoading(false);
     })();
@@ -5605,7 +5658,9 @@ function SharedListView({ list, user, onClose }) {
     setSsStatus(""); setBusy(false); setPicker(null);
   }
   const inviteLink = `https://london-app.vercel.app/?blist=${list.id}`;
-  const nameOf = (p) => p?.name || (p?.email ? p.email.split("@")[0] : null) || "Friend";
+  // Other users' emails are no longer readable (RLS + profiles_public), so the
+  // fallback is a generic label rather than an email prefix.
+  const nameOf = (p) => p?.name || "Friend";
   // Add-to-Google-Calendar link for a bucket-list item (uses its planned date if set).
   const gcalUrlFor = (it) => {
     const p = new URLSearchParams({ action: "TEMPLATE", text: it.name || "Visit", details: it.comment || "", location: it.address || it.area || "London" });
@@ -5620,7 +5675,7 @@ function SharedListView({ list, user, onClose }) {
     const { data: mem } = await supabase.from("shared_list_members").select("user_id").eq("list_id", list.id);
     const ids = (mem || []).map(m => m.user_id);
     let profs = {};
-    if (ids.length) { const { data } = await supabase.from("profiles").select("id,name,avatar_url,email").in("id", ids); (data || []).forEach(p => { profs[p.id] = p; }); }
+    if (ids.length) { const { data } = await supabase.from("profiles").select("id,name,avatar_url").in("id", ids); (data || []).forEach(p => { profs[p.id] = p; }); }
     setMembers(ids.map(id => ({ id, ...(profs[id] || {}) })));
     setLoading(false);
   }
@@ -5629,7 +5684,7 @@ function SharedListView({ list, user, onClose }) {
     const { data: cons } = await supabase.from("connections").select("*").or(`user_a.eq.${user.id},user_b.eq.${user.id}`);
     const otherIds = (cons || []).map(c => (c.user_a === user.id ? c.user_b : c.user_a));
     if (!otherIds.length) { setConns([]); return; }
-    const { data: profs } = await supabase.from("profiles").select("id,name,avatar_url,email").in("id", otherIds);
+    const { data: profs } = await supabase.from("profiles").select("id,name,avatar_url").in("id", otherIds);
     setConns((profs || []).map(p => ({ id: p.id, ...p })));
   }
   async function addMember(friendId) {
@@ -5924,7 +5979,9 @@ const FRIEND_WORDS = ["BEAR","WOLF","DEER","FROG","DUCK","SWAN","CROW","DOVE","H
 // spots inside and copy any of them to your own board.
 function FriendProfile({ user, friend, onClose }) {
   const fpSwipeRef = useSwipeRight(onClose);
-  const nameOf = (p) => p?.name || (p?.email ? p.email.split("@")[0] : null) || "Friend";
+  // Other users' emails are no longer readable (RLS + profiles_public), so the
+  // fallback is a generic label rather than an email prefix.
+  const nameOf = (p) => p?.name || "Friend";
   const [saves, setSaves] = useState([]);
   const [loading, setLoading] = useState(true);
   const [savedIds, setSavedIds] = useState(new Set());
@@ -6085,7 +6142,9 @@ function PeopleScreen({ user, onSavePlan, onShareSaved }) {
   const [showConnect, setShowConnect] = useState(false); // collapse the connect card by default
   const [peopleTipDismissed, setPeopleTipDismissed] = useState(() => localStorage.getItem("cl_seen_people_tip") === "1");
   const inviteLink = `https://london-app.vercel.app/?invite=${user.id}`;
-  const nameOf = (p) => p?.name || (p?.email ? p.email.split("@")[0] : null) || "Friend";
+  // Other users' emails are no longer readable (RLS + profiles_public), so the
+  // fallback is a generic label rather than an email prefix.
+  const nameOf = (p) => p?.name || "Friend";
 
   // A short, memorable 4-letter word stored on the profile, so a friend can type
   // it to connect. Generated once, then reused. Only sets myCode when the write
@@ -6097,7 +6156,9 @@ function PeopleScreen({ user, onSavePlan, onShareSaved }) {
       if (mine?.friend_code) { setMyCode(mine.friend_code); return; }
       // Words already taken by other users (RLS allows reading all profiles), so
       // we pick an unused one up front and let the unique index be the backstop.
-      const { data: rows } = await supabase.from("profiles").select("friend_code").not("friend_code", "is", null);
+      // Reads other users' rows (uniqueness check), so it goes through the
+      // profiles_public view — no email exposed.
+      const { data: rows } = await supabase.from("profiles_public").select("friend_code").not("friend_code", "is", null);
       const used = new Set((rows || []).map(r => r.friend_code));
       const pool = FRIEND_WORDS.filter(w => !used.has(w));
       const candidates = pool.length ? pool : FRIEND_WORDS;
@@ -6117,7 +6178,9 @@ function PeopleScreen({ user, onSavePlan, onShareSaved }) {
     if (code === myCode) { setMsg("That's your own word!"); return; }
     setConnecting(true); setMsg("");
     try {
-      const { data } = await supabase.from("profiles").select("id,name").eq("friend_code", code).maybeSingle();
+      // Resolves a stranger's code, so it must use profiles_public (RLS on the
+      // profiles table now only exposes your own row and your connections').
+      const { data } = await supabase.from("profiles_public").select("id,name").eq("friend_code", code).maybeSingle();
       if (!data?.id) { setMsg("No one found with that code — double-check it."); setConnecting(false); return; }
       const [a, b] = [user.id, data.id].sort();
       // ignoreDuplicates → "ON CONFLICT DO NOTHING", so re-connecting an existing
@@ -6138,7 +6201,7 @@ function PeopleScreen({ user, onSavePlan, onShareSaved }) {
     const { data: sh } = await supabase.from("shares").select("*").eq("to_user", user.id).order("created_at", { ascending: false });
     const ids = [...new Set([...otherIds, ...(sh || []).map(s => s.from_user)])];
     let prof = {};
-    if (ids.length) { const { data } = await supabase.from("profiles").select("id,name,avatar_url,email").in("id", ids); (data || []).forEach(p => { prof[p.id] = p; }); }
+    if (ids.length) { const { data } = await supabase.from("profiles").select("id,name,avatar_url").in("id", ids); (data || []).forEach(p => { prof[p.id] = p; }); }
     setConnections(otherIds.map(id => ({ id, ...(prof[id] || {}) })));
     setShares((sh || []).map(s => ({ ...s, from: prof[s.from_user] || {} })));
     setLoading(false);
@@ -6370,7 +6433,18 @@ export default function App() {
     try { return JSON.parse(localStorage.getItem("cl_prefs") || "[]"); } catch { return []; }
   });
   const timerRef = useRef(null);
-  const isAdmin = user?.email === ADMIN_EMAIL;
+
+  // Cosmetic only — it decides whether the Admin menu item renders. The real
+  // control is profiles.is_admin, enforced by RLS and by the API routes; editing
+  // this in devtools now gets you a menu that returns 403 and writes nothing.
+  const [isAdmin, setIsAdmin] = useState(false);
+  useEffect(() => {
+    if (!user?.id) { setIsAdmin(false); return; }
+    (async () => {
+      const { data } = await supabase.from("profiles").select("is_admin").eq("id", user.id).maybeSingle();
+      setIsAdmin(!!data?.is_admin);
+    })();
+  }, [user?.id]);
 
   // Guided product tour: each step drives which tab is shown. Also expose a
   // console hook so the tour can be replayed for testing/support.
@@ -6474,11 +6548,19 @@ export default function App() {
     loadRatings();
   }, []);
 
-  // Load approved venues from Supabase
+  // Load approved venues from Supabase. Reads the experiences_public view, not
+  // the table: the view exposes only catalogue columns, so promoting a user's
+  // save into the pool can't leak their private note or visit date.
   useEffect(() => {
     async function loadVenues() {
-      const { data } = await supabase.from("experiences").select("*").eq("status", "approved");
-      if (data) setDbVenues(data);
+      const { data, error } = await supabase.from("experiences_public").select("*");
+      if (data?.length) { setDbVenues(data); return; }
+      // Falls back to the table if the security migration hasn't been run yet, so
+      // deploying the code before running the SQL doesn't empty out Discover.
+      if (error) {
+        const { data: legacy } = await supabase.from("experiences").select("*").eq("status", "approved");
+        if (legacy) setDbVenues(legacy);
+      }
     }
     loadVenues();
   }, []);
@@ -6752,8 +6834,8 @@ export default function App() {
     const SEEN = "cl_seen_connections";
     const announce = async (otherId) => {
       if (!otherId || otherId === user.id) return;
-      const { data } = await supabase.from("profiles").select("name,email").eq("id", otherId).single();
-      const nm = data?.name || (data?.email ? data.email.split("@")[0] : null) || "Someone";
+      const { data } = await supabase.from("profiles_public").select("name").eq("id", otherId).single();
+      const nm = data?.name || "Someone";
       showToast(`🎉 ${nm} connected with you!`);
       notify("New connection", `${nm} connected with you on Curated`);
       track("friend_connected", { friend_id: otherId });

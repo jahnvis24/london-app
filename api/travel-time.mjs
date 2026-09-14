@@ -1,5 +1,11 @@
+import { requireUser, applyCors } from './_auth.mjs';
+
 export default async function handler(req, res) {
+  if (applyCors(req, res)) return;
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  // Spends Google Routes quota — signed-in callers only.
+  if (!(await requireUser(req, res))) return;
 
   const { origin, destination, mode, departureTime } = req.body;
   if (!origin || !destination) return res.status(400).json({ error: 'Origin and destination required' });

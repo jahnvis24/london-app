@@ -1,22 +1,23 @@
 import { createClient } from "@supabase/supabase-js";
+import { requireUser, applyCors } from "./_auth.mjs";
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_KEY
 );
 
-const ADMIN_EMAIL = "jahnvisolanki2412@gmail.com";
-
 export default async function handler(req, res) {
+  if (applyCors(req, res)) return;
+
+  // Admin-only in both directions: the GET dumps the whole catalogue with
+  // coordinates, which was previously readable by anyone.
+  const user = await requireUser(req, res);
+  if (!user) return;
+  const { data: prof } = await supabase.from('profiles').select('is_admin').eq('id', user.id).single();
+  if (!prof?.is_admin) return res.status(403).json({ error: 'Forbidden' });
+
   // POST: bulk update venues by name
   if (req.method === 'POST') {
-    // Auth + admin check
-    const authHeader = req.headers.authorization;
-    if (!authHeader?.startsWith('Bearer ')) return res.status(401).json({ error: 'Unauthorized' });
-    const { data: { user }, error: authError } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
-    if (authError || !user) return res.status(401).json({ error: 'Unauthorized' });
-    if (user.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Forbidden' });
-
     const { updates } = req.body;
     if (!updates || !Array.isArray(updates)) return res.status(400).json({ error: 'updates array required' });
     const results = [];

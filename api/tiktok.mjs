@@ -1,5 +1,11 @@
+import { requireUser, applyCors } from './_auth.mjs';
+
 export default async function handler(req, res) {
+  if (applyCors(req, res)) return;
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  // Spends TikWM quota — signed-in callers only.
+  if (!(await requireUser(req, res))) return;
 
   const { url } = req.body;
   if (!url) return res.status(400).json({ error: 'No URL provided' });

@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { requireUser, applyCors } from "./_auth.mjs";
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL,
@@ -6,16 +7,17 @@ const supabase = createClient(
 );
 
 export default async function handler(req, res) {
+  if (applyCors(req, res)) return;
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  // Auth check
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith('Bearer ')) return res.status(401).json({ error: 'Unauthorized' });
-  const { data: { user }, error: authError } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
-  if (authError || !user) return res.status(401).json({ error: 'Unauthorized' });
+  const user = await requireUser(req, res);
+  if (!user) return;
 
-  const { action, user_id } = req.body || {};
-  if (!user_id) return res.status(400).json({ error: 'user_id required' });
+  // This used to take user_id from the BODY while only checking that the caller
+  // was signed in as *someone* — so any user could export or permanently delete
+  // any other account. Identity now comes from the verified token only.
+  const { action } = req.body || {};
+  const user_id = user.id;
 
   if (action === 'export') {
     const [experiences, connections, shares, sharedLists, sharedListItems, ratings, profile, plans] = await Promise.all([

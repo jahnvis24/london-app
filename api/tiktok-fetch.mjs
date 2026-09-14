@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { requireCron } from "./_auth.mjs";
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL,
@@ -126,6 +127,10 @@ export default async function handler(req, res) {
   if (req.method !== 'GET' && req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  // Cron-only: this job spends TikWM + Claude credits and writes with the
+  // service key. Previously a plain GET from anyone would trigger it.
+  if (!requireCron(req, res)) return;
 
   const allVideos = [];
   let queued = 0;
