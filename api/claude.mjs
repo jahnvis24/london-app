@@ -17,6 +17,11 @@ const DAILY_CAP = 200;
 // burns tokens and wall-clock for nothing.
 const MAX_BODY_BYTES = 6 * 1024 * 1024;
 
+// The app only uses this model; App.jsx requests up to 4096 tokens.
+const ALLOWED_MODELS = new Set(['claude-sonnet-4-6']);
+const DEFAULT_MODEL = 'claude-sonnet-4-6';
+const MAX_TOKENS_CAP = 4096;
+
 function checkBurst(userId) {
   const now = Date.now();
   const entry = rateLimitMap.get(userId);
@@ -58,7 +63,21 @@ export default async function handler(req, res) {
     return res.status(429).json({ error: 'Daily limit reached. Try again tomorrow.' });
   }
 
-  const body = JSON.stringify(req.body ?? {});
+  // Only forward the fields we use, pin the model, and cap output length so a
+  // caller can't pick an expensive model or request huge responses on our key.
+  const { model, max_tokens, messages, system, temperature } = req.body || {};
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return res.status(400).json({ error: 'messages required' });
+  }
+  const payload = {
+    model: ALLOWED_MODELS.has(model) ? model : DEFAULT_MODEL,
+    max_tokens: Math.min(Math.max(parseInt(max_tokens, 10) || 1000, 1), MAX_TOKENS_CAP),
+    messages,
+  };
+  if (typeof system === 'string' || Array.isArray(system)) payload.system = system;
+  if (typeof temperature === 'number') payload.temperature = temperature;
+
+  const body = JSON.stringify(payload);
   if (Buffer.byteLength(body) > MAX_BODY_BYTES) {
     return res.status(413).json({ error: 'Request too large. Try a smaller screenshot.' });
   }
