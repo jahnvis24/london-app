@@ -1,4 +1,23 @@
 import { put } from '@vercel/blob';
+import { requireUser, isAdmin } from './_lib/auth.mjs';
+
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+
+// Only fetch public https URLs. Blocks localhost / private-network addresses so
+// this endpoint can't be used to probe internal services.
+function safePublicUrl(raw, allowedHosts) {
+  let u;
+  try { u = new URL(String(raw)); } catch { return null; }
+  if (u.protocol !== 'https:') return null;
+  const host = u.hostname.toLowerCase();
+  if (host === 'localhost' || host.endsWith('.local') || host.endsWith('.internal')) return null;
+  if (/^\d+\.\d+\.\d+\.\d+$/.test(host) || host.includes(':') || host.startsWith('[')) return null; // bare IPs
+  if (allowedHosts && !allowedHosts.some(h => host === h || host.endsWith('.' + h))) return null;
+  return u.toString();
+}
+
+const MAPS_HOSTS = ['google.com', 'google.co.uk', 'goo.gl', 'app.goo.gl'];
+const INSTAGRAM_HOSTS = ['instagram.com'];
 
 // Combined helper endpoint for the Saved tab (kept as one function to stay under
 // the Vercel Hobby 12-function limit). Dispatches on body.tool:
@@ -8,7 +27,12 @@ import { put } from '@vercel/blob';
 //         { url }
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  const user = await requireUser(req, res);
+  if (!user) return;
   const tool = req.body?.tool;
+  if (tool === 'fix-photos' && !user.server && !isAdmin(user)) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
   try {
     if (tool === 'image') return await handleImage(req, res);
     if (tool === 'maps') return await handleMaps(req, res);
@@ -22,7 +46,8 @@ export default async function handler(req, res) {
 }
 
 async function handleImage(req, res) {
-  const { image_base64, image_url, place_id, content_type } = req.body || {};
+  const { image_base64, image_url, place_id: rawPlaceId, content_type } = req.body || {};
+  const place_id = rawPlaceId ? encodeURIComponent(rawPlaceId) : rawPlaceId;
   const apiKey = process.env.GOOGLE_PLACES_KEY;
   let buffer;
   let contentType = content_type || 'image/jpeg';
@@ -30,10 +55,13 @@ async function handleImage(req, res) {
   if (image_base64) {
     buffer = Buffer.from(image_base64, 'base64');
   } else if (image_url) {
-    const r = await fetch(image_url);
+    const safe = safePublicUrl(image_url);
+    if (!safe) return res.status(400).json({ error: 'Invalid image URL' });
+    const r = await fetch(safe);
     if (!r.ok) throw new Error('Could not fetch source image (' + r.status + ')');
-    buffer = Buffer.from(await r.arrayBuffer());
     contentType = r.headers.get('content-type') || contentType;
+    if (!contentType.startsWith('image/')) return res.status(400).json({ error: 'URL is not an image' });
+    buffer = Buffer.from(await r.arrayBuffer());
   } else if (place_id) {
     if (!apiKey) throw new Error('Google Places key not configured');
     const d = await fetch(`https://maps.googleapis.com/maps/api/place/details/json?place_id=${place_id}&fields=photos&key=${apiKey}`);
@@ -47,6 +75,10 @@ async function handleImage(req, res) {
     return res.status(400).json({ error: 'Provide image_base64, image_url, or place_id' });
   }
 
+  if (!buffer?.length || buffer.length > MAX_IMAGE_BYTES) {
+    return res.status(400).json({ error: 'Image missing or too large' });
+  }
+  if (!/^image\/(jpeg|png|webp|gif)$/.test(contentType)) contentType = 'image/jpeg';
   const ext = contentType.includes('png') ? 'png' : 'jpg';
   const key = `saves/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
   const blob = await put(key, buffer, { access: 'public', contentType });
@@ -67,8 +99,11 @@ async function handleInstagram(req, res) {
     .replace(/&quot;/g, '"').replace(/&#039;/g, "'").replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<').replace(/&gt;/g, '>');
 
+  const safeUrl = safePublicUrl(url, INSTAGRAM_HOSTS);
+  if (!safeUrl) return res.status(400).json({ error: 'Please paste an instagram.com link' });
+
   try {
-    const r = await fetch(url, { headers: { 'User-Agent': UA, 'Accept-Language': 'en-US,en;q=0.9' }, redirect: 'follow' });
+    const r = await fetch(safeUrl, { headers: { 'User-Agent': UA, 'Accept-Language': 'en-US,en;q=0.9' }, redirect: 'follow' });
     const html = await r.text();
 
     const grab = (prop) => {
@@ -95,7 +130,7 @@ async function handleInstagram(req, res) {
 // Returns several directly-loadable Google Places photo URLs for a venue (for the
 // detail-page gallery). Resolves each photo redirect to its googleusercontent URL.
 async function handlePhotos(req, res) {
-  const { place_id } = req.body || {};
+  const place_id = req.body?.place_id ? encodeURIComponent(req.body.place_id) : null;
   const apiKey = process.env.GOOGLE_PLACES_KEY;
   if (!place_id) return res.status(400).json({ error: 'place_id required' });
   if (!apiKey) return res.status(500).json({ error: 'Google Places key not configured' });
@@ -131,7 +166,10 @@ async function handleMaps(req, res) {
     places.push({ name, lat: lat ? parseFloat(lat) : null, lng: lng ? parseFloat(lng) : null });
   };
 
-  const resp = await fetch(url, { headers: { 'User-Agent': UA }, redirect: 'follow' });
+  const safeUrl = safePublicUrl(url, MAPS_HOSTS);
+  if (!safeUrl) return res.status(400).json({ error: 'Please paste a Google Maps link' });
+
+  const resp = await fetch(safeUrl, { headers: { 'User-Agent': UA }, redirect: 'follow' });
   const finalUrl = resp.url || url;
   const html = await resp.text();
 

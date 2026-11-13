@@ -27,7 +27,7 @@ export default async function handler(req, res) {
       // Enrich with Google Places
       const enrichResp = await fetch(`https://${req.headers.host}/api/enrich-venue`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: authHeader },
         body: JSON.stringify({ name: venue.name, area: venue.area })
       });
       const enrichData = await enrichResp.json();

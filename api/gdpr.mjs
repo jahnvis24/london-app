@@ -14,8 +14,10 @@ export default async function handler(req, res) {
   const { data: { user }, error: authError } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
   if (authError || !user) return res.status(401).json({ error: 'Unauthorized' });
 
-  const { action, user_id } = req.body || {};
-  if (!user_id) return res.status(400).json({ error: 'user_id required' });
+  // Always act on the signed-in user — never trust a user_id from the request body,
+  // otherwise anyone signed in could export or delete someone else's account.
+  const { action } = req.body || {};
+  const user_id = user.id;
 
   if (action === 'export') {
     const [experiences, connections, shares, sharedLists, sharedListItems, ratings, profile, plans] = await Promise.all([

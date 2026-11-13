@@ -1,3 +1,4 @@
+import { requireUser } from "./_lib/auth.mjs";
 // ── LONDON ZONE CLASSIFIER (Deterministic Spec v2) ──────────
 // Hierarchy: known neighbourhood in address → postcode fallback
 // Address-first means "Shoreditch" always wins over an EC2 postcode.
@@ -118,6 +119,9 @@ function classifyZone(postcode, address) {
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  const caller = await requireUser(req, res);
+  if (!caller) return;
 
   const { name, area } = req.body;
   if (!name) return res.status(400).json({ error: 'Venue name required' });

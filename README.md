@@ -70,7 +70,9 @@ TIKWM_API_TOKEN=your-tikwm-token
 ```
 
 ### Database
-Run the SQL files in [`migrations/`](migrations/) in your Supabase SQL editor, in date order. They create the `experiences`, `profiles`, `connections`, `shared_lists`, `venue_ratings` (and related) tables plus their RLS policies.
+Run the SQL files in [`migrations/`](migrations/) in your Supabase SQL editor, in date order. They create the `experiences`, `profiles`, `connections`, `shared_lists`, `venue_ratings` (and related) tables plus their RLS policies. The Admin dashboard's login list also requires `2026-11-13_admin-user-logins.sql`, which creates the private login ledger.
+
+The Admin screen is available from **Me** only to `jahnvisolanki2412@gmail.com`; the admin API enforces the same account check server-side. It shows recorded sign-ins and venues pending review.
 
 ### Run locally
 ```bash

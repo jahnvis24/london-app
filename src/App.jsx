@@ -343,10 +343,23 @@ const ADMIN_EMAIL = "jahnvisolanki2412@gmail.com";
 
 function generateId() { return Math.random().toString(36).slice(2, 8).toUpperCase(); }
 
+// fetch() for our own /api routes: attaches the signed-in user's access token so
+// the serverless functions can verify who is calling.
+async function apiFetch(url, options = {}) {
+  const headers = { ...(options.headers || {}) };
+  if (!headers.Authorization) {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) headers.Authorization = `Bearer ${session.access_token}`;
+    } catch { /* fall through unauthenticated; server will 401 */ }
+  }
+  return fetch(url, { ...options, headers });
+}
+
 async function callClaude(prompt, maxTokens = 1000) {
   let resp;
   try {
-    resp = await fetch("/api/claude", {
+    resp = await apiFetch("/api/claude", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -1173,7 +1186,7 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
       const next = dbVenues.find(v => v.name?.toLowerCase() === updated[i + 1].name?.toLowerCase());
       if (curr?.lat && curr?.lng && next?.lat && next?.lng) {
         try {
-          const r = await fetch("/api/travel-time", {
+          const r = await apiFetch("/api/travel-time", {
             method: "POST", headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ origin: { lat: curr.lat, lng: curr.lng }, destination: { lat: next.lat, lng: next.lng }, mode: travelMode, departureTime: new Date().toISOString() })
           });
@@ -1560,7 +1573,7 @@ function TikTokParserScreen({ onSuccess }) {
       const { base64, mediaType } = await fileToDownscaledBase64(file);
 
       setParseStatus("Extracting venue info...");
-      const resp = await fetch("/api/claude", {
+      const resp = await apiFetch("/api/claude", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1601,7 +1614,7 @@ Each object must have this exact structure:
       setParseStatus("Looking up on Google...");
       const enriched = await Promise.all(venues.map(async (venue) => {
         try {
-          const gResp = await fetch("/api/enrich-venue", {
+          const gResp = await apiFetch("/api/enrich-venue", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ name: venue.name, area: venue.area })
@@ -1636,7 +1649,7 @@ Each object must have this exact structure:
     setParsing(true); setError(null); setPreview(null);
 
     try {
-      const tikResp = await fetch("/api/tiktok", {
+      const tikResp = await apiFetch("/api/tiktok", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: cleanUrl })
@@ -1679,7 +1692,7 @@ Each object must have this exact structure:
       // Enrich each venue with Google Places data
       const enriched = await Promise.all(venues.map(async (venue) => {
         try {
-          const gResp = await fetch("/api/enrich-venue", {
+          const gResp = await apiFetch("/api/enrich-venue", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ name: venue.name, area: venue.area })
@@ -1872,19 +1885,39 @@ function AdminScreen({ onBadgeUpdate }) {
   const [eventEdits, setEventEdits] = useState({});
   const [users, setUsers] = useState([]);
   const [showUsers, setShowUsers] = useState(false);
+  const [error, setError] = useState("");
 
-  async function loadUsers() {
-    const { data } = await supabase.from("profiles").select("*").order("last_login", { ascending: false });
-    setUsers(data || []);
+  async function loadAdminData() {
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError) throw sessionError;
+    if (!session?.access_token) throw new Error("Please sign in again to view admin data.");
+
+    const response = await apiFetch("/api/admin", {
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || "Could not load admin data.");
+    setUsers(result.users || []);
   }
 
   async function load() {
     setLoading(true);
-    const { data } = await supabase.from("experiences").select("*").eq("status", "pending").order("created_at", { ascending: false });
-    setPending(data || []);
-    if (onBadgeUpdate) onBadgeUpdate(data?.length || 0);
-    await loadUsers();
-    setLoading(false);
+    setError("");
+    try {
+      const { data, error: pendingError } = await supabase.from("experiences").select("*").eq("status", "pending").order("created_at", { ascending: false });
+      if (pendingError) throw pendingError;
+      setPending(data || []);
+      if (onBadgeUpdate) onBadgeUpdate(data?.length || 0);
+    } catch (loadError) {
+      setError(loadError.message || "Could not load venues pending review.");
+    }
+    try {
+      await loadAdminData();
+    } catch (loadError) {
+      setError(loadError.message || "Could not load admin data.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => { load(); }, []);
@@ -1947,10 +1980,11 @@ function AdminScreen({ onBadgeUpdate }) {
             </button>
           )}
         </div>
+        {error && <div role="alert" style={{ color: "#a33", padding: "0.5rem 0" }}>{error}</div>}
         {showUsers && users.length > 0 && (
           <div style={{ marginBottom: "1rem" }}>
             {users.map(u => (
-              <div key={u.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "0.6rem 0", borderBottom: "1px solid #e8e2d8" }}>
+              <div key={u.user_id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "0.6rem 0", borderBottom: "1px solid #e8e2d8" }}>
                 {u.avatar_url && <img src={u.avatar_url} style={{ width: 28, height: 28, borderRadius: "50%" }} alt="" />}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: "0.82rem", color: "#1c1c1a", fontWeight: 500 }}>{u.name || u.email}</div>
@@ -2131,7 +2165,7 @@ function MeScreen({ user, preferences, setPreferences, isAdmin, onBadgeUpdate, a
         )}
         <button style={row} onClick={async () => {
           try {
-            const r = await fetch("/api/gdpr", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "export", user_id: user.id }) });
+            const r = await apiFetch("/api/gdpr", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "export", user_id: user.id }) });
             const j = await r.json();
             if (!j.found) { alert("No data found."); return; }
             const blob = new Blob([JSON.stringify(j.data, null, 2)], { type: "application/json" });
@@ -2146,7 +2180,7 @@ function MeScreen({ user, preferences, setPreferences, isAdmin, onBadgeUpdate, a
           if (!window.confirm("Are you sure you want to delete your account? This will permanently remove all your data and cannot be undone.")) return;
           if (!window.confirm("This is irreversible. All your saves, plans, connections, and bucket lists will be deleted forever. Proceed?")) return;
           try {
-            await fetch("/api/gdpr", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "delete", user_id: user.id }) });
+            await apiFetch("/api/gdpr", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "delete", user_id: user.id }) });
             await supabase.auth.signOut();
             localStorage.clear();
             alert("Your account and all data have been deleted.");
@@ -2370,7 +2404,7 @@ function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan, user, onSpotUpdate
   useEffect(() => {
     if (!spot.google_place_id) return;
     let active = true;
-    fetch("/api/saved-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool: "photos", place_id: spot.google_place_id }) })
+    apiFetch("/api/saved-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool: "photos", place_id: spot.google_place_id }) })
       .then(r => r.json()).then(j => { if (active && j.found) setPhotos(prev => [...new Set([...prev, ...j.urls])]); }).catch(() => {});
     return () => { active = false; };
   }, []);
@@ -2581,7 +2615,7 @@ function SpotsMap({ saves, listName, focusSpot, onCategory, peek, peekHeight, on
     if (photoCacheRef.current[pid]) { setCardPhoto(photoCacheRef.current[pid]); return; }
     setCardPhoto(null);
     let active = true;
-    fetch("/api/saved-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool: "image", place_id: pid }) })
+    apiFetch("/api/saved-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool: "image", place_id: pid }) })
       .then(r => r.json())
       .then(j => { if (active && j.found) { photoCacheRef.current[pid] = j.url; setCardPhoto(j.url); } })
       .catch(() => {});
@@ -3152,7 +3186,7 @@ function SavedScreen({ user, onBuildPlan, onShare, onBarCrawl, openSignal, calen
       for (const s of todo) {
         if (cancelled) break;
         try {
-          const r = await fetch("/api/saved-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool: "image", place_id: s.google_place_id }) });
+          const r = await apiFetch("/api/saved-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool: "image", place_id: s.google_place_id }) });
           const j = await r.json();
           if (j.found && j.url) {
             await supabase.from("experiences").update({ photo_url: j.url }).eq("id", s.id).eq("user_id", user.id);
@@ -3240,7 +3274,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
 
   async function enrich(name, area) {
     try {
-      const r = await fetch("/api/enrich-venue", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, area }) });
+      const r = await apiFetch("/api/enrich-venue", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, area }) });
       return await r.json();
     } catch { return { found: false }; }
   }
@@ -3300,7 +3334,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
     if (!urlMatch) throw new Error("No TikTok URL found. Paste a link containing tiktok.com");
     const cleanUrl = urlMatch[0];
     setParseStatus("Fetching TikTok...");
-    const tikResp = await fetch("/api/tiktok", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url: cleanUrl }) });
+    const tikResp = await apiFetch("/api/tiktok", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url: cleanUrl }) });
     if (!tikResp.ok) throw new Error("TikTok API returned " + tikResp.status);
     const tikData = await tikResp.json();
     if (tikData.error) throw new Error(tikData.error);
@@ -3318,7 +3352,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
     if (igUrl) {
       setParseStatus("Reading Instagram post...");
       try {
-        const r = await fetch("/api/saved-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool: "instagram", url: igUrl }) });
+        const r = await apiFetch("/api/saved-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool: "instagram", url: igUrl }) });
         const d = await r.json();
         if (d.found) { if (!text) text = d.caption || ""; coverUrl = d.image_url || null; }
       } catch { /* fall through to pasted-caption path */ }
@@ -3342,7 +3376,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
         // Retry transient API errors (e.g. rate limits with many images).
         while (attempt < 3) {
           attempt++;
-          const resp = await fetch("/api/claude", {
+          const resp = await apiFetch("/api/claude", {
             method: "POST", headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               model: "claude-sonnet-4-6", max_tokens: 1500,
@@ -3383,7 +3417,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
 
   async function parseMaps(input, isList) {
     setParseStatus(isList ? "Reading Maps list..." : "Resolving Maps link...");
-    const r = await fetch("/api/saved-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool: "maps", url: input.trim() }) });
+    const r = await apiFetch("/api/saved-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool: "maps", url: input.trim() }) });
     const data = await r.json();
     if (data.error) throw new Error(data.error);
     if (!data.found) throw new Error(data.message || "Couldn't read that Maps link.");
@@ -3413,7 +3447,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
       setParseStatus(`Processing ${i + 1} of ${lines.length}: ${line.slice(0, 40)}...`);
       try {
         if (/^https?:\/\//i.test(line) && isMapsUrl(line)) {
-          const r = await fetch("/api/saved-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool: "maps", url: line }) });
+          const r = await apiFetch("/api/saved-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool: "maps", url: line }) });
           const data = await r.json();
           if (data.found) {
             for (const place of data.places) {
@@ -3514,21 +3548,21 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
     // (where the screenshot IS the venue photo). Never use a list screenshot as the venue image.
     if (d.google_place_id) {
       try {
-        const r = await fetch("/api/saved-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool: "image", place_id: d.google_place_id }) });
+        const r = await apiFetch("/api/saved-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool: "image", place_id: d.google_place_id }) });
         const j = await r.json();
         if (j.found && j.url) return j.url;
       } catch {}
     }
     if (d._cover_url) {
       try {
-        const r = await fetch("/api/saved-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool: "image", image_url: d._cover_url }) });
+        const r = await apiFetch("/api/saved-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool: "image", image_url: d._cover_url }) });
         const j = await r.json();
         if (j.found && j.url) return j.url;
       } catch {}
     }
     if (d._screenshot_b64) {
       try {
-        const r = await fetch("/api/saved-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool: "image", image_base64: d._screenshot_b64, content_type: "image/jpeg" }) });
+        const r = await apiFetch("/api/saved-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool: "image", image_base64: d._screenshot_b64, content_type: "image/jpeg" }) });
         const j = await r.json();
         if (j.found && j.url) return j.url;
       } catch {}
@@ -4145,7 +4179,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
           if (extraPhotos.length || !current.google_place_id) return;
           setPhotosLoading(true);
           try {
-            const r = await fetch("/api/saved-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool: "photos", place_id: current.google_place_id }) });
+            const r = await apiFetch("/api/saved-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool: "photos", place_id: current.google_place_id }) });
             const j = await r.json();
             if (j.found) setExtraPhotos(j.urls || []);
           } catch {}
@@ -4859,7 +4893,7 @@ function SharedListView({ list, user, onClose }) {
     try {
       const { base64, mediaType } = await fileToDownscaledBase64(files[0]);
       setSsStatus("Parsing with AI...");
-      const resp = await fetch("/api/claude", {
+      const resp = await apiFetch("/api/claude", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           model: "claude-sonnet-4-6", max_tokens: 1500,
@@ -4879,10 +4913,10 @@ function SharedListView({ list, user, onClose }) {
         setSsStatus(`Looking up "${v.name}"...`);
         let photo = null, lat = null, lng = null, gid = null, grating = null, address = null;
         try {
-          const r = await fetch("/api/enrich-venue", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: v.name, area: v.area }) });
+          const r = await apiFetch("/api/enrich-venue", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: v.name, area: v.area }) });
           const d = await r.json();
           if (d.found) { lat = d.lat; lng = d.lng; gid = d.google_place_id; grating = d.google_rating; address = d.validated_address; }
-          if (gid) { const pr = await fetch("/api/saved-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool: "image", place_id: gid }) }); const pj = await pr.json(); if (pj.found) photo = pj.url; }
+          if (gid) { const pr = await apiFetch("/api/saved-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool: "image", place_id: gid }) }); const pj = await pr.json(); if (pj.found) photo = pj.url; }
         } catch {}
         const row = { list_id: list.id, added_by: user.id, name: v.name, category: v.category || null, area: v.area || null, comment: v.comment || null, address, lat, lng, google_place_id: gid, google_rating: grating != null ? String(grating) : null, price: v.price || null, photo_url: photo };
         const { data: ins } = await supabase.from("shared_list_items").insert(row).select().single();
@@ -4988,12 +5022,12 @@ function SharedListView({ list, user, onClose }) {
     const name = mName.trim(); if (!name) return;
     setSuggest("loading");
     try {
-      const r = await fetch("/api/enrich-venue", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, area: mArea.trim() }) });
+      const r = await apiFetch("/api/enrich-venue", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, area: mArea.trim() }) });
       const d = await r.json();
       if (!d || !d.found) { setSuggest("none"); return; }
       let photo = null;
       if (d.google_place_id) {
-        try { const pr = await fetch("/api/saved-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool: "image", place_id: d.google_place_id }) }); const pj = await pr.json(); if (pj.found && pj.url) photo = pj.url; } catch { /* no photo, still show the match */ }
+        try { const pr = await apiFetch("/api/saved-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool: "image", place_id: d.google_place_id }) }); const pj = await pr.json(); if (pj.found && pj.url) photo = pj.url; } catch { /* no photo, still show the match */ }
       }
       setSuggest({ ...d, photo });
     } catch { setSuggest("none"); }
@@ -5690,13 +5724,14 @@ export default function App() {
 
   // Auth listener + login tracking
   useEffect(() => {
-    function trackLogin(u) {
-      if (!u) return;
-      fetch("/api/track-login", {
+    function trackLogin(session) {
+      if (!session?.user || !session.access_token) return;
+      apiFetch("/api/track-login", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: u.id, email: u.email, name: u.user_metadata?.full_name, avatar_url: u.user_metadata?.avatar_url })
-      }).catch(() => {});
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      }).then(response => {
+        if (!response.ok) console.error("Login tracking failed:", response.status);
+      }).catch(error => console.error("Login tracking failed:", error));
     }
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user || null);
@@ -5704,7 +5739,7 @@ export default function App() {
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user || null);
-      if (event === "SIGNED_IN") trackLogin(session?.user);
+      if (event === "SIGNED_IN") trackLogin(session);
     });
     return () => subscription.unsubscribe();
   }, []);
@@ -5902,7 +5937,7 @@ export default function App() {
               const travelMode = ans.travel === "walk_tube" ? "transit" : "walking";
               const departureTime = new Date().toISOString(); // use now as proxy
 
-              const travelResp = await fetch("/api/travel-time", {
+              const travelResp = await apiFetch("/api/travel-time", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({

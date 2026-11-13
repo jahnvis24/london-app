@@ -1,3 +1,4 @@
+import { requireAdmin } from "./_lib/auth.mjs";
 import { put } from '@vercel/blob';
 import { createClient } from '@supabase/supabase-js';
 
@@ -5,6 +6,9 @@ const supabase = createClient(process.env.VITE_SUPABASE_URL, process.env.SUPABAS
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  const caller = await requireAdmin(req, res);
+  if (!caller) return;
 
   const { venue_id, place_id } = req.body;
   if (!venue_id || !place_id) return res.status(400).json({ error: 'venue_id and place_id required' });

@@ -2,6 +2,12 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "framework": "vite",
+  "rewrites": [
+    {
+      "source": "/api/admin",
+      "destination": "/api/track-login?view=admin"
+    }
+  ],
   "crons": [
     {
       "path": "/api/tiktok-fetch",

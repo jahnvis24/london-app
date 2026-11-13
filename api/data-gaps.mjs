@@ -28,6 +28,15 @@ export default async function handler(req, res) {
     return res.status(200).json({ results });
   }
 
+  // GET: venue coverage report (admin only)
+  {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) return res.status(401).json({ error: 'Unauthorized' });
+    const { data: { user }, error: authError } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
+    if (authError || !user) return res.status(401).json({ error: 'Unauthorized' });
+    if (user.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Forbidden' });
+  }
+
   const { data: venues, error } = await supabase
     .from("experiences")
     .select("id, name, zone, category, vibe_tags, lat, lng, price")

@@ -1,3 +1,4 @@
+import { requireCronOrAdmin } from "./_lib/auth.mjs";
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
@@ -126,6 +127,9 @@ export default async function handler(req, res) {
   if (req.method !== 'GET' && req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  const caller = await requireCronOrAdmin(req, res);
+  if (!caller) return;
 
   const allVideos = [];
   let queued = 0;

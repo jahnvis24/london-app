@@ -1,5 +1,9 @@
+import { requireUser } from "./_lib/auth.mjs";
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  const caller = await requireUser(req, res);
+  if (!caller) return;
 
   const { url } = req.body;
   if (!url) return res.status(400).json({ error: 'No URL provided' });
