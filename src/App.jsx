@@ -1625,7 +1625,7 @@ function SwipeDeck({ venues, preferences, onClose, onSave, onOpenSpot }) {
               {current.google_review_count > 0 && <div style={{ fontSize: 11, fontWeight: 600, color: "rgba(20,20,15,.4)", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 10 }}>{current.google_review_count} Google reviews</div>}
               {current.vibe_tags?.length > 0 && (
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 16 }}>
-                  {current.vibe_tags.map((t, i) => <span key={i} style={{ padding: "5px 12px", borderRadius: 100, border: "1px solid rgba(20,20,15,.12)", fontSize: 11, color: "rgba(20,20,15,.55)" }}>{t}</span>)}
+                  {sortTags(current.vibe_tags).map((t, i) => <span key={i} style={tagStyle(t, { padding: "5px 12px", borderRadius: 100, border: "1px solid rgba(20,20,15,.12)", fontSize: 11, color: "rgba(20,20,15,.55)" })}>{tagLabel(t)}</span>)}
                 </div>
               )}
               {current.address && <div style={{ fontSize: 12, color: "rgba(20,20,15,.45)", marginBottom: 8, display: "flex", alignItems: "flex-start", gap: 8 }}><span style={{ color: "rgba(20,20,15,.3)", flexShrink: 0 }}>📍</span> {current.address}</div>}
@@ -1648,6 +1648,13 @@ function SwipeDeck({ venues, preferences, onClose, onSave, onOpenSpot }) {
     </div>
   );
 }
+
+// "Top Pick" = editor's pick, stored as the 'top_pick' vibe tag. Shown first, in red.
+const isTopPick = (v) => (v?.vibe_tags || []).includes("top_pick");
+const sortTags = (tags) => [...(tags || [])].sort((a, b) => (b === "top_pick") - (a === "top_pick"));
+const tagLabel = (t) => t === "top_pick" ? "Top Pick" : String(t).replace(/_/g, " ");
+const tagStyle = (t, base) => t === "top_pick" ? { ...base, background: "#D9412B", color: "#FAF7F2", border: "none", fontWeight: 600 } : base;
+const TopPickBadge = ({ style }) => <span style={{ display: "inline-block", padding: "3px 8px", background: "#D9412B", color: "#FAF7F2", fontSize: 8.5, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", borderRadius: 100, verticalAlign: "middle", ...style }}>Top Pick</span>;
 
 function priceToPounds(p) {
   if (!p) return null;
@@ -1771,9 +1778,10 @@ function DiscoverScreen({ preferences, dbVenues: allVenues, onStart, onOpenSpot,
                 {v.photo_url && <img src={v.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
                 <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 46%, rgba(20,20,15,.82))" }} />
                 {v.celebrity_tags?.length > 0 && <div style={{ position: "absolute", top: 12, left: 0, padding: "5px 10px", background: "#0F6B63", color: "#FAF7F2", fontSize: 8, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase" }}>{v.celebrity_tags[0]}'s pick</div>}
-                {!v.celebrity_tags?.length && v._savers && <div style={{ position: "absolute", top: 12, left: 0, padding: "5px 10px", background: "#D9412B", color: "#FAF7F2", fontSize: 8, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase" }}>Saved by {v._savers}</div>}
-                {!v.celebrity_tags?.length && !v._savers && v.google_rating >= 4.5 && <div style={{ position: "absolute", top: 12, left: 0, padding: "5px 10px", background: "#D9412B", color: "#FAF7F2", fontSize: 8, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase" }}>Trending</div>}
-                {!v.celebrity_tags?.length && !v._savers && v.google_rating < 4.5 && <div style={{ position: "absolute", top: 12, left: 0, padding: "5px 10px", background: "#14140F", color: "#FAF7F2", fontSize: 8, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase" }}>New</div>}
+                {!v.celebrity_tags?.length && isTopPick(v) && <div style={{ position: "absolute", top: 12, left: 0, padding: "5px 10px", background: "#D9412B", color: "#FAF7F2", fontSize: 8, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase" }}>Top Pick</div>}
+                {!v.celebrity_tags?.length && !isTopPick(v) && v._savers && <div style={{ position: "absolute", top: 12, left: 0, padding: "5px 10px", background: "#D9412B", color: "#FAF7F2", fontSize: 8, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase" }}>Saved by {v._savers}</div>}
+                {!v.celebrity_tags?.length && !v._savers && !isTopPick(v) && v.google_rating >= 4.5 && <div style={{ position: "absolute", top: 12, left: 0, padding: "5px 10px", background: "#D9412B", color: "#FAF7F2", fontSize: 8, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase" }}>Trending</div>}
+                {!v.celebrity_tags?.length && !v._savers && !isTopPick(v) && v.google_rating < 4.5 && <div style={{ position: "absolute", top: 12, left: 0, padding: "5px 10px", background: "#14140F", color: "#FAF7F2", fontSize: 8, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase" }}>New</div>}
                 <div style={{ position: "absolute", left: 12, right: 12, bottom: 12 }}>
                   <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 21, lineHeight: 1.05, color: "#FAF7F2" }}>{v.name}</div>
                   <div style={{ fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", fontSize: 10, fontWeight: 500, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(250,247,242,.6)", marginTop: 6 }}>{[v.area, pounds].filter(Boolean).join(" · ")}</div>
@@ -1796,7 +1804,7 @@ function DiscoverScreen({ preferences, dbVenues: allVenues, onStart, onOpenSpot,
                   {v.photo_url && <img src={v.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
                 </div>
                 <div style={{ flex: 1, minWidth: 0, paddingTop: 2 }}>
-                  <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 22, lineHeight: 1.1, marginBottom: 5 }}>{v.name}</div>
+                  <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 22, lineHeight: 1.1, marginBottom: 5 }}>{v.name}{isTopPick(v) && <TopPickBadge style={{ marginLeft: 8, position: "relative", top: -3 }} />}</div>
                   <div style={{ fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", fontSize: 11, fontWeight: 500, letterSpacing: "0.06em", textTransform: "uppercase", color: "rgba(20,20,15,.42)", marginBottom: 8, display: "flex", alignItems: "center", gap: 5 }}>
                     {v.area && <span>{v.area.toUpperCase()}</span>}
                     {v.area && pounds && <span style={{ color: "rgba(20,20,15,.22)" }}>·</span>}
@@ -2255,7 +2263,7 @@ function AdminScreen({ onBadgeUpdate }) {
               {item.comment && <div style={{ fontSize: 12, color: "rgba(20,20,15,.55)", marginBottom: "8px", lineHeight: 1.4 }}>{item.comment}</div>}
               {item.vibe_tags?.length > 0 && (
                 <div style={{ display: "flex", gap: "4px", flexWrap: "wrap", marginBottom: "8px" }}>
-                  {item.vibe_tags.map(t => <span key={t} className="stop-pill">{t}</span>)}
+                  {sortTags(item.vibe_tags).map(t => <span key={t} className="stop-pill" style={tagStyle(t, {})}>{tagLabel(t)}</span>)}
                 </div>
               )}
               {item.tiktok_url && (
@@ -2837,8 +2845,8 @@ function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan, user, onSpotUpdate
         {/* Vibe tags */}
         {spot.vibe_tags?.length > 0 && (
           <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginBottom: 18 }}>
-            {spot.vibe_tags.map((t, i) => (
-              <span key={i} style={{ ...sf, padding: "5px 13px", borderRadius: 100, border: "1px solid rgba(20,20,15,.12)", fontSize: 12, color: "rgba(20,20,15,.55)" }}>{t}</span>
+            {sortTags(spot.vibe_tags).map((t, i) => (
+              <span key={i} style={tagStyle(t, { ...sf, padding: "5px 13px", borderRadius: 100, border: "1px solid rgba(20,20,15,.12)", fontSize: 12, color: "rgba(20,20,15,.55)" })}>{tagLabel(t)}</span>
             ))}
           </div>
         )}
@@ -4199,7 +4207,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
           {v.address && <div style={{ fontSize: 9.5, color: "#8a7e6e", marginTop: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>📍 {v.address}</div>}
           {v.vibe_tags?.length > 0 && (
             <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 5 }}>
-              {v.vibe_tags.slice(0, 5).map((t, i) => <span key={i} style={{ fontSize: 9, background: "#F1EDE4", color: "rgba(20,20,15,.55)", padding: "2px 7px", borderRadius: 100 }}>{String(t).replace(/_/g, " ")}</span>)}
+              {sortTags(v.vibe_tags).slice(0, 5).map((t, i) => <span key={i} style={tagStyle(t, { fontSize: 9, background: "#F1EDE4", color: "rgba(20,20,15,.55)", padding: "2px 7px", borderRadius: 100 })}>{tagLabel(t)}</span>)}
             </div>
           )}
           <div style={{ display: "flex", gap: 10, marginTop: 6, alignItems: "center" }}>
@@ -4440,7 +4448,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
                     {v.comment && <div style={{ fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", fontSize: 13, lineHeight: 1.45, color: "rgba(20,20,15,.5)", marginBottom: 10 }}>{v.comment}</div>}
                     {v.vibe_tags?.length > 0 && (
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 8 }}>
-                        {v.vibe_tags.slice(0, 4).map((t, j) => <span key={j} style={{ fontSize: 11, background: "#F1EDE4", color: "rgba(20,20,15,.5)", padding: "3px 9px", borderRadius: 100 }}>{String(t).replace(/_/g, " ")}</span>)}
+                        {sortTags(v.vibe_tags).slice(0, 4).map((t, j) => <span key={j} style={tagStyle(t, { fontSize: 11, background: "#F1EDE4", color: "rgba(20,20,15,.5)", padding: "3px 9px", borderRadius: 100 })}>{tagLabel(t)}</span>)}
                       </div>
                     )}
                   </div>
