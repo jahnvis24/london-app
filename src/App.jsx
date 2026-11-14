@@ -3250,7 +3250,7 @@ function SpotsCalendar({ saves, user, onBuildPlan, onShare, plans: calPlans }) {
     } else if (e._type === "plan") {
       const planId = e.id.replace("plan-", "");
       setPlans(prev => prev.map(p => p.id === planId ? { ...p, scheduledDate: null } : p));
-      supabase.from("plans").update({ scheduled_date: null }).eq("id", planId).catch(() => {});
+      supabase.from("plans").update({ scheduled_date: null }).eq("id", planId).then(({ error }) => { if (error) console.warn("plans:", error.message); });
     } else if (e._type === "blist") {
       const realId = e.id.replace("blist-", "");
       setBlistItems(prev => prev.filter(b => b.id !== realId));
@@ -6847,10 +6847,13 @@ export default function App() {
       const dbIds = new Set(dbPlans.map(p => p.id));
       const toMigrate = localPlans.filter(p => p.id && !dbIds.has(p.id));
       if (toMigrate.length) {
+        let failed = 0;
         for (const p of toMigrate) {
-          await supabase.from("plans").insert({ id: p.id, user_id: user.id, result: p.result, ans: p.ans, times: p.times, saved_at: p.savedAt, created_at: p.createdAt, scheduled_date: p.scheduledDate || null }).catch(() => {});
+          const { error } = await supabase.from("plans").insert({ id: p.id, user_id: user.id, result: p.result, ans: p.ans, times: p.times, saved_at: p.savedAt, created_at: p.createdAt, scheduled_date: p.scheduledDate || null });
+          if (error) { failed++; console.warn("plans migrate:", error.message); }
         }
-        localStorage.removeItem("cl_plans");
+        // Keep the local copy until every plan is safely in the database.
+        if (!failed) localStorage.removeItem("cl_plans");
         const { data: fresh } = await supabase.from("plans").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
         setPlans((fresh || []).map(p => ({ id: p.id, result: p.result, ans: p.ans, times: p.times, savedAt: p.saved_at, createdAt: p.created_at, scheduledDate: p.scheduled_date })));
       } else {
@@ -7214,7 +7217,7 @@ export default function App() {
       setQuizStep(QUESTIONS.length + 1);
       const newPlan = { result: finalResult, ans: { ...ans }, times: { ...times }, savedAt: new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }), createdAt: Date.now(), id: planId };
       setPlans(prev => [newPlan, ...prev]);
-      supabase.from("plans").insert({ id: newPlan.id, user_id: user.id, result: newPlan.result, ans: newPlan.ans, times: newPlan.times, saved_at: newPlan.savedAt, created_at: newPlan.createdAt }).catch(() => {});
+      supabase.from("plans").insert({ id: newPlan.id, user_id: user.id, result: newPlan.result, ans: newPlan.ans, times: newPlan.times, saved_at: newPlan.savedAt, created_at: newPlan.createdAt }).then(({ error }) => { if (error) console.warn("plans:", error.message); });
       showToast("Plan saved to My Plans");
     } catch (e) {
       mpLastGenFailed = true;
@@ -7226,7 +7229,7 @@ export default function App() {
 
   function resetToHome() { setQuizStep(-1); setAns({}); setResult(null); setError(null); setViewingPlan(null); setActiveTab("plans"); }
   function goToCalendar(msg) { setViewingPlan(null); setActiveTab("saved"); setCalSignal(n => n + 1); if (msg) showToast(msg); }
-  function schedulePlanAt(idx, date) { setPlans(prev => { const u = prev.map((p, i) => { if (i === idx) { supabase.from("plans").update({ scheduled_date: date || null }).eq("id", p.id).catch(() => {}); return { ...p, scheduledDate: date || null }; } return p; }); return u; }); }
+  function schedulePlanAt(idx, date) { setPlans(prev => { const u = prev.map((p, i) => { if (i === idx) { supabase.from("plans").update({ scheduled_date: date || null }).eq("id", p.id).then(({ error }) => { if (error) console.warn("plans:", error.message); }); return { ...p, scheduledDate: date || null }; } return p; }); return u; }); }
 
   const showQuiz = activeTab === "home" && quizStep >= 0 && quizStep <= QUESTIONS.length;
   const showResult = activeTab === "home" && quizStep === QUESTIONS.length + 1 && result;
@@ -7401,7 +7404,7 @@ export default function App() {
 
         {activeTab === "discover" && <DiscoverScreen preferences={preferences} dbVenues={dbVenues} onStart={startQuiz} onOpenSpot={(v, ctx) => { mpDiscoverCtx = ctx || {}; setDiscoverSpot(v); }} savedKeys={savedKeys} onSave={saveDiscoverSpot} />}
         {discoverSpot && <SpotDetail spot={discoverSpot} onClose={() => setDiscoverSpot(null)} user={user} onSaveToBoard={() => saveDiscoverSpot(discoverSpot)} savedToBoard={savedKeys.has(feedKey(discoverSpot))} onMakePlan={(s) => { setDiscoverSpot(null); setActiveTab("home"); setAns({ savedVenues: [s] }); setQuizStep(0); }} />}
-        {activeTab === "people" && <PeopleScreen user={user} onShareSaved={() => setPeopleBadge(n => Math.max(0, n - 1))} onSavePlan={(payload) => { const r = payload?.plan; if (!r) return; const newPlan = { result: r, times: payload?.times || times, ans: {}, savedAt: new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }), createdAt: Date.now(), id: generateId() }; setPlans(prev => [newPlan, ...prev]); supabase.from("plans").insert({ id: newPlan.id, user_id: user.id, result: newPlan.result, ans: newPlan.ans, times: newPlan.times, saved_at: newPlan.savedAt, created_at: newPlan.createdAt }).catch(() => {}); }} />}
+        {activeTab === "people" && <PeopleScreen user={user} onShareSaved={() => setPeopleBadge(n => Math.max(0, n - 1))} onSavePlan={(payload) => { const r = payload?.plan; if (!r) return; const newPlan = { result: r, times: payload?.times || times, ans: {}, savedAt: new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }), createdAt: Date.now(), id: generateId() }; setPlans(prev => [newPlan, ...prev]); supabase.from("plans").insert({ id: newPlan.id, user_id: user.id, result: newPlan.result, ans: newPlan.ans, times: newPlan.times, saved_at: newPlan.savedAt, created_at: newPlan.createdAt }).then(({ error }) => { if (error) console.warn("plans:", error.message); }); }} />}
         {/* Always mounted so an in-progress screenshot parse keeps running + persists when you switch tabs */}
         <div style={{ display: activeTab === "saved" ? "block" : "none" }}>
           {showStarter && (
