@@ -5518,7 +5518,7 @@ const slSheet = { background: "#fff", borderTopLeftRadius: 20, borderTopRightRad
 
 // Collaborative bucket lists: a list two+ connected friends both add to and tick off.
 // Lists you own or are a member of, each with progress + a creator. Lives in the People tab.
-function SharedListsSection({ user }) {
+function SharedListsSection({ user, initialOpenId }) {
   const [lists, setLists] = useState([]);
   const [counts, setCounts] = useState({}); // listId -> { done, total }
   const [loading, setLoading] = useState(true);
@@ -5535,6 +5535,7 @@ function SharedListsSection({ user }) {
     const { data: ls } = await supabase.from("shared_lists").select("*").order("created_at", { ascending: false });
     const rows = ls || [];
     setLists(rows);
+    if (initialOpenId && !openList) { const target = rows.find(l => l.id === initialOpenId); if (target) setOpenList(target); }
     if (rows.length) {
       const { data: items } = await supabase.from("shared_list_items").select("list_id,done").in("list_id", rows.map(l => l.id));
       const c = {};
@@ -6186,6 +6187,7 @@ function FriendFeed({ user, friends, onOpenFriend, onGoTab }) {
   const [detail, setDetail] = useState(null);
   const [busy, setBusy] = useState(false);
   const [showAllCommon, setShowAllCommon] = useState(false);
+  const [listPick, setListPick] = useState(null); // { friend, places, lists } while choosing a bucket list
   const friendById = Object.fromEntries(friends.map(f => [f.id, f]));
   const nameOf = (id) => friendById[id]?.name || "Friend";
 
@@ -6251,18 +6253,48 @@ function FriendFeed({ user, friends, onOpenFriend, onGoTab }) {
     setBusy(false);
   }
 
-  async function listTogether(friend, places) {
+  // "Add to bucket list": pick one of your lists (ones shared with this friend
+  // first) or start a new one with them. Places already on the list are skipped.
+  async function openListPicker(friend, places) {
     if (busy) return;
     setBusy(true);
+    const [{ data: ls }, { data: fm }] = await Promise.all([
+      supabase.from("shared_lists").select("id,name,emoji,created_at").order("created_at", { ascending: false }),
+      // RLS only returns membership rows for lists you're in, so this is "lists you share with them".
+      supabase.from("shared_list_members").select("list_id").eq("user_id", friend.id),
+    ]);
+    const withFriend = new Set((fm || []).map(m => m.list_id));
+    const lists = (ls || []).map(l => ({ ...l, withFriend: withFriend.has(l.id) })).sort((a, b) => b.withFriend - a.withFriend);
+    setListPick({ friend, places, lists });
+    setBusy(false);
+  }
+
+  async function addToList(listId) {
+    if (busy || !listPick) return;
+    const { friend, places } = listPick;
+    setBusy(true);
     try {
-      const { data: list, error } = await supabase.from("shared_lists").insert({ name: `You & ${friend.name || "Friend"}`, emoji: "✨", owner: user.id }).select().single();
-      if (error) throw error;
-      await supabase.from("shared_list_members").insert([{ list_id: list.id, user_id: user.id }, { list_id: list.id, user_id: friend.id }]);
-      const items = places.map(p => ({ list_id: list.id, added_by: user.id, name: p.name, category: p.category || null, address: p.address || null, area: p.area || null, comment: p.comment || null, lat: p.lat ?? null, lng: p.lng ?? null, google_place_id: p.google_place_id || null, google_rating: p.google_rating != null ? String(p.google_rating) : null, price: p.price || null, website: p.website || null, photo_url: p.photo_url || null }));
+      let id = listId;
+      if (!id) {
+        const { data: me } = await supabase.from("profiles").select("name").eq("id", user.id).maybeSingle();
+        const first = (n) => String(n || "").trim().split(/\s+/)[0];
+        const name = [first(me?.name) || "Me", first(friend.name) || "Friend"].join(" & ");
+        const { data: list, error } = await supabase.from("shared_lists").insert({ name, emoji: "✨", owner: user.id }).select().single();
+        if (error) throw error;
+        const { error: me1 } = await supabase.from("shared_list_members").insert({ list_id: list.id, user_id: user.id });
+        if (me1) throw me1;
+        const { error: me2 } = await supabase.from("shared_list_members").insert({ list_id: list.id, user_id: friend.id });
+        if (me2) throw me2;
+        id = list.id;
+      }
+      const { data: existing } = await supabase.from("shared_list_items").select("name,google_place_id").eq("list_id", id);
+      const have = new Set((existing || []).map(feedKey));
+      const items = places.filter(p => !have.has(feedKey(p))).map(p => ({ list_id: id, added_by: user.id, name: p.name, category: p.category || null, address: p.address || null, area: p.area || null, comment: p.comment || null, lat: p.lat ?? null, lng: p.lng ?? null, google_place_id: p.google_place_id || null, google_rating: p.google_rating != null ? String(p.google_rating) : null, price: p.price || null, website: p.website || null, photo_url: p.photo_url || null }));
       if (items.length) { const { error: ie } = await supabase.from("shared_list_items").insert(items); if (ie) throw ie; }
       feedCelebrate();
-      onGoTab("lists");
-    } catch (e) { alert("Couldn't make the list: " + e.message); }
+      setListPick(null);
+      onGoTab("lists", id);
+    } catch (e) { alert("Couldn't add to the list: " + e.message); }
     setBusy(false);
   }
 
@@ -6326,8 +6358,8 @@ function FriendFeed({ user, friends, onOpenFriend, onGoTab }) {
               {common.places.slice(1).map(p => <button key={p.id} onClick={() => setDetail(p)} style={{ padding: "6px 10px", borderRadius: 100, border: "1px solid rgba(250,247,242,.3)", background: "transparent", color: "#FAF7F2", fontSize: 12, cursor: "pointer" }}>{p.name}</button>)}
             </div>
           )}
-          <button disabled={busy} onClick={() => listTogether(common.friend, common.places)} style={{ height: 44, borderRadius: 100, border: "none", background: "#D9412B", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-            Make a bucket list together{common.places.length > 1 ? ` (${common.places.length})` : ""}
+          <button disabled={busy} onClick={() => openListPicker(common.friend, common.places)} style={{ height: 44, borderRadius: 100, border: "none", background: "#D9412B", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+            Add {common.places.length > 1 ? `all ${common.places.length}` : "it"} to a bucket list
           </button>
           {common.places.length > 1 && (
             <button onClick={() => setShowAllCommon(v => !v)} style={{ border: "none", background: "none", color: "rgba(250,247,242,.7)", fontSize: 12, cursor: "pointer", padding: 0 }}>
@@ -6390,6 +6422,25 @@ function FriendFeed({ user, friends, onOpenFriend, onGoTab }) {
         );
       })}
       {feed.length < 2 && nudges.map(n => <NudgeCard key={feedKey(n.spot)} n={n} />)}
+
+      {listPick && (
+        <div onClick={() => setListPick(null)} style={{ position: "fixed", inset: 0, background: "rgba(20,20,15,.5)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 1400, animation: "fadeIn 0.2s" }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "#FAF7F2", borderRadius: "20px 20px 0 0", padding: "18px 20px 32px", width: "100%", maxWidth: 420, maxHeight: "72vh", overflowY: "auto", animation: "sheetUp .36s cubic-bezier(.2,.95,.25,1)" }}>
+            <div style={{ fontFamily: serif, fontSize: 26, lineHeight: 1.05 }}>Add to which bucket list?</div>
+            <div style={{ fontSize: 12, color: muted, margin: "6px 0 14px" }}>{listPick.places.length} place{listPick.places.length !== 1 ? "s" : ""} · anything already on the list is skipped</div>
+            {listPick.lists.map(l => (
+              <button key={l.id} disabled={busy} onClick={() => addToList(l.id)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "13px 2px", border: "none", borderTop: "1px solid rgba(20,20,15,.12)", background: "none", cursor: "pointer", textAlign: "left", color: ink }}>
+                <span style={{ fontSize: 20, width: 28, textAlign: "center" }}>{l.emoji || "✨"}</span>
+                <span style={{ flex: 1, fontSize: 15 }}>{l.name}</span>
+                {l.withFriend && <span style={{ fontSize: 11, color: muted }}>with {listPick.friend.name || "friend"}</span>}
+              </button>
+            ))}
+            <button disabled={busy} onClick={() => addToList(null)} style={{ width: "100%", marginTop: 10, height: 44, borderRadius: 100, border: `1px solid ${ink}`, background: "transparent", color: ink, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+              + New list with {listPick.friend.name || "your friend"}
+            </button>
+          </div>
+        </div>
+      )}
 
       {detail && (
         <SpotDetail
@@ -6501,6 +6552,7 @@ function PeopleScreen({ user, onSavePlan, onShareSaved }) {
   }
 
   const [pTab, setPTab] = useState("feed");
+  const [openListId, setOpenListId] = useState(null); // feed → open this bucket list
 
   if (loading) return <div style={{ paddingTop: "2rem" }}><SkeletonList count={5} /></div>;
 
@@ -6519,8 +6571,8 @@ function PeopleScreen({ user, onSavePlan, onShareSaved }) {
 
       {msg && <div style={{ margin: "0 22px 12px", background: "#F1EDE4", color: "#14140F", padding: "10px 12px", fontSize: 12 }}>{msg}</div>}
 
-      {pTab === "feed" && <FriendFeed user={user} friends={connections} onOpenFriend={setViewFriend} onGoTab={(t) => { setPTab(t); if (t === "friends" && !connections.length) setShowConnect(true); }} />}
-      {pTab === "lists" && <div data-tour="shared-lists"><SharedListsSection user={user} /></div>}
+      {pTab === "feed" && <FriendFeed user={user} friends={connections} onOpenFriend={setViewFriend} onGoTab={(t, listId) => { setOpenListId(listId || null); setPTab(t); if (t === "friends" && !connections.length) setShowConnect(true); }} />}
+      {pTab === "lists" && <div data-tour="shared-lists"><SharedListsSection user={user} initialOpenId={openListId} /></div>}
 
       {pTab === "friends" && (
         <div style={{ padding: "0 22px" }}>
@@ -6755,7 +6807,8 @@ export default function App() {
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "shared_list_members", filter: `user_id=eq.${user.id}` }, async (payload) => {
         const listId = payload.new?.list_id;
         if (!listId) return;
-        const { data: listData } = await supabase.from("shared_lists").select("name,emoji").eq("id", listId).single();
+        const { data: listData } = await supabase.from("shared_lists").select("name,emoji,owner").eq("id", listId).single();
+        if (listData?.owner === user.id) return; // you made it — not news to you
         const name = listData?.name || "a bucket list";
         showToast(`You've been added to "${name}" 🎉`);
         notify("New bucket list ✦", `You've been added to "${name}"`);
