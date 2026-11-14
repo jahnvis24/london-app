@@ -49,6 +49,22 @@ const venues = [
   { name: 'Bar Italia', area: 'Soho', category: 'cafe', p: 1, vibe_tags: ['iconic', 'cultural', 'affordable'], comment: 'Frith Street espresso bar, open since 1949 and until 4am.', q: 'Bar Italia Frith Street' },
   { name: 'Blondies', area: 'Clapton', category: 'bar', p: 2, vibe_tags: ['chaotic', 'underground', 'social'], comment: 'Leather-clad dive bar with metal gigs, DJs and shots.', q: 'Blondies bar Clapton' },
   { name: "Helgi's", area: 'Hackney', category: 'bar', vibe_tags: ['underground', 'chaotic'], comment: 'Heavy, psychedelic music bar, open late every night.', q: "Helgi's bar Hackney" },
+  { name: 'Satan’s Whiskers', area: 'Bethnal Green', category: 'bar', p: 2, vibe_tags: ['social', 'iconic', 'fancy'], comment: 'Award-winning Cambridge Heath Road cocktail bar with a 90s hip hop soundtrack. Sit at the bar.', q: "Satan's Whiskers Cambridge Heath Road" },
+  { name: 'The Social', area: 'Fitzrovia', category: 'nightlife', vibe_tags: ['social', 'cultural', 'iconic'], comment: 'Heavenly Records’ indie bar since the 90s, with gigs, readings and DJs downstairs. Till 3am Fri–Sat.', q: 'The Social Little Portland Street' },
+  { name: '69 Colebrooke Row', area: 'Angel', category: 'bar', p: 3, vibe_tags: ['fancy', 'romantic', 'iconic'], comment: 'Tiny, low-lit Islington cocktail bar with a jazz-age feel and live piano. Book ahead.', q: '69 Colebrooke Row Islington' },
+  { name: 'Side Hustle', area: 'Covent Garden', category: 'bar', vibe_tags: ['fancy', 'romantic'], comment: 'Agave-focused bar in the NoMad hotel’s old police station on Bow Street.', q: 'Side Hustle NoMad London Bow Street' },
+  { name: 'FlipDog', area: 'Shoreditch', category: 'bar', vibe_tags: ['aesthetic', 'fancy', 'underground'], comment: 'Surrealist basement cocktail bar under Imperial Hall with playful, inventive drinks. Till 2am Fri–Sat.', q: 'Flipdog bar City Road Imperial Hall' },
+  { name: 'Bar Flor', area: 'Belgravia', category: 'bar', p: 3, vibe_tags: ['romantic', 'aesthetic', 'fancy'], comment: 'Pretty, date-night bar above Wildflowers on Pimlico Road, with sherry-led drinks and snacks.', q: 'Bar Flor Pimlico Road Newsons Yard' },
+  { name: 'Brutes of Mayfair', area: 'Mayfair', category: 'bar', p: 3, vibe_tags: ['fancy', 'romantic', 'hidden_gems'], comment: 'Hidden martini bar on Bruton Place, with white-jacketed bartenders and a snack with every drink.', q: 'Brutes Bruton Place Mayfair' },
+  { name: 'Trisha’s', area: 'Soho', category: 'bar', vibe_tags: ['iconic', 'underground', 'chaotic'], comment: 'Old-Soho basement members’ club (the New Evaristo Club) with karaoke and jazz. Members and guests only.', q: 'New Evaristo Club Greek Street Soho' },
+  { name: 'La Camionera', area: 'Homerton', zone: 'East', category: 'bar', vibe_tags: ['social', 'chill', 'cultural'], comment: 'Queer, Iberian-style wine bar on Well Street with cañas, biodynamic wine and Tuesday singles nights.', q: 'La Camionera Well Street Hackney' },
+  { name: 'Bar Américain', area: 'Soho', category: 'bar', p: 2, vibe_tags: ['iconic', 'romantic', 'fancy'], comment: 'Art deco cocktail bar inside Brasserie Zédel, little changed since the Dick’s Bar days.', q: 'Bar Americain Brasserie Zedel Sherwood Street' },
+  { name: 'Moto', area: 'Covent Garden', category: 'bar', p: 2, vibe_tags: ['foodie', 'hidden_gems', 'chill'], comment: 'Narrow independent sake bar on Maiden Lane with a wall of sake and Japanese small plates.', q: 'Moto sake bar Maiden Lane' },
+  { name: 'Easy 8', area: 'Hackney', category: 'bar', p: 1, vibe_tags: ['chaotic', 'affordable', 'social'], comment: 'Red-lit Mare Street dive with great micheladas and £2 tacos on Thursdays.', q: 'Easy 8 bar Mare Street Hackney' },
+  { name: 'Bloodsports', area: 'Covent Garden', category: 'bar', p: 2, vibe_tags: ['chaotic', 'social'], comment: 'Huge sports bar showing horror films.', q: 'Bloodsports Endell Street' },
+  { name: 'Ridley Road Market Bar', area: 'Dalston', category: 'bar', p: 2, vibe_tags: ['chaotic', 'social'], comment: 'Tropical party shack with a dancefloor out back.' },
+  { name: 'Below Stone Nest', area: 'Soho', category: 'bar', vibe_tags: ['underground', 'hidden_gems', 'social'], comment: 'Basement bar under Stone Nest.' },
+  { name: 'Mascara Bar', area: 'Stamford Hill', zone: 'North', category: 'nightlife', vibe_tags: ['social', 'cultural', 'chaotic'], comment: 'Irish bar with live music and karaoke.' },
 ];
 
 const TO_PRICE = { 1: 'Under £15pp', 2: '£15-35pp', 3: '£35-70pp', 4: '£70pp+' };
