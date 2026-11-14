@@ -6831,8 +6831,17 @@ export default function App() {
   // save into the pool can't leak their private note or visit date.
   useEffect(() => {
     async function loadVenues() {
-      const { data, error } = await supabase.from("experiences_public").select("*");
-      if (data?.length) { setDbVenues(data); return; }
+      // Supabase caps every response at 1,000 rows, so page through the view
+      // (ordered by id for stable pages) or venues past the first 1,000 vanish.
+      const PAGE = 1000, all = [];
+      let error = null;
+      for (let from = 0; ; from += PAGE) {
+        const res = await supabase.from("experiences_public").select("*").order("id").range(from, from + PAGE - 1);
+        if (res.error) { error = res.error; break; }
+        all.push(...res.data);
+        if (res.data.length < PAGE) break;
+      }
+      if (all.length) { setDbVenues(all); return; }
       // Falls back to the table if the security migration hasn't been run yet, so
       // deploying the code before running the SQL doesn't empty out Discover.
       if (error) {
