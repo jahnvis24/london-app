@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { Fragment, useState, useEffect, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 // ── SUPABASE ─────────────────────────────────────────────────
@@ -1673,7 +1673,16 @@ function DiscoverScreen({ preferences, dbVenues, onStart, onOpenSpot }) {
   const hour = new Date().getHours();
   const greeting = hour >= 17 ? "Tonight in" : hour >= 12 ? "This afternoon in" : "Today in";
 
-  const trending = dbVenues
+  // Trending = places most saved across all users this week (popular_places RPC,
+  // migrations/2026-11-14_feed-popularity.sql). Until enough people save the same
+  // places — or if the migration isn't run — fall back to top-rated venues.
+  const [popular, setPopular] = useState([]);
+  useEffect(() => {
+    supabase.rpc("popular_places", { days: 7, lim: 8 }).then(({ data, error }) => {
+      if (!error && data) setPopular(data.map(r => ({ ...r.place, _savers: r.savers })));
+    });
+  }, []);
+  const trending = popular.length >= 3 ? popular.slice(0, 6) : dbVenues
     .filter(v => !v.is_event && v.photo_url && v.google_rating && parseFloat(v.google_rating) >= 4.2)
     .sort((a, b) => (parseFloat(b.google_rating) || 0) - (parseFloat(a.google_rating) || 0))
     .slice(0, 6);
@@ -1758,8 +1767,9 @@ function DiscoverScreen({ preferences, dbVenues, onStart, onOpenSpot }) {
                 {v.photo_url && <img src={v.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
                 <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 46%, rgba(20,20,15,.82))" }} />
                 {v.celebrity_tags?.length > 0 && <div style={{ position: "absolute", top: 12, left: 0, padding: "5px 10px", background: "#0F6B63", color: "#FAF7F2", fontSize: 8, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase" }}>{v.celebrity_tags[0]}'s pick</div>}
-                {!v.celebrity_tags?.length && v.google_rating >= 4.5 && <div style={{ position: "absolute", top: 12, left: 0, padding: "5px 10px", background: "#D9412B", color: "#FAF7F2", fontSize: 8, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase" }}>Trending</div>}
-                {!v.celebrity_tags?.length && v.google_rating < 4.5 && <div style={{ position: "absolute", top: 12, left: 0, padding: "5px 10px", background: "#14140F", color: "#FAF7F2", fontSize: 8, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase" }}>New</div>}
+                {!v.celebrity_tags?.length && v._savers && <div style={{ position: "absolute", top: 12, left: 0, padding: "5px 10px", background: "#D9412B", color: "#FAF7F2", fontSize: 8, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase" }}>Saved by {v._savers}</div>}
+                {!v.celebrity_tags?.length && !v._savers && v.google_rating >= 4.5 && <div style={{ position: "absolute", top: 12, left: 0, padding: "5px 10px", background: "#D9412B", color: "#FAF7F2", fontSize: 8, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase" }}>Trending</div>}
+                {!v.celebrity_tags?.length && !v._savers && v.google_rating < 4.5 && <div style={{ position: "absolute", top: 12, left: 0, padding: "5px 10px", background: "#14140F", color: "#FAF7F2", fontSize: 8, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase" }}>New</div>}
                 <div style={{ position: "absolute", left: 12, right: 12, bottom: 12 }}>
                   <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 21, lineHeight: 1.05, color: "#FAF7F2" }}>{v.name}</div>
                   <div style={{ fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", fontSize: 10, fontWeight: 500, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(250,247,242,.6)", marginTop: 6 }}>{[v.area, pounds].filter(Boolean).join(" · ")}</div>
@@ -6127,6 +6137,272 @@ function FriendProfile({ user, friend, onClose }) {
 }
 
 // People hub: your invite link, who you're connected with, things shared with you.
+// ── Friends feed (People › Feed) ───────────────────────────────────────────
+// Reads friends' saves straight from `experiences` (the "read friend" RLS policy
+// allows it), so removing a save drops it from the feed with no extra work.
+// "Saved by N people" counts come from the place_save_counts RPC
+// (migrations/2026-11-14_feed-popularity.sql); if that isn't run yet the feed
+// still works, just without counts.
+const feedKey = (s) => s.google_place_id || String(s.name || "").toLowerCase().trim();
+const FEED_COLORS = ["#D9412B", "#0F6B63", "#9B892F", "#5B6D4F", "#4B342F"];
+const feedColor = (id) => FEED_COLORS[[...String(id)].reduce((a, c) => a + c.charCodeAt(0), 0) % FEED_COLORS.length];
+const BURST_GAP_MS = 10 * 60 * 1000; // saves by one friend within 10 min collapse into one card
+
+function feedAgo(iso) {
+  const m = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  if (m < 60) return `${Math.max(m, 1)}m`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `${h}h`;
+  const d = Math.round(h / 24);
+  return d < 7 ? `${d}d` : new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+}
+function feedDayLabel(iso) {
+  const d = new Date(iso), now = new Date();
+  const startOf = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const diff = Math.round((startOf(now) - startOf(d)) / 86400000);
+  return diff <= 0 ? "Today" : diff === 1 ? "Yesterday" : diff < 7 ? "This week" : "Earlier";
+}
+
+function FeedAvatar({ person, size = 36, ring }) {
+  const style = { width: size, height: size, borderRadius: "50%", flex: "none", background: feedColor(person.id), color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: Math.round(size * 0.4), overflow: "hidden", border: ring ? `2px solid ${ring}` : "none", boxSizing: "border-box" };
+  return <div style={style}>{person.avatar_url ? <img src={person.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : (person.name || "F")[0].toUpperCase()}</div>;
+}
+
+function FeedThumb({ spot, size = 64 }) {
+  return (
+    <div style={{ width: size, height: size, borderRadius: 12, background: "#E9E4DA", flex: "none", overflow: "hidden" }}>
+      {spot.photo_url && <img src={spot.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+    </div>
+  );
+}
+
+function FriendFeed({ user, friends, onOpenFriend, onGoTab }) {
+  const [rows, setRows] = useState([]);
+  const [myKeys, setMyKeys] = useState(new Set());
+  const [counts, setCounts] = useState(new Map());
+  const [loading, setLoading] = useState(true);
+  const [detail, setDetail] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [showAllCommon, setShowAllCommon] = useState(false);
+  const friendById = Object.fromEntries(friends.map(f => [f.id, f]));
+  const nameOf = (id) => friendById[id]?.name || "Friend";
+
+  useEffect(() => {
+    (async () => {
+      const ids = friends.map(f => f.id);
+      if (!ids.length) { setLoading(false); return; }
+      const [{ data: fs }, { data: mine }] = await Promise.all([
+        supabase.from("experiences").select("*").in("user_id", ids).order("created_at", { ascending: false }).limit(1000),
+        supabase.from("experiences").select("name,google_place_id").eq("user_id", user.id),
+      ]);
+      const list = fs || [];
+      setRows(list);
+      setMyKeys(new Set((mine || []).map(feedKey)));
+      setLoading(false);
+      const keys = [...new Set(list.slice(0, 200).map(feedKey))];
+      if (keys.length) {
+        const { data: cs, error } = await supabase.rpc("place_save_counts", { keys });
+        if (!error && cs) setCounts(new Map(cs.map(c => [c.place_key, c.savers])));
+      }
+    })();
+  }, [friends.map(f => f.id).join(",")]);
+
+  // Recent activity, with each friend's bursts (e.g. a Maps-list import) collapsed.
+  const groups = [];
+  const openGroup = {};
+  for (const r of rows) {
+    const t = new Date(r.created_at).getTime();
+    const g = openGroup[r.user_id];
+    if (g && g.oldest - t <= BURST_GAP_MS) { g.items.push(r); g.oldest = t; }
+    else { const ng = { key: r.id, uid: r.user_id, at: r.created_at, oldest: t, items: [r] }; groups.push(ng); openGroup[r.user_id] = ng; }
+  }
+  const feed = groups.slice(0, 40);
+
+  // Places you have in common with each friend — show the friend you share most with.
+  const commonByFriend = {};
+  for (const r of rows) {
+    if (!myKeys.has(feedKey(r))) continue;
+    const m = (commonByFriend[r.user_id] = commonByFriend[r.user_id] || new Map());
+    if (!m.has(feedKey(r))) m.set(feedKey(r), r);
+  }
+  const best = Object.entries(commonByFriend).sort((a, b) => b[1].size - a[1].size)[0];
+  const common = best ? { friend: friendById[best[0]] || { id: best[0] }, places: [...best[1].values()] } : null;
+
+  // Places 2+ friends saved that you haven't.
+  const byPlace = new Map();
+  for (const r of rows) {
+    const k = feedKey(r);
+    if (myKeys.has(k)) continue;
+    const e = byPlace.get(k) || { spot: r, uids: new Set() };
+    e.uids.add(r.user_id); byPlace.set(k, e);
+  }
+  const nudges = [...byPlace.values()].filter(e => e.uids.size >= 2).sort((a, b) => b.uids.size - a.uids.size).slice(0, 2);
+
+  async function saveToMine(s) {
+    if (busy) return;
+    setBusy(true);
+    // Your copy starts clean: their note, list and visit date stay theirs.
+    const { id, user_id, created_at, status, folder, note, visit_date, ...rest } = s;
+    const { error } = await supabase.from("experiences").insert({ ...rest, user_id: user.id, folder: null, status: "pending" });
+    if (!error || error.code === "23505") { setMyKeys(prev => new Set(prev).add(feedKey(s))); if (!error) celebrateAdd(); }
+    else alert("Couldn't save it: " + error.message);
+    setBusy(false);
+  }
+
+  async function listTogether(friend, places) {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const { data: list, error } = await supabase.from("shared_lists").insert({ name: `You & ${friend.name || "Friend"}`, emoji: "✨", owner: user.id }).select().single();
+      if (error) throw error;
+      await supabase.from("shared_list_members").insert([{ list_id: list.id, user_id: user.id }, { list_id: list.id, user_id: friend.id }]);
+      const items = places.map(p => ({ list_id: list.id, added_by: user.id, name: p.name, category: p.category || null, address: p.address || null, area: p.area || null, comment: p.comment || null, lat: p.lat ?? null, lng: p.lng ?? null, google_place_id: p.google_place_id || null, google_rating: p.google_rating != null ? String(p.google_rating) : null, price: p.price || null, website: p.website || null, photo_url: p.photo_url || null }));
+      if (items.length) { const { error: ie } = await supabase.from("shared_list_items").insert(items); if (ie) throw ie; }
+      celebrateAdd();
+      onGoTab("lists");
+    } catch (e) { alert("Couldn't make the list: " + e.message); }
+    setBusy(false);
+  }
+
+  const ink = "#14140F", muted = "rgba(20,20,15,.6)";
+  const card = { background: "#fff", borderRadius: 20, padding: 14, display: "flex", flexDirection: "column", gap: 12, border: "1px solid rgba(20,20,15,.07)" };
+  const serif = "'Instrument Serif', Georgia, serif";
+  const pill = (dark) => ({ height: 36, padding: "0 14px", borderRadius: 100, border: dark ? "none" : `1px solid ${ink}`, background: dark ? ink : "transparent", color: dark ? "#FAF7F2" : ink, fontSize: 12, fontWeight: 600, cursor: "pointer", flex: "none" });
+  const savedPill = { ...pill(false), border: "none", background: "#F1EDE4", display: "inline-flex", alignItems: "center", cursor: "default" };
+  const SaveBtn = ({ s, dark }) => myKeys.has(feedKey(s))
+    ? <span style={savedPill}>✓ Saved</span>
+    : <button disabled={busy} onClick={(e) => { e.stopPropagation(); saveToMine(s); }} style={pill(dark)}>+ Save</button>;
+  const Who = ({ uid, children, at }) => (
+    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <button onClick={() => onOpenFriend(friendById[uid] || { id: uid })} aria-label={`Open ${nameOf(uid)}'s profile`} style={{ padding: 0, border: "none", background: "none", cursor: "pointer" }}><FeedAvatar person={friendById[uid] || { id: uid }} /></button>
+      <div style={{ flex: 1, fontSize: 13, lineHeight: 1.35 }}>{children}</div>
+      <span style={{ fontSize: 11, color: muted }}>{feedAgo(at)}</span>
+    </div>
+  );
+
+  if (loading) return <div style={{ padding: "0 22px" }}><SkeletonList count={4} /></div>;
+
+  if (!friends.length) return (
+    <div style={{ margin: "0 22px", ...card, alignItems: "flex-start" }}>
+      <div style={{ fontFamily: serif, fontSize: 24, lineHeight: 1.1 }}>Your feed fills up with friends</div>
+      <div style={{ fontSize: 13, color: muted, lineHeight: 1.45 }}>Add a friend to see what they're saving, and the places you both want to try.</div>
+      <button onClick={() => onGoTab("friends")} style={pill(true)}>Add a friend</button>
+    </div>
+  );
+
+  const NudgeCard = ({ n }) => (
+    <div onClick={() => setDetail(n.spot)} style={{ background: "#EEF3D8", borderRadius: 20, padding: 14, display: "flex", gap: 12, alignItems: "center", cursor: "pointer" }}>
+      <div style={{ display: "flex", flex: "none" }}>
+        {[...n.uids].slice(0, 3).map((uid, i) => <div key={uid} style={{ marginLeft: i ? -8 : 0 }}><FeedAvatar person={friendById[uid] || { id: uid }} size={30} ring="#EEF3D8" /></div>)}
+      </div>
+      <div style={{ flex: 1, minWidth: 0, fontSize: 13, lineHeight: 1.4 }}><strong>{n.uids.size} friends</strong> saved <strong>{n.spot.name}</strong>. You haven't yet.</div>
+      <SaveBtn s={n.spot} dark />
+    </div>
+  );
+
+  let lastLabel = null;
+  return (
+    <div style={{ padding: "0 16px 24px", display: "flex", flexDirection: "column", gap: 14 }}>
+      {common && (
+        <div style={{ background: ink, color: "#FAF7F2", borderRadius: 22, padding: 18, display: "flex", flexDirection: "column", gap: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ display: "flex" }}>
+              <FeedAvatar person={{ id: user.id, name: "You" }} size={30} ring={ink} />
+              <div style={{ marginLeft: -8 }}><FeedAvatar person={common.friend} size={30} ring={ink} /></div>
+            </div>
+            <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: ".12em", textTransform: "uppercase", color: "rgba(250,247,242,.7)" }}>You & {common.friend.name || "Friend"} both saved</span>
+          </div>
+          <div onClick={() => setDetail(common.places[0])} style={{ display: "flex", gap: 14, alignItems: "center", cursor: "pointer" }}>
+            <FeedThumb spot={common.places[0]} size={76} />
+            <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
+              <div style={{ fontFamily: serif, fontSize: 26, lineHeight: 1.05 }}>{common.places[0].name}</div>
+              <div style={{ fontSize: 12, color: "rgba(250,247,242,.72)" }}>{[common.places[0].category, common.places[0].area, priceToPounds(common.places[0].price)].filter(Boolean).join(" · ")}</div>
+            </div>
+          </div>
+          {showAllCommon && common.places.length > 1 && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {common.places.slice(1).map(p => <button key={p.id} onClick={() => setDetail(p)} style={{ padding: "6px 10px", borderRadius: 100, border: "1px solid rgba(250,247,242,.3)", background: "transparent", color: "#FAF7F2", fontSize: 12, cursor: "pointer" }}>{p.name}</button>)}
+            </div>
+          )}
+          <button disabled={busy} onClick={() => listTogether(common.friend, common.places)} style={{ height: 44, borderRadius: 100, border: "none", background: "#D9412B", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+            Make a bucket list together{common.places.length > 1 ? ` (${common.places.length})` : ""}
+          </button>
+          {common.places.length > 1 && (
+            <button onClick={() => setShowAllCommon(v => !v)} style={{ border: "none", background: "none", color: "rgba(250,247,242,.7)", fontSize: 12, cursor: "pointer", padding: 0 }}>
+              {showAllCommon ? "Show less" : `+ ${common.places.length - 1} more place${common.places.length > 2 ? "s" : ""} in common`}
+            </button>
+          )}
+        </div>
+      )}
+
+      {feed.length === 0 && <div style={{ fontSize: 13, color: muted, padding: "8px 6px" }}>Your friends haven't saved anything yet.</div>}
+
+      {feed.map((g, gi) => {
+        const label = feedDayLabel(g.at);
+        const header = label !== lastLabel ? (lastLabel = label) : null;
+        const s = g.items[0];
+        const savers = counts.get(feedKey(s));
+        const folders = g.items.map(i => i.folder).filter(Boolean);
+        const folder = folders.sort((a, b) => folders.filter(x => x === b).length - folders.filter(x => x === a).length)[0];
+        return (
+          <Fragment key={g.key}>
+            {header && <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: ".12em", textTransform: "uppercase", color: muted, padding: "8px 4px 0" }}>{header}</div>}
+            {g.items.length >= 3 ? (
+              <div style={card}>
+                <Who uid={g.uid} at={g.at}><strong>{nameOf(g.uid)}</strong> saved {g.items.length} places{folder ? <> to <strong>{folder}</strong></> : ""}</Who>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 6 }}>
+                  {g.items.slice(0, g.items.length > 4 ? 3 : 4).map(i => (
+                    <button key={i.id} onClick={() => setDetail(i)} style={{ display: "flex", flexDirection: "column", gap: 5, padding: 0, border: "none", background: "none", cursor: "pointer", textAlign: "left", color: ink, minWidth: 0 }}>
+                      <div style={{ width: "100%", aspectRatio: "1", borderRadius: 10, background: "#E9E4DA", overflow: "hidden" }}>{i.photo_url && <img src={i.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}</div>
+                      <span style={{ fontSize: 11, lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", width: "100%" }}>{i.name}</span>
+                    </button>
+                  ))}
+                  {g.items.length > 4 && (
+                    <button onClick={() => onOpenFriend(friendById[g.uid] || { id: g.uid })} style={{ display: "flex", flexDirection: "column", gap: 5, padding: 0, border: "none", background: "none", cursor: "pointer", color: muted }}>
+                      <div style={{ width: "100%", aspectRatio: "1", borderRadius: 10, background: ink, color: "#FAF7F2", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 600 }}>+{g.items.length - 3}</div>
+                      <span style={{ fontSize: 11 }}>more</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : g.items.map(it => {
+              const n = counts.get(feedKey(it));
+              return (
+                <div key={it.id} style={card}>
+                  <Who uid={g.uid} at={it.created_at}><strong>{nameOf(g.uid)}</strong> saved {it.is_event ? "an event" : "a place"}{it.folder ? <> to <strong>{it.folder}</strong></> : ""}</Who>
+                  <div onClick={() => setDetail(it)} style={{ display: "flex", gap: 12, alignItems: "center", cursor: "pointer" }}>
+                    <FeedThumb spot={it} />
+                    <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
+                      <div style={{ fontFamily: serif, fontSize: 21, lineHeight: 1.1 }}>{it.name}</div>
+                      <div style={{ fontSize: 12, color: muted }}>{[it.category, it.area, it.google_rating ? `${it.google_rating} ★` : null].filter(Boolean).join(" · ")}</div>
+                      {n >= 3 && <div style={{ fontSize: 11, color: muted }}>Saved by {n} people</div>}
+                    </div>
+                    <SaveBtn s={it} />
+                  </div>
+                  {it.note && <div style={{ background: "#FAF7F2", borderRadius: 12, padding: "10px 12px", fontSize: 13, lineHeight: 1.45 }}><span style={{ fontFamily: serif, fontSize: 20, lineHeight: 0, color: "#D9412B", verticalAlign: -4 }}>“</span> {it.note}</div>}
+                </div>
+              );
+            })}
+            {(gi === 1 || gi === 4) && nudges[gi === 1 ? 0 : 1] && <NudgeCard n={nudges[gi === 1 ? 0 : 1]} />}
+          </Fragment>
+        );
+      })}
+      {feed.length < 2 && nudges.map(n => <NudgeCard key={feedKey(n.spot)} n={n} />)}
+
+      {detail && (
+        <SpotDetail
+          spot={detail}
+          user={user}
+          readOnly
+          onClose={() => setDetail(null)}
+          onSaveToBoard={myKeys.has(feedKey(detail)) ? null : () => saveToMine(detail)}
+          savedToBoard={myKeys.has(feedKey(detail))}
+        />
+      )}
+    </div>
+  );
+}
+
 function PeopleScreen({ user, onSavePlan, onShareSaved }) {
   const [connections, setConnections] = useState([]);
   const [shares, setShares] = useState([]);
@@ -6222,7 +6498,7 @@ function PeopleScreen({ user, onSavePlan, onShareSaved }) {
     } catch (e) { setMsg("Couldn't save: " + e.message); }
   }
 
-  const [pTab, setPTab] = useState("lists");
+  const [pTab, setPTab] = useState("feed");
 
   if (loading) return <div style={{ paddingTop: "2rem" }}><SkeletonList count={5} /></div>;
 
@@ -6234,12 +6510,14 @@ function PeopleScreen({ user, onSavePlan, onShareSaved }) {
       <div style={{ padding: "0 22px 18px", fontSize: 10, fontWeight: 500, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(20,20,15,.42)" }}>{connections.length} friend{connections.length !== 1 ? "s" : ""} · {shares.filter(s => !s.seen).length} new</div>
 
       <div style={{ display: "flex", gap: 7, padding: "0 22px 20px" }}>
+        <button onClick={() => setPTab("feed")} style={{ padding: "7px 14px", borderRadius: 100, background: pTab === "feed" ? "#14140F" : "transparent", color: pTab === "feed" ? "#FAF7F2" : "rgba(20,20,15,.55)", border: pTab === "feed" ? "none" : "1px solid rgba(20,20,15,.16)", fontSize: 11.5, fontWeight: 600, cursor: "pointer", transition: "all .2s" }}>Feed</button>
         <button onClick={() => setPTab("lists")} style={{ padding: "7px 14px", borderRadius: 100, background: pTab === "lists" ? "#14140F" : "transparent", color: pTab === "lists" ? "#FAF7F2" : "rgba(20,20,15,.55)", border: pTab === "lists" ? "none" : "1px solid rgba(20,20,15,.16)", fontSize: 11.5, fontWeight: 600, cursor: "pointer", transition: "all .2s" }}>Bucket lists</button>
         <button onClick={() => setPTab("friends")} style={{ padding: "7px 14px", borderRadius: 100, background: pTab === "friends" ? "#14140F" : "transparent", color: pTab === "friends" ? "#FAF7F2" : "rgba(20,20,15,.55)", border: pTab === "friends" ? "none" : "1px solid rgba(20,20,15,.16)", fontSize: 11.5, fontWeight: 600, cursor: "pointer", transition: "all .2s" }}>Friends</button>
       </div>
 
       {msg && <div style={{ margin: "0 22px 12px", background: "#F1EDE4", color: "#14140F", padding: "10px 12px", fontSize: 12 }}>{msg}</div>}
 
+      {pTab === "feed" && <FriendFeed user={user} friends={connections} onOpenFriend={setViewFriend} onGoTab={(t) => { setPTab(t); if (t === "friends" && !connections.length) setShowConnect(true); }} />}
       {pTab === "lists" && <div data-tour="shared-lists"><SharedListsSection user={user} /></div>}
 
       {pTab === "friends" && (
