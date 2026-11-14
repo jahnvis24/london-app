@@ -1663,7 +1663,9 @@ function priceToPounds(p) {
   return p;
 }
 
-function DiscoverScreen({ preferences, dbVenues, onStart, onOpenSpot }) {
+function DiscoverScreen({ preferences, dbVenues: allVenues, onStart, onOpenSpot, savedKeys, onSave }) {
+  // Hide places you've already saved, so each slot is filled by the next best one.
+  const dbVenues = savedKeys?.size ? allVenues.filter(v => !savedKeys.has(feedKey(v))) : allVenues;
   const [chip, setChip] = useState("All");
   const [swipeDeck, setSwipeDeck] = useState(false);
   const CHIPS = ["All", "East", "Date night", "Cheap eats", "Bars", "Culture", "Celebrity picks"];
@@ -1682,7 +1684,8 @@ function DiscoverScreen({ preferences, dbVenues, onStart, onOpenSpot }) {
       if (!error && data) setPopular(data.map(r => ({ ...r.place, _savers: r.savers })));
     });
   }, []);
-  const trending = popular.length >= 3 ? popular.slice(0, 6) : dbVenues
+  const freshPopular = savedKeys?.size ? popular.filter(v => !savedKeys.has(feedKey(v))) : popular;
+  const trending = freshPopular.length >= 3 ? freshPopular.slice(0, 6) : dbVenues
     .filter(v => !v.is_event && v.photo_url && v.google_rating && parseFloat(v.google_rating) >= 4.2)
     .sort((a, b) => (parseFloat(b.google_rating) || 0) - (parseFloat(a.google_rating) || 0))
     .slice(0, 6);
@@ -1735,6 +1738,7 @@ function DiscoverScreen({ preferences, dbVenues, onStart, onOpenSpot }) {
           venues={dbVenues.filter(v => !v.is_event && v.photo_url && v.google_rating >= 4.0).sort(() => 0.5 - Math.random()).slice(0, 30)}
           preferences={preferences}
           onClose={() => setSwipeDeck(false)}
+          onSave={onSave}
           onOpenSpot={onOpenSpot}
         />
       )}
@@ -1802,7 +1806,7 @@ function DiscoverScreen({ preferences, dbVenues, onStart, onOpenSpot }) {
                   </div>
                   {desc && <div style={{ fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", fontSize: 12, lineHeight: 1.45, color: "rgba(20,20,15,.5)", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{desc}</div>}
                 </div>
-                <div onClick={(e) => { e.stopPropagation(); }} style={{ width: 38, height: 38, flex: "none", borderRadius: "50%", border: "1.5px solid rgba(20,20,15,.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, color: "rgba(20,20,15,.35)", cursor: "pointer", marginTop: 4 }}>+</div>
+                <div onClick={(e) => { e.stopPropagation(); onOpenSpot && onOpenSpot(v); }} style={{ width: 38, height: 38, flex: "none", borderRadius: "50%", border: "1.5px solid rgba(20,20,15,.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, color: "rgba(20,20,15,.35)", cursor: "pointer", marginTop: 4 }}>+</div>
               </div>
             );
           })}
@@ -6732,6 +6736,19 @@ export default function App() {
   const [activeTab, setActiveTab] = useState("discover"); // Discover is the landing tab
   const [meOpen, setMeOpen] = useState(false);
   const [discoverSpot, setDiscoverSpot] = useState(null);
+  const [savedKeys, setSavedKeys] = useState(new Set()); // your saves, so Discover can hide them
+  useEffect(() => {
+    if (!user?.id || activeTab !== "discover") return;
+    supabase.from("experiences").select("name,google_place_id").eq("user_id", user.id)
+      .then(({ data }) => { if (data) setSavedKeys(new Set(data.map(feedKey))); });
+  }, [user?.id, activeTab]);
+  async function saveDiscoverSpot(v) {
+    if (!user?.id || !v) return;
+    const row = { user_id: user.id, name: v.name, address: v.address, area: v.area, zone: v.zone, category: v.category, price: v.price, vibe_tags: v.vibe_tags || [], comment: v.comment, lat: v.lat, lng: v.lng, google_place_id: v.google_place_id, google_rating: v.google_rating, photo_url: v.photo_url, website: v.website, source_type: "discover", status: "pending" };
+    const { error } = await supabase.from("experiences").insert(row);
+    if (!error || error.code === "23505") { haptic(12); setSavedKeys(prev => new Set(prev).add(feedKey(v))); }
+    else showToast("Couldn't save that — try again");
+  }
   const [tourStep, setTourStep] = useState(-1); // -1 = off; guided product tour (Me → "Take a tour")
   const [importSignal, setImportSignal] = useState(0); // bump to launch the hands-on "add a save" walkthrough
   const [peopleBadge, setPeopleBadge] = useState(0); // unsaved shares sent to you → People tab badge
@@ -7282,8 +7299,8 @@ export default function App() {
           />
         )}
 
-        {activeTab === "discover" && <DiscoverScreen preferences={preferences} dbVenues={dbVenues} onStart={startQuiz} onOpenSpot={setDiscoverSpot} />}
-        {discoverSpot && <SpotDetail spot={discoverSpot} onClose={() => setDiscoverSpot(null)} user={user} onMakePlan={(s) => { setDiscoverSpot(null); setActiveTab("home"); setAns({ savedVenues: [s] }); setQuizStep(0); }} />}
+        {activeTab === "discover" && <DiscoverScreen preferences={preferences} dbVenues={dbVenues} onStart={startQuiz} onOpenSpot={setDiscoverSpot} savedKeys={savedKeys} onSave={saveDiscoverSpot} />}
+        {discoverSpot && <SpotDetail spot={discoverSpot} onClose={() => setDiscoverSpot(null)} user={user} onSaveToBoard={() => saveDiscoverSpot(discoverSpot)} savedToBoard={savedKeys.has(feedKey(discoverSpot))} onMakePlan={(s) => { setDiscoverSpot(null); setActiveTab("home"); setAns({ savedVenues: [s] }); setQuizStep(0); }} />}
         {activeTab === "people" && <PeopleScreen user={user} onShareSaved={() => setPeopleBadge(n => Math.max(0, n - 1))} onSavePlan={(payload) => { const r = payload?.plan; if (!r) return; const newPlan = { result: r, times: payload?.times || times, ans: {}, savedAt: new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }), createdAt: Date.now(), id: generateId() }; setPlans(prev => [newPlan, ...prev]); supabase.from("plans").insert({ id: newPlan.id, user_id: user.id, result: newPlan.result, ans: newPlan.ans, times: newPlan.times, saved_at: newPlan.savedAt, created_at: newPlan.createdAt }).catch(() => {}); }} />}
         {/* Always mounted so an in-progress screenshot parse keeps running + persists when you switch tabs */}
         <div style={{ display: activeTab === "saved" ? "block" : "none" }}>
