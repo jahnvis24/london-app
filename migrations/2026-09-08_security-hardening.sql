@@ -77,6 +77,13 @@ drop policy if exists "experiences update admin"  on experiences;
 drop policy if exists "experiences delete own"    on experiences;
 drop policy if exists "experiences delete admin"  on experiences;
 
+-- Legacy policies created by hand in the dashboard (not in any migration).
+-- Postgres ORs permissive policies together, so these silently overrode every
+-- policy below — "Anon can do everything" let logged-out visitors edit/delete.
+drop policy if exists "Anon can do everything"               on experiences;
+drop policy if exists "Anon can view pending experiences"    on experiences;
+drop policy if exists "Public can view approved experiences" on experiences;
+
 -- READ: your own saves (any status).
 create policy "experiences read own" on experiences for select to authenticated
   using (auth.uid() = user_id);
