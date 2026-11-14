@@ -7,12 +7,15 @@ const TOKEN = import.meta.env.VITE_MIXPANEL_TOKEN || "82e7ac35c9104625a38ee658da
 const HOST = import.meta.env.VITE_MIXPANEL_HOST || "https://api-eu.mixpanel.com";
 
 let ready = false;
+if (typeof window !== "undefined" && /[?&]mpdebug=1/.test(window.location.search)) window.__mpDebug = true;
 try {
   if (typeof window !== "undefined" && TOKEN) {
     mixpanel.init(TOKEN, {
       ...(HOST ? { api_host: HOST } : {}),
       persistence: "localStorage",
       track_pageview: false,
+      // Add ?mpdebug=1 to the URL (or set localStorage.cl_mp_debug) to see Mixpanel logs in the console.
+      debug: /[?&]mpdebug=1/.test(window.location.search) || (() => { try { return !!localStorage.getItem("cl_mp_debug"); } catch { return false; } })(),
       ip: false,
       // UK GDPR / PECR: nothing is recorded until the user opts in via the banner.
       opt_out_tracking_by_default: true,
@@ -32,6 +35,7 @@ export function mp(event, props = {}) {
   if (!ready) return;
   try {
     const c = getConsent();
+    if (typeof window !== "undefined" && window.__mpDebug) console.info("[mp]", event, "consent=" + c, props);
     if (c === null) { writeQueue([...readQueue(), { event, props, time: Date.now() }]); return; }
     if (c === "granted") mixpanel.track(event, props);
   } catch {}
