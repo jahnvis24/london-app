@@ -3,8 +3,8 @@ import mixpanel from "mixpanel-browser";
 // Mixpanel project tokens are public by design (they ship in the bundle), so
 // a fallback here is fine. Override per-environment with VITE_MIXPANEL_TOKEN.
 const TOKEN = import.meta.env.VITE_MIXPANEL_TOKEN || "82e7ac35c9104625a38ee658da1e898a";
-// Set VITE_MIXPANEL_HOST=https://api-eu.mixpanel.com if the project is EU-resident.
-const HOST = import.meta.env.VITE_MIXPANEL_HOST;
+// The Mixpanel project is EU-resident, so events must go to the EU endpoint.
+const HOST = import.meta.env.VITE_MIXPANEL_HOST || "https://api-eu.mixpanel.com";
 
 let ready = false;
 try {
