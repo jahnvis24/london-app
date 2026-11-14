@@ -1,5 +1,6 @@
 import { Fragment, useState, useEffect, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
+import { mp, mpIdentify, mpReset, deviceType, utm } from "./analytics.js";
 
 // ── SUPABASE ─────────────────────────────────────────────────
 const supabase = createClient(
@@ -28,12 +29,25 @@ if (typeof window !== "undefined" && !window.__apiAuthPatched) {
 }
 
 // ── ANALYTICS ────────────────────────────────────────────────
+let mpGenAttempt = 0, mpLastGenKey = null;
 function track(event, properties = {}) {
   const uid = supabase.auth.getUser?.()?.then?.(r => r.data?.user?.id);
   uid?.then(id => {
     if (!id) return;
     supabase.from("analytics_events").insert({ user_id: id, event, properties }).then(() => {});
   }).catch(() => {});
+}
+
+// Mixpanel save milestones: first_place_saved once per user, places_saved after.
+let _sessionSaves = 0;
+function mpPlaceSaved(user, { save_source, place_category, ai_parse_success, count = 1 }) {
+  if (!user?.id) return;
+  _sessionSaves += count;
+  let first = false;
+  try { first = !localStorage.getItem("cl_mp_first_save_" + user.id); if (first) localStorage.setItem("cl_mp_first_save_" + user.id, "1"); } catch {}
+  const days_since_signup = user.created_at ? Math.floor((Date.now() - new Date(user.created_at).getTime()) / 86400000) : undefined;
+  if (first) mp("first_place_saved", { save_source, place_category, ai_parse_success, places_enriched_provider: "google_places" });
+  else mp("places_saved", { save_source, place_category, saved_count_in_session: _sessionSaves, days_since_signup });
 }
 
 // ── STATIC VENUE DATABASE (fallback) ─────────────────────────
@@ -1257,6 +1271,7 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
       celebrity_tags: alt.celebrity_tags,
     };
     const newTotal = recalcTotalCost(newStops);
+    mp("plan_edited_saved_or_shared", { action_type: "edit", edit_type: "swap" });
     onUpdateResult({ ...result, stops: newStops, ...(newTotal ? { total_cost_estimate: newTotal } : {}) });
     if (!keepCycling) { setSwappingIdx(null); setAlternatives([]); }
     const withTravel = await recalcTravel(newStops);
@@ -1266,6 +1281,7 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
   async function removeStop(idx) {
     const newStops = result.stops.filter((_, i) => i !== idx);
     const newTotal = recalcTotalCost(newStops);
+    mp("plan_edited_saved_or_shared", { action_type: "edit", edit_type: "remove" });
     onUpdateResult({ ...result, stops: newStops, ...(newTotal ? { total_cost_estimate: newTotal } : {}) });
     setSwappingIdx(null);
     setAlternatives([]);
@@ -1357,10 +1373,10 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
               <div className="social-card-sub">{sharing ? "Preparing your link…" : "Anyone with the link sees your full plan."}</div>
             </div>
             <div style={{ padding: "0.75rem 1rem 1rem", display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <button className="btn-outline" style={{ marginTop: 0 }} disabled={sharing} onClick={async () => { await ensureShared(); navigator.clipboard?.writeText(shareLink); setCopied(true); setTimeout(() => setCopied(false), 2000); }}>
+              <button className="btn-outline" style={{ marginTop: 0 }} disabled={sharing} onClick={async () => { await ensureShared(); navigator.clipboard?.writeText(shareLink); mp("plan_edited_saved_or_shared", { action_type: "share_link_copied" }); setCopied(true); setTimeout(() => setCopied(false), 2000); }}>
                 {copied ? "✓ Copied" : "🔗 Copy link"}
               </button>
-              <button className="btn-outline" style={{ marginTop: 0 }} disabled={sharing} onClick={async () => { await ensureShared(); window.open(`https://wa.me/?text=${encodeURIComponent(`Check out this Curated plan: ${shareLink}`)}`); }}>
+              <button className="btn-outline" style={{ marginTop: 0 }} disabled={sharing} onClick={async () => { await ensureShared(); mp("plan_edited_saved_or_shared", { action_type: "share_link_sent" }); window.open(`https://wa.me/?text=${encodeURIComponent(`Check out this Curated plan: ${shareLink}`)}`); }}>
                 💬 WhatsApp
               </button>
               {onShare && <button className="btn-outline" style={{ marginTop: 0 }} onClick={() => onShare({ kind: "plan", title: result?.title || "An itinerary", payload: { plan: result, times } })}>👤 A friend</button>}
@@ -4059,6 +4075,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
         savedCount++;
       }
       track("save", { count: savedCount, source: toSave[0]?.source_type || "unknown" });
+      { const st = toSave[0]?.source_type || "manual"; mpPlaceSaved(user, { save_source: st === "tiktok" ? "tiktok_link" : st === "manual" ? "manual_search" : "link_paste", place_category: toSave[0]?.category, ai_parse_success: st !== "manual", count: savedCount }); }
       setParseStatus("");
       tourSavedRef.current = true;
       setPreview([]);
@@ -4885,7 +4902,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
           haptic(12); blip(660);
           const v = current;
           const row = { user_id: user.id, name: v.name, address: v.address, area: v.area, zone: v.zone, category: v.category, price: v.price, vibe_tags: v.vibe_tags || [], comment: v.comment, lat: v.lat, lng: v.lng, google_place_id: v.google_place_id, google_rating: v.google_rating, photo_url: v.photo_url, source_type: "discover", status: "pending" };
-          try { await supabase.from("experiences").insert(row); } catch {}
+          try { await supabase.from("experiences").insert(row); mpPlaceSaved(user, { save_source: "discover_swipe", place_category: v.category }); } catch {}
           advance();
         }
 
@@ -5027,6 +5044,10 @@ function Splash({ onStart }) {
   );
 }
 
+function takePendingParam(key) {
+  try { return new URLSearchParams(window.location.search).get(key) || localStorage.getItem("cl_pending_" + key); } catch { return null; }
+}
+
 function LoginScreen({ onLogin }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -5041,6 +5062,7 @@ function LoginScreen({ onLogin }) {
   async function signInWithGoogle() {
     setLoading(true);
     setError(null);
+    mp("signup_started", { acquisition_channel: new URLSearchParams(window.location.search).get("plan") ? "invite_link" : "organic", signup_method: "google", ...utm() });
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       // Keep any ?invite / ?blist / ?plan param through the round-trip.
@@ -5053,6 +5075,7 @@ function LoginScreen({ onLogin }) {
     const addr = email.trim().toLowerCase();
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(addr)) { setError("Enter a valid email address."); return; }
     setOtpBusy(true); setError(null);
+    if (!isResend) mp("signup_started", { acquisition_channel: takePendingParam("plan") ? "invite_link" : "organic", signup_method: "email", ...utm() });
     const { error } = await supabase.auth.signInWithOtp({ email: addr, options: { shouldCreateUser: true } });
     setOtpBusy(false);
     if (error) {
@@ -5215,6 +5238,7 @@ function Onboarding({ user, dbVenues, onDone }) {
     try { await supabase.auth.updateUser({ data: { full_name: clean, onboarded: true, interests, vibe, taste_axes: choices } }); } catch (e) {}
     try { await supabase.from("profiles").upsert({ id: user.id, name: clean, email: user.email }); } catch (e) {}
     const likedVenues = dbVenues.filter(v => likedIds.includes(v.id));
+    mp("taste_game_completed", { axes_completed_count: Object.keys(choices).length, preferred_budget: choices.budget || choices.price || undefined, preferred_scene: choices.scene || choices.vibe || undefined, variant: "this_or_that_v1" });
     if (likedVenues.length) {
       const FOLDER = { restaurant: "Restaurants", cafe: "Cafés", bar: "Bars", nightlife: "Nightlife", market: "Markets", outdoor: "Outdoor", museum: "Museums", gallery: "Galleries", experience: "Experiences", event: "Events" };
       const rows = likedVenues.map(v => { const { id, user_id, created_at, ...rest } = v; return { ...rest, user_id: user.id, folder: FOLDER[String(v.category || "").toLowerCase()] || "Other", status: "pending" }; });
@@ -6880,11 +6904,21 @@ export default function App() {
     }
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user || null);
+      mpIdentify(session?.user?.id);
       setAuthLoading(false);
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user || null);
-      if (event === "SIGNED_IN") trackLogin(session?.user);
+      if (event === "SIGNED_IN") {
+        trackLogin(session?.user);
+        const u = session?.user;
+        mpIdentify(u?.id);
+        // Brand-new account: created within the last minute of this sign-in.
+        if (u?.created_at && Date.now() - new Date(u.created_at).getTime() < 60000) {
+          mp("signup_completed", { signup_method: u.app_metadata?.provider || "email", first_device_type: deviceType(), onboarding_started: true, timestamp_utc: new Date().toISOString() });
+        }
+      }
+      if (event === "SIGNED_OUT") mpReset();
     });
     return () => subscription.unsubscribe();
   }, []);
@@ -6999,6 +7033,12 @@ export default function App() {
 
   async function generate() {
     setLoading(true); setError(null);
+    const genStart = Date.now();
+    const planMode = ans._barCrawl ? "chain_mode" : ans.timeOfDay === "day" ? "day_only" : ans.timeOfDay === "night" ? "night_only" : "day_night";
+    const genKey = JSON.stringify(ans);
+    mpGenAttempt = genKey === mpLastGenKey ? mpGenAttempt + 1 : 0; mpLastGenKey = genKey;
+    if (mpGenAttempt > 0) mp("plan_generation_failed_or_regenerated", { result_type: "regenerated", regen_attempt_number: mpGenAttempt, plan_mode: planMode });
+    mp("plan_generation_requested", { plan_mode: planMode, travel_time_aware: !!ans.travel, input_places_count: (ans.savedVenues || []).length, generation_variant: "claude-sonnet-4-6_v1" });
     const shortlistResult = buildShortlist(ans, dbVenues, venueRatings);
     let shortlist = shortlistResult.venues || shortlistResult;
     const savedVenues = ans.savedVenues || [];
@@ -7134,14 +7174,17 @@ export default function App() {
 
       const requestedStops = ans.stops === "5+" ? 5 : parseInt(ans.stops) || 4;
       const finalResult = { ...parsed, stops: finalStops, _fewerStops: finalStops.length < requestedStops ? `We found ${finalStops.length} stops that matched all your criteria (you asked for ${requestedStops}).` : null };
+      const newPlanIdForMp = generateId();
       setResult(finalResult);
+      mp("plan_generation_succeeded", { plan_id: newPlanIdForMp, items_in_plan_count: finalStops.length, generation_duration_ms: Date.now() - genStart, used_saved_places_ratio: ans.savedVenues?.length ? Math.round(100 * finalStops.filter(st => (ans.savedVenues || []).some(v => v.name === st.name)).length / Math.max(1, finalStops.length)) : 0 });
       track("plan_generated", { stops: finalStops.length, vibes: ans.vibes, budget: ans.budget, area: ans.area, fromSaved: !!(ans.savedVenues?.length) });
       setQuizStep(QUESTIONS.length + 1);
-      const newPlan = { result: finalResult, ans: { ...ans }, times: { ...times }, savedAt: new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }), createdAt: Date.now(), id: generateId() };
+      const newPlan = { result: finalResult, ans: { ...ans }, times: { ...times }, savedAt: new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }), createdAt: Date.now(), id: newPlanIdForMp };
       setPlans(prev => [newPlan, ...prev]);
       supabase.from("plans").insert({ id: newPlan.id, user_id: user.id, result: newPlan.result, ans: newPlan.ans, times: newPlan.times, saved_at: newPlan.savedAt, created_at: newPlan.createdAt }).catch(() => {});
       showToast("Plan saved to My Plans");
     } catch (e) {
+      mp("plan_generation_failed_or_regenerated", { result_type: "failed", failure_reason: /timeout|abort/i.test(e.message || "") ? "timeout" : /taking a break|quota|limit/i.test(e.message || "") ? "quota" : /parse|json/i.test(e.message || "") ? "parsing_error" : "other", regen_attempt_number: 0, plan_mode: planMode });
       setError(e.message?.includes("AI is taking a break") ? e.message : "Couldn't generate your plan — try again in a moment.");
     }
     setLoading(false);
@@ -7185,7 +7228,7 @@ export default function App() {
     const pid = takePending("plan");
     if (!pid) return;
     supabase.from("shared_plans").select("plan,times,title").eq("id", pid).single()
-      .then(({ data }) => { if (data?.plan) { setSharedPlan(data); clearPending("plan"); } })
+      .then(({ data }) => { if (data?.plan) { setSharedPlan(data); clearPending("plan"); mp("invite_link_opened", { source: "share_link", recipient_cohort: "new_or_unauthed", plan_id: pid, ...utm() }); } })
       .catch(() => {});
   }, []);
 
