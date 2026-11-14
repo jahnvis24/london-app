@@ -5723,6 +5723,20 @@ function SharedListView({ list, user, onClose }) {
   // Little reward whenever something lands on the list — sound + buzz + a small burst.
   function celebrateAdd() { haptic(15); blip(660); confetti({ count: 45, power: 0.9 }); }
 
+  // Owner deletes the whole list (items + members cascade); anyone else just leaves it.
+  async function deleteOrLeave() {
+    const isOwner = list.owner === user.id;
+    const others = members.filter(m => m.id !== user.id).length;
+    const msg = isOwner
+      ? `Delete "${list.name}"?${others ? ` It will be removed for the ${others} other ${others === 1 ? "person" : "people"} on it too.` : ""} This can't be undone.`
+      : `Leave "${list.name}"? You can rejoin if someone invites you again.`;
+    if (!window.confirm(msg)) return;
+    const { error } = isOwner
+      ? await supabase.from("shared_lists").delete().eq("id", list.id).eq("owner", user.id)
+      : await supabase.from("shared_list_members").delete().eq("list_id", list.id).eq("user_id", user.id);
+    if (error) { alert(`Couldn't ${isOwner ? "delete" : "leave"} the list: ` + error.message); return; }
+    onClose();
+  }
   async function removeItem(it) {
     // Guard against accidental taps — removing is destructive and shared with friends.
     if (!window.confirm(`Remove "${it.name}" from this list?`)) return;
@@ -5801,7 +5815,10 @@ function SharedListView({ list, user, onClose }) {
   return (
     <div ref={slSwipeRef} style={{ position: "fixed", inset: 0, background: "#FAF7F2", zIndex: 1200, overflowY: "auto", animation: "fadeIn 0.2s" }}>
       <div style={{ maxWidth: 420, margin: "0 auto", padding: "1rem 1.5rem 6rem" }}>
-        <button className="btn-ghost" onClick={onClose} style={{ marginBottom: "0.5rem" }}>← Back</button>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.5rem" }}>
+          <button className="btn-ghost" onClick={onClose}>← Back</button>
+          <button onClick={deleteOrLeave} style={{ border: "none", background: "none", color: "#D9412B", fontSize: 12, fontWeight: 600, cursor: "pointer", padding: "10px 4px" }}>{list.owner === user.id ? "Delete list" : "Leave list"}</button>
+        </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "1rem 0 0.25rem" }}>
           <div style={{ width: 48, height: 48, borderRadius: 0, background: "#F1EDE4", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", flexShrink: 0 }}>{list.emoji || "📋"}</div>
