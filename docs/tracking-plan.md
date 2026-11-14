@@ -5,33 +5,34 @@ Tracking is opt-in (consent banner). Users are identified by Supabase user id, n
 
 ## 1. Events
 
-### Live now
-| Event | Fires when | Key properties |
-|---|---|---|
-| invite_link_opened | A shared `?plan=` link loads a plan | source, recipient_cohort, plan_id, utm_* |
-| signup_started | User submits email or taps Google | acquisition_channel, signup_method, utm_* |
-| signup_completed | New account's first sign-in (created <60s ago) | signup_method, first_device_type, onboarding_started, timestamp_utc |
-| taste_game_completed | Onboarding this-or-that finishes | axes_completed_count, preferred_budget, preferred_scene, variant |
-| first_place_saved | User's first save (flag in localStorage) | save_source, place_category, ai_parse_success, places_enriched_provider |
-| places_saved | Every later save | save_source, place_category, saved_count_in_session, days_since_signup |
-| plan_generation_requested | Generate pressed | plan_mode, travel_time_aware, input_places_count, generation_variant |
-| plan_generation_succeeded | Plan returned | plan_id, items_in_plan_count, generation_duration_ms, used_saved_places_ratio |
-| plan_generation_failed_or_regenerated | Error, or same answers re-run | result_type, failure_reason, regen_attempt_number, plan_mode |
-| plan_edited_saved_or_shared | Swap/remove stop, copy link, WhatsApp | action_type, edit_type |
+### Live now (20-event plan from Mixpanel, 2026-11-14)
+Events fired before the consent banner is answered are held for the tab and sent only if the user taps Allow.
 
-### Recommended next (gaps)
-| Event | Why | Properties |
-|---|---|---|
-| onboarding_step_viewed | Find where onboarding drops | step, step_name |
-| plan_saved | Plans auto-save today, so "saved" is not a user action; track explicit keeps/schedules | plan_id, scheduled |
-| plan_viewed | Revisits of My Plans = retention signal | plan_id, plan_age_days |
-| discover_venue_opened | Discover → save conversion denominator | surface (trending, because_you_like, swipe, top_pick), venue_id, is_top_pick |
-| place_saved_from_discover | Numerator for the above (add `surface` to places_saved) | surface |
-| friend_connected | Already in the Supabase table; mirror to Mixpanel | via (invite_link, friend_code) |
-| bucket_list_created / bucket_list_joined | Social loop | list_id, member_count |
-| friend_feed_viewed / friend_save_copied | Feed value | friend_count |
-| share_link_converted | Logged-out recipient signs up after opening a plan | plan_id |
-| app_error | Failures that aren't plan generation (parse, enrich) | area, reason |
+| Event | Fires when |
+|---|---|
+| signup_started | Email submitted / Google tapped |
+| signup_completed | New account's first sign-in (created <60s ago) |
+| invite_link_opened | `?invite=` or `?blist=` link opened |
+| taste_game_completed | Onboarding this-or-that finishes |
+| onboarding_step_viewed | Each onboarding step (location, name, interests, vibe, taste_game) |
+| first_place_saved | User's first save (per-browser flag) |
+| save_created | Every save (link/TikTok import, manual, Discover, swipe, friend profile/feed) |
+| discover_impression | Trending / top picks / because-you-like shown, or swipe deck opened (once per mount) |
+| discover_save_conversion | Save from the Discover tab (swipe tap or via details card) |
+| discover_venue_opened | Discover card opened |
+| plan_generation_requested | Generate pressed |
+| plan_generation_succeeded | Plan returned |
+| plan_generation_failed | Generation error (extra event, not in Mixpanel's plan) |
+| plan_viewed | Result / My Plans / shared plan screen opens |
+| plan_regeneration_requested | Same quiz answers generated again |
+| plan_edited_saved_or_shared | action = edited (swap/remove), saved (friend's plan), shared |
+| plan_shared | Copy link / WhatsApp |
+| plan_share_link_opened | `?plan=` link loads a plan |
+| share_link_converted | Opener later signs up / saves first place (same browser) |
+| friend_connected | Friend code entered or invite link accepted |
+| bucket_list_joined | `?blist=` link, or added to a list by a friend |
+
+Properties not available in this web app, so omitted or approximated: `device_os` is iOS / Android / desktop_web; `algorithm_variant` is a constant (`taste_v1`); `time_window` is weekday/weekend of the day generated; `regeneration_reason` is always `other`; `days_since_invite` is not sent (invite links carry no timestamp); `plan_share_origin` / `share_recipient_type` are fixed; `share_channel` is web_link or other; `user_type` is always `new_signup`.
 
 ### User properties to set (`mixpanel.people.set`)
 signup_date, signup_method, first_device_type, taste_axes (budget/scene), saved_places_count, plans_generated_count, friends_count, has_shared_plan (bool), is_admin/tester (so you can exclude yourselves).
@@ -86,8 +87,8 @@ signup_date, signup_method, first_device_type, taste_axes (budget/scene), saved_
 5. Shares and invite conversion
 
 ## 4. Known limits of current instrumentation
-- recipient_cohort is always `new_or_unauthed`; experiment_variant, recipient_logged_out_share_opened, saved_from_discover are not sent.
 - signup_completed is inferred from account age (<60s).
-- first_place_saved uses a per-browser flag; a returning user on a new device could fire it again.
-- Saves from the People feed, friend profiles and onboarding likes are not tracked.
-- Reorder / time-slot / add-place edits are not tracked.
+- first_place_saved and places_saved_count use per-browser counters; a new device restarts them.
+- share_link_converted only works in the same browser as the link open.
+- Saves from onboarding likes are not tracked; reorder / time-slot / add-place edits are not tracked.
+- Pre-consent events live in sessionStorage, so they are lost if the tab closes before the user answers.

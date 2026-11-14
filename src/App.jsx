@@ -1,6 +1,6 @@
 import { Fragment, useState, useEffect, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
-import { mp, mpIdentify, mpReset, deviceType, utm } from "./analytics.js";
+import { mp, mpIdentify, mpReset, deviceType, utm, acquisitionSource, saveType, rememberShareOpen, shareConversion } from "./analytics.js";
 
 // ── SUPABASE ─────────────────────────────────────────────────
 const supabase = createClient(
@@ -29,7 +29,7 @@ if (typeof window !== "undefined" && !window.__apiAuthPatched) {
 }
 
 // ── ANALYTICS ────────────────────────────────────────────────
-let mpGenAttempt = 0, mpLastGenKey = null;
+let mpGenAttempt = 0, mpLastGenKey = null, mpLastPlanId = null, mpLastGenFailed = false;
 function track(event, properties = {}) {
   const uid = supabase.auth.getUser?.()?.then?.(r => r.data?.user?.id);
   uid?.then(id => {
@@ -38,16 +38,18 @@ function track(event, properties = {}) {
   }).catch(() => {});
 }
 
-// Mixpanel save milestones: first_place_saved once per user, places_saved after.
-let _sessionSaves = 0;
-function mpPlaceSaved(user, { save_source, place_category, ai_parse_success, count = 1 }) {
+// Mixpanel save events: save_created for every save, plus first_place_saved once per user.
+let mpDiscoverCtx = {}; // surface/position of the Discover card that was last opened
+const mpJoinedViaLink = new Set();
+function mpPlaceSaved(user, { place_category, area, save_method = "tap_save", enrichment_source = "google_places", count = 1 }) {
   if (!user?.id) return;
-  _sessionSaves += count;
+  let before = 0;
+  try { before = parseInt(localStorage.getItem("cl_mp_saves_" + user.id) || "0", 10) || 0; localStorage.setItem("cl_mp_saves_" + user.id, String(before + count)); } catch { /* storage unavailable */ }
+  const total = before + count;
+  mp("save_created", { save_type: saveType(place_category), enrichment_source, save_location_district: area || undefined, save_creation_success: true, places_saved_count: total, device_os: deviceType() });
   let first = false;
-  try { first = !localStorage.getItem("cl_mp_first_save_" + user.id); if (first) localStorage.setItem("cl_mp_first_save_" + user.id, "1"); } catch {}
-  const days_since_signup = user.created_at ? Math.floor((Date.now() - new Date(user.created_at).getTime()) / 86400000) : undefined;
-  if (first) mp("first_place_saved", { save_source, place_category, ai_parse_success, places_enriched_provider: "google_places" });
-  else mp("places_saved", { save_source, place_category, saved_count_in_session: _sessionSaves, days_since_signup });
+  try { first = !localStorage.getItem("cl_mp_first_save_" + user.id); if (first) localStorage.setItem("cl_mp_first_save_" + user.id, "1"); } catch { /* storage unavailable */ }
+  if (first) { mp("first_place_saved", { save_type: saveType(place_category), save_method, places_saved_count: total, enrichment_source }); shareConversion("first_place_saved"); }
 }
 
 // ── STATIC VENUE DATABASE (fallback) ─────────────────────────
@@ -1153,11 +1155,20 @@ function QuizScreen({ step, ans, times, setTimes, onToggle, onNext, onBack, onGe
   );
 }
 
-function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUpdateResult, onShare, onRate, onSchedule, scheduledDate }) {
+function ResultScreen({ planId, planSource, result, times, ans, onRestart, onNewPlan, dbVenues, onUpdateResult, onShare, onRate, onSchedule, scheduledDate }) {
   const [view, setView] = useState("plan");
   const [shareId] = useState(generateShareToken);
   const [copied, setCopied] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const mpEdits = useRef(0);
+  const mpPid = planId || shareId;
+  useEffect(() => { mp("plan_viewed", { plan_id: mpPid, plan_source: planSource || "generated", device_os: deviceType() }); // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const mpShare = (channel) => {
+    mp("plan_shared", { plan_id: mpPid, share_id: shareId, share_channel: channel, plan_share_origin: "shared_from_plan_view", share_recipient_type: "public_link" });
+    mp("plan_edited_saved_or_shared", { plan_id: mpPid, action: "shared", share_channel: channel });
+  };
+  const mpEdit = (edit_type) => { mpEdits.current += 1; mp("plan_edited_saved_or_shared", { plan_id: mpPid, action: "edited", edit_count: mpEdits.current, edit_type }); };
 
   // Persist the plan so anyone with the link can view it. `owner` is required by
   // RLS now, so only the creator can overwrite a share once it exists.
@@ -1271,7 +1282,7 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
       celebrity_tags: alt.celebrity_tags,
     };
     const newTotal = recalcTotalCost(newStops);
-    mp("plan_edited_saved_or_shared", { action_type: "edit", edit_type: "swap" });
+    mpEdit("swap_place");
     onUpdateResult({ ...result, stops: newStops, ...(newTotal ? { total_cost_estimate: newTotal } : {}) });
     if (!keepCycling) { setSwappingIdx(null); setAlternatives([]); }
     const withTravel = await recalcTravel(newStops);
@@ -1281,7 +1292,7 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
   async function removeStop(idx) {
     const newStops = result.stops.filter((_, i) => i !== idx);
     const newTotal = recalcTotalCost(newStops);
-    mp("plan_edited_saved_or_shared", { action_type: "edit", edit_type: "remove" });
+    mpEdit("remove_place");
     onUpdateResult({ ...result, stops: newStops, ...(newTotal ? { total_cost_estimate: newTotal } : {}) });
     setSwappingIdx(null);
     setAlternatives([]);
@@ -1373,10 +1384,10 @@ function ResultScreen({ result, times, ans, onRestart, onNewPlan, dbVenues, onUp
               <div className="social-card-sub">{sharing ? "Preparing your link…" : "Anyone with the link sees your full plan."}</div>
             </div>
             <div style={{ padding: "0.75rem 1rem 1rem", display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <button className="btn-outline" style={{ marginTop: 0 }} disabled={sharing} onClick={async () => { await ensureShared(); navigator.clipboard?.writeText(shareLink); mp("plan_edited_saved_or_shared", { action_type: "share_link_copied" }); setCopied(true); setTimeout(() => setCopied(false), 2000); }}>
+              <button className="btn-outline" style={{ marginTop: 0 }} disabled={sharing} onClick={async () => { await ensureShared(); navigator.clipboard?.writeText(shareLink); mpShare("web_link"); setCopied(true); setTimeout(() => setCopied(false), 2000); }}>
                 {copied ? "✓ Copied" : "🔗 Copy link"}
               </button>
-              <button className="btn-outline" style={{ marginTop: 0 }} disabled={sharing} onClick={async () => { await ensureShared(); mp("plan_edited_saved_or_shared", { action_type: "share_link_sent" }); window.open(`https://wa.me/?text=${encodeURIComponent(`Check out this Curated plan: ${shareLink}`)}`); }}>
+              <button className="btn-outline" style={{ marginTop: 0 }} disabled={sharing} onClick={async () => { await ensureShared(); mpShare("other"); window.open(`https://wa.me/?text=${encodeURIComponent(`Check out this Curated plan: ${shareLink}`)}`); }}>
                 💬 WhatsApp
               </button>
               {onShare && <button className="btn-outline" style={{ marginTop: 0 }} onClick={() => onShare({ kind: "plan", title: result?.title || "An itinerary", payload: { plan: result, times } })}>👤 A friend</button>}
@@ -1476,7 +1487,7 @@ function PlanDetailView({ plan, onClose, onNewPlan, dbVenues, onUpdateResult, on
         <button onClick={onClose} style={{ width: 36, height: 36, border: "1px solid rgba(20,20,15,.18)", background: "none", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, cursor: "pointer" }}>←</button>
         <div style={{ flex: 1, fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 19, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{plan.result?.title || "Your plan"}</div>
       </div>
-      <ResultScreen result={plan.result} times={plan.times} ans={plan.ans} onRestart={onClose} onNewPlan={onNewPlan} dbVenues={dbVenues} onUpdateResult={onUpdateResult} onShare={onShare} onRate={onRate} scheduledDate={plan.scheduledDate} onSchedule={onSchedule} />
+      <ResultScreen planId={plan.id} planSource="my_plans" result={plan.result} times={plan.times} ans={plan.ans} onRestart={onClose} onNewPlan={onNewPlan} dbVenues={dbVenues} onUpdateResult={onUpdateResult} onShare={onShare} onRate={onRate} scheduledDate={plan.scheduledDate} onSchedule={onSchedule} />
     </div>
   );
 }
@@ -1691,6 +1702,12 @@ function DiscoverScreen({ preferences, dbVenues: allVenues, onStart, onOpenSpot,
   const dbVenues = savedKeys?.size ? allVenues.filter(v => !savedKeys.has(feedKey(v))) : allVenues;
   const [chip, setChip] = useState("All");
   const [swipeDeck, setSwipeDeck] = useState(false);
+  const mpSeen = useRef(new Set());
+  const mpSurfaceOnce = (surface, count) => { if (!count || mpSeen.current.has(surface)) return; mpSeen.current.add(surface); mp("discover_impression", { discover_surface: surface, deck_card_count_viewed: count, algorithm_variant: "taste_v1" }); };
+  const openSpot = (v, surface, position) => {
+    mp("discover_venue_opened", { discover_surface: surface, save_type: saveType(v?.category), position_in_surface: position, algorithm_variant: "taste_v1" });
+    onOpenSpot && onOpenSpot(v, { surface, position });
+  };
   const CHIPS = ["All", "East", "Date night", "Cheap eats", "Bars", "Culture", "Celebrity picks"];
 
   const today = new Date().toISOString().split("T")[0];
@@ -1739,6 +1756,16 @@ function DiscoverScreen({ preferences, dbVenues: allVenues, onStart, onOpenSpot,
     return `${s} – ${new Date(end).toLocaleDateString("en-GB", opts)}`;
   };
 
+  useEffect(() => {
+    const shown = (filtered.length ? filtered : trending).slice(0, 4);
+    mpSurfaceOnce("trending", shown.length);
+    mpSurfaceOnce("top_picks", shown.filter(isTopPick).length);
+    mpSurfaceOnce("because_you_like", Math.min(forYou.length, 6));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trending.length, forYou.length]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (swipeDeck) mpSurfaceOnce("swipe_deck", 30); }, [swipeDeck]);
+
   return (
     <div style={{ animation: "screenIn .32s cubic-bezier(.2,.9,.3,1)", paddingBottom: 40 }}>
       <div style={{ padding: "0 22px 20px", display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
@@ -1761,8 +1788,8 @@ function DiscoverScreen({ preferences, dbVenues: allVenues, onStart, onOpenSpot,
           venues={dbVenues.filter(v => !v.is_event && v.photo_url && v.google_rating >= 4.0).sort(() => 0.5 - Math.random()).slice(0, 30)}
           preferences={preferences}
           onClose={() => setSwipeDeck(false)}
-          onSave={onSave}
-          onOpenSpot={onOpenSpot}
+          onSave={(v) => onSave && onSave(v, { surface: "swipe_deck", position: 0, method: "tap_save" })}
+          onOpenSpot={(v) => openSpot(v, "swipe_deck", 0)}
         />
       )}
 
@@ -1786,10 +1813,10 @@ function DiscoverScreen({ preferences, dbVenues: allVenues, onStart, onOpenSpot,
         <div style={{ fontSize: 9.5, fontWeight: 500, letterSpacing: "0.14em", textTransform: "uppercase", color: "#D9412B", cursor: "pointer" }}>See all</div>
       </div>
       <div style={{ display: "flex", gap: 12, padding: "0 22px 26px", overflowX: "auto", scrollbarWidth: "none" }}>
-        {(filtered.length ? filtered : trending).slice(0, 4).map(v => {
+        {(filtered.length ? filtered : trending).slice(0, 4).map((v, ti) => {
           const pounds = priceToPounds(v.price);
           return (
-            <div key={v.id} onClick={() => onOpenSpot && onOpenSpot(v)} style={{ flex: "none", width: 160, cursor: "pointer" }}>
+            <div key={v.id} onClick={() => openSpot(v, isTopPick(v) ? "top_picks" : "trending", ti)} style={{ flex: "none", width: 160, cursor: "pointer" }}>
               <div style={{ position: "relative", height: 206, overflow: "hidden", background: "#F1EDE4" }}>
                 {v.photo_url && <img src={v.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
                 <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 46%, rgba(20,20,15,.82))" }} />
@@ -1815,7 +1842,7 @@ function DiscoverScreen({ preferences, dbVenues: allVenues, onStart, onOpenSpot,
             const pounds = priceToPounds(v.price);
             const desc = v.comment ? (v.comment.endsWith(".") ? v.comment : v.comment + ".") : null;
             return (
-              <div key={v.id} onClick={() => onOpenSpot && onOpenSpot(v)} style={{ padding: "16px 0", borderBottom: "1px solid rgba(20,20,15,.18)", display: "flex", gap: 14, alignItems: "flex-start", cursor: "pointer" }}>
+              <div key={v.id} onClick={() => openSpot(v, "because_you_like", vi)} style={{ padding: "16px 0", borderBottom: "1px solid rgba(20,20,15,.18)", display: "flex", gap: 14, alignItems: "flex-start", cursor: "pointer" }}>
                 <div style={{ width: 90, height: 90, flex: "none", overflow: "hidden", borderRadius: 6, background: "#F1EDE4" }}>
                   {v.photo_url && <img src={v.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
                 </div>
@@ -1830,7 +1857,7 @@ function DiscoverScreen({ preferences, dbVenues: allVenues, onStart, onOpenSpot,
                   </div>
                   {desc && <div style={{ fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", fontSize: 12, lineHeight: 1.45, color: "rgba(20,20,15,.5)", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{desc}</div>}
                 </div>
-                <div onClick={(e) => { e.stopPropagation(); onOpenSpot && onOpenSpot(v); }} style={{ width: 38, height: 38, flex: "none", borderRadius: "50%", border: "1.5px solid rgba(20,20,15,.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, color: "rgba(20,20,15,.35)", cursor: "pointer", marginTop: 4 }}>+</div>
+                <div onClick={(e) => { e.stopPropagation(); openSpot(v, "because_you_like", vi); }} style={{ width: 38, height: 38, flex: "none", borderRadius: "50%", border: "1.5px solid rgba(20,20,15,.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, color: "rgba(20,20,15,.35)", cursor: "pointer", marginTop: 4 }}>+</div>
               </div>
             );
           })}
@@ -4075,7 +4102,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
         savedCount++;
       }
       track("save", { count: savedCount, source: toSave[0]?.source_type || "unknown" });
-      { const st = toSave[0]?.source_type || "manual"; mpPlaceSaved(user, { save_source: st === "tiktok" ? "tiktok_link" : st === "manual" ? "manual_search" : "link_paste", place_category: toSave[0]?.category, ai_parse_success: st !== "manual", count: savedCount }); }
+      { const st = toSave[0]?.source_type || "manual"; const m = st === "tiktok" ? "tiktok_parse" : st === "manual" ? "manual_save" : "url_parse"; mpPlaceSaved(user, { save_method: m, enrichment_source: m === "manual_save" ? "manual" : m, place_category: toSave[0]?.category, area: toSave[0]?.area, count: savedCount }); }
       setParseStatus("");
       tourSavedRef.current = true;
       setPreview([]);
@@ -4116,7 +4143,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
       const { data: inserted, error } = await supabase.from("experiences").insert(row).select();
       if (error) throw new Error("Save failed: " + error.message);
       if (!inserted || !inserted.length) throw new Error("Save didn't persist — check you're signed in and that the migration has been run.");
-      mpPlaceSaved(user, { save_source: "manual_search", place_category: d.category, ai_parse_success: false });
+      mpPlaceSaved(user, { save_method: "manual_save", enrichment_source: d.google_place_id ? "google_places" : "manual", place_category: d.category, area: d.area });
       setParseStatus(""); setMName(""); setMNotes(""); setCaptureOpen(false);
       showSuccess(d.name); notify("Saved to your collection ✨", `${d.name} added`);
       await loadSaves();
@@ -4903,7 +4930,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
           haptic(12); blip(660);
           const v = current;
           const row = { user_id: user.id, name: v.name, address: v.address, area: v.area, zone: v.zone, category: v.category, price: v.price, vibe_tags: v.vibe_tags || [], comment: v.comment, lat: v.lat, lng: v.lng, google_place_id: v.google_place_id, google_rating: v.google_rating, photo_url: v.photo_url, source_type: "discover", status: "pending" };
-          try { await supabase.from("experiences").insert(row); mpPlaceSaved(user, { save_source: "discover_swipe", place_category: v.category }); } catch {}
+          try { await supabase.from("experiences").insert(row); mpPlaceSaved(user, { save_method: "tap_save", place_category: v.category, area: v.area }); } catch {}
           advance();
         }
 
@@ -5045,10 +5072,6 @@ function Splash({ onStart }) {
   );
 }
 
-function takePendingParam(key) {
-  try { return new URLSearchParams(window.location.search).get(key) || localStorage.getItem("cl_pending_" + key); } catch { return null; }
-}
-
 function LoginScreen({ onLogin }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -5063,7 +5086,7 @@ function LoginScreen({ onLogin }) {
   async function signInWithGoogle() {
     setLoading(true);
     setError(null);
-    mp("signup_started", { acquisition_channel: new URLSearchParams(window.location.search).get("plan") ? "invite_link" : "organic", signup_method: "google", ...utm() });
+    mp("signup_started", { acquisition_source: acquisitionSource(), device_os: deviceType(), user_type: "new_signup", signup_method: "google", ...utm() });
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       // Keep any ?invite / ?blist / ?plan param through the round-trip.
@@ -5076,7 +5099,7 @@ function LoginScreen({ onLogin }) {
     const addr = email.trim().toLowerCase();
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(addr)) { setError("Enter a valid email address."); return; }
     setOtpBusy(true); setError(null);
-    if (!isResend) mp("signup_started", { acquisition_channel: takePendingParam("plan") ? "invite_link" : "organic", signup_method: "email", ...utm() });
+    if (!isResend) mp("signup_started", { acquisition_source: acquisitionSource(), device_os: deviceType(), user_type: "new_signup", signup_method: "email", ...utm() });
     const { error } = await supabase.auth.signInWithOtp({ email: addr, options: { shouldCreateUser: true } });
     setOtpBusy(false);
     if (error) {
@@ -5148,8 +5171,11 @@ const OB_AXES = [
   { key: "polished", A: v => (v.vibe_tags || []).includes("fancy"), B: v => ((v.vibe_tags || []).includes("underground") || (v.vibe_tags || []).includes("chaotic")) && !(v.vibe_tags || []).includes("fancy") },
   { key: "novel", A: v => v.category === "experience" || (v.vibe_tags || []).includes("underground"), B: v => (v.vibe_tags || []).includes("iconic") || (v.vibe_tags || []).includes("cultural") },
 ];
+const OB_STEP_NAMES = ["location", "name", "interests", "vibe", "taste_game"];
 function Onboarding({ user, dbVenues, onDone }) {
   const [step, setStep] = useState(0);
+  const obStart = useRef(Date.now());
+  useEffect(() => { mp("onboarding_step_viewed", { step_name: OB_STEP_NAMES[step] || "step_" + step, step_index: step, device_os: deviceType(), attributed_source: acquisitionSource() }); }, [step]);
   const [geo, setGeo] = useState(null); // "allow" | "london"
   const [name, setName] = useState((user?.user_metadata?.full_name || "").split(" ")[0] || "");
   const [interests, setInterests] = useState([]);
@@ -5229,17 +5255,17 @@ function Onboarding({ user, dbVenues, onDone }) {
     const nextLiked = liked.includes(venue.id) ? liked : [...liked, venue.id];
     setLiked(nextLiked);
     if (axisIdx < pairs.length - 1) setAxisIdx(axisIdx + 1);
-    else finish(nextLiked);
+    else finish(nextLiked, { ...choices, [pair.key]: pole });
   }
-  const skipAxis = () => { if (axisIdx < pairs.length - 1) setAxisIdx(axisIdx + 1); else finish(liked); };
+  const skipAxis = () => { if (axisIdx < pairs.length - 1) setAxisIdx(axisIdx + 1); else finish(liked, choices); };
 
-  async function finish(likedIds) {
+  async function finish(likedIds, finalChoices = choices) {
     setSaving(true);
     const clean = name.trim() || "there";
-    try { await supabase.auth.updateUser({ data: { full_name: clean, onboarded: true, interests, vibe, taste_axes: choices } }); } catch (e) {}
+    try { await supabase.auth.updateUser({ data: { full_name: clean, onboarded: true, interests, vibe, taste_axes: finalChoices } }); } catch (e) {}
     try { await supabase.from("profiles").upsert({ id: user.id, name: clean, email: user.email }); } catch (e) {}
     const likedVenues = dbVenues.filter(v => likedIds.includes(v.id));
-    mp("taste_game_completed", { axes_completed_count: Object.keys(choices).length, preferred_budget: choices.budget || choices.price || undefined, preferred_scene: choices.scene || choices.vibe || undefined, variant: "this_or_that_v1" });
+    mp("taste_game_completed", { taste_profile_score: Math.round(100 * Object.keys(finalChoices).length / Math.max(1, pairs.length)), onboarding_session_duration_sec: Math.round((Date.now() - obStart.current) / 1000), attributed_source: acquisitionSource() });
     if (likedVenues.length) {
       const FOLDER = { restaurant: "Restaurants", cafe: "Cafés", bar: "Bars", nightlife: "Nightlife", market: "Markets", outdoor: "Outdoor", museum: "Museums", gallery: "Galleries", experience: "Experiences", event: "Events" };
       const rows = likedVenues.map(v => { const { id, user_id, created_at, ...rest } = v; return { ...rest, user_id: user.id, folder: FOLDER[String(v.category || "").toLowerCase()] || "Other", status: "pending" }; });
@@ -6087,7 +6113,7 @@ function FriendProfile({ user, friend, onClose }) {
     const { id, user_id, created_at, status, folder: _f, ...rest } = s;
     const { error } = await supabase.from("experiences").insert({ ...rest, user_id: user.id, folder: folder || null, status: "pending" });
     if (!error) {
-      mpPlaceSaved(user, { save_source: "friend_profile", place_category: s.category });
+      mpPlaceSaved(user, { save_method: "tap_save", place_category: s.category, area: s.area });
       setSavedIds(prev => new Set(prev).add(s.id));
       setMyKeys(prev => new Set(prev).add(keyOf(s)));
       if (folder) setMyFolders(prev => prev.includes(folder) ? prev : [...prev, folder].sort());
@@ -6311,7 +6337,7 @@ function FriendFeed({ user, friends, onOpenFriend, onGoTab }) {
     // Your copy starts clean: their note, list and visit date stay theirs.
     const { id, user_id, created_at, status, folder, note, visit_date, ...rest } = s;
     const { error } = await supabase.from("experiences").insert({ ...rest, user_id: user.id, folder: null, status: "pending" });
-    if (!error || error.code === "23505") { setMyKeys(prev => new Set(prev).add(feedKey(s))); if (!error) { feedCelebrate(); mpPlaceSaved(user, { save_source: "friend_feed", place_category: s.category }); } }
+    if (!error || error.code === "23505") { setMyKeys(prev => new Set(prev).add(feedKey(s))); if (!error) { feedCelebrate(); mpPlaceSaved(user, { save_method: "tap_save", place_category: s.category, area: s.area }); } }
     else alert("Couldn't save it: " + error.message);
     setBusy(false);
   }
@@ -6580,9 +6606,10 @@ function PeopleScreen({ user, onSavePlan, onShareSaved }) {
       const { error } = await supabase.from("connections").upsert({ user_a: a, user_b: b }, { onConflict: "user_a,user_b", ignoreDuplicates: true });
       if (error) throw error;
       haptic([15, 40, 15, 40, 25]); confetti({ count: 120, power: 1.2 });
+      mp("friend_connected", { connection_type: "friend_code_entered", friend_count_before: connections.length, connection_success: true, shared_list_created: false });
       setMsg(`Connected with ${data.name || "your friend"}! 🎉`); setCodeInput("");
       await load();
-    } catch (e) { setMsg("Couldn't connect: " + e.message); }
+    } catch (e) { mp("friend_connected", { connection_type: "friend_code_entered", friend_count_before: connections.length, connection_success: false, shared_list_created: false }); setMsg("Couldn't connect: " + e.message); }
     setConnecting(false);
   }
 
@@ -6602,7 +6629,7 @@ function PeopleScreen({ user, onSavePlan, onShareSaved }) {
 
   async function saveShare(s) {
     try {
-      if (s.kind === "plan") { onSavePlan(s.payload); setMsg("Saved to My Plans ✓"); }
+      if (s.kind === "plan") { onSavePlan(s.payload); mp("plan_edited_saved_or_shared", { plan_id: s.payload?.id, action: "saved" }); setMsg("Saved to My Plans ✓"); }
       else {
         const spots = (s.payload?.spots || []).map(v => { const { id, user_id, created_at, ...rest } = v; return { ...rest, user_id: user.id, folder: s.payload.name || "Shared with me", status: "pending" }; });
         if (spots.length) { const { error } = await supabase.from("experiences").insert(spots); if (error) throw error; }
@@ -6784,11 +6811,11 @@ export default function App() {
     supabase.from("experiences").select("name,google_place_id").eq("user_id", user.id)
       .then(({ data }) => { if (data) setSavedKeys(new Set(data.map(feedKey))); });
   }, [user?.id, activeTab]);
-  async function saveDiscoverSpot(v) {
+  async function saveDiscoverSpot(v, ctx) {
     if (!user?.id || !v) return;
     const row = { user_id: user.id, name: v.name, address: v.address, area: v.area, zone: v.zone, category: v.category, price: v.price, vibe_tags: v.vibe_tags || [], comment: v.comment, lat: v.lat, lng: v.lng, google_place_id: v.google_place_id, google_rating: v.google_rating, photo_url: v.photo_url, website: v.website, source_type: "discover", status: "pending" };
     const { error } = await supabase.from("experiences").insert(row);
-    if (!error || error.code === "23505") { haptic(12); if (!error) mpPlaceSaved(user, { save_source: "discover", place_category: v.category }); setSavedKeys(prev => new Set(prev).add(feedKey(v))); }
+    if (!error || error.code === "23505") { haptic(12); if (!error) { mpPlaceSaved(user, { save_method: "tap_save", place_category: v.category, area: v.area }); const c = ctx || { ...mpDiscoverCtx, method: "open_details_then_save" }; mp("discover_save_conversion", { discover_surface: c.surface || "unknown", save_type: saveType(v.category), position_in_surface: c.position, save_method: c.method || "tap_save" }); } setSavedKeys(prev => new Set(prev).add(feedKey(v))); }
     else showToast("Couldn't save that — try again");
   }
   const [tourStep, setTourStep] = useState(-1); // -1 = off; guided product tour (Me → "Take a tour")
@@ -6885,6 +6912,7 @@ export default function App() {
         if (!listId) return;
         const { data: listData } = await supabase.from("shared_lists").select("name,emoji,owner").eq("id", listId).single();
         if (listData?.owner === user.id) return; // you made it — not news to you
+        if (!mpJoinedViaLink.has(listId)) mp("bucket_list_joined", { bucket_list_id: listId, bucket_list_source: "shared_from_friend", device_os: deviceType() });
         const name = listData?.name || "a bucket list";
         showToast(`You've been added to "${name}" 🎉`);
         notify("New bucket list ✦", `You've been added to "${name}"`);
@@ -6917,7 +6945,8 @@ export default function App() {
         mpIdentify(u?.id);
         // Brand-new account: created within the last minute of this sign-in.
         if (u?.created_at && Date.now() - new Date(u.created_at).getTime() < 60000) {
-          mp("signup_completed", { signup_method: u.app_metadata?.provider || "email", first_device_type: deviceType(), onboarding_started: true, timestamp_utc: new Date().toISOString() });
+          mp("signup_completed", { signup_method: u.app_metadata?.provider || "email", device_os: deviceType(), acquisition_source: acquisitionSource(), timestamp_utc: new Date().toISOString() });
+          shareConversion("signup_completed");
         }
       }
       if (event === "SIGNED_OUT") mpReset();
@@ -7036,11 +7065,14 @@ export default function App() {
   async function generate() {
     setLoading(true); setError(null);
     const genStart = Date.now();
-    const planMode = ans._barCrawl ? "chain_mode" : ans.timeOfDay === "day" ? "day_only" : ans.timeOfDay === "night" ? "night_only" : "day_night";
+    const planId = generateId();
+    const inputCount = (ans.savedVenues || []).length;
     const genKey = JSON.stringify(ans);
     mpGenAttempt = genKey === mpLastGenKey ? mpGenAttempt + 1 : 0; mpLastGenKey = genKey;
-    if (mpGenAttempt > 0) mp("plan_generation_failed_or_regenerated", { result_type: "regenerated", regen_attempt_number: mpGenAttempt, plan_mode: planMode });
-    mp("plan_generation_requested", { plan_mode: planMode, travel_time_aware: !!ans.travel, input_places_count: (ans.savedVenues || []).length, generation_variant: "claude-sonnet-4-6_v1" });
+    if (mpGenAttempt > 0) mp("plan_regeneration_requested", { plan_id: planId, prior_generation_id: mpLastPlanId, regeneration_reason: "other", regeneration_attempt_number: mpGenAttempt, input_spot_count: inputCount });
+    const dow = new Date().getDay();
+    mp("plan_generation_requested", { plan_id: planId, generation_type: ans._barCrawl ? "night_plan" : ans.timeOfDay === "day" ? "day_plan" : ans.timeOfDay === "night" ? "night_plan" : "full_plan", input_spot_count: inputCount, time_window: dow === 0 || dow === 5 || dow === 6 ? "weekend" : "weekday", generation_trigger: mpLastGenFailed ? "regeneration_from_error" : inputCount ? "after_add_saves" : "generate_button" });
+    mpLastPlanId = planId; mpLastGenFailed = false;
     const shortlistResult = buildShortlist(ans, dbVenues, venueRatings);
     let shortlist = shortlistResult.venues || shortlistResult;
     const savedVenues = ans.savedVenues || [];
@@ -7176,17 +7208,17 @@ export default function App() {
 
       const requestedStops = ans.stops === "5+" ? 5 : parseInt(ans.stops) || 4;
       const finalResult = { ...parsed, stops: finalStops, _fewerStops: finalStops.length < requestedStops ? `We found ${finalStops.length} stops that matched all your criteria (you asked for ${requestedStops}).` : null };
-      const newPlanIdForMp = generateId();
       setResult(finalResult);
-      mp("plan_generation_succeeded", { plan_id: newPlanIdForMp, items_in_plan_count: finalStops.length, generation_duration_ms: Date.now() - genStart, used_saved_places_ratio: ans.savedVenues?.length ? Math.round(100 * finalStops.filter(st => (ans.savedVenues || []).some(v => v.name === st.name)).length / Math.max(1, finalStops.length)) : 0 });
+      mp("plan_generation_succeeded", { plan_id: planId, generation_success: true, estimated_total_travel_time_min: finalStops.reduce((t, st) => t + (Number(st.travel_minutes) || 0), 0), used_model: "claude-sonnet-4-6", input_spot_count: inputCount });
       track("plan_generated", { stops: finalStops.length, vibes: ans.vibes, budget: ans.budget, area: ans.area, fromSaved: !!(ans.savedVenues?.length) });
       setQuizStep(QUESTIONS.length + 1);
-      const newPlan = { result: finalResult, ans: { ...ans }, times: { ...times }, savedAt: new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }), createdAt: Date.now(), id: newPlanIdForMp };
+      const newPlan = { result: finalResult, ans: { ...ans }, times: { ...times }, savedAt: new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }), createdAt: Date.now(), id: planId };
       setPlans(prev => [newPlan, ...prev]);
       supabase.from("plans").insert({ id: newPlan.id, user_id: user.id, result: newPlan.result, ans: newPlan.ans, times: newPlan.times, saved_at: newPlan.savedAt, created_at: newPlan.createdAt }).catch(() => {});
       showToast("Plan saved to My Plans");
     } catch (e) {
-      mp("plan_generation_failed_or_regenerated", { result_type: "failed", failure_reason: /timeout|abort/i.test(e.message || "") ? "timeout" : /taking a break|quota|limit/i.test(e.message || "") ? "quota" : /parse|json/i.test(e.message || "") ? "parsing_error" : "other", regen_attempt_number: 0, plan_mode: planMode });
+      mpLastGenFailed = true;
+      mp("plan_generation_failed", { plan_id: planId, generation_success: false, failure_reason: /timeout|abort/i.test(e.message || "") ? "timeout" : /taking a break|quota|limit/i.test(e.message || "") ? "quota" : /parse|json/i.test(e.message || "") ? "parsing_error" : "other", input_spot_count: inputCount });
       setError(e.message?.includes("AI is taking a break") ? e.message : "Couldn't generate your plan — try again in a moment.");
     }
     setLoading(false);
@@ -7216,7 +7248,10 @@ export default function App() {
     const p = new URLSearchParams(window.location.search);
     for (const k of ["invite", "blist", "plan"]) {
       const v = p.get(k);
-      if (v) { try { localStorage.setItem("cl_pending_" + k, v); } catch (e) {} }
+      if (v) {
+        try { localStorage.setItem("cl_pending_" + k, v); } catch (e) {}
+        if (k !== "plan") mp("invite_link_opened", { share_channel: "web_link", invite_origin: k === "invite" ? "friend_invite" : "bucket_list" });
+      }
     }
   }, []);
   const takePending = (key) => {
@@ -7229,8 +7264,8 @@ export default function App() {
   useEffect(() => {
     const pid = takePending("plan");
     if (!pid) return;
-    supabase.from("shared_plans").select("plan,times,title").eq("id", pid).single()
-      .then(({ data }) => { if (data?.plan) { setSharedPlan(data); clearPending("plan"); mp("invite_link_opened", { source: "share_link", recipient_cohort: "new_or_unauthed", plan_id: pid, ...utm() }); } })
+    supabase.from("shared_plans").select("plan,times,title,created_at").eq("id", pid).single()
+      .then(async ({ data }) => { if (data?.plan) { setSharedPlan({ ...data, id: pid }); clearPending("plan"); let sess = null; try { sess = (await supabase.auth.getSession()).data?.session; } catch { /* ignore */ } mp("plan_share_link_opened", { plan_id: pid, recipient_is_logged_in: !!sess, share_channel: "web_link", days_since_shared: data.created_at ? Math.floor((Date.now() - new Date(data.created_at).getTime()) / 86400000) : undefined }); if (!sess) rememberShareOpen(pid); } })
       .catch(() => {});
   }, []);
 
@@ -7241,7 +7276,8 @@ export default function App() {
     if (!inv || inv === user.id) { clearPending("invite"); return; }
     (async () => {
       const [a, b] = [user.id, inv].sort();
-      try { await supabase.from("connections").upsert({ user_a: a, user_b: b }, { onConflict: "user_a,user_b", ignoreDuplicates: true }); showToast("Connected! See the People tab."); } catch (e) {}
+      let before; try { before = (await supabase.from("connections").select("*", { count: "exact", head: true }).or(`user_a.eq.${user.id},user_b.eq.${user.id}`)).count; } catch (e) {}
+      try { await supabase.from("connections").upsert({ user_a: a, user_b: b }, { onConflict: "user_a,user_b", ignoreDuplicates: true }); showToast("Connected! See the People tab."); mp("friend_connected", { connection_type: "invite_link_clicked", friend_count_before: before, connection_success: true, shared_list_created: false }); } catch (e) { mp("friend_connected", { connection_type: "invite_link_clicked", friend_count_before: before, connection_success: false, shared_list_created: false }); }
       clearPending("invite");
       window.history.replaceState({}, "", "/");
     })();
@@ -7254,7 +7290,10 @@ export default function App() {
     if (!blist) return;
     (async () => {
       try {
+        let existing = 0; try { existing = (await supabase.from("shared_list_members").select("*", { count: "exact", head: true }).eq("user_id", user.id)).count || 0; } catch (e) {}
+        mpJoinedViaLink.add(blist);
         await supabase.from("shared_list_members").upsert({ list_id: blist, user_id: user.id }, { onConflict: "list_id,user_id" });
+        mp("bucket_list_joined", { bucket_list_id: blist, bucket_list_source: "invite_link", device_os: deviceType(), is_first_bucket_list: existing === 0 });
         showToast("Added to the bucket list! See the People tab.");
         setActiveTab("people");
       } catch (e) {}
@@ -7305,7 +7344,7 @@ export default function App() {
         <div style={{ padding: "1rem 1.5rem 0" }}>
           <button className="btn-outline" style={{ marginTop: 0 }} onClick={() => { setSharedPlan(null); window.history.replaceState({}, "", "/"); }}>← Close shared plan</button>
         </div>
-        <ResultScreen result={sharedPlan.plan} times={sharedPlan.times || times} ans={{}} onRestart={() => { setSharedPlan(null); window.history.replaceState({}, "", "/"); }} onNewPlan={() => { setSharedPlan(null); window.history.replaceState({}, "", "/"); }} dbVenues={dbVenues} onUpdateResult={() => {}} />
+        <ResultScreen planId={sharedPlan.id} planSource="shared_link" result={sharedPlan.plan} times={sharedPlan.times || times} ans={{}} onRestart={() => { setSharedPlan(null); window.history.replaceState({}, "", "/"); }} onNewPlan={() => { setSharedPlan(null); window.history.replaceState({}, "", "/"); }} dbVenues={dbVenues} onUpdateResult={() => {}} />
       </div>
     </>
   );
@@ -7344,7 +7383,7 @@ export default function App() {
 
         {showHome && <HomeScreen onStart={startQuiz} />}
         {showQuiz && <QuizScreen step={quizStep} ans={ans} times={times} setTimes={setTimes} onToggle={toggle} onNext={nextStep} onBack={prevStep} onGenerate={generate} loading={loading} loadIdx={loadIdx} error={error} onExit={() => { setQuizStep(-1); setActiveTab("plans"); }} />}
-        {showResult && <ResultScreen result={result} times={times} ans={ans} onRestart={resetToHome} onNewPlan={startQuiz} dbVenues={dbVenues} onUpdateResult={setResult} onShare={setShareItem} onRate={() => plans[0] && setRatingPlan(plans[0])} scheduledDate={plans[0]?.scheduledDate} onSchedule={(date) => { if (!plans[0]) return; schedulePlanAt(0, date); goToCalendar("It's on your calendar! 📅"); }} />}
+        {showResult && <ResultScreen planId={plans[0]?.id} planSource="generated" result={result} times={times} ans={ans} onRestart={resetToHome} onNewPlan={startQuiz} dbVenues={dbVenues} onUpdateResult={setResult} onShare={setShareItem} onRate={() => plans[0] && setRatingPlan(plans[0])} scheduledDate={plans[0]?.scheduledDate} onSchedule={(date) => { if (!plans[0]) return; schedulePlanAt(0, date); goToCalendar("It's on your calendar! 📅"); }} />}
 
         {activeTab === "plans" && !showViewingPlan && <MyPlansScreen plans={plans} dbVenues={dbVenues} onViewPlan={(plan) => setViewingPlan(plan)} onNewPlan={() => { setActiveTab("home"); startQuiz(); }} onBarCrawl={() => setBarCrawl({ seed: [] })} onSchedule={(i, date) => schedulePlanAt(i, date)} />}
         {showViewingPlan && (
@@ -7360,7 +7399,7 @@ export default function App() {
           />
         )}
 
-        {activeTab === "discover" && <DiscoverScreen preferences={preferences} dbVenues={dbVenues} onStart={startQuiz} onOpenSpot={setDiscoverSpot} savedKeys={savedKeys} onSave={saveDiscoverSpot} />}
+        {activeTab === "discover" && <DiscoverScreen preferences={preferences} dbVenues={dbVenues} onStart={startQuiz} onOpenSpot={(v, ctx) => { mpDiscoverCtx = ctx || {}; setDiscoverSpot(v); }} savedKeys={savedKeys} onSave={saveDiscoverSpot} />}
         {discoverSpot && <SpotDetail spot={discoverSpot} onClose={() => setDiscoverSpot(null)} user={user} onSaveToBoard={() => saveDiscoverSpot(discoverSpot)} savedToBoard={savedKeys.has(feedKey(discoverSpot))} onMakePlan={(s) => { setDiscoverSpot(null); setActiveTab("home"); setAns({ savedVenues: [s] }); setQuizStep(0); }} />}
         {activeTab === "people" && <PeopleScreen user={user} onShareSaved={() => setPeopleBadge(n => Math.max(0, n - 1))} onSavePlan={(payload) => { const r = payload?.plan; if (!r) return; const newPlan = { result: r, times: payload?.times || times, ans: {}, savedAt: new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }), createdAt: Date.now(), id: generateId() }; setPlans(prev => [newPlan, ...prev]); supabase.from("plans").insert({ id: newPlan.id, user_id: user.id, result: newPlan.result, ans: newPlan.ans, times: newPlan.times, saved_at: newPlan.savedAt, created_at: newPlan.createdAt }).catch(() => {}); }} />}
         {/* Always mounted so an in-progress screenshot parse keeps running + persists when you switch tabs */}

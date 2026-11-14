@@ -21,9 +21,20 @@ try {
   }
 } catch { /* analytics must never break the app */ }
 
+// Events fired before the user answers the consent banner are held (this tab
+// only) and sent if they say yes, dropped if they say no. Nothing leaves the
+// device until consent is granted.
+const QUEUE_KEY = "cl_mp_queue";
+function readQueue() { try { return JSON.parse(sessionStorage.getItem(QUEUE_KEY) || "[]"); } catch { return []; } }
+function writeQueue(q) { try { sessionStorage.setItem(QUEUE_KEY, JSON.stringify(q.slice(-60))); } catch {} }
+
 export function mp(event, props = {}) {
   if (!ready) return;
-  try { mixpanel.track(event, props); } catch {}
+  try {
+    const c = getConsent();
+    if (c === null) { writeQueue([...readQueue(), { event, props, time: Date.now() }]); return; }
+    if (c === "granted") mixpanel.track(event, props);
+  } catch {}
 }
 
 // Supabase user id only — never the email — so the Mixpanel profile holds no PII.
@@ -59,10 +70,54 @@ export function getConsent() {
 export function setConsent(granted) {
   try { localStorage.setItem(CONSENT_KEY, granted ? "granted" : "denied"); } catch {}
   if (!ready) return;
-  try { granted ? mixpanel.opt_in_tracking() : mixpanel.opt_out_tracking(); } catch {}
+  try {
+    if (granted) {
+      mixpanel.opt_in_tracking();
+      for (const q of readQueue()) mixpanel.track(q.event, { ...q.props, time: q.time / 1000 });
+    } else mixpanel.opt_out_tracking();
+    writeQueue([]);
+  } catch {}
 }
 
 // Re-apply a previously saved choice on every page load.
 if (ready && getConsent() === "granted") {
   try { mixpanel.opt_in_tracking(); } catch {}
+}
+
+// First-touch acquisition source, remembered for the life of the browser.
+export function acquisitionSource() {
+  try {
+    const saved = localStorage.getItem("cl_mp_acq");
+    if (saved) return saved;
+    const p = new URLSearchParams(window.location.search);
+    let src = p.get("utm_source") || (p.get("plan") ? "plan_share" : p.get("invite") ? "friend_invite" : p.get("blist") ? "bucket_list_invite" : null);
+    if (!src) { try { src = document.referrer ? new URL(document.referrer).hostname : "direct"; } catch { src = "direct"; } }
+    localStorage.setItem("cl_mp_acq", src);
+    return src;
+  } catch { return "unknown"; }
+}
+
+// Maps the app's free-form categories onto the tracking plan's save types.
+export function saveType(cat) {
+  const c = String(cat || "").toLowerCase();
+  if (["restaurant", "cafe"].includes(c)) return "restaurant";
+  if (["bar", "nightlife"].includes(c)) return "bar";
+  if (c === "event") return "event";
+  if (["experience", "outdoor", "museum", "gallery", "market"].includes(c)) return "activity";
+  return "other";
+}
+
+// Remember a shared-plan link open so a later signup / first save can be
+// credited back to it (share_link_converted).
+export function rememberShareOpen(planId) {
+  try { localStorage.setItem("cl_mp_share_open", JSON.stringify({ planId, ts: Date.now() })); } catch {}
+}
+export function shareConversion(step) {
+  try {
+    const raw = localStorage.getItem("cl_mp_share_open");
+    if (!raw) return;
+    const { planId, ts } = JSON.parse(raw);
+    mp("share_link_converted", { plan_id: planId, converted_step: step, days_since_opened: Math.floor((Date.now() - ts) / 86400000) });
+    if (step === "first_place_saved") localStorage.removeItem("cl_mp_share_open");
+  } catch {}
 }
