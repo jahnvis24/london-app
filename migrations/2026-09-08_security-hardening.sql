@@ -186,6 +186,9 @@ drop policy if exists "Authenticated users can update own plans"   on shared_pla
 drop policy if exists "Public read"                                on shared_plans;
 drop policy if exists "Public insert"                              on shared_plans;
 drop policy if exists "Public update"                              on shared_plans;
+drop policy if exists "shared_plans insert own"                    on shared_plans;
+drop policy if exists "shared_plans update own"                    on shared_plans;
+drop policy if exists "shared_plans delete own"                    on shared_plans;
 
 -- Read stays open: recipients of a share link are often logged out. Security
 -- comes from the share id being an unguessable token (widened to 22 chars of
