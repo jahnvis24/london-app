@@ -6147,6 +6147,8 @@ const feedKey = (s) => s.google_place_id || String(s.name || "").toLowerCase().t
 const FEED_COLORS = ["#D9412B", "#0F6B63", "#9B892F", "#5B6D4F", "#4B342F"];
 const feedColor = (id) => FEED_COLORS[[...String(id)].reduce((a, c) => a + c.charCodeAt(0), 0) % FEED_COLORS.length];
 const BURST_GAP_MS = 10 * 60 * 1000; // saves by one friend within 10 min collapse into one card
+// celebrateAdd() lives inside the bucket-list component, so the feed has its own.
+const feedCelebrate = () => { haptic(15); confetti({ count: 45, power: 0.9 }); };
 
 function feedAgo(iso) {
   const m = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
@@ -6244,7 +6246,7 @@ function FriendFeed({ user, friends, onOpenFriend, onGoTab }) {
     // Your copy starts clean: their note, list and visit date stay theirs.
     const { id, user_id, created_at, status, folder, note, visit_date, ...rest } = s;
     const { error } = await supabase.from("experiences").insert({ ...rest, user_id: user.id, folder: null, status: "pending" });
-    if (!error || error.code === "23505") { setMyKeys(prev => new Set(prev).add(feedKey(s))); if (!error) celebrateAdd(); }
+    if (!error || error.code === "23505") { setMyKeys(prev => new Set(prev).add(feedKey(s))); if (!error) feedCelebrate(); }
     else alert("Couldn't save it: " + error.message);
     setBusy(false);
   }
@@ -6258,7 +6260,7 @@ function FriendFeed({ user, friends, onOpenFriend, onGoTab }) {
       await supabase.from("shared_list_members").insert([{ list_id: list.id, user_id: user.id }, { list_id: list.id, user_id: friend.id }]);
       const items = places.map(p => ({ list_id: list.id, added_by: user.id, name: p.name, category: p.category || null, address: p.address || null, area: p.area || null, comment: p.comment || null, lat: p.lat ?? null, lng: p.lng ?? null, google_place_id: p.google_place_id || null, google_rating: p.google_rating != null ? String(p.google_rating) : null, price: p.price || null, website: p.website || null, photo_url: p.photo_url || null }));
       if (items.length) { const { error: ie } = await supabase.from("shared_list_items").insert(items); if (ie) throw ie; }
-      celebrateAdd();
+      feedCelebrate();
       onGoTab("lists");
     } catch (e) { alert("Couldn't make the list: " + e.message); }
     setBusy(false);
