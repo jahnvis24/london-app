@@ -14,6 +14,8 @@ try {
       persistence: "localStorage",
       track_pageview: false,
       ip: false,
+      // UK GDPR / PECR: nothing is recorded until the user opts in via the banner.
+      opt_out_tracking_by_default: true,
     });
     ready = true;
   }
@@ -45,4 +47,22 @@ export function deviceType() {
 export function utm() {
   const p = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
   return { utm_source: p.get("utm_source") || undefined, utm_campaign: p.get("utm_campaign") || undefined };
+}
+
+const CONSENT_KEY = "cl_analytics_consent";
+
+// Returns "granted", "denied" or null (not asked yet).
+export function getConsent() {
+  try { return localStorage.getItem(CONSENT_KEY); } catch { return null; }
+}
+
+export function setConsent(granted) {
+  try { localStorage.setItem(CONSENT_KEY, granted ? "granted" : "denied"); } catch {}
+  if (!ready) return;
+  try { granted ? mixpanel.opt_in_tracking() : mixpanel.opt_out_tracking(); } catch {}
+}
+
+// Re-apply a previously saved choice on every page load.
+if (ready && getConsent() === "granted") {
+  try { mixpanel.opt_in_tracking(); } catch {}
 }
