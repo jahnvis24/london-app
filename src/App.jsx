@@ -4116,6 +4116,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
       const { data: inserted, error } = await supabase.from("experiences").insert(row).select();
       if (error) throw new Error("Save failed: " + error.message);
       if (!inserted || !inserted.length) throw new Error("Save didn't persist — check you're signed in and that the migration has been run.");
+      mpPlaceSaved(user, { save_source: "manual_search", place_category: d.category, ai_parse_success: false });
       setParseStatus(""); setMName(""); setMNotes(""); setCaptureOpen(false);
       showSuccess(d.name); notify("Saved to your collection ✨", `${d.name} added`);
       await loadSaves();
@@ -6086,6 +6087,7 @@ function FriendProfile({ user, friend, onClose }) {
     const { id, user_id, created_at, status, folder: _f, ...rest } = s;
     const { error } = await supabase.from("experiences").insert({ ...rest, user_id: user.id, folder: folder || null, status: "pending" });
     if (!error) {
+      mpPlaceSaved(user, { save_source: "friend_profile", place_category: s.category });
       setSavedIds(prev => new Set(prev).add(s.id));
       setMyKeys(prev => new Set(prev).add(keyOf(s)));
       if (folder) setMyFolders(prev => prev.includes(folder) ? prev : [...prev, folder].sort());
@@ -6309,7 +6311,7 @@ function FriendFeed({ user, friends, onOpenFriend, onGoTab }) {
     // Your copy starts clean: their note, list and visit date stay theirs.
     const { id, user_id, created_at, status, folder, note, visit_date, ...rest } = s;
     const { error } = await supabase.from("experiences").insert({ ...rest, user_id: user.id, folder: null, status: "pending" });
-    if (!error || error.code === "23505") { setMyKeys(prev => new Set(prev).add(feedKey(s))); if (!error) feedCelebrate(); }
+    if (!error || error.code === "23505") { setMyKeys(prev => new Set(prev).add(feedKey(s))); if (!error) { feedCelebrate(); mpPlaceSaved(user, { save_source: "friend_feed", place_category: s.category }); } }
     else alert("Couldn't save it: " + error.message);
     setBusy(false);
   }
@@ -6786,7 +6788,7 @@ export default function App() {
     if (!user?.id || !v) return;
     const row = { user_id: user.id, name: v.name, address: v.address, area: v.area, zone: v.zone, category: v.category, price: v.price, vibe_tags: v.vibe_tags || [], comment: v.comment, lat: v.lat, lng: v.lng, google_place_id: v.google_place_id, google_rating: v.google_rating, photo_url: v.photo_url, website: v.website, source_type: "discover", status: "pending" };
     const { error } = await supabase.from("experiences").insert(row);
-    if (!error || error.code === "23505") { haptic(12); setSavedKeys(prev => new Set(prev).add(feedKey(v))); }
+    if (!error || error.code === "23505") { haptic(12); if (!error) mpPlaceSaved(user, { save_source: "discover", place_category: v.category }); setSavedKeys(prev => new Set(prev).add(feedKey(v))); }
     else showToast("Couldn't save that — try again");
   }
   const [tourStep, setTourStep] = useState(-1); // -1 = off; guided product tour (Me → "Take a tour")
