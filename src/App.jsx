@@ -2539,6 +2539,7 @@ function MeScreen({ user, preferences, setPreferences, isAdmin, onBadgeUpdate, a
           { icon: "🗑️", label: "Delete account", action: () => {}, fg: "#D9412B" },
           { icon: "🔄", label: "Retake the personalisation quiz", action: onStartTour },
           ...(isAdmin ? [{ icon: "🔧", label: "Admin", hint: adminBadge > 0 ? `${adminBadge} pending` : "", action: () => setView("admin") }] : []),
+          { icon: "🔒", label: "Privacy policy", action: () => window.open("/privacy.html", "_blank", "noopener") },
           { icon: "👋", label: "Sign out", fg: "#D9412B", action: () => supabase.auth.signOut() },
         ].map((r, i) => (
           <button key={i} onClick={r.action} style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px 0", borderBottom: "1px solid rgba(20,20,15,.08)", cursor: "pointer", background: "none", border: "none", borderBottom: "1px solid rgba(20,20,15,.08)", width: "100%", textAlign: "left" }}>
@@ -2826,7 +2827,10 @@ function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan, user, onSpotUpdate
           </div>
         )}
         <div style={{ position: "absolute", left: 22, right: 22, bottom: 20, pointerEvents: "none", zIndex: 4 }}>
-          <div style={{ ...sf, fontSize: 11, fontWeight: 500, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(250,247,242,.55)", marginBottom: 8 }}>{[cap(cat), spot.area].filter(Boolean).join(" · ")}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+            <span style={{ ...sf, fontSize: 11, fontWeight: 500, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(250,247,242,.55)" }}>{[cap(cat), spot.area].filter(Boolean).join(" · ")}</span>
+            {isTopPick(spot) && <TopPickBadge style={{ fontSize: 9, padding: "4px 9px" }} />}
+          </div>
           <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 42, lineHeight: 0.95, color: "#FAF7F2", letterSpacing: "-0.02em", fontStyle: "italic" }}>{spot.name}</div>
         </div>
       </div>
@@ -2843,9 +2847,10 @@ function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan, user, onSpotUpdate
         <div style={{ ...sf, fontSize: 13.5, lineHeight: 1.5, color: "rgba(20,20,15,.5)", marginBottom: 16, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{(() => { const c = spot.comment || "No description yet."; return c.endsWith(".") ? c : c + "."; })()}</div>
 
         {/* Vibe tags */}
-        {spot.vibe_tags?.length > 0 && (
+        {/* Top Pick shows in the header above, so it's left out of the chips here. */}
+        {spot.vibe_tags?.some(t => t !== "top_pick") && (
           <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginBottom: 18 }}>
-            {sortTags(spot.vibe_tags).map((t, i) => (
+            {spot.vibe_tags.filter(t => t !== "top_pick").map((t, i) => (
               <span key={i} style={tagStyle(t, { ...sf, padding: "5px 13px", borderRadius: 100, border: "1px solid rgba(20,20,15,.12)", fontSize: 12, color: "rgba(20,20,15,.55)" })}>{tagLabel(t)}</span>
             ))}
           </div>
@@ -5102,6 +5107,9 @@ function LoginScreen({ onLogin }) {
             </div>
           </div>
         )}
+      </div>
+      <div style={{ marginTop: 22, fontSize: 11, color: "rgba(250,247,242,.4)", textAlign: "center", lineHeight: 1.5 }}>
+        By continuing you agree to our <a href="/privacy.html" target="_blank" rel="noopener" style={{ color: "rgba(250,247,242,.7)", textDecoration: "underline" }}>Privacy Policy</a>.
       </div>
     </div>
   );
