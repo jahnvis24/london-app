@@ -98,7 +98,7 @@ Yonder's venue "logos" on the cards are supplied by the brands. cuRATED doesn't 
    | Card titles | 19–21px | 22–24px |
    | Tab titles (Unbounded) | 30px | stays 30px |
 
-5. **Text on photos, not under them.** Put the name and area over a dark gradient on the photo so the photo can take the full card. Only Trending does this today.
+5. **Nothing covers the photo.** The name and area sit under the photo on the cream, in Instrument Serif, not over a gradient. The only thing on a photo is the single Top pick badge. The owner's rule (2026-11-15): "I want to see the whole image and the name." Exceptions: the spot page hero and the plan-stop photo, where the text sits in the bottom strip of a much bigger image.
 6. **Shapes stay as agreed.** Cards and photos have 14px corners, small squares 11px, buttons and tags 8px soft rectangles.
 
 **Rules for the luxury feel:**
@@ -117,7 +117,7 @@ Yonder's venue "logos" on the cards are supplied by the brands. cuRATED doesn't 
 Sizes assume a 390px-wide phone. Use aspect ratios rather than fixed heights so it scales.
 
 ### Discover
-- **Trending cards:** 160 × 206 → **280 × 350** (4:5), about 1.2 cards visible so the next one peeks in.
+- **Trending cards:** 160 × 206 → **280 × 300** photos with the name and area under the photo, about 1.2 cards visible so the next one peeks in.
 - **"Because you like" list:** replaced by the preference rows (see "Discover, in order").
 
 ### Spot page
@@ -129,7 +129,7 @@ Sizes assume a 390px-wide phone. Use aspect ratios rather than fixed heights so 
 1. Logo and date
 2. "Build me a night out" block and the "Swipe to discover" card, unchanged
 3. Filter chips
-4. **Trending this week**: 280 × 350 cards, about 1.2 visible, Top pick badge only
+4. **Trending this week**: 280 × 300 photos with the name and area underneath, about 1.2 visible, Top pick badge only
 5. **Preference rows**, up to three, one per preference the person ticked at sign-up (`PREF_OPTIONS`): "Top bar picks", "Hidden gems", "Outdoor" and so on, highest-rated first, with a one-line "Because you like bars" under the title
 6. **Cheap eats**: `price = "low"`
 7. **Celebrity row**: "Dua Lipa's picks", from `celebrity_tags`, rotating weekly between celebrities with 5+ venues
