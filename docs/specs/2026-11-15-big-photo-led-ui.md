@@ -171,7 +171,7 @@ Every row shows 8 cards and "See all" opens the full list. The current "Because 
 
 | Phase | What | Check before moving on |
 |---|---|---|
-| 0 | Mock the new Discover, spot page, plan and feed on the brand board, next to the current screens | Owner signs off on the look |
+| 0 | Mock the new Discover, spot page, plan and feed on the brand board, next to the current screens. Done 2026-11-15: panels "Plan stops with photos", "Discover · rows of picks", "Spot page and People feed" | Owner signs off on the look |
 | 1 | Sharper photos (technical work items 1 and 2) | Spot-check 20 venues on a phone |
 | 2 | Type scale across the app | Screenshots of every tab |
 | 3 | Discover and spot page | Owner and friends test it |
