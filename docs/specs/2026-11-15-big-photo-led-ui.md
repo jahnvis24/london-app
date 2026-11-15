@@ -61,6 +61,21 @@ These come from a 1 minute 42 second screen recording of Yonder (iOS) that the o
 | Y12 | **Map with category pins** | Round pins with an icon for each category, number clusters, and category chips at the bottom | The same in the Saves map, using our outline icons |
 | Y13 | **Placeholders while loading** | Grey shapes the same size as the content show before it loads | Placeholders the same size and shape as the photos, as in section 4 |
 
+Seen on a second pass, one frame per second (103 frames):
+
+| # | Pattern | What it looks like in Yonder | How cuRATED would use it |
+|---|---|---|---|
+| Y14 | **The hero is a photo carousel** | The detail page hero holds 3–6 photos you swipe through. A thin progress line sits at the bottom of the photo, not dots. The round heart (save) button floats bottom-right on the photo, with a round back arrow top-left | The spot page hero becomes a swipeable carousel of all the venue's photos with a thin progress line. Save heart and back arrow float on the photo as round frosted buttons |
+| Y15 | **The detail page is long and editorial** | Under the sheet: a paragraph on the brand ("Why Origin Coffee?"), outline pill links (Website ↗, Instagram ↗), a map of its locations, then "The low down" with a second big photo and more text | The spot page gets sections: the blurb, outline pill links (Website, Instagram, Menu), a small map, and a second photo if there is one. Long-form, not a card of tags |
+| Y16 | **The map is a card in the feed** | Inside a category, a full-width rounded map ("In the area") sits between the feature card and the first row | Discover gets an "Around you" map card after the hero, reusing the Saves peek map |
+| Y17 | **The home hero is a stack of swipeable cards** | The first "Smart picks" card is nearly full-screen height, 3:4, and swiping left moves to the next pick. Below it, a 2-column grid of 3:4 cards | Discover's "Tonight's pick" is a swipeable stack of 3–5 picks rather than a single card |
+| Y18 | **The map view** | Full-screen light map. Pins are white circles with an outline category icon, clusters are white circles with a number, and the selected pin grows and turns coral. Tapping shows a dark card at the bottom with the name and perk. Category chips float at the bottom, with a round close button top-left | The Saves and Discover maps use this: white icon pins, number clusters, oxblood for the selected pin, a black cherry card at the bottom, and chips floating over the map |
+| Y19 | **Rare, small accent tags** | A small coral pill ("Off peak boost", "First time boost") appears top-right on maybe one card in ten. It's the only bright colour on the screen | The one tag per screen (rule 8) is a small pill, top-right, in arctic blue on dark or oxblood on cream. Nothing else is bright |
+| Y20 | **Everything loads with placeholders, then settles** | Switching category shows dark grey placeholder blocks, then the feature card, then the map, then the rows | The same order for Discover: placeholders, then hero, then map, then rows |
+| Y21 | **"Explore more by category" grid** | A 2-column grid of frosted panels, each with an outline icon and a label, at the end of the feed | Discover ends with the same grid: Restaurants, Bars, Cafés, Culture, Outdoors, Markets, using our outline icons |
+
+Yonder's venue "logos" on the cards are supplied by the brands. cuRATED doesn't have those, so venue names go in Instrument Serif at 24–30px in the same spot, which gives a similar editorial feel.
+
 **The biggest single difference is that Yonder is dark and moody where it shows photos**, using deep blurred backgrounds, and cream only on detail sheets. That darkness is a large part of why it feels luxury. cuRATED could do the same with **black cherry** as the dark background on Discover and the photo screens, keeping cream for the spot sheet, Saves and forms. See open question 0.
 
 **Success looks like this:**
@@ -108,8 +123,17 @@ Sizes assume a 390px-wide phone. Use aspect ratios rather than fixed heights so 
 - **"Because you like" list:** 90px squares → **full-width 16:10 cards**, three of them, with a "See all" link.
 
 ### Spot page
-- **Hero:** 380px → **62% of the screen height** (about 520px), edge to edge, swipeable when there are several photos, with page dots.
-- Name over the bottom of the photo in Instrument Serif at 34px, with the info block under it as now.
+- **Hero:** 380px → **62% of the screen height** (about 520px), edge to edge, a swipeable carousel of every photo with a thin progress line (Y14). Round frosted back and save buttons float on the photo.
+- Name over the bottom of the photo in Instrument Serif at 34px, with the cream sheet sliding up over it.
+- **Sheet contents, in order (Y15):** category · area · price line, the blurb, one row of outline pill links (Website, Instagram, Menu, Directions), friends who saved it, a small map, then the tags. Long and scrollable, not a card.
+
+### Discover, in order (Y16, Y17, Y20, Y21)
+1. Logo and date
+2. "Tonight's pick" swipeable stack
+3. "Build me a night out" block and the "Swipe to discover" card
+4. "Around you" map card
+5. Rows: Trending, Date night, Cheap & cheerful, Sunday slow, Late ones, New this month
+6. "Explore by category" grid
 
 ### Plan result
 - **Each stop gets its photo:** a 16:9 photo at the top of every stop card, full card width (about 358 × 200), with the time and type over it. The outline icon stays as the fallback when there's no photo.
