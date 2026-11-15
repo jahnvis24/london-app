@@ -177,12 +177,19 @@ Sizes assume a 390px-wide phone. Use aspect ratios rather than fixed heights so 
 
 Each phase is its own commit and push, so the two laptops stay in sync.
 
-## 7. Open questions for the owner
+## 7. Decisions so far (2026-11-15)
 
-0. **Dark and moody Discover?** Discover would get a black cherry background with blurred ambient photos and cream text (Y1–Y3), while the spot sheet, Saves and forms stay cream. Or does Discover stay cream, just with bigger photos?
-1. ~~What exactly do you like about Yonder?~~ Answered with the screen recording. See "What Yonder actually does".
-1b. **Badges:** OK to remove most "Trending" / "Top pick" / rating stickers from photos (rule 8)? It's the biggest single change towards a luxury feel, but it means less information on each card.
+- **Discover stays cream.** No dark background. The ambient-blur idea (Y1–Y3) is dropped. Photos get bigger on cream.
+- **Keep the "Top pick" badge.** Other stickers (Trending, rating-on-photo) still go, per rule 8.
+- **A photo on every plan stop: yes.** Mocked on the brand board, "Plan stops with photos".
+- **Photo re-fetch cost:** Google's Place Photos SKU is $7 per 1,000 calls, with the first 1,000 a month free. 100 calls ≈ £0.55, and the full ~1,000-venue re-fetch is at most about £5, possibly free. Approved.
+
+## 8. Open questions for the owner
+
+0. ~~Dark and moody Discover?~~ Decided: cream.
+1. ~~What exactly do you like about Yonder?~~ Answered with the screen recording.
+1b. ~~Badges~~ Decided: keep Top pick, drop the rest.
 2. **Discover hero:** add the new full-width "Tonight's pick" card, or just make the existing Trending cards bigger?
 3. **Saves:** do big photo cards become the default, or stay an option behind the toggle?
-4. **Plan stops:** is a photo on every stop card OK, given it makes plans about twice as long to scroll?
-5. **Photo re-fetch cost:** OK to spend about 1,000 Google Places photo calls to make every photo sharp?
+4. ~~Plan stops~~ Decided: yes, photo on every stop.
+5. ~~Photo re-fetch cost~~ Decided: approved, at most about £5.
