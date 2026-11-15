@@ -181,6 +181,7 @@ Each phase is its own commit and push, so the two laptops stay in sync.
 
 - **Discover stays cream.** No dark background. The ambient-blur idea (Y1–Y3) is dropped. Photos get bigger on cream.
 - **Keep the "Top pick" badge.** Other stickers (Trending, rating-on-photo) still go, per rule 8.
+- **Saves: big photo cards are the default view.** The compact grid/list stays behind the toggle.
 - **A photo on every plan stop: yes.** Mocked on the brand board, "Plan stops with photos".
 - **Photo re-fetch cost:** Google's Place Photos SKU is $7 per 1,000 calls, with the first 1,000 a month free. 100 calls ≈ £0.55, and the full ~1,000-venue re-fetch is at most about £5, possibly free. Approved.
 
@@ -189,7 +190,7 @@ Each phase is its own commit and push, so the two laptops stay in sync.
 0. ~~Dark and moody Discover?~~ Decided: cream.
 1. ~~What exactly do you like about Yonder?~~ Answered with the screen recording.
 1b. ~~Badges~~ Decided: keep Top pick, drop the rest.
-2. **Discover hero:** add the new full-width "Tonight's pick" card, or just make the existing Trending cards bigger?
-3. **Saves:** do big photo cards become the default, or stay an option behind the toggle?
+2. **Discover hero:** mocked as option A (Tonight's pick stack) and option B (bigger Trending) on the brand board, "Discover · option A vs option B". Waiting on the owner's pick.
+3. ~~Saves~~ Decided: big photo cards are the default view; the grid/list toggle stays for a compact view.
 4. ~~Plan stops~~ Decided: yes, photo on every stop.
 5. ~~Photo re-fetch cost~~ Decided: approved, at most about £5.
