@@ -1432,7 +1432,7 @@ function MyPlansScreen({ plans, onViewPlan, onNewPlan, onBarCrawl, onSchedule, d
   if (plans.length === 0) return (
     <div style={{ animation: "screenIn .32s cubic-bezier(.2,.9,.3,1)" }}>
       <div style={{ padding: "0 22px 4px" }}>
-        <div style={{ fontFamily: "'Unbounded', sans-serif", fontWeight: 900, fontSize: 30, lineHeight: 1.05, letterSpacing: "-0.03em" }}>Plans</div>
+        <div style={{ fontFamily: "'Unbounded', sans-serif", fontWeight: 900, fontSize: 30, lineHeight: 1.05, letterSpacing: "-0.03em", color: "#7A1E33" }}>Plans<span style={{ color: "#BAD2E8" }}>.</span></div>
         <div style={{ display: "flex", gap: 8, marginTop: 14, marginBottom: 10 }}>
           <button onClick={onNewPlan} style={{ padding: "9px 14px", background: "#3A0B14", color: "#BAD2E8", border: "none", fontSize: 11.5, fontWeight: 600, cursor: "pointer" }}>+ New plan</button>
           {onBarCrawl && <button onClick={onBarCrawl} style={{ padding: "9px 14px", border: "1px solid #7A1E33", color: "#7A1E33", background: "none", fontSize: 11.5, fontWeight: 600, cursor: "pointer" }}>+ Bar crawl</button>}
@@ -1448,7 +1448,7 @@ function MyPlansScreen({ plans, onViewPlan, onNewPlan, onBarCrawl, onSchedule, d
   return (
     <div style={{ animation: "screenIn .32s cubic-bezier(.2,.9,.3,1)" }}>
       <div style={{ padding: "0 22px 4px" }}>
-        <div style={{ fontFamily: "'Unbounded', sans-serif", fontWeight: 900, fontSize: 30, lineHeight: 1.05, letterSpacing: "-0.03em" }}>Plans</div>
+        <div style={{ fontFamily: "'Unbounded', sans-serif", fontWeight: 900, fontSize: 30, lineHeight: 1.05, letterSpacing: "-0.03em", color: "#7A1E33" }}>Plans<span style={{ color: "#BAD2E8" }}>.</span></div>
         <div style={{ display: "flex", gap: 8, marginTop: 14, marginBottom: 10 }}>
           <button data-tour="plan-cta" onClick={onNewPlan} style={{ padding: "9px 14px", background: "#3A0B14", color: "#BAD2E8", border: "none", fontSize: 11.5, fontWeight: 600, cursor: "pointer" }}>+ New plan</button>
           {onBarCrawl && <button onClick={onBarCrawl} style={{ padding: "9px 14px", border: "1px solid #7A1E33", color: "#7A1E33", background: "none", fontSize: 11.5, fontWeight: 600, cursor: "pointer" }}>+ Bar crawl</button>}
@@ -2525,7 +2525,7 @@ function MeScreen({ user, preferences, setPreferences, isAdmin, onBadgeUpdate, a
       {/* Header: code + name */}
       <div style={{ padding: "0 22px 20px" }}>
         <div style={{ fontSize: 9.5, fontWeight: 500, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(58,11,20,.42)", marginBottom: 4 }}>Code · {user?.user_metadata?.friend_code || "····"}</div>
-        <div style={{ fontFamily: "'Unbounded', sans-serif", fontWeight: 900, fontSize: 30, lineHeight: 1.05, letterSpacing: "-0.03em" }}>{displayName}</div>
+        <div style={{ fontFamily: "'Unbounded', sans-serif", fontWeight: 900, fontSize: 30, lineHeight: 1.05, letterSpacing: "-0.03em", color: "#7A1E33" }}>{displayName}<span style={{ color: "#BAD2E8" }}>.</span></div>
       </div>
 
       {/* Stats row */}
@@ -4364,7 +4364,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
     <div>
       {!openFolder && (
       <div style={{ padding: "0 22px" }}>
-        <div style={{ fontFamily: "'Unbounded', sans-serif", fontWeight: 900, fontSize: 30, lineHeight: 1.05, letterSpacing: "-0.03em", marginBottom: 4 }}>Saves</div>
+        <div style={{ fontFamily: "'Unbounded', sans-serif", fontWeight: 900, fontSize: 30, lineHeight: 1.05, letterSpacing: "-0.03em", color: "#7A1E33", marginBottom: 4 }}>Saves<span style={{ color: "#BAD2E8" }}>.</span></div>
         <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(58,11,20,.42)", marginBottom: 18 }}>{saves.length} spot{saves.length !== 1 ? "s" : ""} · {folderNames.length} list{folderNames.length !== 1 ? "s" : ""}</div>
       </div>
       )}
@@ -6709,7 +6709,7 @@ function PeopleScreen({ user, onSavePlan, onShareSaved }) {
   return (
     <div style={{ animation: "screenIn .32s cubic-bezier(.2,.9,.3,1)" }}>
       <div style={{ padding: "0 22px 4px" }}>
-        <div style={{ fontFamily: "'Unbounded', sans-serif", fontWeight: 900, fontSize: 30, lineHeight: 1.05, letterSpacing: "-0.03em" }}>People</div>
+        <div style={{ fontFamily: "'Unbounded', sans-serif", fontWeight: 900, fontSize: 30, lineHeight: 1.05, letterSpacing: "-0.03em", color: "#7A1E33" }}>People<span style={{ color: "#BAD2E8" }}>.</span></div>
       </div>
       <div style={{ padding: "0 22px 18px", fontSize: 10, fontWeight: 500, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(58,11,20,.42)" }}>{connections.length} friend{connections.length !== 1 ? "s" : ""} · {shares.filter(s => !s.seen).length} new</div>
 
