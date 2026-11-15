@@ -31,7 +31,15 @@ There's also a technical limit to fix before photos get bigger: **stored photos 
 
 ## 2. The goal
 
-Every screen leads with one big photo or a row of big photos, and the text is easy to read. The app should feel like flicking through a magazine, not reading a directory.
+The owner's words: the app already "feels nice", but Yonder feels **aesthetic, photo-led and luxury**. The aim is to keep what's nice and add those three qualities.
+
+| Quality | What makes an app feel this way | Where cuRATED stands today |
+|---|---|---|
+| **Photo-led** | Photos are the biggest thing on every screen, and the interface sits on top of them or steps back around them | Photos are thumbnails, and the interface is the biggest thing |
+| **Aesthetic** | A small, consistent set of elements: one display font used large, a quiet colour palette, lots of empty space, nothing decorative that doesn't earn its place | Many badges, chips, labels and tag colours per screen, and tight spacing |
+| **Luxury** | Restraint and confidence: fewer items shown bigger, no rush to show everything, slow and smooth motion, nothing shouty (no "Trending" stickers on every card, no emojis, no exclamation marks) | Lots of information per card, small badges on most photos, quick animations |
+
+The app should feel like flicking through a magazine, not reading a directory.
 
 **Success looks like this:**
 - The owner and five or so friends say it feels bigger and nicer, comparing old and new screenshots side by side.
@@ -55,6 +63,17 @@ Every screen leads with one big photo or a row of big photos, and the text is ea
 
 5. **Text on photos, not under them.** Put the name and area over a dark gradient on the photo so the photo can take the full card. Only Trending does this today.
 6. **Shapes stay as agreed.** Cards and photos have 14px corners, small squares 11px, buttons and tags 8px soft rectangles.
+
+**Rules for the luxury feel:**
+
+7. **More empty space.** Leave 40px between sections instead of today's 18–26px, and give each card room. When a screen feels busy, take things away rather than shrink them.
+8. **Use badges sparingly.** Today almost every photo has a sticker (Trending, Top pick, celebrity, rating). Show at most one per screen, and only where it matters, such as a friend saving it. Ratings move off the photo into the info line.
+9. **Fewer elements on each card.** A photo card shows the name, a single line of area · price, and a save heart. Tags, vibe scores and extra pills move to the spot page.
+10. **One display font, used big.** Instrument Serif for venue names at 24–34px, Unbounded only for the logo and tab titles, and DM Sans for everything else. No other weights or styles.
+11. **Quiet colour.** Most of each screen is cream, photos and black cherry text. Oxblood is for the main action, and arctic blue only for tags and small accents. Never more than two accent colours visible at once.
+12. **Photos treated the same way.** No borders or drop shadows on photos. Use the same 14px corners everywhere, and the same dark gradient behind text. Consider a very light warm grade on all photos so they look like one set.
+13. **Slow, smooth motion.** Photos fade in over 300ms as they load, screens slide with a gentle ease, and nothing bounces.
+14. **Plain, confident words.** Short headings ("Tonight's pick", "Your saves"), with no emojis, no exclamation marks and no "✦" decorations.
 
 ## 4. Screen by screen
 
@@ -114,7 +133,8 @@ Each phase is its own commit and push, so the two laptops stay in sync.
 
 ## 7. Open questions for the owner
 
-1. **What exactly do you like about Yonder?** Two or three screenshots would pin this down: which screens, and what about them.
+1. **What exactly do you like about Yonder?** The answer so far is "aesthetic, photo-led, luxury". Two or three screenshots would still help pin down which screens.
+1b. **Badges:** OK to remove most "Trending" / "Top pick" / rating stickers from photos (rule 8)? It's the biggest single change towards a luxury feel, but it means less information on each card.
 2. **Discover hero:** add the new full-width "Tonight's pick" card, or just make the existing Trending cards bigger?
 3. **Saves:** do big photo cards become the default, or stay an option behind the toggle?
 4. **Plan stops:** is a photo on every stop card OK, given it makes plans about twice as long to scroll?
