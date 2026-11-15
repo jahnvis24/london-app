@@ -41,6 +41,28 @@ The owner's words: the app already "feels nice", but Yonder feels **aesthetic, p
 
 The app should feel like flicking through a magazine, not reading a directory.
 
+### What Yonder actually does
+
+These come from a 1 minute 42 second screen recording of Yonder (iOS) that the owner shared. The recording stays local and isn't in the repo.
+
+| # | Pattern | What it looks like in Yonder | How cuRATED would use it |
+|---|---|---|---|
+| Y1 | **The photo is the background** | Home is one full-screen photo with the interface floating on top | Discover opens on a full-screen "Tonight's pick" photo with the logo on top |
+| Y2 | **Ambient colour** | The page background is a blurred, darkened copy of the photos, so each section takes on their colour (brown for shopping, deep red for dining) | Below the hero, Discover's background is a blurred version of the current photos, tinted towards black cherry `#3A0B14` |
+| Y3 | **Frosted-glass panels** | Small translucent, blurred panels sit on top of photos (balance, chips, bottom bar) | Filter chips, the bottom bar, and the round search and map buttons become frosted glass |
+| Y4 | **Tall portrait cards** | Two columns or carousels of 3:4 cards, with the photo filling the whole card. Name, location and one perk sit at the bottom over a gradient. The next card peeks in from the edge | Trending and every collection use 3:4 portrait cards with text over the photo |
+| Y5 | **Curated collection names** | Rows are named like a magazine: "Feeling fancy", "One to share", "Wine & small plates", "Keeping it casual", "New this month" | Discover becomes rows like "Date night", "Cheap & cheerful", "Sunday slow", "Late ones", "New this month", built from the existing tags |
+| Y6 | **One big feature card** | Inside a category there's one full-width card (KRICKET) with a large name, a one-line description, location and perk | One full-width feature card per category |
+| Y7 | **Detail page = photo + sheet** | The top 55–60% is a full-bleed photo, and a cream sheet with rounded top corners slides up over it. Title, then one line of description, then the details | The spot page uses the same structure. Our cream and black cherry already match it |
+| Y8 | **A floating action bar** | A dark pill-shaped main button ("Visit Origin") plus a round share button sit fixed at the bottom of the detail page | Spot page: a fixed black cherry "Save spot" pill plus a round Directions button |
+| Y9 | **Very little text** | On a card: name, a pin with the area, an icon with the perk. No tags and no descriptions | Name, area and price only, as in rule 9 |
+| Y10 | **One small tag** | A single small "Smart pick" tag with an icon, and nothing else | One tag at most, as in rule 8 |
+| Y11 | **A floating, inset bottom bar** | A rounded frosted bar that floats above the content with a gap from the screen edges | Restyle the bottom bar the same way |
+| Y12 | **Map with category pins** | Round pins with an icon for each category, number clusters, and category chips at the bottom | The same in the Saves map, using our outline icons |
+| Y13 | **Placeholders while loading** | Grey shapes the same size as the content show before it loads | Placeholders the same size and shape as the photos, as in section 4 |
+
+**The biggest single difference is that Yonder is dark and moody where it shows photos**, using deep blurred backgrounds, and cream only on detail sheets. That darkness is a large part of why it feels luxury. cuRATED could do the same with **black cherry** as the dark background on Discover and the photo screens, keeping cream for the spot sheet, Saves and forms. See open question 0.
+
 **Success looks like this:**
 - The owner and five or so friends say it feels bigger and nicer, comparing old and new screenshots side by side.
 - Discover → spot page opens and saves per session hold steady or go up. Mixpanel already tracks both.
@@ -133,7 +155,8 @@ Each phase is its own commit and push, so the two laptops stay in sync.
 
 ## 7. Open questions for the owner
 
-1. **What exactly do you like about Yonder?** The answer so far is "aesthetic, photo-led, luxury". Two or three screenshots would still help pin down which screens.
+0. **Dark and moody Discover?** Discover would get a black cherry background with blurred ambient photos and cream text (Y1–Y3), while the spot sheet, Saves and forms stay cream. Or does Discover stay cream, just with bigger photos?
+1. ~~What exactly do you like about Yonder?~~ Answered with the screen recording. See "What Yonder actually does".
 1b. **Badges:** OK to remove most "Trending" / "Top pick" / rating stickers from photos (rule 8)? It's the biggest single change towards a luxury feel, but it means less information on each card.
 2. **Discover hero:** add the new full-width "Tonight's pick" card, or just make the existing Trending cards bigger?
 3. **Saves:** do big photo cards become the default, or stay an option behind the toggle?
