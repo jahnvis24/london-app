@@ -117,10 +117,26 @@ Yonder's venue "logos" on the cards are supplied by the brands. cuRATED doesn't 
 Sizes assume a 390px-wide phone. Use aspect ratios rather than fixed heights so it scales.
 
 ### Discover
-- **New "Tonight's pick" hero card** directly under the logo and date: full width minus 16px gutters (358px), 4:5 ratio (about 448px tall). One venue, chosen like Trending. Name in Instrument Serif at 30px over the photo, with area, price and a Save button.
-- **Build me a night out** block and the **Swipe to discover** card stay. They move below the hero.
 - **Trending cards:** 160 × 206 → **280 × 350** (4:5), about 1.2 cards visible so the next one peeks in.
-- **"Because you like" list:** 90px squares → **full-width 16:10 cards**, three of them, with a "See all" link.
+- **"Because you like" list:** replaced by the preference rows (see "Discover, in order").
+
+### Spot page
+- **Hero:** 380px → **62% of the screen height** (about 520px), edge to edge, a swipeable carousel of every photo with a thin progress line (Y14). Round frosted back and save buttons float on the photo.
+- Name over the bottom of the photo in Instrument Serif at 34px, with the cream sheet sliding up over it.
+- **Sheet contents, in order (Y15):** category · area · price line, the blurb, one row of outline pill links (Website, Instagram, Menu, Directions), friends who saved it, a small map, then the tags. Long and scrollable, not a card.
+
+### Discover, in order (decided 2026-11-15: option B, rows of picks)
+1. Logo and date
+2. "Build me a night out" block and the "Swipe to discover" card, unchanged
+3. Filter chips
+4. **Trending this week**: 280 × 350 cards, about 1.2 visible, Top pick badge only
+5. **Preference rows**, up to three, one per preference the person ticked at sign-up (`PREF_OPTIONS`): "Top bar picks", "Hidden gems", "Outdoor" and so on, highest-rated first, with a one-line "Because you like bars" under the title
+6. **Cheap eats**: `price = "low"`
+7. **Celebrity row**: "Dua Lipa's picks", from `celebrity_tags`, rotating weekly between celebrities with 5+ venues
+8. **New this month**: newest approved venues
+9. "Explore by category" grid (Y21)
+
+Every row shows 8 cards and "See all" opens the full list. The current "Because you like" list goes, because the preference rows replace it. No "Tonight's pick" stack: the owner chose rows over a single hero so the Build block stays near the top.
 
 ### Spot page
 - **Hero:** 380px → **62% of the screen height** (about 520px), edge to edge, a swipeable carousel of every photo with a thin progress line (Y14). Round frosted back and save buttons float on the photo.
@@ -181,6 +197,7 @@ Each phase is its own commit and push, so the two laptops stay in sync.
 
 - **Discover stays cream.** No dark background. The ambient-blur idea (Y1–Y3) is dropped. Photos get bigger on cream.
 - **Keep the "Top pick" badge.** Other stickers (Trending, rating-on-photo) still go, per rule 8.
+- **Discover: option B, rows of picks.** Trending, then rows from the person's preferences, Cheap eats, a celebrity row and New this month. Mocked on the brand board, "Discover · rows of picks".
 - **Saves: big photo cards are the default view.** The compact grid/list stays behind the toggle.
 - **A photo on every plan stop: yes.** Mocked on the brand board, "Plan stops with photos".
 - **Photo re-fetch cost:** Google's Place Photos SKU is $7 per 1,000 calls, with the first 1,000 a month free. 100 calls ≈ £0.55, and the full ~1,000-venue re-fetch is at most about £5, possibly free. Approved.
@@ -190,7 +207,7 @@ Each phase is its own commit and push, so the two laptops stay in sync.
 0. ~~Dark and moody Discover?~~ Decided: cream.
 1. ~~What exactly do you like about Yonder?~~ Answered with the screen recording.
 1b. ~~Badges~~ Decided: keep Top pick, drop the rest.
-2. **Discover hero:** mocked as option A (Tonight's pick stack) and option B (bigger Trending) on the brand board, "Discover · option A vs option B". Waiting on the owner's pick.
+2. ~~Discover hero~~ Decided: option B, rows of picks. See "Discover, in order".
 3. ~~Saves~~ Decided: big photo cards are the default view; the grid/list toggle stays for a compact view.
 4. ~~Plan stops~~ Decided: yes, photo on every stop.
 5. ~~Photo re-fetch cost~~ Decided: approved, at most about £5.
