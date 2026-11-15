@@ -138,19 +138,6 @@ Sizes assume a 390px-wide phone. Use aspect ratios rather than fixed heights so 
 
 Every row shows 8 cards and "See all" opens the full list. The current "Because you like" list goes, because the preference rows replace it. No "Tonight's pick" stack: the owner chose rows over a single hero so the Build block stays near the top.
 
-### Spot page
-- **Hero:** 380px → **62% of the screen height** (about 520px), edge to edge, a swipeable carousel of every photo with a thin progress line (Y14). Round frosted back and save buttons float on the photo.
-- Name over the bottom of the photo in Instrument Serif at 34px, with the cream sheet sliding up over it.
-- **Sheet contents, in order (Y15):** category · area · price line, the blurb, one row of outline pill links (Website, Instagram, Menu, Directions), friends who saved it, a small map, then the tags. Long and scrollable, not a card.
-
-### Discover, in order (Y16, Y17, Y20, Y21)
-1. Logo and date
-2. "Tonight's pick" swipeable stack
-3. "Build me a night out" block and the "Swipe to discover" card
-4. "Around you" map card
-5. Rows: Trending, Date night, Cheap & cheerful, Sunday slow, Late ones, New this month
-6. "Explore by category" grid
-
 ### Plan result
 - **Each stop gets its photo:** a 16:9 photo at the top of every stop card, full card width (about 358 × 200), with the time and type over it. The outline icon stays as the fallback when there's no photo.
 - **Plan hero:** add a cover photo collage made from the stops, one large image and two small, about 300px tall, above the title.
