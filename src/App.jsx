@@ -502,7 +502,7 @@ async function fileToDownscaledBase64(file, maxDim = 1280, quality = 0.8) {
 
 // ── STYLES ───────────────────────────────────────────────────
 const styles = `
-  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Instrument+Serif:ital@0;1&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Instrument+Serif:ital@0;1&family=Unbounded:wght@400;900&display=swap');
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
   button { color: #3A0B14; font-family: inherit; -webkit-tap-highlight-color: transparent; }
@@ -1430,9 +1430,9 @@ function MyPlansScreen({ plans, onViewPlan, onNewPlan, onBarCrawl, onSchedule, d
 
   if (plans.length === 0) return (
     <div style={{ animation: "screenIn .32s cubic-bezier(.2,.9,.3,1)" }}>
-      <div style={{ padding: "0 22px 4px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div style={{ padding: "0 22px 4px" }}>
         <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 40, lineHeight: 1, letterSpacing: "-0.015em" }}>Plans</div>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8, marginTop: 14, marginBottom: 10 }}>
           <button onClick={onNewPlan} style={{ padding: "9px 14px", background: "#3A0B14", color: "#BAD2E8", border: "none", fontSize: 11.5, fontWeight: 600, cursor: "pointer" }}>+ New plan</button>
           {onBarCrawl && <button onClick={onBarCrawl} style={{ padding: "9px 14px", border: "1px solid #7A1E33", color: "#7A1E33", background: "none", fontSize: 11.5, fontWeight: 600, cursor: "pointer" }}>+ Bar crawl</button>}
         </div>
@@ -1446,9 +1446,9 @@ function MyPlansScreen({ plans, onViewPlan, onNewPlan, onBarCrawl, onSchedule, d
   );
   return (
     <div style={{ animation: "screenIn .32s cubic-bezier(.2,.9,.3,1)" }}>
-      <div style={{ padding: "0 22px 4px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div style={{ padding: "0 22px 4px" }}>
         <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 40, lineHeight: 1, letterSpacing: "-0.015em" }}>Plans</div>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8, marginTop: 14, marginBottom: 10 }}>
           <button data-tour="plan-cta" onClick={onNewPlan} style={{ padding: "9px 14px", background: "#3A0B14", color: "#BAD2E8", border: "none", fontSize: 11.5, fontWeight: 600, cursor: "pointer" }}>+ New plan</button>
           {onBarCrawl && <button onClick={onBarCrawl} style={{ padding: "9px 14px", border: "1px solid #7A1E33", color: "#7A1E33", background: "none", fontSize: 11.5, fontWeight: 600, cursor: "pointer" }}>+ Bar crawl</button>}
         </div>
@@ -1712,8 +1712,6 @@ function DiscoverScreen({ preferences, dbVenues: allVenues, onStart, onOpenSpot,
 
   const today = new Date().toISOString().split("T")[0];
   const dayName = new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
-  const hour = new Date().getHours();
-  const greeting = hour >= 17 ? "Tonight in" : hour >= 12 ? "This afternoon in" : "Today in";
 
   // Trending = places most saved across all users this week (popular_places RPC,
   // migrations/2026-11-14_feed-popularity.sql). Until enough people save the same
@@ -1770,7 +1768,7 @@ function DiscoverScreen({ preferences, dbVenues: allVenues, onStart, onOpenSpot,
     <div style={{ animation: "screenIn .32s cubic-bezier(.2,.9,.3,1)", paddingBottom: 40 }}>
       <div style={{ padding: "0 22px 20px", display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
         <div>
-          <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 42, lineHeight: 0.9, letterSpacing: "-0.015em" }}>{greeting}<br /><em style={{ color: "#7A1E33" }}>London</em></div>
+          <div aria-label="cuRATED" style={{ fontFamily: "'Unbounded', sans-serif", fontWeight: 400, fontSize: 38, lineHeight: 1, letterSpacing: "-0.03em", color: "#3A0B14" }}>cu<span style={{ fontWeight: 900, color: "#7A1E33" }}>RATED</span><span style={{ fontWeight: 900, color: "#BAD2E8" }}>.</span></div>
           <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(58,11,20,.42)", marginTop: 13 }}>{dayName}</div>
         </div>
       </div>
@@ -1793,13 +1791,13 @@ function DiscoverScreen({ preferences, dbVenues: allVenues, onStart, onOpenSpot,
         />
       )}
 
-      <div onClick={() => setSwipeDeck(true)} style={{ margin: "0 22px 18px", padding: "16px 18px", background: "#3A0B14", color: "#FAF7F2", cursor: "pointer", borderRadius: 14, display: "flex", alignItems: "center", gap: 14 }}>
-        <div style={{ width: 46, height: 46, borderRadius: 12, background: "#3A0B14", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>♥</div>
+      <div onClick={() => setSwipeDeck(true)} style={{ margin: "0 22px 18px", padding: "16px 18px", background: "#FFFBF5", color: "#3A0B14", border: "1.5px solid #3A0B14", cursor: "pointer", borderRadius: 14, display: "flex", alignItems: "center", gap: 14 }}>
+        <div style={{ width: 46, height: 46, borderRadius: 12, background: "#7A1E33", color: "#FAF7F2", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>♥</div>
         <div style={{ flex: 1 }}>
           <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 19, lineHeight: 1.1 }}>Swipe to discover</div>
-          <div style={{ fontSize: 11, color: "rgba(250,247,242,.5)", marginTop: 3 }}>Personalised picks matched to your taste</div>
+          <div style={{ fontSize: 11, color: "rgba(58,11,20,.55)", marginTop: 3 }}>Personalised picks matched to your taste</div>
         </div>
-        <div style={{ fontSize: 14, color: "rgba(250,247,242,.4)" }}>›</div>
+        <div style={{ fontSize: 14, color: "rgba(58,11,20,.4)" }}>›</div>
       </div>
 
       <div style={{ display: "flex", gap: 7, padding: "0 22px 20px", overflowX: "auto", scrollbarWidth: "none" }}>
@@ -3485,6 +3483,7 @@ function SavedScreen({ user, onBuildPlan, onShare, onBarCrawl, openSignal, calen
   const [newFolder, setNewFolder] = useState("");
   const [saveNote, setSaveNote] = useState("");
   const [savedView, setSavedView] = useState("folders"); // folders | list | map | calendar
+  useEffect(() => { if (visible) { setSavedView("folders"); setOpenFolder(null); } }, [visible]);
   const [folderLayout, setFolderLayout] = useState("grid"); // grid | list
   const [customFolders, setCustomFolders] = useState([]); // user-created (possibly empty) folders
   const [creatingFolder, setCreatingFolder] = useState(false);
@@ -6427,7 +6426,7 @@ function FriendFeed({ user, friends, onOpenFriend, onGoTab }) {
   return (
     <div style={{ padding: "0 16px 24px", display: "flex", flexDirection: "column", gap: 14 }}>
       {common && (
-        <div style={{ background: ink, color: "#FAF7F2", borderRadius: 22, padding: 18, display: "flex", flexDirection: "column", gap: 14 }}>
+        <div style={{ background: ink, color: "#FAF7F2", borderRadius: 16, padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div style={{ display: "flex" }}>
               <FeedAvatar person={{ id: user.id, name: "You" }} size={30} ring={ink} />
@@ -6436,9 +6435,9 @@ function FriendFeed({ user, friends, onOpenFriend, onGoTab }) {
             <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: ".12em", textTransform: "uppercase", color: "rgba(250,247,242,.7)" }}>You & {common.friend.name || "Friend"} both saved</span>
           </div>
           <div onClick={() => setDetail(common.places[0])} style={{ display: "flex", gap: 14, alignItems: "center", cursor: "pointer" }}>
-            <FeedThumb spot={common.places[0]} size={76} />
+            <FeedThumb spot={common.places[0]} size={52} />
             <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
-              <div style={{ fontFamily: serif, fontSize: 26, lineHeight: 1.05 }}>{common.places[0].name}</div>
+              <div style={{ fontFamily: serif, fontSize: 20, lineHeight: 1.1 }}>{common.places[0].name}</div>
               <div style={{ fontSize: 12, color: "rgba(250,247,242,.72)" }}>{[common.places[0].category, common.places[0].area, priceToPounds(common.places[0].price)].filter(Boolean).join(" · ")}</div>
             </div>
           </div>
@@ -6447,7 +6446,7 @@ function FriendFeed({ user, friends, onOpenFriend, onGoTab }) {
               {common.places.slice(1).map(p => <button key={p.id} onClick={() => setDetail(p)} style={{ padding: "6px 10px", borderRadius: 100, border: "1px solid rgba(250,247,242,.3)", background: "transparent", color: "#FAF7F2", fontSize: 12, cursor: "pointer" }}>{p.name}</button>)}
             </div>
           )}
-          <button disabled={busy} onClick={() => openListPicker(common.friend, common.places)} style={{ height: 44, borderRadius: 100, border: "none", background: "#3A0B14", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+          <button disabled={busy} onClick={() => openListPicker(common.friend, common.places)} style={{ height: 36, borderRadius: 100, border: "none", background: "#BAD2E8", color: "#3A0B14", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>
             Add {common.places.length > 1 ? `all ${common.places.length}` : "it"} to a bucket list
           </button>
           {common.places.length > 1 && (
@@ -6476,14 +6475,12 @@ function FriendFeed({ user, friends, onOpenFriend, onGoTab }) {
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 6 }}>
                   {g.items.slice(0, g.items.length > 4 ? 3 : 4).map(i => (
                     <button key={i.id} onClick={() => setDetail(i)} style={{ display: "flex", flexDirection: "column", gap: 5, padding: 0, border: "none", background: "none", cursor: "pointer", textAlign: "left", color: ink, minWidth: 0 }}>
-                      <div style={{ width: "100%", aspectRatio: "1", borderRadius: 10, background: "#E9E4DA", overflow: "hidden" }}>{i.photo_url && <img src={i.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}</div>
-                      <span style={{ fontSize: 11, lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", width: "100%" }}>{i.name}</span>
+                      <div style={{ width: "100%", aspectRatio: "1", borderRadius: 10, background: "#E9E4DA", overflow: "hidden" }}>{i.photo_url && <img src={i.photo_url} alt={i.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />}</div>
                     </button>
                   ))}
                   {g.items.length > 4 && (
                     <button onClick={() => onOpenFriend(friendById[g.uid] || { id: g.uid })} style={{ display: "flex", flexDirection: "column", gap: 5, padding: 0, border: "none", background: "none", cursor: "pointer", color: muted }}>
                       <div style={{ width: "100%", aspectRatio: "1", borderRadius: 10, background: ink, color: "#FAF7F2", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 600 }}>+{g.items.length - 3}</div>
-                      <span style={{ fontSize: 11 }}>more</span>
                     </button>
                   )}
                 </div>
