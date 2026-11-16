@@ -5724,9 +5724,9 @@ function SharedListsSection({ user, initialOpenId }) {
     setLists(rows);
     if (initialOpenId && !openList) { const target = rows.find(l => l.id === initialOpenId); if (target) setOpenList(target); }
     if (rows.length) {
-      const { data: items } = await supabase.from("shared_list_items").select("list_id,done").in("list_id", rows.map(l => l.id));
+      const { data: items } = await supabase.from("shared_list_items").select("list_id,done,photo_url").in("list_id", rows.map(l => l.id));
       const c = {};
-      (items || []).forEach(it => { const e = c[it.list_id] || (c[it.list_id] = { done: 0, total: 0 }); e.total++; if (it.done) e.done++; });
+      (items || []).forEach(it => { const e = c[it.list_id] || (c[it.list_id] = { done: 0, total: 0, photos: [] }); e.total++; if (it.done) e.done++; if (it.photo_url && e.photos.length < 3) e.photos.push(it.photo_url); });
       setCounts(c);
     } else setCounts({});
     setLoading(false);
@@ -5776,19 +5776,27 @@ function SharedListsSection({ user, initialOpenId }) {
       {!loading && lists.length === 0 && !creating && <div style={{ fontSize: 15, color: "rgba(58,11,20,.45)" }}>No bucket lists yet. Create one, then invite a friend to build it together.</div>}
 
       {lists.map(l => {
-        const c = counts[l.id] || { done: 0, total: 0 };
+        const c = counts[l.id] || { done: 0, total: 0, photos: [] };
         const pct = c.total ? Math.round((c.done / c.total) * 100) : 0;
+        const ph = c.photos || [];
+        const img = (src) => <img src={src} alt="" loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />;
         return (
-          <button key={l.id} onClick={() => setOpenList(l)} style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", padding: 12, background: "#fff", border: "1px solid rgba(58,11,20,.13)", borderRadius: 8, marginBottom: 10, cursor: "pointer" }}>
-            <div style={{ width: 42, height: 42, borderRadius: 11, background: "#F1EDE4", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.25rem", flexShrink: 0 }}>{l.emoji || "✨"}</div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 24, color: "#3A0B14" }}>{l.name}</div>
-              <div style={{ fontSize: 11, fontWeight: 500, letterSpacing: "0.13em", textTransform: "uppercase", color: "rgba(58,11,20,.45)", margin: "4px 0 8px" }}>{c.done}/{c.total} done{l.owner !== user.id ? " · shared with you" : ""}</div>
-              <div style={{ height: 4, background: "rgba(58,11,20,.12)", overflow: "hidden" }}>
-                <div style={{ height: "100%", width: pct + "%", background: "#3A0B14" }} />
+          <button key={l.id} onClick={() => setOpenList(l)} style={{ position: "relative", display: "block", width: "100%", height: 200, padding: 0, border: "none", borderRadius: 14, overflow: "hidden", background: "#7A1E33", marginBottom: 12, cursor: "pointer", textAlign: "left" }}>
+            {ph.length >= 3 ? (
+              <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gridTemplateRows: "1fr 1fr", gap: 3, height: "100%" }}>
+                <div style={{ gridRow: "1 / 3", overflow: "hidden" }}>{img(ph[0])}</div><div style={{ overflow: "hidden" }}>{img(ph[1])}</div><div style={{ overflow: "hidden" }}>{img(ph[2])}</div>
               </div>
+            ) : ph.length ? (
+              <div style={{ display: "grid", gridTemplateColumns: ph.length === 2 ? "1fr 1fr" : "1fr", gap: 3, height: "100%" }}>{ph.map((u, i) => <div key={i} style={{ overflow: "hidden" }}>{img(u)}</div>)}</div>
+            ) : (
+              <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 40 }}>{l.emoji || "✨"}</div>
+            )}
+            <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "60%", background: "linear-gradient(rgba(58,11,20,0), rgba(58,11,20,.85))", pointerEvents: "none" }} />
+            <div style={{ position: "absolute", left: 14, right: 14, bottom: 14, pointerEvents: "none" }}>
+              <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 26, lineHeight: 1.05, color: "#FAF7F2" }}>{l.name}</div>
+              <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "#E9E4DA", margin: "5px 0 8px" }}>{c.done}/{c.total} done{l.owner !== user.id ? " · shared with you" : ""}</div>
+              <div style={{ height: 3, borderRadius: 2, background: "rgba(250,247,242,.3)", overflow: "hidden" }}><div style={{ height: "100%", width: pct + "%", background: "#BAD2E8" }} /></div>
             </div>
-            <span style={{ color: "rgba(58,11,20,.3)", fontSize: 19, flexShrink: 0 }}>›</span>
           </button>
         );
       })}
