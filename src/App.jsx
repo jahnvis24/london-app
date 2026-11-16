@@ -1698,6 +1698,26 @@ function priceToPounds(p) {
   return p;
 }
 
+// 4:5 photo card used by the Discover rows, Saves and the feed. Name on the photo over a
+// soft gradient; the only badge is Top pick (spec rule 8). Photos lazy-load and fade in.
+function PhotoCard({ v, width = 280, height = 350, onClick, badge, meta, nameSize = 26, style, children }) {
+  const pounds = priceToPounds(v.price);
+  const line = meta !== undefined ? meta : [v.area, pounds].filter(Boolean).join(" · ");
+  const b = badge !== undefined ? badge : (isTopPick(v) ? "Top pick" : null);
+  return (
+    <div onClick={onClick} style={{ flex: "none", width, height, position: "relative", overflow: "hidden", borderRadius: 14, background: "#F1EDE4", cursor: onClick ? "pointer" : "default", scrollSnapAlign: "start", ...style }}>
+      {v.photo_url && <img src={v.photo_url} alt="" loading="lazy" decoding="async" onLoad={e => { e.currentTarget.style.opacity = 1; }} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", opacity: 0, transition: "opacity .3s ease" }} />}
+      <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "55%", background: "linear-gradient(rgba(58,11,20,0), rgba(58,11,20,.82))", pointerEvents: "none" }} />
+      {b && <div style={{ position: "absolute", top: 12, left: 12, padding: "5px 10px", borderRadius: 8, background: "#3A0B14", color: "#BAD2E8", fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase" }}>{b}</div>}
+      <div style={{ position: "absolute", left: 14, right: 14, bottom: 14, pointerEvents: "none" }}>
+        <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: nameSize, lineHeight: 1.05, color: "#FAF7F2" }}>{v.name}</div>
+        {line && <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "#E9E4DA", marginTop: 5 }}>{line}</div>}
+      </div>
+      {children}
+    </div>
+  );
+}
+
 function DiscoverScreen({ preferences, dbVenues: allVenues, onStart, onOpenSpot, savedKeys, onSave }) {
   // Hide places you've already saved, so each slot is filled by the next best one.
   const dbVenues = savedKeys?.size ? allVenues.filter(v => !savedKeys.has(feedKey(v))) : allVenues;
@@ -1709,7 +1729,7 @@ function DiscoverScreen({ preferences, dbVenues: allVenues, onStart, onOpenSpot,
     mp("discover_venue_opened", { discover_surface: surface, save_type: saveType(v?.category), position_in_surface: position, algorithm_variant: "taste_v1" });
     onOpenSpot && onOpenSpot(v, { surface, position });
   };
-  const CHIPS = ["All", "East", "Date night", "Cheap eats", "Bars", "Culture", "Celebrity picks"];
+  const CHIPS = ["All", "East", "Date night", "Cheap eats", "Bars", "Restaurants", "Cafés", "Culture", "Outdoors", "Markets", "Celebrity picks"];
 
   const today = new Date().toISOString().split("T")[0];
   const dayName = new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
@@ -1729,24 +1749,56 @@ function DiscoverScreen({ preferences, dbVenues: allVenues, onStart, onOpenSpot,
     .sort((a, b) => (parseFloat(b.google_rating) || 0) - (parseFloat(a.google_rating) || 0))
     .slice(0, 6);
 
-  const forYouCats = dbVenues.filter(v => !v.is_event).map(v => v.category).filter(Boolean);
-  const topCat = [...new Map(forYouCats.map(c => [c, forYouCats.filter(x => x === c).length])).entries()].sort((a, b) => b[1] - a[1])[0];
-  const forYouLabel = topCat ? `Because you have ${topCat[1]} ${topCat[0]}s` : "Picked for you";
-  const forYou = dbVenues
-    .filter(v => !v.is_event && v.photo_url && topCat && v.category === topCat[0])
-    .sort((a, b) => (parseFloat(b.google_rating) || 0) - (parseFloat(a.google_rating) || 0))
-    .slice(0, 5);
-
+  // Rows of picks (spec: docs/specs/2026-11-15-big-photo-led-ui.md). Each row is a
+  // horizontal carousel of 4:5 photo cards. Which rows show depends on the person's
+  // sign-up preferences; Cheap eats, a celebrity row and New this month are fixed.
+  const byRating = (arr) => [...arr].sort((a, b) => (parseFloat(b.google_rating) || 0) - (parseFloat(a.google_rating) || 0));
+  const withPhoto = dbVenues.filter(v => !v.is_event && v.photo_url);
+  const PREF_ROWS = {
+    "Restaurants": { title: "Restaurant picks", match: v => v.category === "restaurant" },
+    "Bars": { title: "Top bar picks", match: v => v.category === "bar" },
+    "Hidden gems": { title: "Hidden gems", match: v => (v.vibe_tags || []).includes("hidden_gems") },
+    "Outdoor": { title: "Outdoor", match: v => v.category === "outdoor" },
+    "Culture": { title: "Culture", match: v => ["museum", "gallery", "experience"].includes(v.category) },
+    "Markets": { title: "Markets", match: v => v.category === "market" },
+    "Late night": { title: "Late ones", match: v => ["nightlife", "bar"].includes(v.category) },
+    "Brunch": { title: "Brunch spots", match: v => v.category === "cafe" },
+    "Fine dining": { title: "Fine dining", match: v => (v.vibe_tags || []).includes("fancy") },
+    "Plant based": { title: "Plant based", match: v => !!v.plant_friendly },
+    "Arts & crafts": { title: "Arts & crafts", match: v => v.category === "gallery" },
+    "Active": { title: "Active", match: v => (v.vibe_tags || []).includes("active") || v.category === "outdoor" },
+  };
+  const prefRows = (preferences || []).map(pf => PREF_ROWS[pf] && { key: "pref_" + pf.toLowerCase().replace(/[^a-z]+/g, "_"), title: PREF_ROWS[pf].title, why: `Because you like ${pf.toLowerCase()}`, items: byRating(withPhoto.filter(PREF_ROWS[pf].match)).slice(0, 8) })
+    .filter(r => r && r.items.length >= 3).slice(0, 3);
+  const cheapEats = byRating(withPhoto.filter(v => /low|under|£$|£10|£15/i.test(v.price || ""))).slice(0, 8);
+  const monthAgo = Date.now() - 30 * 86400000;
+  const newThisMonth = withPhoto.filter(v => v.created_at && new Date(v.created_at).getTime() > monthAgo).sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 8);
   const celebVenues = dbVenues.filter(v => v.celebrity_tags && v.celebrity_tags.length > 0 && v.photo_url)
     .sort((a, b) => (parseFloat(b.google_rating) || 0) - (parseFloat(a.google_rating) || 0));
 
+  // Celebrity row: rotates weekly between celebrities with 5+ tagged venues.
+  const celebGroups = Object.entries(celebVenues.reduce((m, v) => { const c = v.celebrity_tags[0]; (m[c] = m[c] || []).push(v); return m; }, {})).filter(([, arr]) => arr.length >= 5);
+  const week = Math.floor(Date.now() / (7 * 86400000));
+  const celebRow = celebGroups.length ? (([name, arr]) => ({ key: "celebrity", title: `${name}'s picks`, why: `${arr.length} places ${name.split(" ")[0]} loves`, items: byRating(arr).slice(0, 8) }))(celebGroups[week % celebGroups.length]) : null;
+
+  const CAT_CHIPS = { "Restaurants": ["restaurant"], "Cafés": ["cafe"], "Outdoors": ["outdoor"], "Markets": ["market"] };
   const filtered = chip === "All" ? trending : chip === "East" ? trending.filter(v => /east|shoreditch|hackney|bethnal|dalston/i.test(v.zone || v.area || ""))
     : chip === "Date night" ? trending.filter(v => (v.vibe_tags || []).some(t => ["romantic", "fancy", "aesthetic"].includes(t)))
-    : chip === "Cheap eats" ? dbVenues.filter(v => !v.is_event && v.photo_url && /low|under|£$|£10|£15/i.test(v.price || "")).slice(0, 6)
-    : chip === "Bars" ? trending.filter(v => v.category === "bar")
-    : chip === "Culture" ? trending.filter(v => ["museum", "gallery", "experience"].includes(v.category))
-    : chip === "Celebrity picks" ? celebVenues.slice(0, 6)
+    : chip === "Cheap eats" ? cheapEats
+    : chip === "Bars" ? byRating(withPhoto.filter(v => v.category === "bar")).slice(0, 8)
+    : chip === "Culture" ? byRating(withPhoto.filter(v => ["museum", "gallery", "experience"].includes(v.category))).slice(0, 8)
+    : chip === "Celebrity picks" ? celebVenues.slice(0, 8)
+    : CAT_CHIPS[chip] ? byRating(withPhoto.filter(v => CAT_CHIPS[chip].includes(v.category))).slice(0, 8)
     : trending;
+
+  const rows = [
+    { key: "trending", title: chip === "All" ? "Trending this week" : chip, why: "", items: (filtered.length ? filtered : trending).slice(0, 8) },
+    ...prefRows,
+    { key: "cheap_eats", title: "Cheap eats", why: "", items: cheapEats },
+    celebRow,
+    { key: "new_this_month", title: "New this month", why: "", items: newThisMonth },
+  ].filter(r => r && r.items.length >= 3);
+  const EXPLORE = [["Restaurants", "food"], ["Bars", "bar"], ["Cafés", "coffee"], ["Culture", "museum"], ["Outdoors", "park"], ["Markets", "market"]];
 
   const formatDate = (start, end) => {
     const opts = { day: "numeric", month: "short" };
@@ -1756,12 +1808,12 @@ function DiscoverScreen({ preferences, dbVenues: allVenues, onStart, onOpenSpot,
   };
 
   useEffect(() => {
-    const shown = (filtered.length ? filtered : trending).slice(0, 4);
+    const shown = rows[0]?.items || [];
     mpSurfaceOnce("trending", shown.length);
     mpSurfaceOnce("top_picks", shown.filter(isTopPick).length);
-    mpSurfaceOnce("because_you_like", Math.min(forYou.length, 6));
+    mpSurfaceOnce("because_you_like", prefRows.reduce((n, r) => n + r.items.length, 0));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [trending.length, forYou.length]);
+  }, [trending.length, prefRows.length]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (swipeDeck) mpSurfaceOnce("swipe_deck", 30); }, [swipeDeck]);
 
@@ -1807,61 +1859,33 @@ function DiscoverScreen({ preferences, dbVenues: allVenues, onStart, onOpenSpot,
         ))}
       </div>
 
-      <div style={{ padding: "0 22px 12px", display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
-        <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 24 }}>Trending this week</div>
-        <div style={{ fontSize: 11, fontWeight: 500, letterSpacing: "0.14em", textTransform: "uppercase", color: "#7A1E33", cursor: "pointer" }}>See all</div>
-      </div>
-      <div style={{ display: "flex", gap: 12, padding: "0 22px 26px", overflowX: "auto", scrollbarWidth: "none" }}>
-        {(filtered.length ? filtered : trending).slice(0, 4).map((v, ti) => {
-          const pounds = priceToPounds(v.price);
-          return (
-            <div key={v.id} onClick={() => openSpot(v, isTopPick(v) ? "top_picks" : "trending", ti)} style={{ flex: "none", width: 160, cursor: "pointer" }}>
-              <div style={{ position: "relative", height: 206, overflow: "hidden", borderRadius: 14, background: "#F1EDE4" }}>
-                {v.photo_url && <img src={v.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
-                <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 46%, rgba(58,11,20,.82))" }} />
-                {v.celebrity_tags?.length > 0 && <div style={{ position: "absolute", top: 12, left: 12, padding: "5px 10px", borderRadius: 8, background: "#7A1E33", color: "#FAF7F2", fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase" }}>{v.celebrity_tags[0]}'s pick</div>}
-                {!v.celebrity_tags?.length && isTopPick(v) && <div style={{ position: "absolute", top: 12, left: 12, padding: "5px 10px", borderRadius: 8, background: "#3A0B14", color: "#BAD2E8", fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase" }}>Top Pick</div>}
-                {!v.celebrity_tags?.length && !isTopPick(v) && v._savers && <div style={{ position: "absolute", top: 12, left: 12, padding: "5px 10px", borderRadius: 8, background: "#3A0B14", color: "#BAD2E8", fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase" }}>Saved by {v._savers}</div>}
-                {!v.celebrity_tags?.length && !v._savers && !isTopPick(v) && v.google_rating >= 4.5 && <div style={{ position: "absolute", top: 12, left: 12, padding: "5px 10px", borderRadius: 8, background: "#3A0B14", color: "#BAD2E8", fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase" }}>Trending</div>}
-                {!v.celebrity_tags?.length && !v._savers && !isTopPick(v) && v.google_rating < 4.5 && <div style={{ position: "absolute", top: 12, left: 12, padding: "5px 10px", borderRadius: 8, background: "#3A0B14", color: "#FAF7F2", fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase" }}>New</div>}
-                <div style={{ position: "absolute", left: 12, right: 12, bottom: 12 }}>
-                  <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 24, lineHeight: 1.05, color: "#FAF7F2" }}>{v.name}</div>
-                  <div style={{ fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", fontSize: 11, fontWeight: 500, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(250,247,242,.6)", marginTop: 6 }}>{[v.area, pounds].filter(Boolean).join(" · ")}</div>
-                </div>
-              </div>
+      {rows.map((row) => (
+        <div key={row.key}>
+          <div style={{ padding: "0 22px 12px", display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
+            <div>
+              <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 26, lineHeight: 1.1 }}>{row.title}</div>
+              {row.why && <div style={{ fontSize: 12, color: "#7A1E33", marginTop: 3 }}>{row.why}</div>}
             </div>
-          );
-        })}
-      </div>
-
-      {forYou.length > 0 && (
-        <div style={{ padding: "0 22px" }}>
-          <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 26, lineHeight: 1.15, paddingBottom: 14, borderBottom: "1px solid rgba(58,11,20,.18)" }}>Because you like {topCat ? `${topCat[0]}s` : "these"}</div>
-          {forYou.slice(0, 6).map((v, vi) => {
-            const pounds = priceToPounds(v.price);
-            const desc = v.comment ? (v.comment.endsWith(".") ? v.comment : v.comment + ".") : null;
-            return (
-              <div key={v.id} onClick={() => openSpot(v, "because_you_like", vi)} style={{ padding: "16px 0", borderBottom: "1px solid rgba(58,11,20,.18)", display: "flex", gap: 14, alignItems: "flex-start", cursor: "pointer" }}>
-                <div style={{ width: 90, height: 90, flex: "none", overflow: "hidden", borderRadius: 6, background: "#F1EDE4" }}>
-                  {v.photo_url && <img src={v.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
-                </div>
-                <div style={{ flex: 1, minWidth: 0, paddingTop: 2 }}>
-                  <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 24, lineHeight: 1.1, marginBottom: 5 }}>{v.name}{isTopPick(v) && <TopPickBadge style={{ marginLeft: 8, position: "relative", top: -3 }} />}</div>
-                  <div style={{ fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", fontSize: 12, fontWeight: 500, letterSpacing: "0.06em", textTransform: "uppercase", color: "rgba(58,11,20,.42)", marginBottom: 8, display: "flex", alignItems: "center", gap: 5 }}>
-                    {v.area && <span>{v.area.toUpperCase()}</span>}
-                    {v.area && pounds && <span style={{ color: "rgba(58,11,20,.22)" }}>·</span>}
-                    {pounds && <span>{pounds}</span>}
-                    {(v.area || pounds) && v.google_rating && <span style={{ color: "rgba(58,11,20,.22)" }}>·</span>}
-                    {v.google_rating && <><span style={{ color: "#D4CFC4", fontSize: 12 }}>★</span> <span>{v.google_rating}</span></>}
-                  </div>
-                  {desc && <div style={{ fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", fontSize: 13, lineHeight: 1.45, color: "rgba(58,11,20,.5)", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{desc}</div>}
-                </div>
-                <div onClick={(e) => { e.stopPropagation(); openSpot(v, "because_you_like", vi); }} style={{ width: 38, height: 38, flex: "none", borderRadius: "50%", border: "1.5px solid rgba(58,11,20,.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 23, color: "rgba(58,11,20,.35)", cursor: "pointer", marginTop: 4 }}>+</div>
-              </div>
-            );
-          })}
+            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(58,11,20,.45)", paddingBottom: 4 }}>{row.items.length} spots</div>
+          </div>
+          <div style={{ display: "flex", gap: 12, padding: "0 22px 32px", overflowX: "auto", scrollbarWidth: "none", scrollSnapType: "x mandatory" }}>
+            {row.items.map((v, i) => (
+              <PhotoCard key={v.id} v={v} width={280} height={350} onClick={() => openSpot(v, row.key === "trending" ? (isTopPick(v) ? "top_picks" : "trending") : row.key, i)} />
+            ))}
+          </div>
         </div>
-      )}
+      ))}
+
+      <div style={{ padding: "0 22px" }}>
+        <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 26, marginBottom: 12 }}>Explore by category</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          {EXPLORE.map(([label, icon]) => (
+            <button key={label} onClick={() => { setChip(label); window.scrollTo({ top: 0, behavior: "smooth" }); }} style={{ display: "flex", alignItems: "center", gap: 12, padding: "16px 16px", borderRadius: 14, border: "1px solid rgba(58,11,20,.12)", background: "#FFFBF5", color: "#3A0B14", fontSize: 15, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
+              <LineIcon name={icon} size={20} color="#7A1E33" />{label}
+            </button>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
