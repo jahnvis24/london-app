@@ -2646,16 +2646,16 @@ function MeScreen({ user, preferences, setPreferences, isAdmin, onBadgeUpdate, a
       {/* Menu items */}
       <div style={{ padding: "0 22px", display: "flex", flexDirection: "column" }}>
         {[
-          { icon: "⚙️", label: "Taste preferences", action: () => setView("prefs") },
-          { icon: "📤", label: "Export my data", action: () => {} },
-          { icon: "🗑️", label: "Delete account", action: () => {}, fg: "#7A1E33" },
-          { icon: "🔄", label: "Retake the personalisation quiz", action: onStartTour },
-          ...(isAdmin ? [{ icon: "🔧", label: "Admin", hint: adminBadge > 0 ? `${adminBadge} pending` : "", action: () => setView("admin") }] : []),
-          { icon: "🔒", label: "Privacy policy", action: () => window.open("/privacy.html", "_blank", "noopener") },
-          { icon: "👋", label: "Sign out", fg: "#7A1E33", action: () => supabase.auth.signOut() },
+          { icon: "sliders", label: "Taste preferences", action: () => setView("prefs") },
+          { icon: "upload", label: "Export my data", action: () => {} },
+          { icon: "trash", label: "Delete account", action: () => {}, fg: "#7A1E33" },
+          { icon: "refresh", label: "Retake the personalisation quiz", action: onStartTour },
+          ...(isAdmin ? [{ icon: "wrench", label: "Admin", hint: adminBadge > 0 ? `${adminBadge} pending` : "", action: () => setView("admin") }] : []),
+          { icon: "lock", label: "Privacy policy", action: () => window.open("/privacy.html", "_blank", "noopener") },
+          { icon: "logout", label: "Sign out", fg: "#7A1E33", action: () => supabase.auth.signOut() },
         ].map((r, i) => (
           <button key={i} onClick={r.action} style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px 0", borderBottom: "1px solid rgba(58,11,20,.08)", cursor: "pointer", background: "none", border: "none", borderBottom: "1px solid rgba(58,11,20,.08)", width: "100%", textAlign: "left" }}>
-            <span style={{ fontSize: 17, width: 22, textAlign: "center", flexShrink: 0 }}>{r.icon}</span>
+            <span style={{ width: 22, display: "flex", justifyContent: "center", flexShrink: 0 }}><LineIcon name={r.icon} size={20} color={r.fg || "#3A0B14"} /></span>
             <div style={{ flex: 1, fontSize: 16, fontWeight: 500, color: r.fg || "#3A0B14" }}>{r.label}</div>
             {r.hint && <div style={{ fontSize: 11, fontWeight: 500, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(58,11,20,.38)" }}>{r.hint}</div>}
             <div style={{ color: "rgba(58,11,20,.2)", fontSize: 17 }}>›</div>
@@ -2828,6 +2828,13 @@ const LINE_ICONS = {
   bridge: "M2 16h20M4 16V9M20 16V9M4 9c3 4 13 4 16 0M8 16v-3M12 16v-2M16 16v-3",
   brick: "M3 6h18v12H3zM3 12h18M9 6v6M15 12v6",
   dice: "M4 4h16v16H4zM8.5 8.5h.01M15.5 15.5h.01M12 12h.01",
+  sliders: "M4 6h10M18 6h2M4 12h2M10 12h10M4 18h12M20 18h0M14 4v4M6 10v4M16 16v4",
+  upload: "M12 16V4M6 10l6-6 6 6M4 20h16",
+  trash: "M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3",
+  refresh: "M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5",
+  wrench: "M14.7 6.3a4 4 0 0 0 5 5L13 18a2 2 0 0 1-3 0l-1-1a2 2 0 0 1 0-3l6.7-6.7zM3 21l4-4",
+  lock: "M6 11h12v10H6zM8 11V7a4 4 0 0 1 8 0v4",
+  logout: "M10 4H5v16h5M14 8l4 4-4 4M18 12H9",
 };
 function LineIcon({ name, size = 18, color = "currentColor", style }) {
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flex: "none", ...style }}><path d={LINE_ICONS[name] || LINE_ICONS.pin} /></svg>;
