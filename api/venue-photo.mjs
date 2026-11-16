@@ -1,6 +1,7 @@
 import { put } from '@vercel/blob';
 import { createClient } from '@supabase/supabase-js';
 import { requireUser, applyCors } from './_auth.mjs';
+import { fetchFirstPlacePhoto } from './_places.mjs';
 
 const supabase = createClient(process.env.VITE_SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
@@ -22,22 +23,14 @@ export default async function handler(req, res) {
   if (!apiKey) return res.status(500).json({ error: 'Google Places API key not configured' });
 
   try {
-    const detailResp = await fetch(
-      `https://maps.googleapis.com/maps/api/place/details/json?place_id=${place_id}&fields=photos&key=${apiKey}`
-    );
-    const detailData = await detailResp.json();
-    const photoRef = detailData.result?.photos?.[0]?.photo_reference;
+    const photo = await fetchFirstPlacePhoto(place_id, apiKey, 1200);
+    if (!photo) return res.status(200).json({ found: false, message: 'No photo available' });
 
-    if (!photoRef) return res.status(200).json({ found: false, message: 'No photo available' });
-
-    const photoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=600&photo_reference=${photoRef}&key=${apiKey}`;
-    const photoResp = await fetch(photoUrl);
-    const photoBuffer = await photoResp.arrayBuffer();
-    const contentType = photoResp.headers.get('content-type') || 'image/jpeg';
-
-    const blob = await put(`venues/${venue_id}.jpg`, Buffer.from(photoBuffer), {
+    // New file name per fetch so a CDN-cached old image is never served.
+    const blob = await put(`venues/${venue_id}-1200.jpg`, photo.buffer, {
       access: 'public',
-      contentType,
+      contentType: photo.contentType,
+      allowOverwrite: true,
     });
 
     await supabase.from('experiences').update({ photo_url: blob.url }).eq('id', venue_id);

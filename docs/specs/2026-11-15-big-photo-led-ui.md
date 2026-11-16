@@ -164,7 +164,7 @@ Every row shows 8 cards and "See all" opens the full list. The current "Because 
 ## 5. Technical work
 
 1. **Sharper photos:** re-fetch the catalogue photos at `maxWidthPx=1200` with Places API (New), using `scripts/backfill-photos.mjs` with a `--width` flag. Re-upload them to Vercel Blob. About 1,000 venues makes about 1,000 Places Photo calls; check the cost before running.
-2. **Use the New Places API in the API routes too.** `api/venue-photo.mjs` and `api/saved-tools.mjs` still use the old `maps/api/place/photo?maxwidth=600` endpoint, which breaks the CLAUDE.md rule. Move them to the New format at 1200px.
+2. **Done 2026-11-16.** Use the New Places API in the API routes too. `api/venue-photo.mjs` and `api/saved-tools.mjs` still use the old `maps/api/place/photo?maxwidth=600` endpoint, which breaks the CLAUDE.md rule. Move them to the New format at 1200px.
 3. **Speed:** add `loading="lazy"` and `decoding="async"` to every image below the fold. Keep the Discover hero `eager`. Set `aspect-ratio` on photo boxes so nothing jumps while loading.
 4. **No new libraries.** It's all inline styles in `App.jsx`, as now.
 

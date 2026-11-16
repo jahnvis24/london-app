@@ -1,5 +1,6 @@
 import { put } from '@vercel/blob';
 import { requireUser, applyCors } from './_auth.mjs';
+import { fetchFirstPlacePhoto } from './_places.mjs';
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 
@@ -67,13 +68,10 @@ async function handleImage(req, res) {
     buffer = Buffer.from(await r.arrayBuffer());
   } else if (place_id) {
     if (!apiKey) throw new Error('Google Places key not configured');
-    const d = await fetch(`https://maps.googleapis.com/maps/api/place/details/json?place_id=${place_id}&fields=photos&key=${apiKey}`);
-    const dj = await d.json();
-    const ref = dj.result?.photos?.[0]?.photo_reference;
-    if (!ref) return res.status(200).json({ found: false, message: 'No Google photo available' });
-    const pr = await fetch(`https://maps.googleapis.com/maps/api/place/photo?maxwidth=600&photo_reference=${ref}&key=${apiKey}`);
-    buffer = Buffer.from(await pr.arrayBuffer());
-    contentType = pr.headers.get('content-type') || contentType;
+    const photo = await fetchFirstPlacePhoto(place_id, apiKey, 1200);
+    if (!photo) return res.status(200).json({ found: false, message: 'No Google photo available' });
+    buffer = photo.buffer;
+    contentType = photo.contentType;
   } else {
     return res.status(400).json({ error: 'Provide image_base64, image_url, or place_id' });
   }
@@ -144,28 +142,10 @@ async function handlePhotos(req, res) {
     const npj = await np.json();
     const photoNames = (npj.photos || []).slice(0, 8).map(p => p.name).filter(Boolean);
     if (photoNames.length) {
-      const urls = photoNames.map(name => `https://places.googleapis.com/v1/${name}/media?maxWidthPx=900&key=${apiKey}`);
+      const urls = photoNames.map(name => `https://places.googleapis.com/v1/${name}/media?maxWidthPx=1200&key=${apiKey}`);
       return res.status(200).json({ found: true, urls });
     }
   } catch (e) { /* fall through to legacy */ }
-
-  // Fallback: Legacy Places API
-  try {
-    const d = await fetch(`https://maps.googleapis.com/maps/api/place/details/json?place_id=${place_id}&fields=photos&key=${apiKey}`);
-    const dj = await d.json();
-    if (dj.status === "OK") {
-      const refs = (dj.result?.photos || []).slice(0, 8).map(p => p.photo_reference).filter(Boolean);
-      const urls = [];
-      for (const ref of refs) {
-        try {
-          const r = await fetch(`https://maps.googleapis.com/maps/api/place/photo?maxwidth=900&photo_reference=${ref}&key=${apiKey}`, { redirect: 'manual' });
-          const loc = r.headers.get('location');
-          if (loc) urls.push(loc);
-        } catch (e) { /* skip */ }
-      }
-      if (urls.length) return res.status(200).json({ found: true, urls });
-    }
-  } catch (e) { /* skip */ }
 
   return res.status(200).json({ found: false, urls: [] });
 }
@@ -240,14 +220,10 @@ async function handleFixPhotos(req, res) {
   let fixed = 0, skipped = 0;
   for (const s of saves) {
     try {
-      const dr = await fetch(`https://maps.googleapis.com/maps/api/place/details/json?place_id=${s.google_place_id}&fields=photos&key=${apiKey}`);
-      const dd = await dr.json();
-      const ref = dd.result?.photos?.[0]?.photo_reference;
-      if (!ref) { skipped++; continue; }
-
-      const pr = await fetch(`https://maps.googleapis.com/maps/api/place/photo?maxwidth=600&photo_reference=${ref}&key=${apiKey}`);
-      const buffer = Buffer.from(await pr.arrayBuffer());
-      const ct = pr.headers.get("content-type") || "image/jpeg";
+      const photo = await fetchFirstPlacePhoto(s.google_place_id, apiKey, 1200);
+      if (!photo) { skipped++; continue; }
+      const buffer = photo.buffer;
+      const ct = photo.contentType;
       const ext = ct.includes("png") ? "png" : "jpg";
       const blob = await put(`saves/${s.id}-google.${ext}`, buffer, { access: "public", contentType: ct });
       await sb.from("experiences").update({ photo_url: blob.url }).eq("id", s.id);
