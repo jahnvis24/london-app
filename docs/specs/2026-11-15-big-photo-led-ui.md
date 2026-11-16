@@ -147,7 +147,8 @@ Every row shows 8 cards and "See all" opens the full list. The current "Because 
 - **Stop thumbnails** inside a card: 36px → 56px.
 
 ### Saves
-- **Recently saved:** 130 × 130 → **200 × 250** (4:5).
+- **Order on the page:** title → Lists/Calendar tabs → peek map (stays, with Expand) → Recently saved → Your lists.
+- **Recently saved:** 130 × 130 → **200 × 250** (4:5), name on the photo.
 - **List tiles:** each tile 1.3× bigger, with fewer per row in grid view: two columns, collage height 175 → 220.
 - **Rows inside a list:** 64px → 96px thumbnails in list view. Add a **"big" view toggle** that shows full-width 4:3 photo cards. The existing grid/list toggle becomes grid/big.
 
@@ -186,6 +187,7 @@ Each phase is its own commit and push, so the two laptops stay in sync.
 - **Keep the "Top pick" badge.** Other stickers (Trending, rating-on-photo) still go, per rule 8.
 - **Discover: option B, rows of picks.** Trending, then rows from the person's preferences, Cheap eats, a celebrity row and New this month. Mocked on the brand board, "Discover · rows of picks".
 - **Saves: big photo cards are the default view.** The compact grid/list stays behind the toggle.
+- **Saves mock: approved 2026-11-16**, with one change: the peek map stays at the top of Saves, above Recently saved. Panel "Saves · today vs proposed".
 - **Spot page and People feed mocks: approved 2026-11-16.** Phase 0 is complete; build from the four panels on the brand board.
 - **A photo on every plan stop: yes.** Mocked on the brand board, "Plan stops with photos".
 - **Photo re-fetch cost:** Google's Place Photos SKU is $7 per 1,000 calls, with the first 1,000 a month free. 100 calls ≈ £0.55, and the full ~1,000-venue re-fetch is at most about £5, possibly free. Approved.
