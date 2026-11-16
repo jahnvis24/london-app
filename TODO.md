@@ -11,6 +11,7 @@
 | 8 | Larger "Because you like" cards on Discover | Not started |
 | 9 | Map spot list: match save preview card style | Not started |
 | 11 | Audit what drives Discover content and the onboarding this-or-that game | Not started — trending = google_rating >= 4.2; "Because you like" = top category by count; swipe deck = rating >= 4.0 with photos; onboarding pairs test 5 taste axes |
+| 14 | "Swipe together" in bucket lists — both members swipe the deck; places both swipe right become a Match on the list (new `shared_list_swipes` table + migration, Match badge, heart burst "It's a match") | Not started — proposed 2026-11-16 |
 | 13 | Private admin login ledger — port `admin_user_logins` table + `api/track-login.mjs` + admin screen onto redesign (old version on `cosmetic` branch, commit baf1506). Do NOT run `migrations` SQL from that branch as-is — it wipes profile login data | Not started |
 
 ## Done
