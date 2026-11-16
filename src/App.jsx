@@ -1875,7 +1875,7 @@ function DiscoverScreen({ preferences, dbVenues: allVenues, onStart, onOpenSpot,
       {onStart && (
         <div onClick={onStart} style={{ margin: "0 22px 22px", padding: 20, borderRadius: 14, background: "#3A0B14", color: "#BAD2E8", cursor: "pointer" }}>
           <div style={{ fontSize: 11, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase", opacity: 0.75 }}>{dbVenues.length > 0 ? `${Math.min(dbVenues.filter(v => v.lat && v.lng).length, 20)} saves nearby` : "Your saves nearby"}</div>
-          <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 28, lineHeight: 1.02, margin: "10px 0 16px" }}>Build me a night out<br />from my saves</div>
+          <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 28, lineHeight: 1.02, margin: "10px 0 16px" }}>Build me a plan<br />from my saves</div>
           <div style={{ display: "inline-block", padding: "10px 18px", borderRadius: 8, background: "#FAF7F2", color: "#3A0B14", fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 16 }}>Answer 5 questions →</div>
         </div>
       )}
