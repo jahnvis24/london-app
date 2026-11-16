@@ -6898,9 +6898,9 @@ function PeopleScreen({ user, onSavePlan, onShareSaved }) {
 // Steps 1 & 2 open a real saved spot's detail sheet (driven via tourWantsSpot on
 // SavedScreen) so the rating / photos / book button are spotlighted in situ.
 const PRODUCT_TOUR = [
-  { tab: "home", selector: "[data-tour='discover-rows']", title: "Discover: find new places", body: "New places chosen for you, based on your preferences, plus our editors' picks. Trending this week, rows built around what you like, cheap eats and new openings." },
-  { tab: "home", selector: "[data-tour='discover-swipe']", title: "Swipe to discover", body: "A deck of places matched to your taste. Heart to save, cross to skip. The quickest way to find your next favourite." },
-  { tab: "home", selector: "[data-tour='save-fab']", title: "Save a place from anywhere", body: "The + button saves a place from your camera roll, a screenshot, a TikTok or Instagram link, a Google Maps link, or just its name." },
+  { tab: "discover", selector: "[data-tour='discover-rows']", title: "Discover: find new places", body: "New places chosen for you, based on your preferences, plus our editors' picks. Trending this week, rows built around what you like, cheap eats and new openings." },
+  { tab: "discover", selector: "[data-tour='discover-swipe']", title: "Swipe to discover", body: "A deck of places matched to your taste. Heart to save, cross to skip. The quickest way to find your next favourite." },
+  { tab: "discover", selector: "[data-tour='save-fab']", title: "Save a place from anywhere", body: "The + button saves a place from your camera roll, a screenshot, a TikTok or Instagram link, a Google Maps link, or just its name." },
   { tab: "saved", selector: "[data-tour='saves-lists']", title: "Saves: everything in one place", body: "Your saves from your camera roll, Google Maps, screenshots and links all live here, grouped into lists you can share." },
   { tab: "saved", selector: "[data-tour='spot-rating']", title: "Inside a place", body: "Swipe the photos, read about it, rate it and keep your own notes. Everything you need before you go." },
   { tab: "saved", selector: "[data-tour='spot-book']", title: "Book it in a tap", body: "Straight to the website or booking page, into your calendar, or plan a whole outing around it." },
