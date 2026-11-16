@@ -3636,7 +3636,7 @@ function TourSpotlight({ targetRef, step, last, onDone, onSkip }) {
   );
 }
 
-function SavedScreen({ user, onBuildPlan, onShare, onBarCrawl, openSignal, calendarSignal, visible, tourWantsSpot, replayImportSignal, dbVenues, plans: parentPlans }) {
+function SavedScreen({ user, onBuildPlan, onShare, onBarCrawl, openSignal, calendarSignal, visible, tourCapture, replayImportSignal, dbVenues, plans: parentPlans }) {
   const [saves, setSaves] = useState([]);
   const [loading, setLoading] = useState(true);
   const [mediaType, setMediaType] = useState("tiktok"); // tiktok | instagram | screenshot | maps | mapslist
@@ -3686,18 +3686,6 @@ function SavedScreen({ user, onBuildPlan, onShare, onBarCrawl, openSignal, calen
     await supabase.from("shared_list_items").insert(row);
     setBucketListPicker(null);
   }
-  // Product tour: when it reaches the "inside a spot" steps, open a real saved
-  // spot's detail sheet so its rating / photos / book button can be spotlighted;
-  // close it again when those steps end. Keyed only on tourWantsSpot so normal
-  // detail opens/closes are never disturbed.
-  useEffect(() => {
-    if (tourWantsSpot) {
-      const first = saves[0];
-      if (first) { setOpenFolder(null); setSavedView("folders"); setDetailSpot(first); }
-    } else {
-      setDetailSpot(null);
-    }
-  }, [tourWantsSpot]);
   const [captureOpen, setCaptureOpen] = useState(false);
   const [captureTab, setCaptureTab] = useState(null);
   const [discoverMode, setDiscoverMode] = useState(false);
@@ -3749,6 +3737,13 @@ function SavedScreen({ user, onBuildPlan, onShare, onBarCrawl, openSignal, calen
     if (firstSignal.current) { firstSignal.current = false; return; }
     setOpenFolder(null); setCaptureTab(null); setError(null); setCaptureOpen(true);
   }, [openSignal]);
+  // Product tour: the "Screenshot, link or name" step shows the sheet, then closes it.
+  const tourCaptureWas = useRef(false);
+  useEffect(() => {
+    if (tourCapture) { setOpenFolder(null); setCaptureTab(null); setError(null); setCaptureOpen(true); }
+    else if (tourCaptureWas.current) setCaptureOpen(false);
+    tourCaptureWas.current = !!tourCapture;
+  }, [tourCapture]);
 
   // Jump to the Calendar view when something is added to the calendar elsewhere.
   const firstCalSignal = useRef(true);
@@ -5765,7 +5760,7 @@ const slSheet = { background: "#fff", borderTopLeftRadius: 20, borderTopRightRad
 
 // Collaborative bucket lists: a list two+ connected friends both add to and tick off.
 // Lists you own or are a member of, each with progress + a creator. Lives in the People tab.
-function SharedListsSection({ user, initialOpenId }) {
+function SharedListsSection({ user, initialOpenId, tourExamples }) {
   const [lists, setLists] = useState([]);
   const [counts, setCounts] = useState({}); // listId -> { done, total }
   const [loading, setLoading] = useState(true);
@@ -5833,7 +5828,17 @@ function SharedListsSection({ user, initialOpenId }) {
       )}
 
       {loading && <div style={{ fontSize: 15, color: "rgba(58,11,20,.45)" }}>Loading…</div>}
-      {!loading && lists.length === 0 && !creating && <div style={{ fontSize: 15, color: "rgba(58,11,20,.45)" }}>No bucket lists yet. Create one, then invite a friend to build it together.</div>}
+      {tourExamples && !loading && lists.length === 0 && [["Date night ideas", "3/8 done · with Sahil", 38], ["Sunday brunch crawl", "1/5 done · with Amy", 20]].map(([name, meta, pct]) => (
+        <div key={name} style={{ position: "relative", height: 200, borderRadius: 14, overflow: "hidden", background: "linear-gradient(135deg, #7A1E33, #3A0B14)", marginBottom: 12 }}>
+          <div style={{ position: "absolute", top: 12, left: 12, padding: "5px 10px", borderRadius: 8, background: "rgba(250,247,242,.88)", color: "#3A0B14", fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase" }}>Example</div>
+          <div style={{ position: "absolute", left: 14, right: 14, bottom: 14 }}>
+            <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 26, lineHeight: 1.05, color: "#FAF7F2" }}>{name}</div>
+            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "#E9E4DA", margin: "5px 0 8px" }}>{meta}</div>
+            <div style={{ height: 3, borderRadius: 2, background: "rgba(250,247,242,.3)", overflow: "hidden" }}><div style={{ height: "100%", width: pct + "%", background: "#BAD2E8" }} /></div>
+          </div>
+        </div>
+      ))}
+      {!loading && lists.length === 0 && !creating && !tourExamples && <div style={{ fontSize: 15, color: "rgba(58,11,20,.45)" }}>No bucket lists yet. Create one, then invite a friend to build it together.</div>}
 
       {lists.map(l => {
         const c = counts[l.id] || { done: 0, total: 0, photos: [] };
@@ -6706,7 +6711,7 @@ function FriendFeed({ user, friends, onOpenFriend, onGoTab }) {
   );
 }
 
-function PeopleScreen({ user, onSavePlan, onShareSaved }) {
+function PeopleScreen({ user, onSavePlan, onShareSaved, tourTab }) {
   const [connections, setConnections] = useState([]);
   const [shares, setShares] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -6804,6 +6809,7 @@ function PeopleScreen({ user, onSavePlan, onShareSaved }) {
 
   const [pTab, setPTab] = useState("feed");
   const [openListId, setOpenListId] = useState(null); // feed → open this bucket list
+  useEffect(() => { if (tourTab) setPTab(tourTab); }, [tourTab]);
 
   if (loading) return <div style={{ paddingTop: "2rem" }}><SkeletonList count={5} /></div>;
 
@@ -6823,7 +6829,7 @@ function PeopleScreen({ user, onSavePlan, onShareSaved }) {
       {msg && <div style={{ margin: "0 22px 12px", background: "#F1EDE4", color: "#3A0B14", padding: "10px 12px", fontSize: 13 }}>{msg}</div>}
 
       {pTab === "feed" && <FriendFeed user={user} friends={connections} onOpenFriend={setViewFriend} onGoTab={(t, listId) => { setOpenListId(listId || null); setPTab(t); if (t === "friends" && !connections.length) setShowConnect(true); }} />}
-      {pTab === "lists" && <div data-tour="shared-lists"><SharedListsSection user={user} initialOpenId={openListId} /></div>}
+      {pTab === "lists" && <div data-tour="shared-lists"><SharedListsSection user={user} initialOpenId={openListId} tourExamples={!!tourTab} /></div>}
 
       {pTab === "friends" && (
         <div style={{ padding: "0 22px" }}>
@@ -6897,17 +6903,25 @@ function PeopleScreen({ user, onSavePlan, onShareSaved }) {
 // centred card (never traps the user).
 // Steps 1 & 2 open a real saved spot's detail sheet (driven via tourWantsSpot on
 // SavedScreen) so the rating / photos / book button are spotlighted in situ.
+// Tour steps. A step with no selector shows the whole page with the tip pinned to an
+// edge (no spotlight). `open` makes the app open something for the step: a spot page
+// from Discover, or the "Save a place" sheet. `peopleTab` switches the People tab.
 const PRODUCT_TOUR = [
-  { tab: "discover", selector: "[data-tour='discover-rows']", title: "Discover: find new places", body: "New places chosen for you, based on your preferences, plus our editors' picks. Trending this week, rows built around what you like, cheap eats and new openings." },
+  { tab: "discover", selector: null, title: "Discover: find new places", body: "This page finds you new places based on your preferences, plus our editors' picks. Trending this week, rows built around what you like, cheap eats and new openings." },
+  { tab: "discover", selector: "[data-tour='discover-rows']", title: "Rows of picks", body: "Each row is a theme. Scroll sideways through it, and tap any photo to open the place." },
   { tab: "discover", selector: "[data-tour='discover-swipe']", title: "Swipe to discover", body: "A deck of places matched to your taste. Heart to save, cross to skip. The quickest way to find your next favourite." },
-  { tab: "discover", selector: "[data-tour='save-fab']", title: "Save a place from anywhere", body: "The + button saves a place from your camera roll, a screenshot, a TikTok or Instagram link, a Google Maps link, or just its name." },
-  { tab: "saved", selector: "[data-tour='saves-lists']", title: "Saves: everything in one place", body: "Your saves from your camera roll, Google Maps, screenshots and links all live here, grouped into lists you can share." },
-  { tab: "saved", selector: "[data-tour='spot-rating']", title: "Inside a place", body: "Swipe the photos, read about it, rate it and keep your own notes. Everything you need before you go." },
-  { tab: "saved", selector: "[data-tour='spot-book']", title: "Book it in a tap", body: "Straight to the website or booking page, into your calendar, or plan a whole outing around it." },
+  { tab: "discover", selector: null, open: "spot", tipAt: "top", title: "Inside a place", body: "Tap any place and it opens like this: swipe the photos at the top, read about it, rate it and keep your own notes." },
+  { tab: "discover", selector: "[data-tour='spot-book']", open: "spot", title: "Book it in a tap", body: "Straight to the website or booking page, into your calendar, or plan a whole outing around it." },
+  { tab: "saved", selector: null, title: "Saves: everything in one place", body: "Your saves from your camera roll, Google Maps, screenshots and links all live here, grouped into lists you can share." },
+  { tab: "saved", selector: "[data-tour='saves-lists']", title: "Your lists", body: "Each tile is a list. Tap one to open it, or use the map above to see everything at once." },
+  { tab: "saved", selector: "[data-tour='save-fab']", title: "Save a place from anywhere", body: "The + button is on every page. Tap it to save a place." },
+  { tab: "saved", selector: null, open: "capture", tipAt: "top", title: "Screenshot, link or name", body: "This is what opens: upload a screenshot from your camera roll, paste a TikTok, Instagram or Google Maps link, or just type the name." },
   { tab: "saved", selector: "[data-tour='saves-build']", title: "Plans: from your list or ours", body: "Turn any list into a full day or night out. Answer five quick questions and we route it for you, with times, costs and walking directions." },
-  { tab: "plans", selector: "[data-tour='plan-cta']", title: "Or start a plan from scratch", body: "No saves needed. Pick a vibe, area and budget and we build the itinerary from our picks." },
-  { tab: "people", selector: "[data-tour='invite']", title: "Friends: do it together", body: "Add friends to see a feed of what they're saving, build bucket lists together, and make plans with them." },
-  { tab: "people", selector: "[data-tour='shared-lists']", title: "Bucket lists with friends", body: "Create a list with a friend, add places from either side, and tick them off as you go." },
+  { tab: "plans", selector: null, title: "Plans", body: "Every plan you make lives here, with its stops, times and a cover photo. Schedule one for a date and share it with friends." },
+  { tab: "plans", selector: "[data-tour='plan-cta']", title: "Or start from scratch", body: "No saves needed. Pick a vibe, area and budget and we build the itinerary from our picks." },
+  { tab: "people", peopleTab: "feed", selector: null, title: "Friends: do it together", body: "Add friends to see a feed of what they're saving, build bucket lists together, and make plans with them." },
+  { tab: "people", peopleTab: "feed", selector: "[data-tour='invite']", title: "Add your friends", body: "Add a friend and you'll see their saves. Places you both save show up as matches." },
+  { tab: "people", peopleTab: "lists", selector: null, title: "Bucket lists with friends", body: "Create a list with a friend, add places from either side, and tick them off as you go. Here's what a couple look like." },
 ];
 
 function AppProductTour({ steps, step, onNext, onBack, onDone, onSkip }) {
@@ -6918,7 +6932,7 @@ function AppProductTour({ steps, step, onNext, onBack, onDone, onSkip }) {
   useEffect(() => {
     let raf, dead = false;
     const tick = () => {
-      const el = document.querySelector(s.selector);
+      const el = s.selector ? document.querySelector(s.selector) : null;
       const r = el && el.getBoundingClientRect();
       if (r && (r.width || r.height)) {
         if (scrolledFor.current !== step) {
@@ -6936,11 +6950,11 @@ function AppProductTour({ steps, step, onNext, onBack, onDone, onSkip }) {
   const pad = 6;
   const hole = rect && { position: "fixed", top: rect.t - pad, left: rect.l - pad, width: rect.w + pad * 2, height: rect.h + pad * 2, borderRadius: 14, boxShadow: "0 0 0 9999px rgba(20,18,14,0.66)", border: "2px solid #BAD2E8", pointerEvents: "none", zIndex: 3001, transition: "top 0.25s ease, left 0.25s ease, width 0.25s ease, height 0.25s ease" };
   const below = !rect || (rect.t + rect.h / 2) < window.innerHeight * 0.52;
-  const tip = { position: "fixed", left: 12, right: 12, maxWidth: 400, margin: "0 auto", background: "#fff", borderRadius: 14, padding: "16px 16px 14px", boxShadow: "0 12px 40px rgba(0,0,0,0.3)", zIndex: 3002, pointerEvents: "auto", ...(rect ? (below ? { top: Math.min(rect.t + rect.h + pad + 12, window.innerHeight - 230) } : { bottom: window.innerHeight - rect.t + pad + 12 }) : { top: "42%" }) };
+  const tip = { position: "fixed", left: 12, right: 12, maxWidth: 400, margin: "0 auto", background: "#fff", borderRadius: 14, padding: "16px 16px 14px", boxShadow: "0 12px 40px rgba(0,0,0,0.3)", zIndex: 3002, pointerEvents: "auto", ...(rect ? (below ? { top: Math.min(rect.t + rect.h + pad + 12, window.innerHeight - 230) } : { bottom: window.innerHeight - rect.t + pad + 12 }) : (!s.selector ? (s.tipAt === "top" ? { top: 16 } : { bottom: 104 }) : { top: "42%" })) };
   const btn = { border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 15, fontWeight: 600, cursor: "pointer" };
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 3000 }}>
-      <div style={{ position: "fixed", inset: 0, background: rect ? "transparent" : "rgba(20,18,14,0.66)", pointerEvents: "auto" }} />
+      <div style={{ position: "fixed", inset: 0, background: (rect || !s.selector) ? "transparent" : "rgba(20,18,14,0.66)", pointerEvents: "auto" }} />
       {rect && <div style={hole} />}
       <div style={tip}>
         <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(58,11,20,.45)", fontWeight: 700, marginBottom: 5 }}>Step {step + 1} of {steps.length}</div>
@@ -6983,6 +6997,9 @@ export default function App() {
     else showToast("Couldn't save that — try again");
   }
   const [tourStep, setTourStep] = useState(-1); // -1 = off; guided product tour (Me → "Take a tour")
+  const [tourCapture, setTourCapture] = useState(false); // tour step that shows the "Save a place" sheet
+  const [tourPeopleTab, setTourPeopleTab] = useState(null); // tour step that needs a People sub-tab
+  const tourSpotRef = useRef(false); // true while the tour has a spot page open from Discover
   const [importSignal, setImportSignal] = useState(0); // bump to launch the hands-on "add a save" walkthrough
   const [peopleBadge, setPeopleBadge] = useState(0); // unsaved shares sent to you → People tab badge
   const [captureSignal, setCaptureSignal] = useState(0); // bump to pop the global capture sheet on Saves
@@ -7052,10 +7069,24 @@ export default function App() {
   // Guided product tour: each step drives which tab is shown. Also expose a
   // console hook so the tour can be replayed for testing/support.
   useEffect(() => {
-    if (tourStep < 0 || tourStep >= PRODUCT_TOUR.length) return;
-    const t = PRODUCT_TOUR[tourStep].tab;
-    setActiveTab(t);
-    if (t !== "home") { setQuizStep(-1); setViewingPlan(null); }
+    const st = tourStep >= 0 && tourStep < PRODUCT_TOUR.length ? PRODUCT_TOUR[tourStep] : null;
+    if (!st) {
+      // Tour ended: close anything it opened.
+      if (tourSpotRef.current) { setDiscoverSpot(null); tourSpotRef.current = false; }
+      setTourCapture(false); setTourPeopleTab(null);
+      return;
+    }
+    setActiveTab(st.tab);
+    if (st.tab !== "home") { setQuizStep(-1); setViewingPlan(null); }
+    setTourPeopleTab(st.peopleTab || null);
+    setTourCapture(st.open === "capture");
+    if (st.open === "spot") {
+      if (!tourSpotRef.current) {
+        const v = (dbVenues || []).filter(x => x.photo_url && !x.is_event).sort((a, b) => (parseFloat(b.google_rating) || 0) - (parseFloat(a.google_rating) || 0))[0];
+        if (v) { setDiscoverSpot(v); tourSpotRef.current = true; }
+      }
+    } else if (tourSpotRef.current) { setDiscoverSpot(null); tourSpotRef.current = false; }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tourStep]);
   useEffect(() => { window.__startTour = () => setTourStep(0); }, []);
 
@@ -7578,7 +7609,7 @@ export default function App() {
 
         {activeTab === "discover" && <DiscoverScreen preferences={preferences} dbVenues={dbVenues} onStart={startQuiz} onOpenSpot={(v, ctx) => { mpDiscoverCtx = ctx || {}; setDiscoverSpot(v); }} savedKeys={savedKeys} onSave={saveDiscoverSpot} />}
         {discoverSpot && <SpotDetail spot={discoverSpot} onClose={() => setDiscoverSpot(null)} user={user} onSaveToBoard={() => saveDiscoverSpot(discoverSpot)} savedToBoard={savedKeys.has(feedKey(discoverSpot))} onMakePlan={(s) => { setDiscoverSpot(null); setActiveTab("home"); setAns({ savedVenues: [s] }); setQuizStep(0); }} />}
-        {activeTab === "people" && <PeopleScreen user={user} onShareSaved={() => setPeopleBadge(n => Math.max(0, n - 1))} onSavePlan={(payload) => { const r = payload?.plan; if (!r) return; const newPlan = { result: r, times: payload?.times || times, ans: {}, savedAt: new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }), createdAt: Date.now(), id: generateId() }; setPlans(prev => [newPlan, ...prev]); supabase.from("plans").insert({ id: newPlan.id, user_id: user.id, result: newPlan.result, ans: newPlan.ans, times: newPlan.times, saved_at: newPlan.savedAt, created_at: newPlan.createdAt }).then(({ error }) => { if (error) console.warn("plans:", error.message); }); }} />}
+        {activeTab === "people" && <PeopleScreen user={user} tourTab={tourPeopleTab} onShareSaved={() => setPeopleBadge(n => Math.max(0, n - 1))} onSavePlan={(payload) => { const r = payload?.plan; if (!r) return; const newPlan = { result: r, times: payload?.times || times, ans: {}, savedAt: new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }), createdAt: Date.now(), id: generateId() }; setPlans(prev => [newPlan, ...prev]); supabase.from("plans").insert({ id: newPlan.id, user_id: user.id, result: newPlan.result, ans: newPlan.ans, times: newPlan.times, saved_at: newPlan.savedAt, created_at: newPlan.createdAt }).then(({ error }) => { if (error) console.warn("plans:", error.message); }); }} />}
         {/* Always mounted so an in-progress screenshot parse keeps running + persists when you switch tabs */}
         <div style={{ display: activeTab === "saved" ? "block" : "none" }}>
           {showStarter && (
@@ -7588,7 +7619,7 @@ export default function App() {
               <button onClick={() => setShowStarter(false)} style={{ border: "none", background: "none", color: "rgba(58,11,20,.45)", cursor: "pointer", fontSize: "1.1rem", lineHeight: 1 }}>×</button>
             </div>
           )}
-          <SavedScreen user={user} visible={activeTab === "saved"} tourWantsSpot={tourStep === 4 || tourStep === 5} replayImportSignal={importSignal} dbVenues={dbVenues} openSignal={captureSignal} calendarSignal={calSignal} onShare={setShareItem} plans={plans} onBuildPlan={(saves) => { setResult(null); setError(null); setViewingPlan(null); setActiveTab("home"); setAns({ savedVenues: saves }); setQuizStep(0); }} onBarCrawl={(seed) => setBarCrawl({ seed: seed || [] })} />
+          <SavedScreen user={user} visible={activeTab === "saved"} tourCapture={tourCapture} replayImportSignal={importSignal} dbVenues={dbVenues} openSignal={captureSignal} calendarSignal={calSignal} onShare={setShareItem} plans={plans} onBuildPlan={(saves) => { setResult(null); setError(null); setViewingPlan(null); setActiveTab("home"); setAns({ savedVenues: saves }); setQuizStep(0); }} onBarCrawl={(seed) => setBarCrawl({ seed: seed || [] })} />
         </div>
         {activeTab === "me" && <MeScreen user={user} preferences={preferences} setPreferences={setPreferences} isAdmin={isAdmin} onBadgeUpdate={setAdminBadge} adminBadge={adminBadge} onStartTour={() => setTourStep(0)} onRetakeQuiz={async () => { try { localStorage.removeItem("cl_onboarded_" + user.id); } catch {} try { await supabase.auth.updateUser({ data: { onboarded: false } }); } catch {} setOnboardDone(false); setActiveTab("saved"); window.scrollTo(0, 0); }} onStartImportTour={() => { setTourStep(-1); setActiveTab("saved"); setImportSignal(n => n + 1); }} />}
 
