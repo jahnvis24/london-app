@@ -6901,7 +6901,7 @@ function PeopleScreen({ user, onSavePlan, onShareSaved, tourTab }) {
 // control on each, driven by Back / Next. Launched from Me → "Take a tour".
 // Targets are found by [data-tour] selector; a missing target degrades to a
 // centred card (never traps the user).
-// Steps 1 & 2 open a real saved spot's detail sheet (driven via tourWantsSpot on
+// The spot steps open a top-rated place from Discover (see the tour effect in App); the capture step opens the Save sheet.
 // SavedScreen) so the rating / photos / book button are spotlighted in situ.
 // Tour steps. A step with no selector shows the whole page with the tip pinned to an
 // edge (no spotlight). `open` makes the app open something for the step: a spot page
