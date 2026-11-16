@@ -526,6 +526,7 @@ const styles = `
   .inner-star4 { animation: spin-cw 10s linear infinite; }
   @keyframes spin-cw { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
   @keyframes spin { to{transform:rotate(360deg)} }
+  @keyframes heartBurst { 0%{opacity:0;transform:scale(.3)} 30%{opacity:1;transform:scale(1.25)} 100%{opacity:0;transform:scale(1.7)} }
   @media (prefers-reduced-motion: reduce) {
     .shape-circle, .inner-oval, .inner-starburst, .inner-star4 { animation: none; }
   }
@@ -1561,6 +1562,17 @@ function SwipeDeck({ venues, preferences, onClose, onSave, onOpenSpot }) {
     return matches;
   }
 
+  // Button taps: fly the card off and burst a heart (or a cross) before the deck advances.
+  const [burst, setBurst] = useState(null);
+  const animatingRef = useRef(false);
+  function dismissAnimated(dir) {
+    if (!current || animatingRef.current) return;
+    animatingRef.current = true;
+    setBurst(dir === "right" ? "save" : "skip");
+    const el = dragRef.current;
+    if (el) { el.style.transition = "transform .38s cubic-bezier(.2,.8,.3,1), opacity .38s"; el.style.transform = dir === "right" ? "translateX(480px) rotate(14deg)" : "translateX(-480px) rotate(-14deg)"; el.style.opacity = "0"; }
+    setTimeout(() => { dismiss(dir); if (el) { el.style.transition = ""; el.style.transform = ""; el.style.opacity = ""; } setBurst(null); animatingRef.current = false; }, 380);
+  }
   function dismiss(dir) {
     if (!current) return;
     const saved = dir === "right";
@@ -1647,6 +1659,15 @@ function SwipeDeck({ venues, preferences, onClose, onSave, onOpenSpot }) {
 
         <div ref={dragRef} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
           style={{ position: "relative", width: "100%", maxWidth: 360, aspectRatio: "3/4", perspective: 1000, cursor: "grab", touchAction: "none" }}>
+          {burst && (
+            <div style={{ position: "absolute", inset: 0, zIndex: 6, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
+              <div style={{ animation: "heartBurst .6s ease-out forwards" }}>
+                {burst === "save"
+                  ? <svg width="140" height="140" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" fill="#7A1E33" stroke="#FAF7F2" strokeWidth="1" /></svg>
+                  : <svg width="120" height="120" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="#FAF7F2" strokeWidth="2.5" strokeLinecap="round" /></svg>}
+              </div>
+            </div>
+          )}
           <div onClick={() => { if (!wasDragRef.current) setFlipped(f => !f); }} style={{ width: "100%", height: "100%", position: "relative", transformStyle: "preserve-3d", transition: "transform 0.5s ease", transform: flipped ? "rotateY(180deg)" : "rotateY(0)" }}>
             {/* Front face */}
             <div style={{ position: "absolute", inset: 0, backfaceVisibility: "hidden", borderRadius: 16, overflow: "hidden", background: "#F1EDE4", boxShadow: "0 8px 32px rgba(0,0,0,.12)" }}>
@@ -1689,11 +1710,11 @@ function SwipeDeck({ venues, preferences, onClose, onSave, onOpenSpot }) {
       </div>
 
       <div style={{ padding: "20px 0 36px", display: "flex", justifyContent: "center", alignItems: "center", gap: 20 }}>
-        <button onClick={() => dismiss("left")} style={{ width: 54, height: 54, borderRadius: "50%", border: "2px solid #7A1E33", background: "#FAF7F2", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, cursor: "pointer", color: "#7A1E33", boxShadow: "0 2px 8px rgba(0,0,0,.06)" }}>✕</button>
+        <button onClick={() => dismissAnimated("left")} style={{ width: 54, height: 54, borderRadius: "50%", border: "2px solid #7A1E33", background: "#FAF7F2", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, cursor: "pointer", color: "#7A1E33", boxShadow: "0 2px 8px rgba(0,0,0,.06)" }}>✕</button>
         <button onClick={undo} disabled={!gone.length} style={{ width: 42, height: 42, borderRadius: "50%", border: "1.5px solid rgba(58,11,20,.15)", background: "#FAF7F2", display: "flex", alignItems: "center", justifyContent: "center", cursor: gone.length ? "pointer" : "default", boxShadow: "0 2px 8px rgba(0,0,0,.04)" }}>
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke={gone.length ? "#3A0B14" : "rgba(58,11,20,.2)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 10h13a4 4 0 010 8H7"/><path d="M7 6L3 10l4 4"/></svg>
         </button>
-        <button onClick={() => dismiss("right")} style={{ width: 60, height: 60, borderRadius: "50%", border: "none", background: "#3A0B14", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, cursor: "pointer", color: "#BAD2E8", boxShadow: "0 4px 12px rgba(217,65,43,.25)" }}>♥</button>
+        <button onClick={() => dismissAnimated("right")} style={{ width: 60, height: 60, borderRadius: "50%", border: "none", background: "#3A0B14", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, cursor: "pointer", color: "#BAD2E8", boxShadow: "0 4px 12px rgba(217,65,43,.25)" }}>♥</button>
       </div>
 
       <div style={{ textAlign: "center", paddingBottom: 16, fontSize: 13, color: "rgba(58,11,20,.4)" }}>{savedCount} saved · {skippedCount} skipped · drag the card or tap to decide</div>
