@@ -1,6 +1,6 @@
 # Spec: make cuRATED feel big and photo-led
 
-**Status:** draft. Waiting on the owner's answers to the open questions at the end.
+**Status:** approved 2026-11-16. All open questions answered, all mocks signed off. Next: phase 1 (sharper photos).
 **Date:** 2026-11-15
 **Owner:** the app owner. The work is done by whichever laptop picks it up.
 
@@ -186,6 +186,7 @@ Each phase is its own commit and push, so the two laptops stay in sync.
 - **Keep the "Top pick" badge.** Other stickers (Trending, rating-on-photo) still go, per rule 8.
 - **Discover: option B, rows of picks.** Trending, then rows from the person's preferences, Cheap eats, a celebrity row and New this month. Mocked on the brand board, "Discover · rows of picks".
 - **Saves: big photo cards are the default view.** The compact grid/list stays behind the toggle.
+- **Spot page and People feed mocks: approved 2026-11-16.** Phase 0 is complete; build from the four panels on the brand board.
 - **A photo on every plan stop: yes.** Mocked on the brand board, "Plan stops with photos".
 - **Photo re-fetch cost:** Google's Place Photos SKU is $7 per 1,000 calls, with the first 1,000 a month free. 100 calls ≈ £0.55, and the full ~1,000-venue re-fetch is at most about £5, possibly free. Approved.
 
