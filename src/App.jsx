@@ -1705,8 +1705,8 @@ function SwipeDeck({ venues, preferences, onClose, onSave, onOpenSpot }) {
 const isTopPick = (v) => (v?.vibe_tags || []).includes("top_pick");
 const sortTags = (tags) => [...(tags || [])].sort((a, b) => (b === "top_pick") - (a === "top_pick"));
 const tagLabel = (t) => t === "top_pick" ? "Top Pick" : String(t).replace(/_/g, " ");
-const tagStyle = (t, base) => t === "top_pick" ? { ...base, background: "#3A0B14", color: "#BAD2E8", border: "none", fontWeight: 600 } : base;
-const TopPickBadge = ({ style }) => <span style={{ display: "inline-block", padding: "3px 8px", background: "#3A0B14", color: "#BAD2E8", fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", borderRadius: 8, verticalAlign: "middle", ...style }}>Top Pick</span>;
+const tagStyle = (t, base) => t === "top_pick" ? { ...base, background: "#7A1E33", color: "#BAD2E8", border: "none", fontWeight: 600 } : base;
+const TopPickBadge = ({ style }) => <span style={{ display: "inline-block", padding: "3px 8px", background: "#7A1E33", color: "#BAD2E8", fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", borderRadius: 8, verticalAlign: "middle", ...style }}>Top Pick</span>;
 
 function priceToPounds(p) {
   if (!p) return null;
@@ -1732,7 +1732,7 @@ function PhotoCard({ v, width = 280, height = 350, onClick, badge, meta, nameSiz
     <div onClick={onClick} style={{ flex: "none", width, height, position: "relative", overflow: "hidden", borderRadius: 14, background: "#F1EDE4", cursor: onClick ? "pointer" : "default", scrollSnapAlign: "start", ...style }}>
       {v.photo_url && <img src={v.photo_url} alt="" loading="lazy" decoding="async" onLoad={e => { e.currentTarget.style.opacity = 1; }} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", opacity: 0, transition: "opacity .3s ease" }} />}
       <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "55%", background: "linear-gradient(rgba(58,11,20,0), rgba(58,11,20,.82))", pointerEvents: "none" }} />
-      {b && <div style={{ position: "absolute", top: 12, left: 12, padding: "5px 10px", borderRadius: 8, background: "#3A0B14", color: "#BAD2E8", fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase" }}>{b}</div>}
+      {b && <div style={{ position: "absolute", top: 12, left: 12, padding: "5px 10px", borderRadius: 8, background: "#7A1E33", color: "#BAD2E8", fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase" }}>{b}</div>}
       <div style={{ position: "absolute", left: 14, right: 14, bottom: 14, pointerEvents: "none" }}>
         <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: nameSize, lineHeight: 1.05, color: "#FAF7F2" }}>{v.name}</div>
         {line && <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "#E9E4DA", marginTop: 5 }}>{line}</div>}
@@ -3084,25 +3084,27 @@ function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan, user, onSpotUpdate
 }
 
 // The big photo card used on the map (pin tap) AND in the swipe-up list — identical look.
+// Photo-led: name and meta on the photo over a soft gradient, outline links underneath.
 function BigSpotCard({ s, photo }) {
+  const pounds = priceToPounds(s.price);
+  const meta = [cap(normaliseCategory(s.category)), s.area, pounds, s.google_rating ? `${s.google_rating} ★` : null].filter(Boolean).join(" · ");
   return (
     <>
-      <div style={{ position: "relative", height: 175, background: "#e9e4da" }}>
-        {photo && <img src={photo} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
-        <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.3)" }} />
-        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 18px" }}>
-          <div style={{ color: "rgba(255,255,255,0.8)", fontFamily: "'Instrument Serif', Georgia, serif", fontWeight: 400, fontSize: "1.55rem", textAlign: "center", lineHeight: 1.15, textShadow: "0 2px 14px rgba(0,0,0,0.55)" }}>{s.name}</div>
+      <div style={{ position: "relative", height: 220, background: "#F1EDE4" }}>
+        {photo && <img src={photo} alt="" loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />}
+        <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "55%", background: "linear-gradient(rgba(58,11,20,0), rgba(58,11,20,.82))" }} />
+        {isTopPick(s) && <div style={{ position: "absolute", top: 12, left: 12, padding: "5px 10px", borderRadius: 8, background: "#7A1E33", color: "#BAD2E8", fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase" }}>Top pick</div>}
+        <div style={{ position: "absolute", left: 14, right: 14, bottom: 14 }}>
+          <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 26, lineHeight: 1.05, color: "#FAF7F2" }}>{s.name}</div>
+          {meta && <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "#E9E4DA", marginTop: 5 }}>{meta}</div>}
         </div>
       </div>
-      <div style={{ padding: "10px 12px 12px", textAlign: "center" }}>
-        <div style={{ fontSize: 12, color: "rgba(58,11,20,.55)" }}>
-          {cap(normaliseCategory(s.category))}{s.google_rating ? ` · ⭐ ${s.google_rating}` : ""}{s.area ? ` · ${s.area}` : ""}{s.price ? ` · ${s.price}` : ""}
+      {(googleMapsUrl(s) || (s.source_url && (s.source_type === "tiktok" || s.source_type === "instagram"))) && (
+        <div style={{ padding: "10px 12px 12px", display: "flex", gap: 8 }}>
+          {s.source_url && (s.source_type === "tiktok" || s.source_type === "instagram") && <a href={s.source_url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} style={{ padding: "7px 12px", borderRadius: 8, border: "1.5px solid #3A0B14", color: "#3A0B14", fontSize: 12.5, fontWeight: 600, textDecoration: "none" }}>{s.source_type === "tiktok" ? "TikTok" : "Instagram"} ↗</a>}
+          {googleMapsUrl(s) && <a href={googleMapsUrl(s)} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} style={{ padding: "7px 12px", borderRadius: 8, border: "1.5px solid #3A0B14", color: "#3A0B14", fontSize: 12.5, fontWeight: 600, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6 }}><LineIcon name="pin" size={14} />Directions</a>}
         </div>
-        <div style={{ display: "flex", gap: 14, justifyContent: "center", marginTop: 6 }}>
-          {s.source_url && (s.source_type === "tiktok" || s.source_type === "instagram") && <a href={s.source_url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} style={{ fontSize: 11, color: "#7A1E33", fontWeight: 500 }}>{SOURCE_ICON[s.source_type] || "🔗"} View source ↗</a>}
-          {googleMapsUrl(s) && <a href={googleMapsUrl(s)} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} style={{ fontSize: 11, color: "#7A1E33", fontWeight: 500 }}>📍 Google Maps</a>}
-        </div>
-      </div>
+      )}
     </>
   );
 }
