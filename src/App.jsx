@@ -2649,7 +2649,7 @@ function MeScreen({ user, preferences, setPreferences, isAdmin, onBadgeUpdate, a
           { icon: "sliders", label: "Taste preferences", action: () => setView("prefs") },
           { icon: "upload", label: "Export my data", action: () => {} },
           { icon: "trash", label: "Delete account", action: () => {}, fg: "#7A1E33" },
-          { icon: "refresh", label: "Retake the personalisation quiz", action: onStartTour },
+          { icon: "map", label: "Take the tour", action: onStartTour },
           ...(isAdmin ? [{ icon: "wrench", label: "Admin", hint: adminBadge > 0 ? `${adminBadge} pending` : "", action: () => setView("admin") }] : []),
           { icon: "lock", label: "Privacy policy", action: () => window.open("/privacy.html", "_blank", "noopener") },
           { icon: "logout", label: "Sign out", fg: "#7A1E33", action: () => supabase.auth.signOut() },
