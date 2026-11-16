@@ -6023,16 +6023,14 @@ function SharedListView({ list, user, onClose }) {
         {items.length > 0 && (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
             {items.map(it => (
-              <div key={it.id} onClick={() => setDetailItem(it)} style={{ position: "relative", borderRadius: 14, overflow: "hidden", boxShadow: "0 4px 16px rgba(0,0,0,0.12)", background: "#F1EDE4", cursor: "pointer", animation: "popIn 0.25s ease" }}>
-                <div style={{ height: 180, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
-                  {it.photo_url
-                    ? <img src={it.photo_url} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", filter: it.done ? "grayscale(0.6) brightness(0.85)" : "none" }} />
-                    : <span style={{ fontSize: "2.5rem", opacity: it.done ? 0.5 : 1 }}>{CAT_EMOJI[String(it.category || "").toLowerCase()] || "📍"}</span>}
+              <div key={it.id} onClick={() => setDetailItem(it)} style={{ position: "relative", borderRadius: 14, overflow: "hidden", background: "#F1EDE4", cursor: "pointer", animation: "popIn 0.25s ease" }}>
+                <div style={{ height: 240, overflow: "hidden" }}>
+                  {it.photo_url && <img src={it.photo_url} alt="" loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", filter: it.done ? "grayscale(0.6) brightness(0.85)" : "none" }} />}
                 </div>
-                <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 50%, rgba(0,0,0,0.55))", pointerEvents: "none" }} />
-                <div style={{ position: "absolute", bottom: 10, left: 10, right: 10 }}>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: "#fff", textShadow: "0 1px 6px rgba(0,0,0,0.5)", lineHeight: 1.2, textDecoration: it.done ? "line-through" : "none" }}>{it.name}</div>
-                  {it.area && <div style={{ fontSize: 11, color: "rgba(255,255,255,0.82)", marginTop: 2 }}>{it.area}</div>}
+                <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "55%", background: "linear-gradient(rgba(58,11,20,0), rgba(58,11,20,.82))", pointerEvents: "none" }} />
+                <div style={{ position: "absolute", bottom: 12, left: 12, right: 40 }}>
+                  <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 22, color: "#FAF7F2", lineHeight: 1.05, textDecoration: it.done ? "line-through" : "none" }}>{it.name}</div>
+                  {it.area && <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "#E9E4DA", marginTop: 4 }}>{it.area}</div>}
                 </div>
                 <button onClick={(e) => { e.stopPropagation(); toggleDone(it); }} title={it.done ? "Un-tick" : "Tick off"} style={{ position: "absolute", top: 10, right: 10, width: 32, height: 32, borderRadius: "50%", border: it.done ? "none" : "2px solid rgba(255,255,255,0.8)", background: it.done ? "#7A1E33" : "rgba(0,0,0,0.25)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 16, fontWeight: 700, boxShadow: "0 2px 6px rgba(0,0,0,0.25)" }}>{it.done ? "✓" : ""}</button>
                 <button onClick={(e) => { e.stopPropagation(); removeItem(it); }} title="Remove" style={{ position: "absolute", bottom: 10, right: 10, width: 24, height: 24, borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.85)", color: "#b0745a", cursor: "pointer", fontSize: 11, lineHeight: 1, boxShadow: "0 1px 4px rgba(0,0,0,0.15)" }}>✕</button>
@@ -6241,11 +6239,12 @@ function FriendProfile({ user, friend, onClose }) {
         {!openFolder && folderNames.length > 0 && (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: "1.5rem" }}>
             {folderNames.map(f => (
-              <button key={f} onClick={() => setOpenFolder(f)} style={{ borderRadius: 8, overflow: "hidden", boxShadow: "0 2px 8px rgba(0,0,0,0.06)", background: "#fff", border: "none", padding: 0, cursor: "pointer", textAlign: "left" }}>
-                <ListCover items={grouped[f]} height={130} />
-                <div style={{ padding: "10px 12px" }}>
-                  <div style={{ fontSize: 15, fontWeight: 600, color: "#3A0B14", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f}</div>
-                  <div style={{ fontSize: 11, color: "rgba(58,11,20,.45)" }}>{grouped[f].length} spot{grouped[f].length !== 1 ? "s" : ""}</div>
+              <button key={f} onClick={() => setOpenFolder(f)} style={{ position: "relative", height: 220, borderRadius: 14, overflow: "hidden", background: "#7A1E33", border: "none", padding: 0, cursor: "pointer", textAlign: "left" }}>
+                <ListCover items={grouped[f]} height={220} />
+                <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "55%", background: "linear-gradient(rgba(58,11,20,0), rgba(58,11,20,.82))", pointerEvents: "none" }} />
+                <div style={{ position: "absolute", left: 12, right: 12, bottom: 12, pointerEvents: "none" }}>
+                  <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 24, lineHeight: 1.05, color: "#FAF7F2" }}>{f}</div>
+                  <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "#E9E4DA", marginTop: 4 }}>{grouped[f].length} spot{grouped[f].length !== 1 ? "s" : ""}</div>
                 </div>
               </button>
             ))}
@@ -6258,23 +6257,13 @@ function FriendProfile({ user, friend, onClose }) {
           <div style={{ marginTop: "1.25rem" }}>
             <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: "1.1rem", color: "#3A0B14", marginBottom: 12 }}>{openFolder} ({folderSaves.length})</div>
             {folderSaves.map(s => (
-              <div key={s.id} onClick={() => setDetailSpot(s)} style={{ marginBottom: 14, borderRadius: 14, overflow: "hidden", background: "#fff", border: "1px solid rgba(58,11,20,.08)", boxShadow: "0 2px 8px rgba(58,11,20,.04)", cursor: "pointer" }}>
-                <div style={{ position: "relative", height: 200, background: "#F1EDE4" }}>
-                  {s.photo_url && <img src={s.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
-                  <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 45%, rgba(58,11,20,.82))" }} />
-                  <div style={{ position: "absolute", left: 14, right: 14, bottom: 14 }}>
-                    <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 24, lineHeight: 1.05, color: "#FAF7F2", fontStyle: "italic" }}>{s.name}</div>
-                  </div>
-                </div>
-                <div style={{ padding: "12px 14px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <div style={{ fontSize: 12, fontWeight: 500, letterSpacing: "0.06em", textTransform: "uppercase", color: "rgba(58,11,20,.4)" }}>
-                    {[s.area, priceToPounds(s.price), s.google_rating ? `★ ${s.google_rating}` : null].filter(Boolean).join(" · ")}
-                  </div>
+              <PhotoCard key={s.id} v={s} width="100%" height={250} nameSize={26} meta={[s.area, priceToPounds(s.price), s.google_rating ? `${s.google_rating} ★` : null].filter(Boolean).join(" · ")} onClick={() => setDetailSpot(s)} style={{ marginBottom: 14, scrollSnapAlign: "none" }}>
+                <div onClick={e => e.stopPropagation()} style={{ position: "absolute", right: 12, bottom: 12 }}>
                   {isSaved(s)
-                    ? <span style={{ fontSize: 12, color: "#7A1E33", fontWeight: 600 }}>✓ Saved</span>
-                    : <button disabled={busy} onClick={(e) => { e.stopPropagation(); setSavePick(s); }} style={{ border: "1.5px solid #7A1E33", background: "#fff", color: "#7A1E33", borderRadius: 8, padding: "6px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>+ Save</button>}
+                    ? <span style={{ padding: "7px 12px", borderRadius: 8, background: "rgba(250,247,242,.88)", color: "#7A1E33", fontSize: 12.5, fontWeight: 600 }}>Saved</span>
+                    : <button disabled={busy} onClick={() => setSavePick(s)} style={{ border: "none", background: "rgba(250,247,242,.88)", color: "#3A0B14", borderRadius: 8, padding: "7px 12px", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>+ Save</button>}
                 </div>
-              </div>
+              </PhotoCard>
             ))}
           </div>
         )}
