@@ -6859,16 +6859,16 @@ function PeopleScreen({ user, onSavePlan, onShareSaved }) {
 // Steps 1 & 2 open a real saved spot's detail sheet (driven via tourWantsSpot on
 // SavedScreen) so the rating / photos / book button are spotlighted in situ.
 const PRODUCT_TOUR = [
-  { tab: "home", selector: "[data-tour='discover-rows']", title: "Discover", body: "Rows of places picked for you: trending this week, rows built from what you said you like, cheap eats and new openings. Scroll sideways through each row." },
-  { tab: "home", selector: "[data-tour='discover-swipe']", title: "Swipe to discover", body: "Tap here for a deck of places matched to your taste. Heart to save it, cross to skip. Quickest way to fill your saves." },
-  { tab: "home", selector: "[data-tour='save-fab']", title: "Save any place", body: "The + button saves a place from a screenshot, a TikTok or Instagram link, a Google Maps link, or just its name." },
-  { tab: "saved", selector: "[data-tour='saves-lists']", title: "Your saves live here", body: "Everything you save lands here, grouped into lists. Tap a list to open it, or use the map to see it all at once." },
-  { tab: "saved", selector: "[data-tour='spot-rating']", title: "Inside a place", body: "Every place opens like this: swipe the photos at the top, read about it, rate it, and keep your own notes." },
-  { tab: "saved", selector: "[data-tour='spot-book']", title: "Book it in a tap", body: "Go straight to the website or booking page, add it to your calendar, or plan a whole outing around it." },
-  { tab: "saved", selector: "[data-tour='saves-build']", title: "Turn saves into a plan", body: "Any list can become a full day or night out. Answer five quick questions and we route it for you." },
-  { tab: "plans", selector: "[data-tour='plan-cta']", title: "Create a plan", body: "Or start fresh here. Pick a vibe, area and budget, and get an itinerary with times, costs and walking directions." },
-  { tab: "people", selector: "[data-tour='invite']", title: "Add your friends", body: "Add a friend and you'll see what they save. Places you both save show up as matches." },
-  { tab: "people", selector: "[data-tour='shared-lists']", title: "Plan together", body: "Build a bucket list with a friend and tick places off as you go." },
+  { tab: "home", selector: "[data-tour='discover-rows']", title: "Discover: find new places", body: "New places chosen for you, based on your preferences, plus our editors' picks. Trending this week, rows built around what you like, cheap eats and new openings." },
+  { tab: "home", selector: "[data-tour='discover-swipe']", title: "Swipe to discover", body: "A deck of places matched to your taste. Heart to save, cross to skip. The quickest way to find your next favourite." },
+  { tab: "home", selector: "[data-tour='save-fab']", title: "Save a place from anywhere", body: "The + button saves a place from your camera roll, a screenshot, a TikTok or Instagram link, a Google Maps link, or just its name." },
+  { tab: "saved", selector: "[data-tour='saves-lists']", title: "Saves: everything in one place", body: "Your saves from your camera roll, Google Maps, screenshots and links all live here, grouped into lists you can share." },
+  { tab: "saved", selector: "[data-tour='spot-rating']", title: "Inside a place", body: "Swipe the photos, read about it, rate it and keep your own notes. Everything you need before you go." },
+  { tab: "saved", selector: "[data-tour='spot-book']", title: "Book it in a tap", body: "Straight to the website or booking page, into your calendar, or plan a whole outing around it." },
+  { tab: "saved", selector: "[data-tour='saves-build']", title: "Plans: from your list or ours", body: "Turn any list into a full day or night out. Answer five quick questions and we route it for you, with times, costs and walking directions." },
+  { tab: "plans", selector: "[data-tour='plan-cta']", title: "Or start a plan from scratch", body: "No saves needed. Pick a vibe, area and budget and we build the itinerary from our picks." },
+  { tab: "people", selector: "[data-tour='invite']", title: "Friends: do it together", body: "Add friends to see a feed of what they're saving, build bucket lists together, and make plans with them." },
+  { tab: "people", selector: "[data-tour='shared-lists']", title: "Bucket lists with friends", body: "Create a list with a friend, add places from either side, and tick them off as you go." },
 ];
 
 function AppProductTour({ steps, step, onNext, onBack, onDone, onSkip }) {
