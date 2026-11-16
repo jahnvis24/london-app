@@ -1335,21 +1335,45 @@ function ResultScreen({ planId, planSource, result, times, ans, onRestart, onNew
             {(result.stops || []).map((stop, idx) => (
               <div key={idx + "-" + stop.name}>
                 <div className="stop" style={{ animation: swappingIdx === idx ? "cardSwap 0.25s ease" : undefined }}>
-                  <div className="stop-inner" onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(stop.name + " London")}`, "_blank")} style={{ cursor: "pointer" }}>
-                    <div className="stop-top">
-                      <div className="stop-emoji-wrap"><LineIcon name={stopIconName(stop.type)} size={22} color="#3A0B14" /></div>
-                      <div className="stop-body">
-                        <div className="stop-meta">
-                          <span className="stop-time">{stop.time}</span>
-                          <span className="stop-dot" />
-                          <span className="stop-type">{stop.type}</span>
-                          {stop.google_rating && <><span className="stop-dot" /><span style={{ fontSize: 11, fontWeight: 700, color: "#3A0B14", display: "inline-flex", alignItems: "center", gap: 3 }}><svg width="10" height="10" viewBox="0 0 24 24" aria-hidden="true"><path d={LINE_ICONS.star} fill="#7A1E33" /></svg>{stop.google_rating}</span></>}
+                  {(() => {
+                    const open = () => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(stop.name + " London")}`, "_blank");
+                    const photo = stop.photo_url || (dbVenues || []).find(x => x.name && x.name.toLowerCase() === String(stop.name || "").toLowerCase())?.photo_url;
+                    const rating = stop.google_rating && <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontWeight: 700 }}><svg width="11" height="11" viewBox="0 0 24 24" aria-hidden="true"><path d={LINE_ICONS.star} fill={photo ? "#BAD2E8" : "#7A1E33"} /></svg>{stop.google_rating}</span>;
+                    if (photo) return (
+                      <div onClick={open} style={{ cursor: "pointer" }}>
+                        {/* 16:9 photo with the time, type and rating on it (spec: plan result) */}
+                        <div style={{ position: "relative", height: 200, background: "#F1EDE4" }}>
+                          <img src={photo} alt="" loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                          <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "55%", background: "linear-gradient(rgba(58,11,20,0), rgba(58,11,20,.78))" }} />
+                          <span style={{ position: "absolute", top: 12, left: 12, width: 36, height: 36, borderRadius: 11, background: "rgba(250,247,242,.85)", display: "flex", alignItems: "center", justifyContent: "center" }}><LineIcon name={stopIconName(stop.type)} size={19} color="#3A0B14" /></span>
+                          <div style={{ position: "absolute", left: 14, right: 14, bottom: 12, display: "flex", alignItems: "center", gap: 6, fontSize: 12, letterSpacing: "0.06em", textTransform: "uppercase", color: "#FAF7F2" }}>
+                            <span style={{ fontWeight: 700 }}>{stop.time}</span><span>·</span><span>{stop.type}</span>{rating && <><span>·</span>{rating}</>}
+                          </div>
                         </div>
-                        <div className="stop-name">{stop.name}</div>
-                        <div className="stop-hook">{stop.hook}</div>
+                        <div style={{ padding: "12px 16px 6px" }}>
+                          <div className="stop-name" style={{ fontSize: 24 }}>{stop.name}</div>
+                          <div className="stop-hook">{stop.hook}</div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
+                    );
+                    return (
+                      <div className="stop-inner" onClick={open} style={{ cursor: "pointer" }}>
+                        <div className="stop-top">
+                          <div className="stop-emoji-wrap"><LineIcon name={stopIconName(stop.type)} size={22} color="#3A0B14" /></div>
+                          <div className="stop-body">
+                            <div className="stop-meta">
+                              <span className="stop-time">{stop.time}</span>
+                              <span className="stop-dot" />
+                              <span className="stop-type">{stop.type}</span>
+                              {rating && <><span className="stop-dot" /><span style={{ fontSize: 11, color: "#3A0B14" }}>{rating}</span></>}
+                            </div>
+                            <div className="stop-name">{stop.name}</div>
+                            <div className="stop-hook">{stop.hook}</div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                   <div className="stop-footer">
                     <div className="stop-pills-row">
                       {stop.price_range && <span className="stop-pill">{stop.price_range}</span>}
@@ -1463,12 +1487,12 @@ function MyPlansScreen({ plans, onViewPlan, onNewPlan, onBarCrawl, onSchedule, d
           const tag = plan.scheduledDate ? `Scheduled ${new Date(plan.scheduledDate).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}` : plan.ans?._barCrawl ? "Bar crawl" : "Draft";
           return (
             <div key={i} onClick={() => onViewPlan(plan)} style={{ marginBottom: 16, cursor: "pointer", overflow: "hidden" }}>
-              <div style={{ position: "relative", height: 180, background: cover ? "#3A0B14" : "linear-gradient(135deg, #3A0B14, #7A1E33)" }}>
-                {cover && <img src={cover} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />}
-                <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 35%, rgba(58,11,20,.82))" }} />
-                <div style={{ position: "absolute", top: 12, left: 12, padding: "4px 9px", background: tint, color: "#FAF7F2", fontSize: 11, fontWeight: 600, letterSpacing: "0.13em", textTransform: "uppercase" }}>{tag}</div>
-                <div style={{ position: "absolute", left: 14, right: 14, bottom: 14 }}>
-                  <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 26, color: "#FAF7F2", lineHeight: 1.1, textShadow: "0 2px 8px rgba(0,0,0,0.5)" }}>{plan.result.title}</div>
+              <div style={{ position: "relative", aspectRatio: "4 / 5", borderRadius: 14, overflow: "hidden", background: cover ? "#3A0B14" : "linear-gradient(135deg, #3A0B14, #7A1E33)" }}>
+                {cover && <img src={cover} alt="" loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />}
+                <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "55%", background: "linear-gradient(rgba(58,11,20,0), rgba(58,11,20,.82))" }} />
+                <div style={{ position: "absolute", top: 12, left: 12, padding: "5px 10px", borderRadius: 8, background: tint, color: "#FAF7F2", fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase" }}>{tag}</div>
+                <div style={{ position: "absolute", left: 16, right: 16, bottom: 16 }}>
+                  <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 30, color: "#FAF7F2", lineHeight: 1.05 }}>{plan.result.title}</div>
                   <div style={{ fontSize: 11, fontWeight: 500, letterSpacing: "0.13em", textTransform: "uppercase", color: "rgba(250,247,242,.68)", marginTop: 6 }}>{stops.length} stop{stops.length !== 1 ? "s" : ""} · {plan.savedAt}</div>
                 </div>
               </div>
@@ -4725,13 +4749,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
                   <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 24, marginBottom: 10 }}>Recently saved</div>
                   <div style={{ display: "flex", gap: 10, overflowX: "auto", scrollbarWidth: "none", paddingBottom: 4 }}>
                     {recent.map(s => (
-                      <div key={s.id} onClick={() => setDetailSpot(s)} style={{ flex: "none", width: 130, cursor: "pointer" }}>
-                        <div style={{ height: 130, borderRadius: 10, overflow: "hidden", background: "#F1EDE4" }}>
-                          {s.photo_url ? <img src={s.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>{CAT_EMOJI[normaliseCategory(s.category)] || "📍"}</div>}
-                        </div>
-                        <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 16, lineHeight: 1.15, marginTop: 6, color: "#3A0B14", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.name}</div>
-                        <div style={{ fontSize: 11, color: "rgba(58,11,20,.4)", marginTop: 2 }}>{s.area || cap(normaliseCategory(s.category))}</div>
-                      </div>
+                      <PhotoCard key={s.id} v={s} width={200} height={250} nameSize={22} meta={s.area || cap(normaliseCategory(s.category))} onClick={() => setDetailSpot(s)} />
                     ))}
                   </div>
                 </div>
@@ -4757,9 +4775,9 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
                 const tints = { "Restaurants": "#7A1E33", "Bars": "#7A1E33", "Cafés": "#7A1E33", "Date night": "#7A1E33" };
                 const tint = tints[f] || "#7A1E33";
                 const fg = "#FAF7F2";
-                const cardH = 158;
+                const cardH = 220;
                 return (
-                  <div key={f} data-tour={fi === 0 ? "saves-list-card" : undefined} onClick={() => setOpenFolder(f)} style={{ cursor: "pointer" }}>
+                  <div key={f} data-tour={fi === 0 ? "saves-list-card" : undefined} onClick={() => setOpenFolder(f)} style={{ cursor: "pointer", position: "relative", height: cardH, borderRadius: 14, overflow: "hidden", background: tint }}>
                     {(() => {
                       const photos = items.filter(s => s.photo_url).map(s => s.photo_url);
                       const ph = { width: "100%", height: "100%", objectFit: "cover", display: "block" };
@@ -4771,25 +4789,28 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
                       if (photos.length === 1) return (
                         <div style={{ height: cardH, position: "relative", overflow: "hidden" }}>
                           <img src={photos[0]} alt="" style={ph} />
-                          <div style={{ position: "absolute", left: 7, top: 7, width: 22, height: 22, background: tint, color: fg, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 15 }}>{f.charAt(0)}</div>
+                          
                         </div>
                       );
                       if (photos.length === 2) return (
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2, height: cardH }}>
-                          <div style={{ position: "relative", overflow: "hidden" }}><img src={photos[0]} alt="" style={ph} /><div style={{ position: "absolute", left: 7, top: 7, width: 22, height: 22, background: tint, color: fg, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 15 }}>{f.charAt(0)}</div></div>
+                          <div style={{ position: "relative", overflow: "hidden" }}><img src={photos[0]} alt="" style={ph} /></div>
                           <div style={{ overflow: "hidden" }}><img src={photos[1]} alt="" style={ph} /></div>
                         </div>
                       );
                       return (
                         <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gridTemplateRows: "1fr 1fr", gap: 2, height: cardH }}>
-                          <div style={{ gridRow: "span 2", position: "relative", overflow: "hidden" }}><img src={photos[0]} alt="" style={ph} /><div style={{ position: "absolute", left: 7, top: 7, width: 22, height: 22, background: tint, color: fg, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 15 }}>{f.charAt(0)}</div></div>
+                          <div style={{ gridRow: "span 2", position: "relative", overflow: "hidden" }}><img src={photos[0]} alt="" style={ph} /></div>
                           <div style={{ overflow: "hidden" }}><img src={photos[1]} alt="" style={ph} /></div>
                           <div style={{ overflow: "hidden" }}><img src={photos[2]} alt="" style={ph} /></div>
                         </div>
                       );
                     })()}
-                    <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 24, lineHeight: 1.1, marginTop: 10 }}>{f}</div>
-                    <div style={{ fontSize: 11, fontWeight: 500, letterSpacing: "0.13em", textTransform: "uppercase", color: "rgba(58,11,20,.45)", marginTop: 4 }}>{items.length} spot{items.length !== 1 ? "s" : ""}</div>
+                    <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "55%", background: "linear-gradient(rgba(58,11,20,0), rgba(58,11,20,.82))", pointerEvents: "none" }} />
+                    <div style={{ position: "absolute", left: 12, right: 12, bottom: 12, pointerEvents: "none" }}>
+                      <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 24, lineHeight: 1.05, color: "#FAF7F2" }}>{f}</div>
+                      <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "#E9E4DA", marginTop: 4 }}>{items.length} spot{items.length !== 1 ? "s" : ""}</div>
+                    </div>
                   </div>
                 );
               })}
@@ -4885,24 +4906,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
             {folderSaves.length > 0 && (
               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                 {folderSaves.map(s => (
-                  <div key={s.id} onClick={() => setDetailSpot(s)} style={{ borderRadius: 14, overflow: "hidden", background: "#fff", border: "1px solid rgba(58,11,20,.08)", boxShadow: "0 2px 8px rgba(58,11,20,.04)", cursor: "pointer" }}>
-                    <div style={{ position: "relative", height: 200, background: "#F1EDE4" }}>
-                      {s.photo_url && <img src={s.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
-                      <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 45%, rgba(58,11,20,.82))" }} />
-                      <div style={{ position: "absolute", left: 14, right: 14, bottom: 14 }}>
-                        <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 24, lineHeight: 1.05, color: "#FAF7F2", fontStyle: "italic" }}>{s.name}</div>
-                      </div>
-                    </div>
-                    <div style={{ padding: "12px 14px" }}>
-                      <div style={{ fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", fontSize: 12, fontWeight: 500, letterSpacing: "0.06em", textTransform: "uppercase", color: "rgba(58,11,20,.4)", display: "flex", alignItems: "center", gap: 5 }}>
-                        {s.area && <span>{s.area.toUpperCase()}</span>}
-                        {s.area && s.price && <span style={{ color: "rgba(58,11,20,.2)" }}>·</span>}
-                        {s.price && <span>{priceToPounds(s.price) || s.price}</span>}
-                        {s.google_rating && <><span style={{ color: "rgba(58,11,20,.2)" }}>·</span><span style={{ color: "#D4CFC4" }}>★</span> <span>{s.google_rating}</span></>}
-                      </div>
-                      {s.comment && <div style={{ fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", fontSize: 13, lineHeight: 1.4, color: "rgba(58,11,20,.45)", marginTop: 6, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{s.comment}</div>}
-                    </div>
-                  </div>
+                  <PhotoCard key={s.id} v={s} width="100%" height={250} nameSize={26} meta={[s.area, priceToPounds(s.price) || s.price, s.google_rating ? `${s.google_rating} ★` : null].filter(Boolean).join(" · ")} onClick={() => setDetailSpot(s)} style={{ scrollSnapAlign: "none" }} />
                 ))}
               </div>
             )}
@@ -6475,7 +6479,7 @@ function FriendFeed({ user, friends, onOpenFriend, onGoTab }) {
   }
 
   const ink = "#3A0B14", muted = "rgba(58,11,20,.6)";
-  const card = { background: "#fff", borderRadius: 20, padding: 14, display: "flex", flexDirection: "column", gap: 12, border: "1px solid rgba(58,11,20,.07)" };
+  const card = { display: "flex", flexDirection: "column", gap: 10 };
   const serif = "'Instrument Serif', Georgia, serif";
   const pill = (dark) => ({ height: 36, padding: "0 14px", borderRadius: 8, border: dark ? "none" : `1px solid ${ink}`, background: dark ? ink : "transparent", color: dark ? "#FAF7F2" : ink, fontSize: 13, fontWeight: 600, cursor: "pointer", flex: "none" });
   const savedPill = { ...pill(false), border: "none", background: "#F1EDE4", display: "inline-flex", alignItems: "center", cursor: "default" };
@@ -6560,17 +6564,13 @@ function FriendFeed({ user, friends, onOpenFriend, onGoTab }) {
             {g.items.length >= 3 ? (
               <div style={card}>
                 <Who uid={g.uid} at={g.at}><strong>{nameOf(g.uid)}</strong> saved {g.items.length} places{folder ? <> to <strong>{folder}</strong></> : ""}</Who>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 6 }}>
-                  {g.items.slice(0, g.items.length > 4 ? 3 : 4).map(i => (
-                    <button key={i.id} onClick={() => setDetail(i)} style={{ display: "flex", flexDirection: "column", gap: 5, padding: 0, border: "none", background: "none", cursor: "pointer", textAlign: "left", color: ink, minWidth: 0 }}>
-                      <div style={{ width: "100%", aspectRatio: "1", borderRadius: 10, background: "#E9E4DA", overflow: "hidden" }}>{i.photo_url && <img src={i.photo_url} alt={i.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />}</div>
-                    </button>
+                <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gridTemplateRows: "1fr 1fr", gap: 6, height: 220 }}>
+                  {g.items.slice(0, 3).map((i, k) => (
+                    <div key={i.id} onClick={() => k === 2 && g.items.length > 3 ? onOpenFriend(friendById[g.uid] || { id: g.uid }) : setDetail(i)} style={{ gridRow: k === 0 ? "1 / 3" : undefined, position: "relative", borderRadius: k === 0 ? 14 : 11, overflow: "hidden", background: "#E9E4DA", cursor: "pointer" }}>
+                      {i.photo_url && <img src={i.photo_url} alt={i.name} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />}
+                      {k === 2 && g.items.length > 3 && <div style={{ position: "absolute", inset: 0, background: "rgba(58,11,20,.55)", color: "#FAF7F2", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 19, fontWeight: 600 }}>+{g.items.length - 3}</div>}
+                    </div>
                   ))}
-                  {g.items.length > 4 && (
-                    <button onClick={() => onOpenFriend(friendById[g.uid] || { id: g.uid })} style={{ display: "flex", flexDirection: "column", gap: 5, padding: 0, border: "none", background: "none", cursor: "pointer", color: muted }}>
-                      <div style={{ width: "100%", aspectRatio: "1", borderRadius: 10, background: ink, color: "#FAF7F2", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 600 }}>+{g.items.length - 3}</div>
-                    </button>
-                  )}
                 </div>
               </div>
             ) : g.items.map(it => {
@@ -6578,16 +6578,10 @@ function FriendFeed({ user, friends, onOpenFriend, onGoTab }) {
               return (
                 <div key={it.id} style={card}>
                   <Who uid={g.uid} at={it.created_at}><strong>{nameOf(g.uid)}</strong> saved {it.is_event ? "an event" : "a place"}{it.folder ? <> to <strong>{it.folder}</strong></> : ""}</Who>
-                  <div onClick={() => setDetail(it)} style={{ display: "flex", gap: 12, alignItems: "center", cursor: "pointer" }}>
-                    <FeedThumb spot={it} />
-                    <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
-                      <div style={{ fontFamily: serif, fontSize: 24, lineHeight: 1.1 }}>{it.name}</div>
-                      <div style={{ fontSize: 13, color: muted }}>{[it.category, it.area, it.google_rating ? `${it.google_rating} ★` : null].filter(Boolean).join(" · ")}</div>
-                      {n >= 3 && <div style={{ fontSize: 12, color: muted }}>Saved by {n} people</div>}
-                    </div>
-                    <SaveBtn s={it} />
-                  </div>
-                  {it.note && <div style={{ background: "#FAF7F2", borderRadius: 12, padding: "10px 12px", fontSize: 15, lineHeight: 1.45 }}><span style={{ fontFamily: serif, fontSize: 23, lineHeight: 0, color: "#7A1E33", verticalAlign: -4 }}>“</span> {it.note}</div>}
+                  <PhotoCard v={it} width="100%" height={250} nameSize={26} meta={[it.category, it.area, it.google_rating ? `${it.google_rating} ★` : null, n >= 3 ? `saved by ${n} people` : null].filter(Boolean).join(" · ")} onClick={() => setDetail(it)} style={{ scrollSnapAlign: "none" }}>
+                    <div onClick={e => e.stopPropagation()} style={{ position: "absolute", right: 12, bottom: 12 }}><SaveBtn s={it} /></div>
+                  </PhotoCard>
+                  {it.note && <div style={{ background: "#FFFBF5", border: "1px solid rgba(58,11,20,.1)", borderRadius: 12, padding: "10px 12px", fontSize: 15, lineHeight: 1.45 }}><span style={{ fontFamily: serif, fontSize: 23, lineHeight: 0, color: "#7A1E33", verticalAlign: -4 }}>“</span> {it.note}</div>}
                 </div>
               );
             })}

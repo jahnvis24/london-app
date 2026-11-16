@@ -174,10 +174,10 @@ Every row shows 8 cards and "See all" opens the full list. The current "Because 
 |---|---|---|
 | 0 | Mock the new Discover, spot page, plan and feed on the brand board, next to the current screens. Done 2026-11-15: panels "Plan stops with photos", "Discover · rows of picks", "Spot page and People feed" | Owner signs off on the look |
 | 1 | Sharper photos (technical work items 1 and 2). Item 1 done 2026-11-16: 952 of 953 catalogue venues re-fetched at 1200px, 0 failures, photos are about 400KB each so lazy loading (item 3) matters | Spot-check 20 venues on a phone |
-| 2 | Type scale across the app | Screenshots of every tab |
-| 3 | Discover and spot page | Owner and friends test it |
-| 4 | Plan result and plans list | Make two plans and check them |
-| 5 | Saves and People | Check with real lists and a friend |
+| 2 | Type scale across the app. Live 2026-11-16 | Screenshots of every tab |
+| 3 | Discover and spot page. Built 2026-11-16, on localhost for review | Owner and friends test it |
+| 4 | Plan result and plans list. Built 2026-11-16, on localhost for review | Make two plans and check them |
+| 5 | Saves and People. Built 2026-11-16, on localhost for review. Not done: the compact "List" view inside a list and the "Map" tab there (the existing map card stays) | Check with real lists and a friend |
 
 Each phase is its own commit and push, so the two laptops stay in sync.
 
