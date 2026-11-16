@@ -1457,18 +1457,17 @@ function MyPlansScreen({ plans, onViewPlan, onNewPlan, onBarCrawl, onSchedule, d
   const summary = [upcoming && `${upcoming} upcoming`, shared && `${shared} shared`, plans.filter(p => !p.scheduledDate).length && `${plans.filter(p => !p.scheduledDate).length} draft`].filter(Boolean).join(" · ") || `${plans.length} plan${plans.length !== 1 ? "s" : ""}`;
 
   if (plans.length === 0) return (
-    <div style={{ animation: "screenIn .32s cubic-bezier(.2,.9,.3,1)" }}>
+    <div style={{ animation: "screenIn .32s cubic-bezier(.2,.9,.3,1)", minHeight: "70vh", display: "flex", flexDirection: "column" }}>
       <div style={{ padding: "0 22px 4px" }}>
         <div style={{ fontFamily: "'Unbounded', sans-serif", fontWeight: 900, fontSize: 30, lineHeight: 1.05, letterSpacing: "-0.03em", color: "#7A1E33" }}>Plans<span style={{ color: "#BAD2E8" }}>.</span></div>
-        <div style={{ display: "flex", gap: 8, marginTop: 14, marginBottom: 10 }}>
-          <button onClick={onNewPlan} style={{ padding: "9px 14px", background: "#3A0B14", color: "#BAD2E8", border: "none", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>+ New plan</button>
-          {onBarCrawl && <button onClick={onBarCrawl} style={{ padding: "9px 14px", border: "1px solid #7A1E33", color: "#7A1E33", background: "none", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>+ Bar crawl</button>}
-        </div>
       </div>
-      <div className="empty-state">
+      {/* No plans yet: the New plan button sits in the centre of the page */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, padding: "0 32px", textAlign: "center" }}>
         <div className="empty-icon"><LineIcon name="map" size={40} color="#7A1E33" /></div>
-        <div className="empty-title">No plans yet</div>
-        <div className="empty-sub">Answer 5 quick questions and get a personalised London itinerary.</div>
+        <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 28, lineHeight: 1.1 }}>No plans yet</div>
+        <div style={{ fontSize: 15, color: "rgba(58,11,20,.55)", lineHeight: 1.5, maxWidth: 280 }}>Answer 5 quick questions and get a personalised London itinerary.</div>
+        <button data-tour="plan-cta" onClick={onNewPlan} style={{ marginTop: 8, padding: "15px 28px", background: "#3A0B14", color: "#BAD2E8", border: "none", borderRadius: 8, fontSize: 16, fontWeight: 600, cursor: "pointer" }}>+ New plan</button>
+        {onBarCrawl && <button onClick={onBarCrawl} style={{ padding: "11px 20px", border: "1.5px solid #7A1E33", color: "#7A1E33", background: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>+ Bar crawl</button>}
       </div>
     </div>
   );
@@ -5357,16 +5356,18 @@ function Onboarding({ user, dbVenues, onDone }) {
     const norm = (t) => String(t || "").toLowerCase().replace(/[’']/g, "");
     const starters = OB_STARTERS.map(n => photo.find(v => norm(v.name).startsWith(norm(n)))).filter(Boolean);
     // Starters fill the first slots, then the taste axes pick the rest at random.
-    const pick = (pred) => {
-      const st = starters.find(v => !used.has(v.id));
+    const pick = (pred, cat) => {
+      const st = starters.find(v => !used.has(v.id) && (!cat || v.category === cat));
       if (st) { used.add(st.id); return st; }
-      const c = photo.filter(v => !used.has(v.id) && pred(v)); if (!c.length) return null; const v = c[Math.floor(Math.random() * c.length)]; used.add(v.id); return v;
+      const c = photo.filter(v => !used.has(v.id) && (!cat || v.category === cat) && pred(v)); if (!c.length) return null; const v = c[Math.floor(Math.random() * c.length)]; used.add(v.id); return v;
     };
+    // Each pair compares like with like: bar vs bar, restaurant vs restaurant.
     const out = [];
     for (const ax of OB_AXES) {
       const a = pick(ax.A) || pick(() => true);
-      const b = pick(ax.B) || pick(() => true);
-      if (a && b) out.push({ key: ax.key, a, b });
+      if (!a) continue;
+      const b = pick(ax.B, a.category) || pick(() => true, a.category) || pick(ax.B) || pick(() => true);
+      if (b) out.push({ key: ax.key, a, b });
     }
     setPairs(out);
   }, [dbVenues]);
@@ -5465,12 +5466,12 @@ function Onboarding({ user, dbVenues, onDone }) {
               <p style={sub}>Tap the one you'd rather go to. <span style={{ color: "#c9bfae" }}>({axisIdx + 1} of {pairs.length})</span></p>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 {[["a", pair.a], ["b", pair.b]].map(([pole, v]) => { const on = tapped === v.id; return (
-                  <button key={v.id} onClick={() => tapChoose(pair, pole, v)} style={{ position: "relative", border: "none", padding: 0, borderRadius: 8, overflow: "hidden", cursor: "pointer", height: 175, background: "#e9e4da", animation: on ? "tapPulse 0.3s ease" : undefined, outline: on ? "3px solid #7A1E33" : "none", outlineOffset: -3, opacity: tapped && !on ? 0.5 : 1, transition: "opacity 0.2s" }}>
+                  <button key={v.id} onClick={() => tapChoose(pair, pole, v)} style={{ position: "relative", border: "none", padding: 0, borderRadius: 14, overflow: "hidden", cursor: "pointer", aspectRatio: "4 / 3", width: "100%", background: "#e9e4da", animation: on ? "tapPulse 0.3s ease" : undefined, outline: on ? "3px solid #7A1E33" : "none", outlineOffset: -3, opacity: tapped && !on ? 0.5 : 1, transition: "opacity 0.2s" }}>
                     <img src={v.photo_url} alt={v.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                    <div style={{ position: "absolute", inset: 0, background: on ? "rgba(114,106,78,0.32)" : "linear-gradient(transparent 45%, rgba(0,0,0,0.72))" }} />
-                    <div style={{ position: "absolute", left: 14, right: 14, bottom: 12, textAlign: "left", color: "#fff" }}>
-                      <div style={{ fontSize: "1rem", fontWeight: 700, textShadow: "0 1px 5px rgba(0,0,0,0.8)" }}>{v.name}</div>
-                      <div style={{ fontSize: 11, opacity: 0.9, textShadow: "0 1px 4px rgba(0,0,0,0.8)" }}>{[cap(v.category || ""), v.area].filter(Boolean).join(" · ")}</div>
+                    <div style={{ position: "absolute", inset: 0, background: on ? "rgba(58,11,20,0.35)" : "linear-gradient(rgba(58,11,20,0) 45%, rgba(58,11,20,.82))" }} />
+                    <div style={{ position: "absolute", left: 14, right: 14, bottom: 14, textAlign: "left", color: "#FAF7F2" }}>
+                      <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 26, lineHeight: 1.05 }}>{v.name}</div>
+                      <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "#E9E4DA", marginTop: 5 }}>{[cap(v.category || ""), v.area].filter(Boolean).join(" · ")}</div>
                     </div>
                     {on && <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}><div style={{ width: 62, height: 62, borderRadius: "50%", background: "#fff", color: "#7A1E33", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.9rem", animation: "burstIn 0.3s ease", boxShadow: "0 4px 16px rgba(0,0,0,0.3)" }}>♥</div></div>}
                   </button>
