@@ -2461,7 +2461,38 @@ function PreferencesScreen({ preferences, setPreferences, user }) {
 }
 
 // Profile / settings hub — folds in "For me" (prefs) and Admin so they're off the nav bar.
-function MeScreen({ user, preferences, setPreferences, isAdmin, onBadgeUpdate, adminBadge, onStartTour, onStartImportTour }) {
+function MeScreen({ user, preferences, setPreferences, isAdmin, onBadgeUpdate, adminBadge, onStartTour, onStartImportTour, onRetakeQuiz }) {
+  // Export and delete go through api/gdpr.mjs; identity comes from the signed-in token.
+  const [gdprBusy, setGdprBusy] = useState(false);
+  async function exportData() {
+    if (gdprBusy) return;
+    setGdprBusy(true);
+    try {
+      const r = await fetch("/api/gdpr", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "export" }) });
+      const j = await r.json();
+      if (!r.ok || !j.found) throw new Error(j.error || "Export failed");
+      const blob = new Blob([JSON.stringify(j.data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a"); a.href = url; a.download = `curated-export-${new Date().toISOString().slice(0, 10)}.json`; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    } catch (e) { alert("Couldn't export your data: " + e.message); }
+    setGdprBusy(false);
+  }
+  async function deleteAccount() {
+    if (gdprBusy) return;
+    if (!window.confirm("Delete your account? This removes your saves, plans, lists, ratings and friends for good. It can't be undone.")) return;
+    const typed = window.prompt('Type DELETE to confirm.');
+    if (typed !== "DELETE") return;
+    setGdprBusy(true);
+    try {
+      const r = await fetch("/api/gdpr", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "delete" }) });
+      const j = await r.json();
+      if (!r.ok || !j.deleted) throw new Error(j.error || "Delete failed");
+      try { localStorage.clear(); } catch {}
+      await supabase.auth.signOut();
+      window.location.href = "/";
+    } catch (e) { alert("Couldn't delete your account: " + e.message); setGdprBusy(false); }
+  }
   const [view, setView] = useState(null);
   const [viewFriend, setViewFriend] = useState(null);
   const displayName = user?.user_metadata?.full_name || (user?.email ? user.email.split("@")[0] : "You");
@@ -2647,9 +2678,10 @@ function MeScreen({ user, preferences, setPreferences, isAdmin, onBadgeUpdate, a
       <div style={{ padding: "0 22px", display: "flex", flexDirection: "column" }}>
         {[
           { icon: "sliders", label: "Taste preferences", action: () => setView("prefs") },
-          { icon: "upload", label: "Export my data", action: () => {} },
-          { icon: "trash", label: "Delete account", action: () => {}, fg: "#7A1E33" },
+          { icon: "upload", label: gdprBusy ? "Preparing your export…" : "Export my data", action: exportData },
+          { icon: "refresh", label: "Retake the personalisation quiz", action: onRetakeQuiz },
           { icon: "map", label: "Take the tour", action: onStartTour },
+          { icon: "trash", label: "Delete account", action: deleteAccount, fg: "#7A1E33" },
           ...(isAdmin ? [{ icon: "wrench", label: "Admin", hint: adminBadge > 0 ? `${adminBadge} pending` : "", action: () => setView("admin") }] : []),
           { icon: "lock", label: "Privacy policy", action: () => window.open("/privacy.html", "_blank", "noopener") },
           { icon: "logout", label: "Sign out", fg: "#7A1E33", action: () => supabase.auth.signOut() },
@@ -7549,7 +7581,7 @@ export default function App() {
           )}
           <SavedScreen user={user} visible={activeTab === "saved"} tourWantsSpot={tourStep === 4 || tourStep === 5} replayImportSignal={importSignal} dbVenues={dbVenues} openSignal={captureSignal} calendarSignal={calSignal} onShare={setShareItem} plans={plans} onBuildPlan={(saves) => { setResult(null); setError(null); setViewingPlan(null); setActiveTab("home"); setAns({ savedVenues: saves }); setQuizStep(0); }} onBarCrawl={(seed) => setBarCrawl({ seed: seed || [] })} />
         </div>
-        {activeTab === "me" && <MeScreen user={user} preferences={preferences} setPreferences={setPreferences} isAdmin={isAdmin} onBadgeUpdate={setAdminBadge} adminBadge={adminBadge} onStartTour={() => setTourStep(0)} onStartImportTour={() => { setTourStep(-1); setActiveTab("saved"); setImportSignal(n => n + 1); }} />}
+        {activeTab === "me" && <MeScreen user={user} preferences={preferences} setPreferences={setPreferences} isAdmin={isAdmin} onBadgeUpdate={setAdminBadge} adminBadge={adminBadge} onStartTour={() => setTourStep(0)} onRetakeQuiz={async () => { try { localStorage.removeItem("cl_onboarded_" + user.id); } catch {} try { await supabase.auth.updateUser({ data: { onboarded: false } }); } catch {} setOnboardDone(false); setActiveTab("saved"); window.scrollTo(0, 0); }} onStartImportTour={() => { setTourStep(-1); setActiveTab("saved"); setImportSignal(n => n + 1); }} />}
 
         {!showQuiz && !showResult && !showViewingPlan && (
           <button className="capture-fab" data-tour="save-fab" aria-label="Save a place"
