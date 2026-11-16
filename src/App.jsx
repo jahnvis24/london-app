@@ -526,6 +526,8 @@ const styles = `
   .inner-star4 { animation: spin-cw 10s linear infinite; }
   @keyframes spin-cw { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
   @keyframes spin { to{transform:rotate(360deg)} }
+  @keyframes twinkle { 0%,100%{opacity:.15;transform:scale(.6) rotate(0deg)} 50%{opacity:1;transform:scale(1.15) rotate(20deg)} }
+  @keyframes logoIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:none} }
   @keyframes heartBurst { 0%{opacity:0;transform:scale(.3)} 30%{opacity:1;transform:scale(1.25)} 100%{opacity:0;transform:scale(1.7)} }
   @media (prefers-reduced-motion: reduce) {
     .shape-circle, .inner-oval, .inner-starburst, .inner-star4 { animation: none; }
@@ -5178,7 +5180,15 @@ function Splash({ onStart }) {
   return (
     <div style={{ minHeight: "100vh", background: "#3A0B14", color: "#FAF7F2", display: "flex", flexDirection: "column", maxWidth: 420, margin: "0 auto", animation: "screenIn .4s cubic-bezier(.2,.9,.3,1)" }}>
       <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, padding: "0 40px", textAlign: "center" }}>
-        <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 54, lineHeight: 1, letterSpacing: "-0.02em" }}>Curated</div>
+        {/* cuRATED. wordmark with twinkling stars around it */}
+        <div style={{ position: "relative", padding: "40px 30px", animation: "logoIn .7s cubic-bezier(.2,.9,.3,1)" }}>
+          {[[6, 8, 22, 0], [88, 12, 16, .6], [0, 62, 14, 1.1], [94, 70, 20, .3], [48, -6, 12, .9], [30, 100, 16, 1.4], [72, 98, 12, .2]].map(([x, y, size, delay], i) => (
+            <svg key={i} width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" style={{ position: "absolute", left: `${x}%`, top: `${y}%`, marginLeft: -size / 2, marginTop: -size / 2, animation: `twinkle ${2.2 + (i % 3) * 0.5}s ease-in-out ${delay}s infinite`, color: i % 3 === 0 ? "#BAD2E8" : "#FAF7F2" }}>
+              <path d="M12 2c.6 5.6 4.4 9.4 10 10-5.6.6-9.4 4.4-10 10-.6-5.6-4.4-9.4-10-10 5.6-.6 9.4-4.4 10-10z" fill="currentColor" />
+            </svg>
+          ))}
+          <div aria-label="cuRATED" style={{ fontFamily: "'Unbounded', sans-serif", fontWeight: 400, fontSize: 44, lineHeight: 1, letterSpacing: "-0.03em", color: "#FAF7F2", whiteSpace: "nowrap" }}>cu<span style={{ fontWeight: 900, color: "#BAD2E8" }}>RATED</span><span style={{ fontWeight: 900, color: "#FAF7F2" }}>.</span></div>
+        </div>
         <div style={{ fontSize: 11, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(250,247,242,.55)" }}>Your saved places, actually planned</div>
       </div>
       <div style={{ padding: "0 28px 54px" }}>
