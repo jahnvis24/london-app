@@ -2886,6 +2886,7 @@ function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan, user, onSpotUpdate
   const [agg, setAgg] = useState({ avg: null, count: 0 });
   const venueKey = spot.google_place_id || (spot.name || "").toLowerCase().trim();
   const [photos, setPhotos] = useState(spot.photo_url ? [spot.photo_url] : []);
+  const [heroIdx, setHeroIdx] = useState(0);
   useEffect(() => {
     if (!spot.name) return;
     let active = true;
@@ -2942,67 +2943,63 @@ function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan, user, onSpotUpdate
   const tabBtnStyle = { display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "16px 10px", background: "#FAF7F2", borderRadius: 14, border: "none", cursor: "pointer", flex: 1, boxShadow: "0 2px 8px rgba(58,11,20,.06)" };
   return (
     <div ref={swipeRef} style={{ position: "fixed", inset: 0, zIndex: 1200, background: "#FAF7F2", overflowY: "auto", animation: "screenIn .32s cubic-bezier(.2,.9,.3,1)" }}>
-      {/* Photo hero — fills top, swipeable */}
-      <div style={{ position: "relative", height: 380, background: photos.length ? "#3A0B14" : (CAT_COLOURS[cat] || "#7A1E33") }}>
-        <div style={{ display: "flex", height: "100%", overflowX: "auto", scrollSnapType: "x mandatory", scrollbarWidth: "none", WebkitOverflowScrolling: "touch", position: "relative", zIndex: 2 }}>
-          {photos.map((p, i) => <img key={i} src={p} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", flexShrink: 0, scrollSnapAlign: "start", pointerEvents: "none" }} />)}
+      {/* Photo hero: 62% of the screen, a swipeable carousel with a thin progress line (spec Y14) */}
+      <div style={{ position: "relative", height: "62vh", minHeight: 420, background: photos.length ? "#3A0B14" : (CAT_COLOURS[cat] || "#7A1E33") }}>
+        <div onScroll={e => { const el = e.currentTarget; setHeroIdx(Math.round(el.scrollLeft / Math.max(1, el.clientWidth))); }} style={{ display: "flex", height: "100%", overflowX: "auto", scrollSnapType: "x mandatory", scrollbarWidth: "none", WebkitOverflowScrolling: "touch", position: "relative", zIndex: 2 }}>
+          {photos.map((p, i) => <img key={i} src={p} alt="" loading={i === 0 ? "eager" : "lazy"} decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover", flexShrink: 0, scrollSnapAlign: "start", pointerEvents: "none" }} />)}
         </div>
-        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 40%, rgba(58,11,20,.88))", pointerEvents: "none", zIndex: 3 }} />
-        <button onClick={onClose} style={{ position: "absolute", top: 16, left: 20, width: 40, height: 40, borderRadius: "50%", border: "none", background: "rgba(58,11,20,.35)", backdropFilter: "blur(8px)", cursor: "pointer", fontSize: 19, display: "flex", alignItems: "center", justifyContent: "center", color: "#FAF7F2", zIndex: 4 }}>←</button>
-        {photos.length > 1 && (
-          <div style={{ position: "absolute", top: "50%", right: 14, transform: "translateY(-50%)", width: 36, height: 36, borderRadius: "50%", background: "rgba(250,247,242,.85)", display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none", zIndex: 4, boxShadow: "0 2px 8px rgba(0,0,0,.12)" }}>
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#3A0B14" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
-          </div>
+        <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "55%", background: "linear-gradient(rgba(58,11,20,0), rgba(58,11,20,.82))", pointerEvents: "none", zIndex: 3 }} />
+        <button onClick={onClose} aria-label="Back" style={{ position: "absolute", top: 18, left: 16, width: 40, height: 40, borderRadius: "50%", border: "none", background: "rgba(250,247,242,.88)", backdropFilter: "blur(8px)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 4 }}>
+          <svg width="18" height="18" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" fill="none" stroke="#3A0B14" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+        </button>
+        {onSaveToBoard && (
+          <button onClick={savedToBoard ? undefined : onSaveToBoard} aria-label={savedToBoard ? "Saved" : "Save"} style={{ position: "absolute", right: 16, bottom: 64, width: 42, height: 42, borderRadius: "50%", border: "none", background: "rgba(250,247,242,.88)", backdropFilter: "blur(8px)", cursor: savedToBoard ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 4 }}>
+            <svg width="20" height="20" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" fill={savedToBoard ? "#7A1E33" : "none"} stroke="#7A1E33" strokeWidth="1.8" /></svg>
+          </button>
         )}
-        <div style={{ position: "absolute", left: 22, right: 22, bottom: 20, pointerEvents: "none", zIndex: 4 }}>
+        <div style={{ position: "absolute", left: 22, right: onSaveToBoard ? 72 : 22, bottom: 56, pointerEvents: "none", zIndex: 4 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-            <span style={{ ...sf, fontSize: 12, fontWeight: 500, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(250,247,242,.55)" }}>{[cap(cat), spot.area].filter(Boolean).join(" · ")}</span>
+            <span style={{ ...sf, fontSize: 12, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#E9E4DA" }}>{[cap(cat), spot.area, pounds].filter(Boolean).join(" · ")}</span>
             {isTopPick(spot) && <TopPickBadge style={{ fontSize: 11, padding: "4px 9px" }} />}
           </div>
-          <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 42, lineHeight: 0.95, color: "#FAF7F2", letterSpacing: "-0.02em", fontStyle: "italic" }}>{spot.name}</div>
+          <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 36, lineHeight: 1, color: "#FAF7F2", letterSpacing: "-0.01em" }}>{spot.name}</div>
         </div>
+        {photos.length > 1 && (
+          <div style={{ position: "absolute", left: 22, right: 22, bottom: 34, display: "flex", gap: 4, zIndex: 4, pointerEvents: "none" }}>
+            {photos.map((_, i) => <span key={i} style={{ flex: 1, height: 2, borderRadius: 1, background: i === heroIdx ? "#FAF7F2" : "rgba(250,247,242,.4)", transition: "background .2s" }} />)}
+          </div>
+        )}
       </div>
 
-      <div style={{ padding: "16px 22px 0" }}>
-        {/* Community stats */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
-          {agg.count > 0 && <span style={{ ...sf, fontSize: 13, color: "rgba(58,11,20,.45)" }}>{agg.count} {agg.count === 1 ? "rating" : "ratings"}{agg.avg ? ` · ${agg.avg.toFixed(1)}` : ""}</span>}
-          {pounds && <span style={{ ...sf, fontSize: 13, color: "rgba(58,11,20,.45)" }}>{pounds}</span>}
-          {spot.source_type && <span style={{ ...sf, fontSize: 12, padding: "3px 10px", borderRadius: 8, background: "#F1EDE4", color: "rgba(58,11,20,.45)" }}>{SOURCE_LABEL[spot.source_type] || `saved via ${spot.source_type}`}</span>}
+      {/* Cream sheet sliding up over the photo (spec Y7, Y15) */}
+      <div style={{ position: "relative", zIndex: 5, marginTop: -22, background: "#FAF7F2", borderRadius: "22px 22px 0 0", padding: "20px 22px 0" }}>
+        {/* Rating line */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap", ...sf, fontSize: 15, fontWeight: 600, color: "#3A0B14" }}>
+          {(agg.avg || spot.google_rating) && <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><svg width="14" height="14" viewBox="0 0 24 24"><path d={LINE_ICONS.star} fill="#7A1E33" /></svg>{agg.avg ? agg.avg.toFixed(1) : spot.google_rating}</span>}
+          {agg.count > 0 && <span style={{ color: "rgba(58,11,20,.45)", fontWeight: 500 }}>{agg.count} {agg.count === 1 ? "rating" : "ratings"}</span>}
+          {spot.source_type && <span style={{ fontSize: 12, fontWeight: 500, padding: "3px 10px", borderRadius: 8, background: "#F1EDE4", color: "rgba(58,11,20,.45)" }}>{SOURCE_LABEL[spot.source_type] || `saved via ${spot.source_type}`}</span>}
         </div>
 
-        {/* Description — 2 lines, ends with full stop */}
-        <div style={{ ...sf, fontSize: 15, lineHeight: 1.5, color: "rgba(58,11,20,.5)", marginBottom: 16, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{(() => { const c = spot.comment || "No description yet."; return c.endsWith(".") ? c : c + "."; })()}</div>
+        {/* Description, full */}
+        <div style={{ ...sf, fontSize: 15, lineHeight: 1.55, color: "rgba(58,11,20,.72)", marginBottom: 16 }}>{(() => { const c = spot.comment || "No description yet."; return c.endsWith(".") ? c : c + "."; })()}</div>
 
-        {/* Vibe tags */}
-        {/* Top Pick shows in the header above, so it's left out of the chips here. */}
+        {/* Outline pill links */}
+        <div style={{ display: "flex", gap: 8, overflowX: "auto", scrollbarWidth: "none", marginBottom: 18, paddingBottom: 2 }}>
+          {spot.website && <a href={spot.website} target="_blank" rel="noreferrer" style={{ ...sf, flex: "none", padding: "8px 13px", borderRadius: 8, border: "1.5px solid #3A0B14", color: "#3A0B14", fontSize: 13, fontWeight: 600, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6 }}><LineIcon name="link" size={14} />Website ↗</a>}
+          {spot.source_url && (spot.source_type === "tiktok" || spot.source_type === "instagram") && <a href={spot.source_url} target="_blank" rel="noreferrer" style={{ ...sf, flex: "none", padding: "8px 13px", borderRadius: 8, border: "1.5px solid #3A0B14", color: "#3A0B14", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>{spot.source_type === "tiktok" ? "TikTok" : "Instagram"} ↗</a>}
+          {onMakePlan && <button onClick={() => onMakePlan(spot)} style={{ ...sf, flex: "none", padding: "8px 13px", borderRadius: 8, border: "1.5px solid #3A0B14", background: "transparent", color: "#3A0B14", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}><LineIcon name="map" size={14} />Plan around this</button>}
+          <a href={gcalUrl} target="_blank" rel="noreferrer" style={{ ...sf, flex: "none", padding: "8px 13px", borderRadius: 8, border: "1.5px solid #3A0B14", color: "#3A0B14", fontSize: 13, fontWeight: 600, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6 }}><LineIcon name="calendar" size={14} />Schedule</a>
+          <button onClick={() => { const text = `${spot.name}${spot.area ? ` — ${spot.area}` : ""}${spot.comment ? `\n${spot.comment}` : ""}${googleMapsUrl(spot) ? `\n${googleMapsUrl(spot)}` : ""}`; if (navigator.share) navigator.share({ title: spot.name, text }).catch(() => {}); else { navigator.clipboard?.writeText(text); setInfoToast("Copied to clipboard"); setTimeout(() => setInfoToast(null), 2500); } }} style={{ ...sf, flex: "none", padding: "8px 13px", borderRadius: 8, border: "1.5px solid #3A0B14", background: "transparent", color: "#3A0B14", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}><LineIcon name="chat" size={14} />Share</button>
+        </div>
+
+        {/* Vibe tags (Top pick shows on the photo) */}
         {spot.vibe_tags?.some(t => t !== "top_pick") && (
           <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginBottom: 18 }}>
             {spot.vibe_tags.filter(t => t !== "top_pick").map((t, i) => (
-              <span key={i} style={tagStyle(t, { ...sf, padding: "5px 13px", borderRadius: 8, border: "1px solid rgba(58,11,20,.12)", fontSize: 13, color: "rgba(58,11,20,.55)" })}>{tagLabel(t)}</span>
+              <span key={i} style={{ ...sf, padding: "5px 13px", borderRadius: 8, background: "#BAD2E8", color: "#3A0B14", fontSize: 13, fontWeight: 600 }}>{tagLabel(t)}</span>
             ))}
           </div>
         )}
-
-        {/* Action tabs: Book, Directions, Schedule, Share */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8, marginBottom: 18 }}>
-          <div onClick={() => { if (bookUrl) window.open(bookUrl, "_blank"); }} style={tabBtnStyle}>
-            <svg viewBox="0 0 24 24" style={iconStyle}><path d="M3 2v7c0 1.1.9 2 2 2h4c1.1 0 2-.9 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2l-5 5-5-5v13a4 4 0 004 4h2a4 4 0 004-4z"/></svg>
-            <span style={{ ...sf, fontSize: 12, fontWeight: 600, color: "#3A0B14" }}>Book</span>
-          </div>
-          <a href={googleMapsUrl(spot)} target="_blank" rel="noreferrer" style={{ ...tabBtnStyle, textDecoration: "none" }}>
-            <svg viewBox="0 0 24 24" style={iconStyle}><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>
-            <span style={{ ...sf, fontSize: 12, fontWeight: 600, color: "#3A0B14" }}>Directions</span>
-          </a>
-          <a href={gcalUrl} target="_blank" rel="noreferrer" style={{ ...tabBtnStyle, textDecoration: "none" }}>
-            <svg viewBox="0 0 24 24" style={iconStyle}><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/></svg>
-            <span style={{ ...sf, fontSize: 12, fontWeight: 600, color: "#3A0B14" }}>Schedule</span>
-          </a>
-          <div onClick={() => { const text = `${spot.name}${spot.area ? ` — ${spot.area}` : ""}${spot.comment ? `\n${spot.comment}` : ""}${googleMapsUrl(spot) ? `\n${googleMapsUrl(spot)}` : ""}`; if (navigator.share) navigator.share({ title: spot.name, text }).catch(() => {}); else { navigator.clipboard?.writeText(text); setInfoToast("Copied to clipboard"); setTimeout(() => setInfoToast(null), 2500); } }} style={tabBtnStyle}>
-            <svg viewBox="0 0 24 24" style={iconStyle}><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.59 13.51l6.83 3.98"/><path d="M15.41 6.51l-6.82 3.98"/></svg>
-            <span style={{ ...sf, fontSize: 12, fontWeight: 600, color: "#3A0B14" }}>Share</span>
-          </div>
-        </div>
 
         {/* Address — no timings */}
         {spot.address && (
@@ -3013,18 +3010,6 @@ function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan, user, onSpotUpdate
             </div>
           </div>
         )}
-
-        {/* CTA buttons: Plan + Save */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 18 }}>
-          {onMakePlan && <button onClick={() => onMakePlan(spot)} style={{ ...sf, padding: 15, background: "#3A0B14", color: "#BAD2E8", border: "none", fontSize: 15, fontWeight: 600, cursor: "pointer", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>✦ Plan around this</button>}
-          {onSaveToBoard && !savedToBoard ? (
-            <button onClick={onSaveToBoard} style={{ ...sf, padding: 15, border: "1.5px solid rgba(58,11,20,.16)", background: "#FAF7F2", fontSize: 15, fontWeight: 600, cursor: "pointer", borderRadius: 10 }}>+ Add to saves</button>
-          ) : onAddToBucketList ? (
-            <button onClick={() => onAddToBucketList(spot)} style={{ ...sf, padding: 15, border: "1.5px solid rgba(58,11,20,.16)", background: "#FAF7F2", fontSize: 15, fontWeight: 600, cursor: "pointer", borderRadius: 10 }}>Add to a list</button>
-          ) : (
-            <div style={{ ...sf, padding: 15, background: "#F1EDE4", borderRadius: 10, fontSize: 15, fontWeight: 600, color: "rgba(58,11,20,.4)", textAlign: "center" }}>{savedToBoard ? "✓ Saved" : "Saved"}</div>
-          )}
-        </div>
 
         {/* Been here? — matches screenshot */}
         <div data-tour="spot-rating" style={{ padding: 18, borderRadius: 14, background: "#FAF7F2", border: "1px solid rgba(58,11,20,.1)", boxShadow: "0 2px 8px rgba(58,11,20,.04)", marginBottom: 18 }}>
@@ -3052,7 +3037,23 @@ function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan, user, onSpotUpdate
           <div style={{ ...sf, fontSize: 13, color: "rgba(58,11,20,.42)", marginBottom: 18 }}>Community average: <span style={{ color: "#3A0B14", fontWeight: 600 }}>{agg.avg?.toFixed(1)}</span> from {agg.count} {agg.count === 1 ? "review" : "reviews"}</div>
         )}
 
-        <div style={{ height: 100 }} />
+        <div style={{ height: 110 }} />
+      </div>
+
+      {/* Pinned action bar (spec Y8): one main action plus a round Directions button */}
+      <div style={{ position: "fixed", left: "50%", transform: "translateX(-50%)", bottom: 0, width: "100%", maxWidth: 420, padding: "14px 22px calc(18px + env(safe-area-inset-bottom))", background: "linear-gradient(rgba(250,247,242,0), #FAF7F2 40%)", display: "flex", gap: 10, alignItems: "center", zIndex: 1300, boxSizing: "border-box" }}>
+        {onSaveToBoard && !savedToBoard ? (
+          <button onClick={onSaveToBoard} style={{ ...sf, flex: 1, padding: 15, background: "#3A0B14", color: "#BAD2E8", border: "none", fontSize: 15, fontWeight: 600, cursor: "pointer", borderRadius: 8 }}>Save spot</button>
+        ) : onAddToBucketList ? (
+          <button onClick={() => onAddToBucketList(spot)} style={{ ...sf, flex: 1, padding: 15, background: "#3A0B14", color: "#BAD2E8", border: "none", fontSize: 15, fontWeight: 600, cursor: "pointer", borderRadius: 8 }}>Add to a list</button>
+        ) : onMakePlan ? (
+          <button onClick={() => onMakePlan(spot)} style={{ ...sf, flex: 1, padding: 15, background: "#3A0B14", color: "#BAD2E8", border: "none", fontSize: 15, fontWeight: 600, cursor: "pointer", borderRadius: 8 }}>Plan around this</button>
+        ) : (
+          <div style={{ ...sf, flex: 1, padding: 15, background: "#F1EDE4", borderRadius: 8, fontSize: 15, fontWeight: 600, color: "rgba(58,11,20,.4)", textAlign: "center" }}>Saved</div>
+        )}
+        <a href={googleMapsUrl(spot)} target="_blank" rel="noreferrer" aria-label="Directions" style={{ width: 50, height: 50, borderRadius: "50%", border: "1.5px solid #3A0B14", background: "#FAF7F2", display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
+          <LineIcon name="pin" size={20} color="#3A0B14" />
+        </a>
       </div>
     </div>
   );
