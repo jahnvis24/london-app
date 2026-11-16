@@ -1890,7 +1890,7 @@ function DiscoverScreen({ preferences, dbVenues: allVenues, onStart, onOpenSpot,
         />
       )}
 
-      <div onClick={() => setSwipeDeck(true)} style={{ margin: "0 22px 18px", padding: "16px 18px", background: "#FFFBF5", color: "#3A0B14", border: "1.5px solid #3A0B14", cursor: "pointer", borderRadius: 14, display: "flex", alignItems: "center", gap: 14 }}>
+      <div data-tour="discover-swipe" onClick={() => setSwipeDeck(true)} style={{ margin: "0 22px 18px", padding: "16px 18px", background: "#FFFBF5", color: "#3A0B14", border: "1.5px solid #3A0B14", cursor: "pointer", borderRadius: 14, display: "flex", alignItems: "center", gap: 14 }}>
         <div style={{ width: 46, height: 46, borderRadius: 12, background: "#7A1E33", color: "#FAF7F2", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, flexShrink: 0 }}>♥</div>
         <div style={{ flex: 1 }}>
           <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 22, lineHeight: 1.1 }}>Swipe to discover</div>
@@ -1905,8 +1905,8 @@ function DiscoverScreen({ preferences, dbVenues: allVenues, onStart, onOpenSpot,
         ))}
       </div>
 
-      {rows.map((row) => (
-        <div key={row.key}>
+      {rows.map((row, ri) => (
+        <div key={row.key} data-tour={ri === 0 ? "discover-rows" : undefined}>
           <div style={{ padding: "0 22px 12px", display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
             <div>
               <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 26, lineHeight: 1.1 }}>{row.title}</div>
@@ -3030,7 +3030,7 @@ function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan, user, onSpotUpdate
         <div style={{ ...sf, fontSize: 15, lineHeight: 1.55, color: "rgba(58,11,20,.72)", marginBottom: 16 }}>{(() => { const c = spot.comment || "No description yet."; return c.endsWith(".") ? c : c + "."; })()}</div>
 
         {/* Outline pill links */}
-        <div style={{ display: "flex", gap: 8, overflowX: "auto", scrollbarWidth: "none", marginBottom: 18, paddingBottom: 2 }}>
+        <div data-tour="spot-book" style={{ display: "flex", gap: 8, overflowX: "auto", scrollbarWidth: "none", marginBottom: 18, paddingBottom: 2 }}>
           {spot.website && <a href={spot.website} target="_blank" rel="noreferrer" style={{ ...sf, flex: "none", padding: "8px 13px", borderRadius: 8, border: "1.5px solid #3A0B14", color: "#3A0B14", fontSize: 13, fontWeight: 600, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6 }}><LineIcon name="link" size={14} />Website ↗</a>}
           {spot.source_url && (spot.source_type === "tiktok" || spot.source_type === "instagram") && <a href={spot.source_url} target="_blank" rel="noreferrer" style={{ ...sf, flex: "none", padding: "8px 13px", borderRadius: 8, border: "1.5px solid #3A0B14", color: "#3A0B14", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>{spot.source_type === "tiktok" ? "TikTok" : "Instagram"} ↗</a>}
           {onMakePlan && <button onClick={() => onMakePlan(spot)} style={{ ...sf, flex: "none", padding: "8px 13px", borderRadius: 8, border: "1.5px solid #3A0B14", background: "transparent", color: "#3A0B14", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}><LineIcon name="map" size={14} />Plan around this</button>}
@@ -6794,7 +6794,7 @@ function PeopleScreen({ user, onSavePlan, onShareSaved }) {
               <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 34, letterSpacing: "0.16em", marginTop: 4 }}>{myCode || "····"}</div>
             </div>
             <div style={{ flex: 1 }} />
-            <button onClick={() => setShowConnect(true)} style={{ padding: "10px 15px", background: "#3A0B14", color: "#BAD2E8", border: "none", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>Add friend</button>
+            <button data-tour="invite" onClick={() => setShowConnect(true)} style={{ padding: "10px 15px", background: "#3A0B14", color: "#BAD2E8", border: "none", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>Add friend</button>
           </div>
 
           {connections.map(c => (
@@ -6859,13 +6859,16 @@ function PeopleScreen({ user, onSavePlan, onShareSaved }) {
 // Steps 1 & 2 open a real saved spot's detail sheet (driven via tourWantsSpot on
 // SavedScreen) so the rating / photos / book button are spotlighted in situ.
 const PRODUCT_TOUR = [
-  { tab: "saved", selector: "[data-tour='saves-lists']", title: "Your saves live here", body: "Everything you capture — screenshots, TikTok, Instagram, or added by hand — lands on your board, grouped into lists." },
-  { tab: "saved", selector: "[data-tour='spot-rating']", title: "Inside a spot", body: "Every saved place opens like this — swipe the photos up top, rate it and see the average, and read the full description below." },
-  { tab: "saved", selector: "[data-tour='spot-book']", title: "Book it in a tap", body: "Go straight to booking or the venue's website — and add it to your calendar right here." },
-  { tab: "saved", selector: "[data-tour='saves-build']", title: "Turn saves into a plan", body: "Any spot — or a whole list — can become a full day or night itinerary. We route it for you." },
-  { tab: "plans", selector: "[data-tour='plan-cta']", title: "Plan a day or night", body: "Or start fresh here. Answer a few quick questions and we'll build the itinerary from scratch." },
-  { tab: "people", selector: "[data-tour='invite']", title: "Add your friends", body: "Share your invite link. Once a friend joins you're connected — and can see each other's saves." },
-  { tab: "people", selector: "[data-tour='shared-lists']", title: "Plan together", body: "Build a shared bucket list with a friend and send spots back and forth — plan your next outing as a team." },
+  { tab: "home", selector: "[data-tour='discover-rows']", title: "Discover", body: "Rows of places picked for you: trending this week, rows built from what you said you like, cheap eats and new openings. Scroll sideways through each row." },
+  { tab: "home", selector: "[data-tour='discover-swipe']", title: "Swipe to discover", body: "Tap here for a deck of places matched to your taste. Heart to save it, cross to skip. Quickest way to fill your saves." },
+  { tab: "home", selector: "[data-tour='save-fab']", title: "Save any place", body: "The + button saves a place from a screenshot, a TikTok or Instagram link, a Google Maps link, or just its name." },
+  { tab: "saved", selector: "[data-tour='saves-lists']", title: "Your saves live here", body: "Everything you save lands here, grouped into lists. Tap a list to open it, or use the map to see it all at once." },
+  { tab: "saved", selector: "[data-tour='spot-rating']", title: "Inside a place", body: "Every place opens like this: swipe the photos at the top, read about it, rate it, and keep your own notes." },
+  { tab: "saved", selector: "[data-tour='spot-book']", title: "Book it in a tap", body: "Go straight to the website or booking page, add it to your calendar, or plan a whole outing around it." },
+  { tab: "saved", selector: "[data-tour='saves-build']", title: "Turn saves into a plan", body: "Any list can become a full day or night out. Answer five quick questions and we route it for you." },
+  { tab: "plans", selector: "[data-tour='plan-cta']", title: "Create a plan", body: "Or start fresh here. Pick a vibe, area and budget, and get an itinerary with times, costs and walking directions." },
+  { tab: "people", selector: "[data-tour='invite']", title: "Add your friends", body: "Add a friend and you'll see what they save. Places you both save show up as matches." },
+  { tab: "people", selector: "[data-tour='shared-lists']", title: "Plan together", body: "Build a bucket list with a friend and tick places off as you go." },
 ];
 
 function AppProductTour({ steps, step, onNext, onBack, onDone, onSkip }) {
@@ -6947,6 +6950,7 @@ export default function App() {
   const [onboardDone, setOnboardDone] = useState(false); // set true when first-run onboarding finishes
   const [splashDone, setSplashDone] = useState(() => { try { return !!localStorage.getItem("cl_splash"); } catch (e) { return false; } });
   const [showStarter, setShowStarter] = useState(false); // "based on what you liked" banner on the board
+  const [tourPrompt, setTourPrompt] = useState(false); // "Want a quick tour?" shown once, right after onboarding
   const [calSignal, setCalSignal] = useState(0); // bump to jump Saves to its Calendar view
   const [quizStep, setQuizStep] = useState(-1);
   const [ans, setAns] = useState({});
@@ -7492,7 +7496,7 @@ export default function App() {
   if (needsOnboarding) return (
     <>
       <style>{styles}</style>
-      <Onboarding user={user} dbVenues={dbVenues} onDone={(seeded) => { setOnboardDone(true); setActiveTab("saved"); if (seeded) setShowStarter(true); }} />
+      <Onboarding user={user} dbVenues={dbVenues} onDone={(seeded) => { setOnboardDone(true); setActiveTab("saved"); if (seeded) setShowStarter(true); setTourPrompt(true); }} />
     </>
   );
 
@@ -7536,12 +7540,12 @@ export default function App() {
               <button onClick={() => setShowStarter(false)} style={{ border: "none", background: "none", color: "rgba(58,11,20,.45)", cursor: "pointer", fontSize: "1.1rem", lineHeight: 1 }}>×</button>
             </div>
           )}
-          <SavedScreen user={user} visible={activeTab === "saved"} tourWantsSpot={tourStep === 1 || tourStep === 2} replayImportSignal={importSignal} dbVenues={dbVenues} openSignal={captureSignal} calendarSignal={calSignal} onShare={setShareItem} plans={plans} onBuildPlan={(saves) => { setResult(null); setError(null); setViewingPlan(null); setActiveTab("home"); setAns({ savedVenues: saves }); setQuizStep(0); }} onBarCrawl={(seed) => setBarCrawl({ seed: seed || [] })} />
+          <SavedScreen user={user} visible={activeTab === "saved"} tourWantsSpot={tourStep === 4 || tourStep === 5} replayImportSignal={importSignal} dbVenues={dbVenues} openSignal={captureSignal} calendarSignal={calSignal} onShare={setShareItem} plans={plans} onBuildPlan={(saves) => { setResult(null); setError(null); setViewingPlan(null); setActiveTab("home"); setAns({ savedVenues: saves }); setQuizStep(0); }} onBarCrawl={(seed) => setBarCrawl({ seed: seed || [] })} />
         </div>
         {activeTab === "me" && <MeScreen user={user} preferences={preferences} setPreferences={setPreferences} isAdmin={isAdmin} onBadgeUpdate={setAdminBadge} adminBadge={adminBadge} onStartTour={() => setTourStep(0)} onStartImportTour={() => { setTourStep(-1); setActiveTab("saved"); setImportSignal(n => n + 1); }} />}
 
         {!showQuiz && !showResult && !showViewingPlan && (
-          <button className="capture-fab" aria-label="Save a place"
+          <button className="capture-fab" data-tour="save-fab" aria-label="Save a place"
             onClick={() => { setActiveTab("saved"); setQuizStep(-1); setViewingPlan(null); setCaptureSignal(n => n + 1); }}>
             +
           </button>
@@ -7584,6 +7588,17 @@ export default function App() {
         }} />}
         {loading && <SparkleLoader label={ans._barCrawl ? "Curating your bar crawl…" : "Curating your plan…"} />}
 
+        {tourPrompt && tourStep < 0 && (
+          <div style={{ position: "fixed", inset: 0, zIndex: 2900, background: "rgba(20,18,14,0.6)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24, animation: "fadeIn .2s" }}>
+            <div style={{ background: "#FAF7F2", borderRadius: 18, padding: "24px 22px 20px", width: "100%", maxWidth: 360, textAlign: "center", animation: "popIn 0.3s cubic-bezier(.2,.9,.3,1)" }}>
+              <div style={{ fontFamily: "'Unbounded', sans-serif", fontWeight: 400, fontSize: 24, letterSpacing: "-0.03em", color: "#3A0B14", marginBottom: 10 }}>cu<span style={{ fontWeight: 900, color: "#7A1E33" }}>RATED</span><span style={{ fontWeight: 900, color: "#BAD2E8" }}>.</span></div>
+              <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 28, lineHeight: 1.1, color: "#3A0B14", marginBottom: 8 }}>Want a quick tour?</div>
+              <div style={{ fontSize: 15, color: "rgba(58,11,20,.6)", lineHeight: 1.5, marginBottom: 18 }}>Two minutes through saving a place, Discover, plans and friends.</div>
+              <button onClick={() => { setTourPrompt(false); setTourStep(0); }} style={{ width: "100%", padding: 15, background: "#3A0B14", color: "#BAD2E8", border: "none", borderRadius: 8, fontSize: 16, fontWeight: 600, cursor: "pointer", marginBottom: 8 }}>Take the tour</button>
+              <button onClick={() => setTourPrompt(false)} style={{ width: "100%", padding: 12, background: "transparent", color: "rgba(58,11,20,.55)", border: "none", fontSize: 15, fontWeight: 600, cursor: "pointer" }}>Not now</button>
+            </div>
+          </div>
+        )}
         {tourStep >= 0 && (
           <AppProductTour
             steps={PRODUCT_TOUR}
