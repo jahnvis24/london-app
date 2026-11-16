@@ -3640,9 +3640,15 @@ function SavedScreen({ user, onBuildPlan, onShare, onBarCrawl, openSignal, calen
   const [captureOpen, setCaptureOpen] = useState(false);
   const [captureTab, setCaptureTab] = useState(null);
   const [discoverMode, setDiscoverMode] = useState(false);
+  // State for the "Discover more" card: declared here, not inside the conditional
+  // render below, because hooks inside a conditional crash React (blank screen).
+  const [cardFace, setCardFace] = useState(0); // 0=photo, 1=description, 2=gallery
+  const [extraPhotos, setExtraPhotos] = useState([]);
+  const [photosLoading, setPhotosLoading] = useState(false);
   const [discoverSeed, setDiscoverSeed] = useState(null);
   const [discoverPairs, setDiscoverPairs] = useState([]);
   const [discoverIdx, setDiscoverIdx] = useState(0);
+  useEffect(() => { setCardFace(0); setExtraPhotos([]); }, [discoverIdx]);
 
   // ── First-run import walkthrough ──────────────────────────────
   const tourBtnRef = useRef(null), tourSelRef = useRef(null), tourSaveRef = useRef(null), tourListRef = useRef(null);
@@ -5039,10 +5045,6 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
           setTimeout(() => { card.style.transition = ""; }, 300);
         }
 
-        const [cardFace, setCardFace] = useState(0); // 0=photo, 1=description, 2=gallery
-        const [extraPhotos, setExtraPhotos] = useState([]);
-        const [photosLoading, setPhotosLoading] = useState(false);
-        useEffect(() => { setCardFace(0); setExtraPhotos([]); }, [discoverIdx]);
         async function loadPhotos() {
           if (extraPhotos.length || !current.google_place_id) return;
           setPhotosLoading(true);
