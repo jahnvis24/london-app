@@ -5298,6 +5298,9 @@ const OB_AXES = [
   { key: "novel", A: v => v.category === "experience" || (v.vibe_tags || []).includes("underground"), B: v => (v.vibe_tags || []).includes("iconic") || (v.vibe_tags || []).includes("cultural") },
 ];
 const OB_STEP_NAMES = ["location", "name", "interests", "vibe", "taste_game"];
+// Venues every new user sees in the this-or-that game (owner's picks, 2026-11-16).
+// Matched by name against the catalogue; any that are missing are skipped.
+const OB_STARTERS = ["Bar Levan", "Brat", "Red Room", "Fatt Pundit", "HOKO Hong Kong Cafe", "Fink's at Clissold House"];
 function Onboarding({ user, dbVenues, onDone }) {
   const [step, setStep] = useState(0);
   const obStart = useRef(Date.now());
@@ -5351,7 +5354,14 @@ function Onboarding({ user, dbVenues, onDone }) {
     if (pairs.length || !(dbVenues || []).length) return;
     const photo = dbVenues.filter(v => v.photo_url && v.name);
     const used = new Set();
-    const pick = (pred) => { const c = photo.filter(v => !used.has(v.id) && pred(v)); if (!c.length) return null; const v = c[Math.floor(Math.random() * c.length)]; used.add(v.id); return v; };
+    const norm = (t) => String(t || "").toLowerCase().replace(/[’']/g, "");
+    const starters = OB_STARTERS.map(n => photo.find(v => norm(v.name).startsWith(norm(n)))).filter(Boolean);
+    // Starters fill the first slots, then the taste axes pick the rest at random.
+    const pick = (pred) => {
+      const st = starters.find(v => !used.has(v.id));
+      if (st) { used.add(st.id); return st; }
+      const c = photo.filter(v => !used.has(v.id) && pred(v)); if (!c.length) return null; const v = c[Math.floor(Math.random() * c.length)]; used.add(v.id); return v;
+    };
     const out = [];
     for (const ax of OB_AXES) {
       const a = pick(ax.A) || pick(() => true);
