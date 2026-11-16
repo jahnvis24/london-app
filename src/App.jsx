@@ -7536,6 +7536,19 @@ export default function App() {
     return () => { try { supabase.removeChannel(channel); } catch (e) {} };
   }, [user]);
 
+  const needsOnboarding = user && !onboardDone && !user.user_metadata?.onboarded && !localStorage.getItem("cl_onboarded_" + user.id);
+  // Hooks must stay above the early returns below (auth loading / signed out), or React
+  // throws "Rendered more hooks than during the previous render" once the session loads.
+  // Existing users (onboarded before the tour prompt existed) get the "Want a quick tour?"
+  // card once, on their next visit. New users get it straight after onboarding instead.
+  useEffect(() => {
+    if (!user || needsOnboarding) return;
+    const key = "cl_tour_prompted_" + user.id;
+    try { if (localStorage.getItem(key)) return; localStorage.setItem(key, "1"); } catch { return; }
+    const t = setTimeout(() => setTourPrompt(true), 900);
+    return () => clearTimeout(t);
+  }, [user?.id, needsOnboarding]);
+
   if (sharedPlan) return (
     <>
       <style>{styles}</style>
@@ -7562,16 +7575,6 @@ export default function App() {
     </>
   );
 
-  const needsOnboarding = user && !onboardDone && !user.user_metadata?.onboarded && !localStorage.getItem("cl_onboarded_" + user.id);
-  // Existing users (onboarded before the tour prompt existed) get the "Want a quick tour?"
-  // card once, on their next visit. New users get it straight after onboarding instead.
-  useEffect(() => {
-    if (!user || needsOnboarding) return;
-    const key = "cl_tour_prompted_" + user.id;
-    try { if (localStorage.getItem(key)) return; localStorage.setItem(key, "1"); } catch { return; }
-    const t = setTimeout(() => setTourPrompt(true), 900);
-    return () => clearTimeout(t);
-  }, [user?.id, needsOnboarding]);
   if (needsOnboarding) return (
     <>
       <style>{styles}</style>
