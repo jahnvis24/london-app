@@ -5572,7 +5572,7 @@ function RatingPrompt({ plan, user, onDismiss, onSubmit }) {
         {!done ? (
           <div>
             <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 30, lineHeight: 1.05, letterSpacing: "-0.015em", marginBottom: 6 }}>How was {plan.result.title}?</div>
-            <div style={{ fontSize: 15, color: "rgba(58,11,20,.55)", marginBottom: 16 }}>Rate the night, then each stop if you like.</div>
+            <div style={{ fontSize: 15, color: "rgba(58,11,20,.55)", marginBottom: 16 }}>Rate the night, then each stop if you like. Say no and we won't ask about this plan again.</div>
 
             <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
               {[1,2,3,4,5].map(n => (
@@ -5599,6 +5599,7 @@ function RatingPrompt({ plan, user, onDismiss, onSubmit }) {
             </div>
 
             <button onClick={submitAndShow} disabled={overall === 0 || submitting} style={{ width: "100%", padding: 16, background: "#3A0B14", color: "#BAD2E8", border: "none", fontSize: 16, fontWeight: 600, cursor: "pointer" }}>{submitting ? "Saving…" : "Submit review"}</button>
+            <button onClick={onDismiss} disabled={submitting} style={{ width: "100%", padding: 14, marginTop: 8, background: "transparent", color: "rgba(58,11,20,.6)", border: "none", fontSize: 15, fontWeight: 500, cursor: "pointer" }}>No thanks</button>
           </div>
         ) : (
           <div style={{ textAlign: "center", padding: "20px 0 8px", animation: "pop .38s cubic-bezier(.2,1.3,.35,1)" }}>
@@ -7153,13 +7154,19 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Check for unrated past plans — only prompt once a plan is a couple of days old.
+  // Check for unrated past plans — only prompt once a plan is at least five days old,
+  // and only once per app load (not every time the plans list changes, which used to
+  // pop the prompt for an older plan right after saving a new one).
+  const ratingCheckedRef = useRef(false);
   useEffect(() => {
-    if (!user || plans.length === 0) return;
-    const reviewed = JSON.parse(localStorage.getItem("cl_reviewed") || "[]");
-    const TWO_DAYS = 2 * 24 * 60 * 60 * 1000;
-    const unrated = plans.find(p => p.id && !reviewed.includes(p.id) && p.createdAt && (Date.now() - p.createdAt) >= TWO_DAYS);
-    if (unrated) setTimeout(() => setRatingPlan(unrated), 1500);
+    if (!user || plans.length === 0 || ratingCheckedRef.current) return;
+    ratingCheckedRef.current = true;
+    let reviewed; try { reviewed = JSON.parse(localStorage.getItem("cl_reviewed") || "[]"); } catch { reviewed = []; }
+    const FIVE_DAYS = 5 * 24 * 60 * 60 * 1000;
+    const unrated = plans.find(p => p.id && !reviewed.includes(p.id) && p.createdAt && (Date.now() - Number(p.createdAt)) >= FIVE_DAYS);
+    if (!unrated) return;
+    const t = setTimeout(() => setRatingPlan(unrated), 1500);
+    return () => clearTimeout(t);
   }, [user, plans]);
 
   // Run generate() once new ans/times have committed (used by the bar-crawl flow).
