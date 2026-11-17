@@ -52,6 +52,22 @@ export function mpReset() {
   try { mixpanel.reset(); } catch {}
 }
 
+// Mark the owner's / testers' accounts (profiles.is_admin) so they can be filtered
+// out of every report. Set as a super property (on every event) and on the profile.
+export function mpSetInternal(isInternal) {
+  if (!ready) return;
+  try {
+    mixpanel.register({ is_internal: !!isInternal });
+    if (isInternal) mixpanel.people.set({ is_internal: true });
+  } catch {}
+}
+
+// Has this device signed in before? Used to tell a returning login from a real
+// signup attempt on the login screen, where we can't know who the person is yet.
+const SEEN_LOGIN_KEY = "cl_mp_has_logged_in";
+export function hasLoggedInBefore() { try { return !!localStorage.getItem(SEEN_LOGIN_KEY); } catch { return false; } }
+export function rememberLoggedIn() { try { localStorage.setItem(SEEN_LOGIN_KEY, "1"); } catch {} }
+
 export function deviceType() {
   const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
   if (/iPhone|iPad|iPod/i.test(ua)) return "iOS";

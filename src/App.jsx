@@ -1,6 +1,6 @@
 import { Fragment, useState, useEffect, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
-import { mp, mpIdentify, mpReset, deviceType, utm, acquisitionSource, saveType, rememberShareOpen, shareConversion } from "./analytics.js";
+import { mp, mpIdentify, mpReset, mpSetInternal, hasLoggedInBefore, rememberLoggedIn, deviceType, utm, acquisitionSource, saveType, rememberShareOpen, shareConversion } from "./analytics.js";
 
 // ── SUPABASE ─────────────────────────────────────────────────
 const supabase = createClient(
@@ -5242,10 +5242,18 @@ function LoginScreen({ onLogin }) {
   const [resent, setResent] = useState(false); // brief "code re-sent" confirmation
   useEffect(() => { if (cooldown <= 0) return; const t = setTimeout(() => setCooldown(c => c - 1), 1000); return () => clearTimeout(t); }, [cooldown]);
 
+  // The login screen serves both new and returning people. A device that has signed
+  // in before fires login_started instead of signup_started, so repeat logins don't
+  // inflate the signup funnel.
+  function mpAuthStarted(method) {
+    const returning = hasLoggedInBefore();
+    mp(returning ? "login_started" : "signup_started", { acquisition_source: acquisitionSource(), device_os: deviceType(), user_type: returning ? "returning" : "new_signup", signup_method: method, ...utm() });
+  }
+
   async function signInWithGoogle() {
     setLoading(true);
     setError(null);
-    mp("signup_started", { acquisition_source: acquisitionSource(), device_os: deviceType(), user_type: "new_signup", signup_method: "google", ...utm() });
+    mpAuthStarted("google");
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       // Keep any ?invite / ?blist / ?plan param through the round-trip.
@@ -5258,7 +5266,7 @@ function LoginScreen({ onLogin }) {
     const addr = email.trim().toLowerCase();
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(addr)) { setError("Enter a valid email address."); return; }
     setOtpBusy(true); setError(null);
-    if (!isResend) mp("signup_started", { acquisition_source: acquisitionSource(), device_os: deviceType(), user_type: "new_signup", signup_method: "email", ...utm() });
+    if (!isResend) mpAuthStarted("email");
     const { error } = await supabase.auth.signInWithOtp({ email: addr, options: { shouldCreateUser: true } });
     setOtpBusy(false);
     if (error) {
@@ -5439,8 +5447,13 @@ function Onboarding({ user, dbVenues, onDone }) {
     mp("taste_game_completed", { taste_profile_score: Math.round(100 * Object.keys(finalChoices).length / Math.max(1, pairs.length)), onboarding_session_duration_sec: Math.round((Date.now() - obStart.current) / 1000), attributed_source: acquisitionSource() });
     if (likedVenues.length) {
       const FOLDER = { restaurant: "Restaurants", cafe: "Cafés", bar: "Bars", nightlife: "Nightlife", market: "Markets", outdoor: "Outdoor", museum: "Museums", gallery: "Galleries", experience: "Experiences", event: "Events" };
-      const rows = likedVenues.map(v => { const { id, user_id, created_at, ...rest } = v; return { ...rest, user_id: user.id, folder: FOLDER[String(v.category || "").toLowerCase()] || "Other", status: "pending" }; });
-      try { await supabase.from("experiences").insert(rows); } catch (e) {}
+      const rows = likedVenues.map(v => { const { id, user_id, created_at, ...rest } = v; return { ...rest, user_id: user.id, folder: FOLDER[String(v.category || "").toLowerCase()] || "Other", status: "pending", source_type: "quiz" }; });
+      try {
+        const { error } = await supabase.from("experiences").insert(rows);
+        // Quiz picks are real saves: count them like any other so Mixpanel's save
+        // funnel matches the database.
+        if (!error) for (const v of likedVenues) mpPlaceSaved(user, { save_method: "quiz", place_category: v.category, area: v.area });
+      } catch (e) {}
     }
     try { localStorage.setItem("cl_onboarded_" + user.id, "1"); localStorage.setItem("cl_interests", JSON.stringify(interests)); localStorage.setItem("cl_vibe", JSON.stringify(vibe)); } catch (e) {}
     setSaving(false);
@@ -7062,8 +7075,9 @@ export default function App() {
   useEffect(() => {
     if (!user?.id) { setIsAdmin(false); return; }
     (async () => {
-      const { data } = await supabase.from("profiles").select("is_admin").eq("id", user.id).maybeSingle();
+      const { data } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(); // "*" so a not-yet-migrated is_internal column can't break the admin check
       setIsAdmin(!!data?.is_admin);
+      mpSetInternal(!!data?.is_admin || !!data?.is_internal);
     })();
   }, [user?.id]);
 
@@ -7143,6 +7157,7 @@ export default function App() {
         trackLogin(session?.user);
         const u = session?.user;
         mpIdentify(u?.id);
+        rememberLoggedIn();
         // Brand-new account: created within the last minute of this sign-in.
         if (u?.created_at && Date.now() - new Date(u.created_at).getTime() < 60000) {
           mp("signup_completed", { signup_method: u.app_metadata?.provider || "email", device_os: deviceType(), acquisition_source: acquisitionSource(), timestamp_utc: new Date().toISOString() });
