@@ -7180,11 +7180,13 @@ export default function App() {
   //  - never in a session where the tour prompt or tour appeared (they used to stack,
   //    and on a fresh install the review sheet covered the tour)
   //  - skipping plans already reviewed on any device (plan_reviews) or dismissed here
+  // Switched off for now. Set to true to bring the review sheet back.
+  const REVIEW_PROMPT_ENABLED = false;
   const ratingCheckedRef = useRef(false);
   const tourSeenRef = useRef(false);
   useEffect(() => { if (tourPrompt || tourStep >= 0) tourSeenRef.current = true; }, [tourPrompt, tourStep]);
   useEffect(() => {
-    if (!user || plans.length === 0 || ratingCheckedRef.current) return;
+    if (!REVIEW_PROMPT_ENABLED || !user || plans.length === 0 || ratingCheckedRef.current) return;
     ratingCheckedRef.current = true;
     (async () => {
       // Give the tour prompt (shown ~1s after load) a chance to claim this session first.
