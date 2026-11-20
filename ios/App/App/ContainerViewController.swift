@@ -1,9 +1,8 @@
 import UIKit
 import Capacitor
 
-/// Hosts the Capacitor web view inside the safe area, so nothing in the web page can
-/// draw or scroll under the status bar / notch or the home indicator. The strips
-/// above and below are plain native colour.
+/// Hosts the Capacitor web view below the status bar / notch, so nothing in the web
+/// page can draw or scroll under it. The strip above is plain native colour.
 class ContainerViewController: UIViewController {
     let bridgeViewController = BridgeViewController()
 
@@ -19,8 +18,11 @@ class ContainerViewController: UIViewController {
 
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
-        // Full width, between the status bar / notch and the home indicator.
-        bridgeViewController.view.frame = view.safeAreaLayoutGuide.layoutFrame
+        // Below the status bar / notch, down to the very bottom of the screen: the web
+        // app's 88px tab bar is designed to run under the home indicator, like a native
+        // tab bar. (Bounce is off, so page content can't scroll into that area either.)
+        let top = view.safeAreaInsets.top
+        bridgeViewController.view.frame = CGRect(x: 0, y: top, width: view.bounds.width, height: view.bounds.height - top)
     }
 
     override var childForStatusBarStyle: UIViewController? { bridgeViewController }
