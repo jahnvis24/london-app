@@ -33,3 +33,9 @@ dist-ssr
 # local reference recordings (repo is public)
 Video.mov
 *.mov
+
+# iOS app (Capacitor)
+dist-native
+ios/App/Pods
+ios/App/build
+ios/DerivedData

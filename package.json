@@ -8,10 +8,15 @@
     "proxy": "node server.js",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "build:native": "vite build --mode native --outDir dist-native",
+    "ios:sync": "npm run build:native && cap sync ios",
+    "ios:open": "cap open ios"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.96.0",
+    "@capacitor/core": "^8.6.2",
+    "@capacitor/ios": "^8.6.2",
     "@supabase/supabase-js": "^2.106.0",
     "@vercel/blob": "^2.4.0",
     "@vercel/node": "^5.8.2",
@@ -25,6 +30,7 @@
     "sharp": "^0.35.3"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.6.2",
     "@eslint/js": "^10.0.1",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
