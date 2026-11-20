@@ -1540,7 +1540,7 @@ function PlanDetailView({ plan, onClose, onNewPlan, dbVenues, onUpdateResult, on
   );
 }
 
-function SwipeDeck({ venues, preferences, onClose, onSave, onUnsave, onOpenSpot }) {
+function SwipeDeck({ venues, preferences, onClose, onSave, onUnsave, onOpenSpot, title = "Discover", subtitle, doneLabel = "Back to Discover" }) {
   const [deck, setDeck] = useState(() => [...venues]);
   const [gone, setGone] = useState([]);
   const [lastAction, setLastAction] = useState(null);
@@ -1664,7 +1664,7 @@ function SwipeDeck({ venues, preferences, onClose, onSave, onUnsave, onOpenSpot 
     <div style={{ position: "fixed", inset: 0, zIndex: 1300, background: "#FAF7F2", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", animation: "fadeIn .2s" }}>
       <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 32, textAlign: "center", marginBottom: 12 }}>You've seen them all!</div>
       <div style={{ fontSize: 16, color: "rgba(58,11,20,.5)", textAlign: "center", marginBottom: 24 }}>{savedCount} saved · {skippedCount} skipped</div>
-      <button onClick={onClose} style={{ padding: "14px 32px", background: "#3A0B14", color: "#BAD2E8", border: "none", fontSize: 16, fontWeight: 600, cursor: "pointer" }}>Back to Discover</button>
+      <button onClick={onClose} style={{ padding: "14px 32px", background: "#3A0B14", color: "#BAD2E8", border: "none", fontSize: 16, fontWeight: 600, cursor: "pointer" }}>{doneLabel}</button>
     </div>
   );
 
@@ -1672,9 +1672,10 @@ function SwipeDeck({ venues, preferences, onClose, onSave, onUnsave, onOpenSpot 
     <div style={{ position: "fixed", inset: 0, zIndex: 1300, background: "#FAF7F2", display: "flex", flexDirection: "column", animation: "fadeIn .2s" }}>
       <div style={{ padding: "14px 22px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 16, fontWeight: 600, cursor: "pointer", color: "#3A0B14" }}>← Back</button>
-        <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 24, fontStyle: "italic" }}>Discover</div>
+        <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 24, fontStyle: "italic", textAlign: "center" }}>{title}</div>
         <div style={{ width: 50 }} />
       </div>
+      {subtitle && <div style={{ padding: "0 28px 6px", textAlign: "center", fontSize: 13, lineHeight: 1.4, color: "#7A1E33" }}>{subtitle}</div>}
 
       <div style={{ flex: 1, position: "relative", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 22px" }}>
         {next && (
@@ -3728,13 +3729,47 @@ function SavedScreen({ user, onBuildPlan, onShare, onBarCrawl, openSignal, calen
   }, [discoverMode]);
   // State for the "Discover more" card: declared here, not inside the conditional
   // render below, because hooks inside a conditional crash React (blank screen).
-  const [cardFace, setCardFace] = useState(0); // 0=photo, 1=description, 2=gallery
-  const [extraPhotos, setExtraPhotos] = useState([]);
-  const [photosLoading, setPhotosLoading] = useState(false);
-  const [discoverSeed, setDiscoverSeed] = useState(null);
+  // "More like your saves": same swipe screen as Discover's deck, but the cards are
+  // picked from what this person saves most (categories, vibes, areas).
   const [discoverPairs, setDiscoverPairs] = useState([]);
-  const [discoverIdx, setDiscoverIdx] = useState(0);
-  useEffect(() => { setCardFace(0); setExtraPhotos([]); }, [discoverIdx]);
+  const [discoverWhy, setDiscoverWhy] = useState("");
+  useEffect(() => {
+    if (!discoverMode) { setDiscoverPairs([]); return; }
+    const savedKeysHere = new Set(saves.map(s => String(s.name || "").toLowerCase()));
+    const savedCats = saves.map(s => (s.category || "").toLowerCase()).filter(Boolean);
+    const savedVibes = saves.flatMap(s => s.vibe_tags || []);
+    const seedAreas = saves.map(s => (s.zone || s.area || "").toLowerCase()).filter(Boolean);
+    const countTop = (arr, n) => [...arr.reduce((m, x) => m.set(x, (m.get(x) || 0) + 1), new Map()).entries()].sort((a, b) => b[1] - a[1]).slice(0, n).map(e => e[0]);
+    const topCats = countTop(savedCats, 3);
+    const topVibes = [...new Set(savedVibes)].slice(0, 8);
+    const scored = (dbVenues || [])
+      .filter(v => v.photo_url && v.name && !v.is_event && !savedKeysHere.has(String(v.name).toLowerCase()))
+      .map(v => {
+        let sc = 0;
+        if (topCats.includes((v.category || "").toLowerCase())) sc += 5;
+        if ((v.vibe_tags || []).some(t => topVibes.includes(t))) sc += 3;
+        if (seedAreas.includes((v.zone || v.area || "").toLowerCase())) sc += 2;
+        if (v.google_rating >= 4.3) sc += 1;
+        return { ...v, _score: sc + Math.random() * 0.5 };
+      })
+      .sort((a, b) => b._score - a._score).slice(0, 20);
+    if (!scored.length) { setDiscoverMode(false); return; }
+    const CAT_WORD = { restaurant: "restaurants", cafe: "cafés", bar: "bars", nightlife: "nights out", market: "markets", outdoor: "outdoor spots", museum: "museums", gallery: "galleries", experience: "experiences" };
+    const cats = topCats.slice(0, 2).map(c => CAT_WORD[c]).filter(Boolean);
+    const zone = countTop(saves.map(s => s.zone).filter(Boolean), 1)[0];
+    setDiscoverWhy(cats.length ? `Because you save a lot of ${cats.join(" and ")}${zone ? ` in ${zone} London` : ""}` : "Picked from what you've saved");
+    setDiscoverPairs(scored);
+  }, [discoverMode]);
+  async function saveMoreLike(v) {
+    const row = { user_id: user.id, name: v.name, address: v.address, area: v.area, zone: v.zone, category: v.category, price: v.price, vibe_tags: v.vibe_tags || [], comment: v.comment, lat: v.lat, lng: v.lng, google_place_id: v.google_place_id, google_rating: v.google_rating, photo_url: v.photo_url, source_type: "discover", status: "pending" };
+    const { data, error } = await supabase.from("experiences").insert(row).select("id").single();
+    if (error) return null;
+    mpPlaceSaved(user, { save_method: "tap_save", place_category: v.category, area: v.area });
+    return data?.id || null;
+  }
+  async function unsaveMoreLike(id) {
+    if (id) await supabase.from("experiences").delete().eq("id", id).eq("user_id", user.id);
+  }
 
   // ── First-run import walkthrough ──────────────────────────────
   const tourBtnRef = useRef(null), tourSelRef = useRef(null), tourSaveRef = useRef(null), tourListRef = useRef(null);
@@ -4938,7 +4973,7 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
             )}
             <div style={{ display: "flex", gap: 10, marginTop: "1rem" }}>
               <button data-tour="saves-build" className="btn btn-teal" style={{ marginTop: 0, flex: 1 }} onClick={() => onBuildPlan(saves)}>Build a plan ✦</button>
-              <button className="btn-outline" style={{ marginTop: 0, flex: 1 }} onClick={() => setDiscoverMode(true)}>Discover more?</button>
+              <button className="btn-outline" style={{ marginTop: 0, flex: 1 }} onClick={() => setDiscoverMode(true)}>More like your saves</button>
             </div>
           </>
         )}
@@ -5090,142 +5125,17 @@ If multiple distinct venues are present, return a JSON array of such objects.`;
         </div>
       )}
 
-      {discoverMode && (() => {
-        if (!discoverPairs.length) {
-          const seedSpots = discoverSeed || saves;
-          const savedIds = new Set(saves.map(s => s.id));
-          const savedCats = seedSpots.map(s => (s.category || "").toLowerCase()).filter(Boolean);
-          const savedVibes = seedSpots.flatMap(s => s.vibe_tags || []);
-          const seedAreas = seedSpots.map(s => (s.zone || s.area || "").toLowerCase()).filter(Boolean);
-          const topCats = [...new Map(savedCats.map(c => [c, savedCats.filter(x => x === c).length])).entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(e => e[0]);
-          const topVibes = [...new Set(savedVibes)].slice(0, 8);
-          const candidates = (dbVenues || []).filter(v => v.photo_url && v.name && !savedIds.has(v.id));
-          const scored = candidates.map(v => {
-            let s = 0;
-            if (topCats.includes((v.category || "").toLowerCase())) s += 5;
-            if ((v.vibe_tags || []).some(t => topVibes.includes(t))) s += 3;
-            if (seedAreas.includes((v.zone || v.area || "").toLowerCase())) s += 2;
-            if (v.google_rating >= 4.3) s += 1;
-            return { ...v, _score: s + Math.random() * 0.5 };
-          }).sort((a, b) => b._score - a._score).slice(0, 20);
-          if (scored.length) { setDiscoverPairs(scored); setDiscoverIdx(0); }
-          else { setDiscoverMode(false); return null; }
-        }
-        const current = discoverPairs[discoverIdx];
-        if (!current) { setDiscoverMode(false); return null; }
-
-        function advance() {
-          if (discoverIdx < discoverPairs.length - 1) setDiscoverIdx(discoverIdx + 1);
-          else { setDiscoverMode(false); setDiscoverPairs([]); setDiscoverSeed(null); loadSaves(); }
-        }
-        async function saveVenue() {
-          haptic(12); blip(660);
-          const v = current;
-          const row = { user_id: user.id, name: v.name, address: v.address, area: v.area, zone: v.zone, category: v.category, price: v.price, vibe_tags: v.vibe_tags || [], comment: v.comment, lat: v.lat, lng: v.lng, google_place_id: v.google_place_id, google_rating: v.google_rating, photo_url: v.photo_url, source_type: "discover", status: "pending" };
-          try { await supabase.from("experiences").insert(row); mpPlaceSaved(user, { save_method: "tap_save", place_category: v.category, area: v.area }); } catch {}
-          advance();
-        }
-
-        // Swipe handling
-        let startX = 0, currentX = 0, swiping = false;
-        function onTouchStart(e) { startX = e.touches[0].clientX; currentX = 0; swiping = true; }
-        function onTouchMove(e) { if (!swiping) return; currentX = e.touches[0].clientX - startX; const card = e.currentTarget; card.style.transform = `translateX(${currentX}px) rotate(${currentX * 0.05}deg)`; card.style.opacity = Math.max(0.5, 1 - Math.abs(currentX) / 400); }
-        function onTouchEnd(e) {
-          swiping = false; const card = e.currentTarget; card.style.transition = "transform 0.3s, opacity 0.3s";
-          if (currentX > 100) { card.style.transform = "translateX(400px) rotate(15deg)"; card.style.opacity = "0"; setTimeout(saveVenue, 250); }
-          else if (currentX < -100) { card.style.transform = "translateX(-400px) rotate(-15deg)"; card.style.opacity = "0"; setTimeout(advance, 250); }
-          else { card.style.transform = ""; card.style.opacity = ""; }
-          setTimeout(() => { card.style.transition = ""; }, 300);
-        }
-
-        async function loadPhotos() {
-          if (extraPhotos.length || !current.google_place_id) return;
-          setPhotosLoading(true);
-          try {
-            const r = await fetch("/api/saved-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool: "photos", place_id: current.google_place_id }) });
-            const j = await r.json();
-            if (j.found) setExtraPhotos(j.urls || []);
-          } catch {}
-          setPhotosLoading(false);
-        }
-        function tapCard() {
-          if (cardFace === 0) setCardFace(1);
-          else if (cardFace === 1) { setCardFace(2); loadPhotos(); }
-          else setCardFace(0);
-        }
-        return (
-          <div style={{ position: "fixed", inset: 0, background: "#3A0B14", zIndex: 1300, display: "flex", flexDirection: "column" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "max(1.25rem, env(safe-area-inset-top)) 1.25rem 0" }}>
-              <button onClick={() => { setDiscoverMode(false); setDiscoverPairs([]); setDiscoverSeed(null); loadSaves(); }} style={{ border: "none", background: "none", fontSize: 15, fontWeight: 600, color: "rgba(255,255,255,0.8)", cursor: "pointer" }}>← Done</button>
-              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>{discoverIdx + 1} / {discoverPairs.length}</div>
-            </div>
-
-            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 1.25rem", position: "relative" }}>
-              <div style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", fontSize: "1.2rem", color: "rgba(255,255,255,0.2)", pointerEvents: "none" }}>‹</div>
-              <div style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", fontSize: "1.2rem", color: "rgba(255,255,255,0.2)", pointerEvents: "none" }}>›</div>
-              {(() => {
-                const vibeMap = { chill: "Laid-back vibes", romantic: "Date-night worthy", chaotic: "Beautifully chaotic", cultural: "A proper cultural hit", fancy: "Dress up for this one", hidden_gems: "One the locals keep quiet", social: "Bring the whole crew", solo: "Perfect solo mission", foodie: "Serious food credentials", aesthetic: "Looks incredible", iconic: "A London icon", underground: "Under the radar", outdoor: "Fresh air guaranteed" };
-                const vibeDesc = (current.vibe_tags || []).slice(0, 2).map(t => vibeMap[t] || t.replace(/_/g, " ")).join(". ") + ".";
-                const catEmoji = { restaurant: "🍽️", bar: "🍸", cafe: "☕", market: "🛍️", experience: "✨", outdoor: "🌿", museum: "🏛️", gallery: "🎨", nightlife: "🌙" };
-                return (
-                  <div key={discoverIdx}
-                    onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
-                    onClick={tapCard}
-                    style={{ width: "100%", maxWidth: 360, height: 420, borderRadius: 14, overflow: "hidden", boxShadow: "0 8px 28px rgba(0,0,0,0.22)", position: "relative", cursor: "pointer" }}>
-                    {cardFace === 0 && (
-                      <div style={{ height: "100%", position: "relative", animation: "fadeIn 0.3s" }}>
-                        <img src={current.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 50%, rgba(0,0,0,0.7))" }} />
-                        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "18px" }}>
-                          <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "#fff", textShadow: "0 2px 8px rgba(0,0,0,0.5)", lineHeight: 1.15 }}>{current.name}</div>
-                          <div style={{ fontSize: 15, color: "rgba(255,255,255,0.88)", marginTop: 5 }}>{[catEmoji[normaliseCategory(current.category)] || "✨", current.area, current.google_rating ? `⭐ ${current.google_rating}` : null, current.price].filter(Boolean).join(" · ")}</div>
-                        </div>
-                        <div style={{ position: "absolute", bottom: 6, left: "50%", transform: "translateX(-50%)", fontSize: 11, color: "rgba(255,255,255,0.5)" }}>tap to read more</div>
-                      </div>
-                    )}
-                    {cardFace === 1 && (
-                      <div style={{ height: "100%", background: "#B8D8E8", color: "#8B162B", padding: "1.5rem", overflowY: "auto", display: "flex", flexDirection: "column", justifyContent: "center", animation: "fadeIn 0.3s" }}>
-                        <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: "1.4rem", lineHeight: 1.2, marginBottom: 6 }}>{current.name}</div>
-                        {(current.area || current.zone) && <div style={{ fontSize: 13, opacity: 0.7, marginBottom: 14 }}>📍 {current.area || current.zone}</div>}
-                        {current.comment && <div style={{ fontSize: 16, lineHeight: 1.6, marginBottom: 14 }}>{current.comment}</div>}
-                        {vibeDesc && <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 14 }}>{vibeDesc}</div>}
-                        {current.price && <div style={{ fontSize: 15, marginBottom: 6 }}>💰 {current.price}</div>}
-                        {current.google_rating && <div style={{ fontSize: 15, opacity: 0.7 }}>⭐ {current.google_rating}{current.google_review_count ? ` · ${current.google_review_count.toLocaleString()} reviews` : ""}</div>}
-                        <div style={{ fontSize: 11, opacity: 0.5, marginTop: 18, textAlign: "center" }}>tap for photos</div>
-                      </div>
-                    )}
-                    {cardFace === 2 && (
-                      <div style={{ height: "100%", background: "#3A0B14", overflowY: "auto", animation: "fadeIn 0.3s" }}>
-                        {photosLoading && <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.6)", fontSize: 15 }}>Loading photos…</div>}
-                        {!photosLoading && extraPhotos.length === 0 && <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                          <img src={current.photo_url} alt="" style={{ width: "100%", height: "60%", objectFit: "cover" }} />
-                          <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 13 }}>No extra photos available</div>
-                          <div style={{ color: "rgba(255,255,255,0.3)", fontSize: 11 }}>tap to go back</div>
-                        </div>}
-                        {!photosLoading && extraPhotos.length > 0 && (
-                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
-                            {[current.photo_url, ...extraPhotos].map((url, i) => (
-                              <img key={i} src={url} alt="" style={{ width: "100%", height: 140, objectFit: "cover" }} />
-                            ))}
-                          </div>
-                        )}
-                        {!photosLoading && extraPhotos.length > 0 && <div style={{ textAlign: "center", padding: "10px", color: "rgba(255,255,255,0.4)", fontSize: 11 }}>tap to go back</div>}
-                      </div>
-                    )}
-                  </div>
-                );
-              })()}
-            </div>
-
-            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 28, padding: "16px 0 max(28px, env(safe-area-inset-bottom))" }}>
-              <button onClick={(e) => { const b = e.currentTarget; b.style.transition = "transform 0.2s ease"; b.style.transform = "scale(1.3)"; setTimeout(() => { b.style.transform = "scale(1)"; }, 200); advance(); }}
-                style={{ width: 60, height: 60, borderRadius: "50%", border: "2px solid rgba(255,255,255,0.2)", background: "rgba(255,255,255,0.08)", fontSize: "1.5rem", cursor: "pointer", color: "#fff", transition: "transform 0.2s" }}>✕</button>
-              <button onClick={(e) => { const b = e.currentTarget; b.style.transition = "transform 0.2s ease, box-shadow 0.2s ease"; b.style.transform = "scale(1.35)"; b.style.boxShadow = "0 0 24px rgba(114,106,78,0.6)"; setTimeout(() => { b.style.transform = "scale(1)"; b.style.boxShadow = "0 2px 12px rgba(114,106,78,0.3)"; }, 250); saveVenue(); }}
-                style={{ width: 60, height: 60, borderRadius: "50%", border: "none", background: "#3A0B14", color: "#fff", fontSize: "1.5rem", cursor: "pointer", boxShadow: "0 2px 12px rgba(114,106,78,0.3)", transition: "transform 0.2s, box-shadow 0.2s" }}>♥</button>
-            </div>
-          </div>
-        );
-      })()}
+      {discoverMode && discoverPairs.length > 0 && (
+        <SwipeDeck
+          venues={discoverPairs}
+          title="More like your saves"
+          subtitle={discoverWhy}
+          doneLabel="Back to Saves"
+          onClose={() => { setDiscoverMode(false); loadSaves(); }}
+          onSave={saveMoreLike}
+          onUnsave={unsaveMoreLike}
+        />
+      )}
 
       {bucketListPicker && (
         <div onClick={() => setBucketListPicker(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 1000, animation: "fadeIn 0.2s" }}>
