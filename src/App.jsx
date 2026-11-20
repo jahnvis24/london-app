@@ -1540,7 +1540,7 @@ function PlanDetailView({ plan, onClose, onNewPlan, dbVenues, onUpdateResult, on
   );
 }
 
-function SwipeDeck({ venues, preferences, onClose, onSave, onOpenSpot }) {
+function SwipeDeck({ venues, preferences, onClose, onSave, onUnsave, onOpenSpot }) {
   const [deck, setDeck] = useState(() => [...venues]);
   const [gone, setGone] = useState([]);
   const [lastAction, setLastAction] = useState(null);
@@ -1599,9 +1599,11 @@ function SwipeDeck({ venues, preferences, onClose, onSave, onOpenSpot }) {
     if (!current) return;
     const saved = dir === "right";
     haptic(saved ? [8, 20, 8] : 12);
-    setGone(prev => [{ venue: current, action: saved ? "save" : "skip" }, ...prev]);
+    // Keep the save's result (new row id) so undo can delete exactly that save.
+    const savedResult = saved && onSave ? Promise.resolve(onSave(current)).catch(() => null) : null;
+    setGone(prev => [{ venue: current, action: saved ? "save" : "skip", savedResult }, ...prev]);
     setDeck(prev => prev.slice(1));
-    if (saved) { setSavedCount(n => n + 1); onSave && onSave(current); }
+    if (saved) setSavedCount(n => n + 1);
     else setSkippedCount(n => n + 1);
     setLastAction(saved ? "save" : "skip");
   }
@@ -1611,6 +1613,8 @@ function SwipeDeck({ venues, preferences, onClose, onSave, onOpenSpot }) {
     const last = gone[0];
     setGone(prev => prev.slice(1));
     setDeck(prev => [last.venue, ...prev]);
+    // Undoing a heart removes the save it created, not just the card animation.
+    if (last.action === "save" && last.savedResult && onUnsave) last.savedResult.then(id => { if (id) onUnsave(id); });
     if (last.action === "save") setSavedCount(n => Math.max(0, n - 1));
     else setSkippedCount(n => Math.max(0, n - 1));
     setLastAction(null);
@@ -1785,7 +1789,7 @@ function PhotoCard({ v, width = 280, height = 350, onClick, badge, meta, nameSiz
   );
 }
 
-function DiscoverScreen({ preferences, dbVenues: allVenues, onStart, onOpenSpot, savedKeys, onSave }) {
+function DiscoverScreen({ preferences, dbVenues: allVenues, onStart, onOpenSpot, savedKeys, onSave, onUnsave }) {
   // Hide places you've already saved, so each slot is filled by the next best one.
   const dbVenues = savedKeys?.size ? allVenues.filter(v => !savedKeys.has(feedKey(v))) : allVenues;
   const [chip, setChip] = useState("All");
@@ -1907,6 +1911,7 @@ function DiscoverScreen({ preferences, dbVenues: allVenues, onStart, onOpenSpot,
           preferences={preferences}
           onClose={() => setSwipeDeck(false)}
           onSave={(v) => onSave && onSave(v, { surface: "swipe_deck", position: 0, method: "tap_save" })}
+          onUnsave={onUnsave}
           onOpenSpot={(v) => openSpot(v, "swipe_deck", 0)}
         />
       )}
@@ -7038,9 +7043,18 @@ export default function App() {
   async function saveDiscoverSpot(v, ctx) {
     if (!user?.id || !v) return;
     const row = { user_id: user.id, name: v.name, address: v.address, area: v.area, zone: v.zone, category: v.category, price: v.price, vibe_tags: v.vibe_tags || [], comment: v.comment, lat: v.lat, lng: v.lng, google_place_id: v.google_place_id, google_rating: v.google_rating, photo_url: v.photo_url, website: v.website, source_type: "discover", status: "pending" };
-    const { error } = await supabase.from("experiences").insert(row);
+    const { data: inserted, error } = await supabase.from("experiences").insert(row).select("id").single();
     if (!error || error.code === "23505") { haptic(12); if (!error) { mpPlaceSaved(user, { save_method: "tap_save", place_category: v.category, area: v.area }); const c = ctx || { ...mpDiscoverCtx, method: "open_details_then_save" }; mp("discover_save_conversion", { discover_surface: c.surface || "unknown", save_type: saveType(v.category), position_in_surface: c.position, save_method: c.method || "tap_save" }); } setSavedKeys(prev => new Set(prev).add(feedKey(v))); }
     else showToast("Couldn't save that — try again");
+    // The new row's id, so an undo can remove exactly this save (null when it was
+    // already saved before, which an undo must leave alone).
+    return error ? null : inserted?.id || null;
+  }
+  // Undo of a just-made Discover save.
+  async function unsaveDiscoverSpot(id) {
+    if (!user?.id || !id) return;
+    const { error } = await supabase.from("experiences").delete().eq("id", id).eq("user_id", user.id);
+    if (error) showToast("Couldn't undo that save — remove it from Saves");
   }
   const [tourStep, setTourStep] = useState(-1); // -1 = off; guided product tour (Me → "Take a tour")
   const [tourCapture, setTourCapture] = useState(false); // tour step that shows the "Save a place" sheet
@@ -7682,7 +7696,7 @@ export default function App() {
           />
         )}
 
-        {activeTab === "discover" && <DiscoverScreen preferences={preferences} dbVenues={dbVenues} onStart={startQuiz} onOpenSpot={(v, ctx) => { mpDiscoverCtx = ctx || {}; setDiscoverSpot(v); }} savedKeys={savedKeys} onSave={saveDiscoverSpot} />}
+        {activeTab === "discover" && <DiscoverScreen preferences={preferences} dbVenues={dbVenues} onStart={startQuiz} onOpenSpot={(v, ctx) => { mpDiscoverCtx = ctx || {}; setDiscoverSpot(v); }} savedKeys={savedKeys} onSave={saveDiscoverSpot} onUnsave={unsaveDiscoverSpot} />}
         {discoverSpot && <SpotDetail spot={discoverSpot} onClose={() => setDiscoverSpot(null)} user={user} onSaveToBoard={() => saveDiscoverSpot(discoverSpot)} savedToBoard={savedKeys.has(feedKey(discoverSpot))} onMakePlan={(s) => { setDiscoverSpot(null); setActiveTab("home"); setAns({ savedVenues: [s] }); setQuizStep(0); }} />}
         {activeTab === "people" && <PeopleScreen user={user} tourTab={tourPeopleTab} onShareSaved={() => setPeopleBadge(n => Math.max(0, n - 1))} onSavePlan={(payload) => { const r = payload?.plan; if (!r) return; const newPlan = { result: r, times: payload?.times || times, ans: {}, savedAt: new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }), createdAt: Date.now(), id: generateId() }; setPlans(prev => [newPlan, ...prev]); supabase.from("plans").insert({ id: newPlan.id, user_id: user.id, result: newPlan.result, ans: newPlan.ans, times: newPlan.times, saved_at: newPlan.savedAt, created_at: newPlan.createdAt }).then(({ error }) => { if (error) console.warn("plans:", error.message); }); }} />}
         {/* Always mounted so an in-progress screenshot parse keeps running + persists when you switch tabs */}
