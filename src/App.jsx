@@ -1935,10 +1935,13 @@ function DiscoverScreen({ preferences, dbVenues: allVenues, onStart, onOpenSpot,
             </div>
             <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(58,11,20,.45)", paddingBottom: 4 }}>{row.items.length} spots</div>
           </div>
-          <div style={{ display: "flex", gap: 12, padding: "0 22px 32px", overflowX: "auto", scrollbarWidth: "none", scrollSnapType: "x mandatory" }}>
+          {/* scrollPaddingInline keeps snapped cards off the screen edge; the spacer gives the
+              last card the same margin (iOS ignores right padding in a scrolling row). */}
+          <div style={{ display: "flex", gap: 12, padding: "0 22px 32px", overflowX: "auto", scrollbarWidth: "none", scrollSnapType: "x mandatory", scrollPaddingInline: 22 }}>
             {row.items.map((v, i) => (
               <PhotoCard key={v.id} v={v} width={280} height={350} onClick={() => openSpot(v, row.key === "trending" ? (isTopPick(v) ? "top_picks" : "trending") : row.key, i)} />
             ))}
+            <div aria-hidden="true" style={{ flex: "none", width: 10 }} />
           </div>
         </div>
       ))}
