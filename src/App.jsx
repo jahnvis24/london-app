@@ -7174,19 +7174,35 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Check for unrated past plans — only prompt once a plan is at least five days old,
-  // and only once per app load (not every time the plans list changes, which used to
-  // pop the prompt for an older plan right after saving a new one).
+  // Ask for a plan review only when it is unobtrusive:
+  //  - the plan is 5 to 30 days old (too fresh = pushy, too old = nobody remembers it)
+  //  - at most once per app load
+  //  - never in a session where the tour prompt or tour appeared (they used to stack,
+  //    and on a fresh install the review sheet covered the tour)
+  //  - skipping plans already reviewed on any device (plan_reviews) or dismissed here
   const ratingCheckedRef = useRef(false);
+  const tourSeenRef = useRef(false);
+  useEffect(() => { if (tourPrompt || tourStep >= 0) tourSeenRef.current = true; }, [tourPrompt, tourStep]);
   useEffect(() => {
     if (!user || plans.length === 0 || ratingCheckedRef.current) return;
     ratingCheckedRef.current = true;
-    let reviewed; try { reviewed = JSON.parse(localStorage.getItem("cl_reviewed") || "[]"); } catch { reviewed = []; }
-    const FIVE_DAYS = 5 * 24 * 60 * 60 * 1000;
-    const unrated = plans.find(p => p.id && !reviewed.includes(p.id) && p.createdAt && (Date.now() - Number(p.createdAt)) >= FIVE_DAYS);
-    if (!unrated) return;
-    const t = setTimeout(() => setRatingPlan(unrated), 1500);
-    return () => clearTimeout(t);
+    (async () => {
+      // Give the tour prompt (shown ~1s after load) a chance to claim this session first.
+      await new Promise(r => setTimeout(r, 3000));
+      if (tourSeenRef.current) return;
+      let reviewed; try { reviewed = JSON.parse(localStorage.getItem("cl_reviewed") || "[]"); } catch { reviewed = []; }
+      try {
+        const { data } = await supabase.from("plan_reviews").select("plan_id").eq("user_id", user.id);
+        reviewed = [...reviewed, ...(data || []).map(r => r.plan_id)];
+      } catch { /* offline: fall back to the local list */ }
+      if (tourSeenRef.current) return;
+      const DAY = 24 * 60 * 60 * 1000;
+      const unrated = plans.find(p => {
+        const age = Date.now() - Number(p.createdAt);
+        return p.id && !reviewed.includes(p.id) && p.createdAt && age >= 5 * DAY && age <= 30 * DAY;
+      });
+      if (unrated) setRatingPlan(unrated);
+    })();
   }, [user, plans]);
 
   // Run generate() once new ans/times have committed (used by the bar-crawl flow).
