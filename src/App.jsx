@@ -512,7 +512,8 @@ const styles = `
   * { box-sizing: border-box; margin: 0; padding: 0; }
   button { color: #3A0B14; font-family: inherit; -webkit-tap-highlight-color: transparent; }
   body { font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; -webkit-font-smoothing: antialiased; background: #FAF7F2; color: #3A0B14; min-height: 100vh; overflow-x: hidden; }
-  .app { max-width: 420px; margin: 0 auto; min-height: 100vh; background: #FAF7F2; padding-bottom: 88px; position: relative; }
+  .app { max-width: 420px; margin: 0 auto; min-height: 100vh; background: #FAF7F2; padding-bottom: 168px; position: relative; }
+  .native, .native body { overscroll-behavior: none; }
   a { color: #7A1E33; text-decoration: none; }
   :focus-visible { outline: 2px solid #7A1E33; outline-offset: 2px; }
   button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
@@ -636,7 +637,7 @@ const styles = `
   .stop-hook { font-size: 15px; color: rgba(58,11,20,.55); line-height: 1.5; }
   .stop-footer { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px 12px; border-top: 1px solid rgba(58,11,20,.08); margin-top: 10px; min-height: 44px; }
   .stop-pills-row { display: flex; gap: 6px; flex-wrap: nowrap; overflow: hidden; flex: 1; min-width: 0; }
-  .stop-pill { font-size: 12px; padding: 4px 10px; border-radius: 8px; background: #BAD2E8; color: #3A0B14; }
+  .stop-pill { font-size: 12px; padding: 4px 10px; border-radius: 8px; background: #BAD2E8; color: #3A0B14; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 1 auto; }
   .stop-booking { font-size: 11px; color: rgba(58,11,20,.45); }
   .why-fit { padding: 0 1.1rem 0.75rem; font-size: 12px; color: rgba(58,11,20,.45); font-style: italic; line-height: 1.4; border-top: 1px solid rgba(58,11,20,.13); padding-top: 0.55rem; }
   .transit { display: flex; align-items: center; gap: 8px; padding: 0 0.5rem; margin-bottom: 10px; color: rgba(58,11,20,.42); font-size: 12px; }
@@ -805,15 +806,20 @@ function useSwipeRight(onBack) {
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    let startX = 0, startY = 0, dragging = false;
+    let startX = 0, startY = 0, dragging = false, lastDx = 0;
     const onStart = (e) => {
       startX = e.touches[0].clientX;
       startY = e.touches[0].clientY;
+      lastDx = 0;
       if (startX < 40) { dragging = true; el.style.transition = "none"; }
     };
     const onMove = (e) => {
       if (!dragging) return;
       const dx = e.touches[0].clientX - startX;
+      lastDx = dx;
+      // Horizontal drag from the edge: keep it ours, so a photo carousel or the
+      // page's own scrolling can't take over (iOS then cancels the touch).
+      if (dx > 10 && Math.abs(e.touches[0].clientY - startY) < dx && e.cancelable) e.preventDefault();
       const dy = Math.abs(e.touches[0].clientY - startY);
       if (dy > 60) { dragging = false; el.style.transform = ""; return; }
       if (dx > 0) el.style.transform = `translateX(${dx}px)`;
@@ -821,7 +827,7 @@ function useSwipeRight(onBack) {
     const onEnd = (e) => {
       if (!dragging) return;
       dragging = false;
-      const dx = e.changedTouches[0].clientX - startX;
+      const dx = e.type === "touchcancel" ? lastDx : e.changedTouches[0].clientX - startX;
       el.style.transition = "transform 0.25s ease";
       if (dx > 100) {
         el.style.transform = "translateX(110%)";
@@ -831,9 +837,10 @@ function useSwipeRight(onBack) {
       }
     };
     el.addEventListener("touchstart", onStart, { passive: true });
-    el.addEventListener("touchmove", onMove, { passive: true });
+    el.addEventListener("touchmove", onMove, { passive: false });
     el.addEventListener("touchend", onEnd, { passive: true });
-    return () => { el.removeEventListener("touchstart", onStart); el.removeEventListener("touchmove", onMove); el.removeEventListener("touchend", onEnd); };
+    el.addEventListener("touchcancel", onEnd, { passive: true });
+    return () => { el.removeEventListener("touchstart", onStart); el.removeEventListener("touchmove", onMove); el.removeEventListener("touchend", onEnd); el.removeEventListener("touchcancel", onEnd); };
   }, [onBack]);
   return ref;
 }
@@ -1222,7 +1229,7 @@ function ResultScreen({ planId, planSource, result, times, ans, onRestart, onNew
         return { ...v, score };
       })
       .sort((a, b) => b.score - a.score)
-      .slice(0, 3);
+      .slice(0, 8);
 
     if (candidates.length === 0) {
       setSwappingIdx(stopIdx);
@@ -1234,12 +1241,12 @@ function ResultScreen({ planId, planSource, result, times, ans, onRestart, onNew
       const curName = result.stops[stopIdx].name.toLowerCase();
       const curIdx = alternatives.findIndex(a => a.name.toLowerCase() === curName);
       const nextIdx = (curIdx + 1) % alternatives.length;
-      swapVenue(alternatives[nextIdx], true);
+      swapVenue(alternatives[nextIdx], true, stopIdx);
       return;
     }
     setAlternatives(candidates);
     setSwappingIdx(stopIdx);
-    swapVenue(candidates[0], true);
+    swapVenue(candidates[0], true, stopIdx);
   }
 
   function recalcTotalCost(stops) {
@@ -1277,8 +1284,14 @@ function ResultScreen({ planId, planSource, result, times, ans, onRestart, onNew
     return updated;
   }
 
-  async function swapVenue(alt, keepCycling) {
-    const idx = swappingIdx;
+  // Each edit bumps this; travel times that come back after a newer edit are dropped,
+  // otherwise a slow earlier lookup put the previous venue back.
+  const editSeq = useRef(0);
+  async function swapVenue(alt, keepCycling, stopIdx) {
+    // Passed in: swappingIdx state hasn't updated yet on the first tap.
+    const idx = stopIdx ?? swappingIdx;
+    if (idx == null) return;
+    const seq = ++editSeq.current;
     const newStops = [...result.stops];
     newStops[idx] = {
       ...newStops[idx],
@@ -1295,6 +1308,7 @@ function ResultScreen({ planId, planSource, result, times, ans, onRestart, onNew
     onUpdateResult({ ...result, stops: newStops, ...(newTotal ? { total_cost_estimate: newTotal } : {}) });
     if (!keepCycling) { setSwappingIdx(null); setAlternatives([]); }
     const withTravel = await recalcTravel(newStops);
+    if (seq !== editSeq.current) return;
     onUpdateResult({ ...result, stops: withTravel, ...(newTotal ? { total_cost_estimate: newTotal } : {}) });
   }
 
@@ -1305,7 +1319,9 @@ function ResultScreen({ planId, planSource, result, times, ans, onRestart, onNew
     onUpdateResult({ ...result, stops: newStops, ...(newTotal ? { total_cost_estimate: newTotal } : {}) });
     setSwappingIdx(null);
     setAlternatives([]);
+    const seq = ++editSeq.current;
     const withTravel = await recalcTravel(newStops);
+    if (seq !== editSeq.current) return;
     onUpdateResult({ ...result, stops: withTravel, ...(newTotal ? { total_cost_estimate: newTotal } : {}) });
   }
 
@@ -1385,7 +1401,7 @@ function ResultScreen({ planId, planSource, result, times, ans, onRestart, onNew
                   <div className="stop-footer">
                     <div className="stop-pills-row">
                       {stop.price_range && <span className="stop-pill">{stop.price_range}</span>}
-                      {stop.area && <span className="stop-pill">{stop.area}</span>}
+                      {stop.area && <span className="stop-pill">{String(stop.area).split(/[/,(·–-]/)[0].trim() || stop.area}</span>}
                     </div>
                     <button onClick={() => findAlternatives(idx)} style={{ border: "none", background: "#3A0B14", color: "#BAD2E8", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", padding: "5px 12px", borderRadius: 8, flexShrink: 0, whiteSpace: "nowrap" }}>↻ Swap</button>
                   </div>
@@ -1514,7 +1530,7 @@ function MyPlansScreen({ plans, onViewPlan, onNewPlan, onBarCrawl, onSchedule, d
 function PlanDetailView({ plan, onClose, onNewPlan, dbVenues, onUpdateResult, onShare, onRate, onSchedule }) {
   const swipeRef = useSwipeRight(onClose);
   return (
-    <div ref={swipeRef} style={{ position: "fixed", inset: 0, zIndex: 1200, background: "#FAF7F2", overflowY: "auto", animation: "screenIn .32s cubic-bezier(.2,.9,.3,1)" }}>
+    <div ref={swipeRef} style={{ position: "fixed", inset: 0, zIndex: 1200, background: "#FAF7F2", overflowY: "auto", paddingBottom: 40, animation: "screenIn .32s cubic-bezier(.2,.9,.3,1)" }}>
       <div style={{ position: "sticky", top: 0, zIndex: 10, background: "#FAF7F2", padding: "14px 22px", display: "flex", alignItems: "center", gap: 12, borderBottom: "1px solid rgba(58,11,20,.1)" }}>
         <button onClick={onClose} style={{ width: 36, height: 36, border: "1px solid rgba(58,11,20,.18)", background: "none", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, cursor: "pointer" }}>←</button>
         <div style={{ flex: 1, fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 22, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{plan.result?.title || "Your plan"}</div>
@@ -3074,7 +3090,7 @@ function SpotDetail({ spot, onClose, onShowOnMap, onMakePlan, user, onSpotUpdate
         <div style={{ ...sf, fontSize: 15, lineHeight: 1.55, color: "rgba(58,11,20,.72)", marginBottom: 16 }}>{(() => { const c = spot.comment || "No description yet."; return c.endsWith(".") ? c : c + "."; })()}</div>
 
         {/* Outline pill links */}
-        <div data-tour="spot-book" style={{ display: "flex", gap: 8, overflowX: "auto", scrollbarWidth: "none", marginBottom: 18, paddingBottom: 2 }}>
+        <div data-tour="spot-book" style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 18 }}>
           {spot.website && <a href={spot.website} target="_blank" rel="noreferrer" style={{ ...sf, flex: "none", padding: "8px 13px", borderRadius: 8, border: "1.5px solid #3A0B14", color: "#3A0B14", fontSize: 13, fontWeight: 600, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6 }}><LineIcon name="link" size={14} />Website ↗</a>}
           {spot.source_url && (spot.source_type === "tiktok" || spot.source_type === "instagram") && <a href={spot.source_url} target="_blank" rel="noreferrer" style={{ ...sf, flex: "none", padding: "8px 13px", borderRadius: 8, border: "1.5px solid #3A0B14", color: "#3A0B14", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>{spot.source_type === "tiktok" ? "TikTok" : "Instagram"} ↗</a>}
           {onMakePlan && <button onClick={() => onMakePlan(spot)} style={{ ...sf, flex: "none", padding: "8px 13px", borderRadius: 8, border: "1.5px solid #3A0B14", background: "transparent", color: "#3A0B14", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}><LineIcon name="map" size={14} />Plan around this</button>}
@@ -3694,6 +3710,14 @@ function SavedScreen({ user, onBuildPlan, onShare, onBarCrawl, openSignal, calen
   const [captureOpen, setCaptureOpen] = useState(false);
   const [captureTab, setCaptureTab] = useState(null);
   const [discoverMode, setDiscoverMode] = useState(false);
+  // While the full-screen swipe deck is open, the Saves page behind it must not scroll.
+  useEffect(() => {
+    if (!discoverMode) return;
+    const h = document.documentElement, b = document.body;
+    const prev = [h.style.overflow, b.style.overflow];
+    h.style.overflow = "hidden"; b.style.overflow = "hidden";
+    return () => { h.style.overflow = prev[0]; b.style.overflow = prev[1]; };
+  }, [discoverMode]);
   // State for the "Discover more" card: declared here, not inside the conditional
   // render below, because hooks inside a conditional crash React (blank screen).
   const [cardFace, setCardFace] = useState(0); // 0=photo, 1=description, 2=gallery
@@ -5582,7 +5606,7 @@ function RatingPrompt({ plan, user, onDismiss, onSubmit }) {
   }
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 1100 }}>
+    <div style={{ position: "fixed", inset: 0, zIndex: 1400 }}>
       <div onClick={onDismiss} style={{ position: "absolute", inset: 0, background: "rgba(58,11,20,.5)" }} />
       <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, background: "#FAF7F2", borderRadius: "20px 20px 0 0", padding: "14px 22px 34px", animation: "sheetUp .36s cubic-bezier(.2,.95,.25,1)", boxShadow: "0 -14px 40px rgba(58,11,20,.25)", maxHeight: "78%", overflowY: "auto" }}>
         <div style={{ width: 36, height: 3, background: "rgba(58,11,20,.2)", margin: "0 auto 18px" }} />
@@ -5734,7 +5758,7 @@ function ShareModal({ user, item, onClose, showToast }) {
   }
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 1100 }}>
+    <div style={{ position: "fixed", inset: 0, zIndex: 1400 }}>
       <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(58,11,20,.5)" }} />
       <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, background: "#FAF7F2", borderRadius: "20px 20px 0 0", padding: "14px 22px 34px", animation: "sheetUp .36s cubic-bezier(.2,.95,.25,1)", boxShadow: "0 -14px 40px rgba(58,11,20,.25)" }}>
         <div style={{ width: 36, height: 3, background: "rgba(58,11,20,.2)", margin: "0 auto 18px" }} />

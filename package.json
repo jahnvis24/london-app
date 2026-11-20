@@ -15,8 +15,10 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.96.0",
+    "@capacitor/app-launcher": "^8.0.1",
     "@capacitor/core": "^8.6.2",
     "@capacitor/ios": "^8.6.2",
+    "@capacitor/share": "^8.0.3",
     "@supabase/supabase-js": "^2.106.0",
     "@vercel/blob": "^2.4.0",
     "@vercel/node": "^5.8.2",
