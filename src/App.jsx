@@ -16,15 +16,20 @@ const supabase = createClient(
 if (typeof window !== "undefined" && !window.__apiAuthPatched) {
   window.__apiAuthPatched = true;
   const nativeFetch = window.fetch.bind(window);
+  // Empty on the web (same-origin). The iOS app is bundled and served from
+  // capacitor://localhost, so its build sets VITE_API_BASE (see .env.native) and
+  // /api/* calls go to the live backend instead.
+  const API_BASE = (import.meta.env.VITE_API_BASE || "").replace(/\/$/, "");
   window.fetch = async (input, init = {}) => {
     const url = typeof input === "string" ? input : input?.url || "";
     if (!url.startsWith("/api/")) return nativeFetch(input, init);
+    const target = API_BASE ? API_BASE + url : input;
     let token = null;
     try { token = (await supabase.auth.getSession()).data?.session?.access_token || null; } catch {}
-    if (!token) return nativeFetch(input, init);
+    if (!token) return nativeFetch(target, init);
     const headers = new Headers(init.headers || (typeof input !== "string" ? input.headers : undefined));
     if (!headers.has("Authorization")) headers.set("Authorization", `Bearer ${token}`);
-    return nativeFetch(input, { ...init, headers });
+    return nativeFetch(target, { ...init, headers });
   };
 }
 

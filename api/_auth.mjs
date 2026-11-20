@@ -56,6 +56,7 @@ const ALLOWED_ORIGINS = [
   'https://london-app.vercel.app',
   'http://localhost:5173',
   'http://localhost:3000',
+  'capacitor://localhost', // the iOS app (Capacitor webview origin)
 ];
 
 export function applyCors(req, res) {
