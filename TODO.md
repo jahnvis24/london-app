@@ -6,7 +6,7 @@
 | 2 | Invite only code | Not started |
 | 3 | Discover tab — curated static picks | In progress |
 | 4 | Push notifications before event reminder | Not started |
-| 5 | Community plans — suggest popular user-favourited itineraries | Not started |
+| 5 | Community and featured itineraries — Discover row of featured plans (influencers / top picks) to copy, plus "Show on my profile" so friends can see and copy your plans. Spec: `docs/specs/2026-11-23-shared-itineraries.md` | Not started — needs owner decisions in spec |
 | 6 | Migrate account data from personal email to test email | Not started — sign up with new email, then run `scripts/copy-user-data.sql` in Supabase SQL Editor |
 | 8 | Larger "Because you like" cards on Discover | Not started |
 | 9 | Map spot list: match save preview card style | Not started |
