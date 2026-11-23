@@ -111,11 +111,25 @@ function zoneFromPostcode(postcode) {
   return null;
 }
 
-function classifyZone(postcode, address) {
+// Last resort when neither the address nor the postcode gives a zone: compass
+// bearing from Charing Cross. Without it the app fell back to "Central", which
+// put Peckham, Greenwich and Putney venues in Central.
+function zoneFromCoords(lat, lng) {
+  if (lat == null || lng == null) return null;
+  const dy = (lat - 51.512) * 111, dx = (lng + 0.123) * 69;
+  const d = Math.hypot(dx, dy);
+  if (d < 4) return 'Central';
+  if (d > 30) return null;
+  const b = Math.atan2(dx, dy) * 180 / Math.PI;
+  const sectors = ['North', 'Northeast', 'East', 'Southeast', 'South', 'Southwest', 'West', 'Northwest'];
+  return sectors[Math.round(((b + 360) % 360) / 45) % 8];
+}
+
+function classifyZone(postcode, address, lat, lng) {
   const area = areaFromAddress(address);
   const zoneByAddress = zoneFromAddress(address);
   if (zoneByAddress) return { zone: zoneByAddress, area };
-  return { zone: zoneFromPostcode(postcode), area };
+  return { zone: zoneFromPostcode(postcode) || zoneFromCoords(lat, lng), area };
 }
 
 export default async function handler(req, res) {
@@ -170,7 +184,7 @@ export default async function handler(req, res) {
     const postcodeMatch = address.match(/[A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2}/i);
     const postcode = postcodeMatch ? postcodeMatch[0].toUpperCase() : null;
 
-    const { zone: derivedZone, area: derivedArea } = classifyZone(postcode, address);
+    const { zone: derivedZone, area: derivedArea } = classifyZone(postcode, address, place.location?.latitude, place.location?.longitude);
 
     res.status(200).json({
       found: true,

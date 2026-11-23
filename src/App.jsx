@@ -1790,9 +1790,25 @@ function PhotoCard({ v, width = 280, height = 350, onClick, badge, meta, nameSiz
   );
 }
 
+// Discover area chips group the stored 8-way zones into 5 simple areas.
+const AREA_GROUPS = { Central: ["Central"], North: ["North", "Northwest", "Northeast"], East: ["East"], South: ["South", "Southeast", "Southwest"], West: ["West"] };
+const venueInArea = (v, area) => {
+  if (area === "All") return true;
+  const zone = v.zone || ZONE_MAP[String(v.area || "").split(/[/,(·–-]/)[0].trim()];
+  return !!zone && AREA_GROUPS[area].includes(zone);
+};
+
 function DiscoverScreen({ preferences, dbVenues: allVenues, onStart, onOpenSpot, savedKeys, onSave, onUnsave }) {
+  // Remembered per device so the area sticks between visits.
+  const [area, setAreaState] = useState(() => { try { const a = localStorage.getItem("cl_discover_area"); return AREA_GROUPS[a] ? a : "All"; } catch { return "All"; } });
+  const setArea = (a) => {
+    setAreaState(a);
+    try { localStorage.setItem("cl_discover_area", a); } catch { /* storage blocked */ }
+    mp("discover_area_selected", { area: a });
+  };
   // Hide places you've already saved, so each slot is filled by the next best one.
-  const dbVenues = savedKeys?.size ? allVenues.filter(v => !savedKeys.has(feedKey(v))) : allVenues;
+  // Every row below draws from this list, so the area chip filters the whole page.
+  const dbVenues = allVenues.filter(v => !(savedKeys?.size && savedKeys.has(feedKey(v))) && venueInArea(v, area));
   const [chip, setChip] = useState("All");
   const [swipeDeck, setSwipeDeck] = useState(false);
   const mpSeen = useRef(new Set());
@@ -1801,7 +1817,7 @@ function DiscoverScreen({ preferences, dbVenues: allVenues, onStart, onOpenSpot,
     mp("discover_venue_opened", { discover_surface: surface, save_type: saveType(v?.category), position_in_surface: position, algorithm_variant: "taste_v1" });
     onOpenSpot && onOpenSpot(v, { surface, position });
   };
-  const CHIPS = ["All", "East", "Date night", "Cheap eats", "Bars", "Restaurants", "Cafés", "Culture", "Outdoors", "Markets", "Celebrity picks"];
+  const CHIPS = ["All", "Date night", "Cheap eats", "Bars", "Restaurants", "Cafés", "Culture", "Outdoors", "Markets", "Celebrity picks"];
 
   const today = new Date().toISOString().split("T")[0];
   const dayName = new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
@@ -1815,7 +1831,7 @@ function DiscoverScreen({ preferences, dbVenues: allVenues, onStart, onOpenSpot,
       if (!error && data) setPopular(data.map(r => ({ ...r.place, _savers: r.savers })));
     });
   }, []);
-  const freshPopular = savedKeys?.size ? popular.filter(v => !savedKeys.has(feedKey(v))) : popular;
+  const freshPopular = popular.filter(v => !(savedKeys?.size && savedKeys.has(feedKey(v))) && venueInArea(v, area));
   const trending = freshPopular.length >= 3 ? freshPopular.slice(0, 6) : dbVenues
     .filter(v => !v.is_event && v.photo_url && v.google_rating && parseFloat(v.google_rating) >= 4.2)
     .sort((a, b) => (parseFloat(b.google_rating) || 0) - (parseFloat(a.google_rating) || 0))
@@ -1854,7 +1870,7 @@ function DiscoverScreen({ preferences, dbVenues: allVenues, onStart, onOpenSpot,
   const celebRow = celebGroups.length ? (([name, arr]) => ({ key: "celebrity", title: `${name}'s picks`, why: `${arr.length} places ${name.split(" ")[0]} loves`, items: byRating(arr).slice(0, 8) }))(celebGroups[week % celebGroups.length]) : null;
 
   const CAT_CHIPS = { "Restaurants": ["restaurant"], "Cafés": ["cafe"], "Outdoors": ["outdoor"], "Markets": ["market"] };
-  const filtered = chip === "All" ? trending : chip === "East" ? trending.filter(v => /east|shoreditch|hackney|bethnal|dalston/i.test(v.zone || v.area || ""))
+  const filtered = chip === "All" ? trending
     : chip === "Date night" ? trending.filter(v => (v.vibe_tags || []).some(t => ["romantic", "fancy", "aesthetic"].includes(t)))
     : chip === "Cheap eats" ? cheapEats
     : chip === "Bars" ? byRating(withPhoto.filter(v => v.category === "bar")).slice(0, 8)
@@ -1864,7 +1880,7 @@ function DiscoverScreen({ preferences, dbVenues: allVenues, onStart, onOpenSpot,
     : trending;
 
   const rows = [
-    { key: "trending", title: chip === "All" ? "Trending this week" : chip, why: "", items: (filtered.length ? filtered : trending).slice(0, 8) },
+    { key: "trending", title: chip === "All" ? (area === "All" ? "Trending this week" : `Trending in ${area}`) : chip, why: area === "All" ? "" : `${area} London only`, items: (filtered.length ? filtered : trending).slice(0, 8) },
     ...prefRows,
     { key: "cheap_eats", title: "Cheap eats", why: "", items: cheapEats },
     celebRow,
@@ -1926,11 +1942,26 @@ function DiscoverScreen({ preferences, dbVenues: allVenues, onStart, onOpenSpot,
         <div style={{ fontSize: 16, color: "rgba(58,11,20,.4)" }}>›</div>
       </div>
 
+      {/* Area chips: rounded pills, unlike the square category chips below, so the two rows read as different controls. */}
+      <div style={{ padding: "0 22px", fontSize: 11, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(58,11,20,.5)" }}>Area</div>
+      <div role="group" aria-label="Area" style={{ display: "flex", gap: 8, padding: "10px 22px 14px", overflowX: "auto", scrollbarWidth: "none" }}>
+        {["All", ...Object.keys(AREA_GROUPS)].map(a => (
+          <button key={a} type="button" aria-pressed={area === a} onClick={() => setArea(a)} style={{ flex: "none", minHeight: 40, padding: "0 16px", borderRadius: 20, border: `1.5px solid ${area === a ? "#3A0B14" : "rgba(58,11,20,.22)"}`, background: area === a ? "#3A0B14" : "transparent", color: area === a ? "#BAD2E8" : "#3A0B14", fontFamily: "inherit", fontSize: 14, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>{a}</button>
+        ))}
+      </div>
+
       <div style={{ display: "flex", gap: 7, padding: "0 22px 20px", overflowX: "auto", scrollbarWidth: "none" }}>
         {CHIPS.map(c => (
           <button key={c} onClick={() => setChip(c)} className={`filter-chip ${chip === c ? "sel" : ""}`}>{c}</button>
         ))}
       </div>
+
+      {rows.length === 0 && (
+        <div style={{ margin: "0 22px 28px", padding: "18px 18px", borderRadius: 14, background: "#F1EDE4", fontSize: 14, lineHeight: 1.45, color: "#4A2A31" }}>
+          Not many {chip === "All" ? "" : chip.toLowerCase() + " "}spots in {area} London yet.{" "}
+          <button type="button" onClick={() => setArea("All")} style={{ border: "none", background: "none", padding: 0, color: "#7A1E33", fontWeight: 700, fontFamily: "inherit", fontSize: 14, textDecoration: "underline", cursor: "pointer" }}>Show all of London</button>
+        </div>
+      )}
 
       {rows.map((row, ri) => (
         <div key={row.key} data-tour={ri === 0 ? "discover-rows" : undefined}>
